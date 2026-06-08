@@ -35,6 +35,16 @@ const FACTIONS = [
   { slug: 'sons-of-behemat',      name: 'Sons of Behemat',       alliance: 'Destruction' },
 ];
 
+// Wahapedia uses Cyrillic homoglyphs that look like Latin letters.
+// Replace them so SQLite LIKE searches work correctly.
+const CYRILLIC_MAP = {
+  'А':'A','В':'B','Е':'E','К':'K','М':'M','Н':'H','О':'O','Р':'P','С':'C','Т':'T','Х':'X',
+  'а':'a','е':'e','о':'o','р':'p','с':'c','у':'y','х':'x',
+};
+function normalizeName(str) {
+  return str.replace(/[АВЕКМНОРСТХаеорсух]/g, ch => CYRILLIC_MAP[ch] || ch);
+}
+
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -70,7 +80,7 @@ async function scrapeFaction(faction) {
     // Unit name is in .wsHeaderIn — strip the inner search-link anchor
     const nameEl = $(el).find('.wsHeaderIn').first();
     nameEl.find('a').remove();
-    const name = nameEl.text().trim().replace(/^[^a-zA-Z0-9]+/, '');
+    const name = normalizeName(nameEl.text().trim().replace(/^[^a-zA-Z0-9]+/, ''));
     if (!name || name.length > 100) return;
 
     // Skip Regiments of Renown / allied units whose nails-header names a DIFFERENT faction.
