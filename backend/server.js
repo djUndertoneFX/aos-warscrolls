@@ -182,9 +182,17 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
     ).get(...params).count;
 
     const offset = (parseInt(page) - 1) * parseInt(pageSize);
+    const typeOrder = `CASE
+      WHEN w.is_hero=1 THEN 1
+      WHEN w.is_infantry=1 THEN 2
+      WHEN w.is_cavalry=1 THEN 3
+      WHEN w.is_monster=1 THEN 4
+      WHEN w.is_war_machine=1 THEN 5
+      WHEN w.is_terrain=1 THEN 6
+      ELSE 7 END`;
     const rows = db.prepare(`
       SELECT w.* FROM warscrolls w ${join} ${where}
-      ORDER BY w.${col} ${dir}
+      ORDER BY w.${col} ${dir}, ${typeOrder}, w.name ASC
       LIMIT ? OFFSET ?
     `).all(...params, parseInt(pageSize), offset);
 
