@@ -55,6 +55,9 @@ function initDb() {
     CREATE INDEX IF NOT EXISTS idx_warscrolls_name ON warscrolls(name);
   `);
 
+  // Add weapons column if it doesn't exist yet (safe migration)
+  try { db.exec('ALTER TABLE warscrolls ADD COLUMN weapons TEXT DEFAULT NULL'); } catch {}
+
   db.close();
   console.log('Database initialized.');
 }

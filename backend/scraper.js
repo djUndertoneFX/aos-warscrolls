@@ -77,6 +77,64 @@ async function scrapeFaction(faction) {
     const nailsText = $(el).find('.nails-header').first().text().toUpperCase();
     if (nailsText && !nailsText.includes(faction.name.toUpperCase())) return;
 
+    // Parse weapons from each .wTable
+    const weapons = [];
+    $(el).find('.wTable').each((_, table) => {
+      const headerRow = $(table).find('tr.wsHeaderRow').first();
+      const isRanged = headerRow.find('.wsHeaderCellName_RangedWeapons').length > 0;
+      const isMelee  = headerRow.find('.wsHeaderCellName_MeleeWeapons').length > 0;
+      if (!isRanged && !isMelee) return;
+
+      $(table).find('tr.wsDataRow').not('.wsDataRow_short').each((_, row) => {
+        const cells = $(row).find('td');
+        // Weapon name: first text node of cell[2]
+        const weaponName = $(cells[2]).contents()
+          .filter((_, n) => n.type === 'text').first().text().trim();
+        if (!weaponName) return;
+
+        if (isRanged && cells.length >= 9) {
+          weapons.push({
+            type: 'ranged',
+            name: weaponName,
+            range:   $(cells[3]).text().trim(),
+            attacks: $(cells[4]).text().trim(),
+            hit:     $(cells[5]).text().trim(),
+            wound:   $(cells[6]).text().trim(),
+            rend:    $(cells[7]).text().trim(),
+            damage:  $(cells[8]).text().trim(),
+          });
+        } else if (isMelee && cells.length >= 8) {
+          weapons.push({
+            type: 'melee',
+            name: weaponName,
+            range: '-',
+            attacks: $(cells[3]).text().trim(),
+            hit:     $(cells[4]).text().trim(),
+            wound:   $(cells[5]).text().trim(),
+            rend:    $(cells[6]).text().trim(),
+            damage:  $(cells[7]).text().trim(),
+          });
+        }
+      });
+    });
+
+    // Parse abilities from .BreakInsideAvoid blocks
+    const abilities = [];
+    $(el).find('.BreakInsideAvoid').each((_, block) => {
+      const abBody = $(block).find('.abBody').first();
+      if (!abBody.length) return;
+      const timing = $(block).find('.abHeader').first().clone().find('img').remove().end().text().trim();
+      const firstBold = abBody.find('b').first().text().replace(/:/g, '').trim();
+      if (!firstBold || firstBold === 'Effect' || firstBold === 'KEYWORDS') return;
+      const bodyText = abBody.text().replace(/\s+/g, ' ').trim();
+      const effectMatch = bodyText.match(/Effect:\s*(.+)/i);
+      abilities.push({
+        name: firstBold,
+        timing,
+        effect: effectMatch ? effectMatch[1].trim() : '',
+      });
+    });
+
     // Stats from the AoS profile block
     const move    = $(el).find('.wsMove').first().text().trim();
     const health  = $(el).find('.wsWounds').first().text().trim();
@@ -121,7 +179,8 @@ async function scrapeFaction(faction) {
       unit_size: sizeNum ? sizeNum[1] : '',
       base_size: baseMatch ? baseMatch[1].trim() : '',
       keywords,
-      abilities: '',
+      abilities: JSON.stringify(abilities),
+      weapons:   JSON.stringify(weapons),
       is_hero:    isHero    ? 1 : 0,
       is_monster: isMonster ? 1 : 0,
       is_cavalry: isCavalry ? 1 : 0,
@@ -148,14 +207,14 @@ async function scrapeAll() {
       name, faction, faction_slug, grand_alliance,
       move, health, control, save, ward,
       points, unit_size, base_size,
-      keywords, abilities,
+      keywords, abilities, weapons,
       is_hero, is_monster, is_cavalry, is_infantry,
       is_unique, is_legends, url
     ) VALUES (
       @name, @faction, @faction_slug, @grand_alliance,
       @move, @health, @control, @save, @ward,
       @points, @unit_size, @base_size,
-      @keywords, @abilities,
+      @keywords, @abilities, @weapons,
       @is_hero, @is_monster, @is_cavalry, @is_infantry,
       @is_unique, @is_legends, @url
     )

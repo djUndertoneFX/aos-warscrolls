@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import WarscrollDetail from '../components/WarscrollDetail';
 
 const SORTABLE_COLS = [
   { key: 'name',          label: 'Unit Name' },
@@ -51,6 +52,9 @@ export default function WarscrollsPage() {
   const [isHero, setIsHero]         = useState(false);
   const [isMonster, setIsMonster]   = useState(false);
   const [hideLegends, setHideLegends] = useState(true);
+
+  const [expandedId, setExpandedId] = useState(null);
+  const [detailUnit, setDetailUnit] = useState(null);
 
   // Sort & page
   const [sortBy, setSortBy]   = useState('faction');
@@ -240,43 +244,88 @@ export default function WarscrollsPage() {
                   ))}
                   <th>Types</th>
                   <th>Keywords</th>
-                  <th>Source</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
-                {data?.data.map(row => (
-                  <tr key={row.id}>
-                    <td className="col-name">
-                      {row.url
-                        ? <a href={row.url} target="_blank" rel="noopener noreferrer">{row.name}</a>
-                        : row.name
-                      }
-                    </td>
-                    <td className="col-faction">{row.faction}</td>
-                    <td>
-                      {row.grand_alliance && <AllianceBadge alliance={row.grand_alliance} />}
-                    </td>
-                    <td className="col-stat">{row.move || '—'}</td>
-                    <td className="col-stat">{row.health || '—'}</td>
-                    <td className="col-stat">{row.control || '—'}</td>
-                    <td className="col-stat">{row.save || '—'}</td>
-                    <td className="col-stat">{row.points || '—'}</td>
-                    <td><TypeTags row={row} /></td>
-                    <td className="col-keywords">
-                      {row.keywords
-                        ? row.keywords.split(',').slice(0, 6).join(', ')
-                        : '—'}
-                    </td>
-                    <td>
-                      {row.url && (
-                        <a href={row.url} target="_blank" rel="noopener noreferrer"
-                           style={{fontSize:'0.75rem', color:'var(--text-dim)'}}>
-                          Wahapedia ↗
-                        </a>
+                {data?.data.map(row => {
+                  const isExpanded = expandedId === row.id;
+                  const weapons = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
+                  const ranged = weapons.filter(w => w.type === 'ranged');
+                  const melee  = weapons.filter(w => w.type === 'melee');
+                  return (
+                    <React.Fragment key={row.id}>
+                      <tr
+                        className={`unit-row${isExpanded ? ' expanded' : ''}`}
+                        onClick={() => setExpandedId(isExpanded ? null : row.id)}
+                        style={{cursor:'pointer'}}
+                      >
+                        <td className="col-name" onClick={e => { e.stopPropagation(); setDetailUnit(row); }}>
+                          <span className="unit-name-link">{row.name}</span>
+                        </td>
+                        <td className="col-faction">{row.faction}</td>
+                        <td>{row.grand_alliance && <AllianceBadge alliance={row.grand_alliance} />}</td>
+                        <td className="col-stat">{row.move || '—'}</td>
+                        <td className="col-stat">{row.health || '—'}</td>
+                        <td className="col-stat">{row.control || '—'}</td>
+                        <td className="col-stat">{row.save || '—'}</td>
+                        <td className="col-stat">{row.points || '—'}</td>
+                        <td><TypeTags row={row} /></td>
+                        <td className="col-keywords">
+                          {row.keywords ? row.keywords.split(',').slice(0, 6).join(', ') : '—'}
+                        </td>
+                        <td>
+                          <span className="row-expand-hint">{isExpanded ? '▲' : '▼'}</span>
+                        </td>
+                      </tr>
+                      {isExpanded && (
+                        <tr className="weapons-expand-row">
+                          <td colSpan={11}>
+                            <div className="weapons-expand-inner">
+                              {weapons.length === 0 && <span style={{color:'var(--text-dim)', fontStyle:'italic'}}>No weapon data available.</span>}
+                              {ranged.length > 0 && (
+                                <div className="inline-weapon-block">
+                                  <div className="inline-weapon-title">Ranged Weapons</div>
+                                  <table className="inline-weapon-table">
+                                    <thead><tr>
+                                      <th>Weapon</th><th>Range</th><th>Atk</th><th>Hit</th><th>Wnd</th><th>Rnd</th><th>Dmg</th>
+                                    </tr></thead>
+                                    <tbody>
+                                      {ranged.map((w, i) => (
+                                        <tr key={i}>
+                                          <td>{w.name}</td><td>{w.range}</td><td>{w.attacks}</td>
+                                          <td>{w.hit}</td><td>{w.wound}</td><td>{w.rend}</td><td>{w.damage}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              )}
+                              {melee.length > 0 && (
+                                <div className="inline-weapon-block">
+                                  <div className="inline-weapon-title">Melee Weapons</div>
+                                  <table className="inline-weapon-table">
+                                    <thead><tr>
+                                      <th>Weapon</th><th>Atk</th><th>Hit</th><th>Wnd</th><th>Rnd</th><th>Dmg</th>
+                                    </tr></thead>
+                                    <tbody>
+                                      {melee.map((w, i) => (
+                                        <tr key={i}>
+                                          <td>{w.name}</td><td>{w.attacks}</td>
+                                          <td>{w.hit}</td><td>{w.wound}</td><td>{w.rend}</td><td>{w.damage}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
                       )}
-                    </td>
-                  </tr>
-                ))}
+                    </React.Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -334,5 +383,7 @@ export default function WarscrollsPage() {
         </>
       )}
     </div>
+
+    {detailUnit && <WarscrollDetail unit={detailUnit} onClose={() => setDetailUnit(null)} />}
   );
 }
