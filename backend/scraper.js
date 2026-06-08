@@ -35,14 +35,18 @@ const FACTIONS = [
   { slug: 'sons-of-behemat',      name: 'Sons of Behemat',       alliance: 'Destruction' },
 ];
 
-// Wahapedia uses Cyrillic homoglyphs that look like Latin letters.
-// Replace them so SQLite LIKE searches work correctly.
+// Wahapedia (a Russian site) mixes Cyrillic homoglyphs into English text.
+// Normalize to pure printable ASCII so SQLite LIKE searches work correctly.
 const CYRILLIC_MAP = {
   'А':'A','В':'B','Е':'E','К':'K','М':'M','Н':'H','О':'O','Р':'P','С':'C','Т':'T','Х':'X',
   'а':'a','е':'e','о':'o','р':'p','с':'c','у':'y','х':'x',
+  '’':"'",'‘':"'",'“':'"','u201D':'"',
 };
 function normalizeName(str) {
-  return str.replace(/[АВЕКМНОРСТХаеорсух]/g, ch => CYRILLIC_MAP[ch] || ch);
+  // First apply known homoglyph map, then strip anything still outside printable ASCII
+  return str
+    .replace(/./gu, ch => CYRILLIC_MAP[ch] ?? ch)
+    .replace(/[^\x20-\x7E]/g, '');
 }
 
 function sleep(ms) {
