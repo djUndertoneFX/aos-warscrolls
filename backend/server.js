@@ -136,7 +136,7 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
     faction, alliance, search,
     sortBy = 'faction', sortDir = 'asc',
     page = 1, pageSize = 50,
-    isHero, isMonster, isLegends,
+    isHero, isMonster, isInfantry, isCavalry, isWarMachine, isTerrain, isLegends,
     showFriendly, showEnemy,
   } = req.query;
 
@@ -154,9 +154,13 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
     const q = `%${search}%`;
     params.push(q, q, q);
   }
-  if (isHero    === '1') { conditions.push('w.is_hero = 1'); }
-  if (isMonster === '1') { conditions.push('w.is_monster = 1'); }
-  if (isLegends === '0') { conditions.push('w.is_legends = 0'); }
+  if (isHero       === '1') { conditions.push('w.is_hero = 1'); }
+  if (isMonster    === '1') { conditions.push('w.is_monster = 1'); }
+  if (isInfantry   === '1') { conditions.push('w.is_infantry = 1'); }
+  if (isCavalry    === '1') { conditions.push('w.is_cavalry = 1'); }
+  if (isWarMachine === '1') { conditions.push('w.is_war_machine = 1'); }
+  if (isTerrain    === '1') { conditions.push('w.is_terrain = 1'); }
+  if (isLegends    === '0') { conditions.push('w.is_legends = 0'); }
 
   // Friendly/enemy filter via JOIN
   let join = '';

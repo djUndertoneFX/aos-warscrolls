@@ -49,9 +49,13 @@ export default function WarscrollsPage() {
   const [search, setSearch]         = useState('');
   const [faction, setFaction]       = useState('');
   const [alliance, setAlliance]     = useState('');
-  const [isHero, setIsHero]         = useState(false);
-  const [isMonster, setIsMonster]   = useState(false);
-  const [hideLegends, setHideLegends] = useState(true);
+  const [isHero, setIsHero]             = useState(false);
+  const [isMonster, setIsMonster]       = useState(false);
+  const [isInfantry, setIsInfantry]     = useState(false);
+  const [isCavalry, setIsCavalry]       = useState(false);
+  const [isWarMachine, setIsWarMachine] = useState(false);
+  const [isTerrain, setIsTerrain]       = useState(false);
+  const [hideLegends, setHideLegends]   = useState(true);
   const [showFriendly, setShowFriendly] = useState(false);
   const [showEnemy, setShowEnemy]       = useState(false);
 
@@ -89,9 +93,13 @@ export default function WarscrollsPage() {
         search, faction, alliance,
         sortBy, sortDir, page,
         pageSize: PAGE_SIZE,
-        ...(isHero      ? { isHero: '1' }      : {}),
-        ...(isMonster   ? { isMonster: '1' }   : {}),
-        ...(hideLegends ? { isLegends: '0' }   : {}),
+        ...(isHero       ? { isHero: '1' }       : {}),
+        ...(isMonster    ? { isMonster: '1' }    : {}),
+        ...(isInfantry   ? { isInfantry: '1' }  : {}),
+        ...(isCavalry    ? { isCavalry: '1' }   : {}),
+        ...(isWarMachine ? { isWarMachine: '1' }: {}),
+        ...(isTerrain    ? { isTerrain: '1' }   : {}),
+        ...(hideLegends  ? { isLegends: '0' }   : {}),
         ...(showFriendly ? { showFriendly: '1' } : {}),
         ...(showEnemy    ? { showEnemy: '1' }    : {}),
       };
@@ -102,7 +110,7 @@ export default function WarscrollsPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, faction, alliance, sortBy, sortDir, page, isHero, isMonster, hideLegends, showFriendly, showEnemy]);
+  }, [search, faction, alliance, sortBy, sortDir, page, isHero, isMonster, isInfantry, isCavalry, isWarMachine, isTerrain, hideLegends, showFriendly, showEnemy]);
 
   // Load user's friendly/enemy flags once on mount
   useEffect(() => {
@@ -266,6 +274,42 @@ export default function WarscrollsPage() {
               onChange={e => { setIsMonster(e.target.checked); setPage(1); }}
             />
             <label htmlFor="cb-monster">Monsters Only</label>
+          </div>
+        </div>
+
+        <div className="filter-group">
+          <div className="filter-label">&nbsp;</div>
+          <div className="filter-checkbox-group">
+            <input type="checkbox" id="cb-infantry" checked={isInfantry}
+              onChange={e => { setIsInfantry(e.target.checked); setPage(1); }} />
+            <label htmlFor="cb-infantry">Infantry</label>
+          </div>
+        </div>
+
+        <div className="filter-group">
+          <div className="filter-label">&nbsp;</div>
+          <div className="filter-checkbox-group">
+            <input type="checkbox" id="cb-cavalry" checked={isCavalry}
+              onChange={e => { setIsCavalry(e.target.checked); setPage(1); }} />
+            <label htmlFor="cb-cavalry">Cavalry</label>
+          </div>
+        </div>
+
+        <div className="filter-group">
+          <div className="filter-label">&nbsp;</div>
+          <div className="filter-checkbox-group">
+            <input type="checkbox" id="cb-warmachine" checked={isWarMachine}
+              onChange={e => { setIsWarMachine(e.target.checked); setPage(1); }} />
+            <label htmlFor="cb-warmachine">War Machine</label>
+          </div>
+        </div>
+
+        <div className="filter-group">
+          <div className="filter-label">&nbsp;</div>
+          <div className="filter-checkbox-group">
+            <input type="checkbox" id="cb-terrain" checked={isTerrain}
+              onChange={e => { setIsTerrain(e.target.checked); setPage(1); }} />
+            <label htmlFor="cb-terrain">Faction Terrain</label>
           </div>
         </div>
 

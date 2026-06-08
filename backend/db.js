@@ -63,8 +63,10 @@ function initDb() {
     );
   `);
 
-  // Add weapons column if it doesn't exist yet (safe migration)
+  // Safe migrations — ALTER TABLE is a no-op if the column already exists
   try { db.exec('ALTER TABLE warscrolls ADD COLUMN weapons TEXT DEFAULT NULL'); } catch {}
+  try { db.exec('ALTER TABLE warscrolls ADD COLUMN is_war_machine INTEGER DEFAULT 0'); } catch {}
+  try { db.exec('ALTER TABLE warscrolls ADD COLUMN is_terrain INTEGER DEFAULT 0'); } catch {}
 
   db.close();
   console.log('Database initialized.');
