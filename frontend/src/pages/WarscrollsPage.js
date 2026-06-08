@@ -53,7 +53,7 @@ export default function WarscrollsPage() {
   const [hideLegends, setHideLegends] = useState(true);
 
   // Sort & page
-  const [sortBy, setSortBy]   = useState('name');
+  const [sortBy, setSortBy]   = useState('faction');
   const [sortDir, setSortDir] = useState('asc');
   const [page, setPage]       = useState(1);
   const PAGE_SIZE = 50;
