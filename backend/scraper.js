@@ -16,7 +16,6 @@ const FACTIONS = [
   { slug: 'seraphon',             name: 'Seraphon',              alliance: 'Order' },
   { slug: 'sylvaneth',            name: 'Sylvaneth',             alliance: 'Order' },
   // Chaos
-  { slug: 'beasts-of-chaos',      name: 'Beasts of Chaos',       alliance: 'Chaos' },
   { slug: 'blades-of-khorne',     name: 'Blades of Khorne',      alliance: 'Chaos' },
   { slug: 'disciples-of-tzeentch',name: 'Disciples of Tzeentch', alliance: 'Chaos' },
   { slug: 'hedonites-of-slaanesh',name: 'Hedonites of Slaanesh', alliance: 'Chaos' },
@@ -29,7 +28,6 @@ const FACTIONS = [
   { slug: 'ossiarch-bonereapers', name: 'Ossiarch Bonereapers',  alliance: 'Death' },
   { slug: 'soulblight-gravelords',name: 'Soulblight Gravelords', alliance: 'Death' },
   // Destruction
-  { slug: 'bonesplitterz',        name: 'Bonesplitterz',         alliance: 'Destruction' },
   { slug: 'gloomspite-gitz',      name: 'Gloomspite Gitz',       alliance: 'Destruction' },
   { slug: 'ironjawz',             name: 'Ironjawz',              alliance: 'Destruction' },
   { slug: 'kruleboyz',            name: 'Kruleboyz',             alliance: 'Destruction' },
