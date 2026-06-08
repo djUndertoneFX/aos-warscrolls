@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import WarscrollDetail from '../components/WarscrollDetail';
 
@@ -149,6 +149,46 @@ export default function WarscrollsPage() {
 
   const alliances = ['Order', 'Chaos', 'Death', 'Destruction'];
 
+  // ── Column resizing ──────────────────────────────────────────────────────
+  const DEFAULT_COL_WIDTHS = {
+    friendly: 68, enemy: 68, expand: 36,
+    name: 280, faction: 160, alliance: 90,
+    move: 58, health: 60, control: 64, save: 54, points: 62,
+    types: 110, keywords: 220,
+  };
+  const STORAGE_KEY = 'aos-col-widths';
+  const [colWidths, setColWidths] = useState(() => {
+    try { return { ...DEFAULT_COL_WIDTHS, ...JSON.parse(localStorage.getItem(STORAGE_KEY)) }; }
+    catch { return DEFAULT_COL_WIDTHS; }
+  });
+  const dragRef = useRef(null);
+
+  const startResize = useCallback((e, colKey) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = colWidths[colKey];
+    dragRef.current = { colKey, startX, startW };
+
+    const onMove = (ev) => {
+      const { colKey: k, startX: sx, startW: sw } = dragRef.current;
+      const newW = Math.max(30, sw + ev.clientX - sx);
+      setColWidths(prev => {
+        const next = { ...prev, [k]: newW };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        return next;
+      });
+    };
+    const onUp = () => {
+      dragRef.current = null;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, [colWidths]);
+
+  const thStyle = (key) => ({ width: colWidths[key], minWidth: colWidths[key], position: 'relative' });
+
   return (
     <>
     <div className="table-page">
@@ -284,21 +324,27 @@ export default function WarscrollsPage() {
             <table>
               <thead>
                 <tr>
-                  <th style={{color:'var(--friendly-color)'}}>Friendly</th>
-                  <th style={{color:'var(--enemy-color)'}}>Enemy</th>
-                  <th></th>
-                  {SORTABLE_COLS.map(col => (
-                    <th
-                      key={col.key}
-                      className={`sortable ${sortBy === col.key ? 'sort-active' : ''}`}
-                      onClick={() => handleSort(col.key)}
-                    >
-                      {col.label}
-                      <SortIcon col={col.key} sortBy={sortBy} sortDir={sortDir} />
-                    </th>
-                  ))}
-                  <th>Types</th>
-                  <th>Keywords</th>
+                  <th style={{...thStyle('friendly'), color:'var(--friendly-color)'}}>Friendly<span className="col-resize-handle" onMouseDown={e => startResize(e,'friendly')} /></th>
+                  <th style={{...thStyle('enemy'), color:'var(--enemy-color)'}}>Enemy<span className="col-resize-handle" onMouseDown={e => startResize(e,'enemy')} /></th>
+                  <th style={thStyle('expand')}><span className="col-resize-handle" onMouseDown={e => startResize(e,'expand')} /></th>
+                  {SORTABLE_COLS.map(col => {
+                    const keyMap = { name:'name', faction:'faction', grand_alliance:'alliance', move:'move', health:'health', control:'control', save:'save', points:'points' };
+                    const wKey = keyMap[col.key] || col.key;
+                    return (
+                      <th
+                        key={col.key}
+                        style={thStyle(wKey)}
+                        className={`sortable ${sortBy === col.key ? 'sort-active' : ''}`}
+                        onClick={() => handleSort(col.key)}
+                      >
+                        {col.label}
+                        <SortIcon col={col.key} sortBy={sortBy} sortDir={sortDir} />
+                        <span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e, wKey); }} />
+                      </th>
+                    );
+                  })}
+                  <th style={thStyle('types')}>Types<span className="col-resize-handle" onMouseDown={e => startResize(e,'types')} /></th>
+                  <th style={thStyle('keywords')}>Keywords<span className="col-resize-handle" onMouseDown={e => startResize(e,'keywords')} /></th>
                 </tr>
               </thead>
               <tbody>

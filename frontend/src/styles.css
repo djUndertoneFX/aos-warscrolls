@@ -338,9 +338,11 @@ input, select {
 }
 
 table {
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
   border-collapse: collapse;
   font-size: 0.9rem;
+  table-layout: fixed;
 }
 
 thead {
@@ -391,10 +393,27 @@ td.col-name {
   font-weight: 600;
   color: var(--gold-light);
   white-space: nowrap;
-  max-width: 280px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ── Column resize handle ── */
+.col-resize-handle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  user-select: none;
+  z-index: 1;
+}
+.col-resize-handle:hover,
+.col-resize-handle:active {
+  background: var(--gold);
+  opacity: 0.5;
+}
+th { overflow: hidden; }
 td.col-name a { color: var(--gold-light); }
 td.col-name a:hover { color: var(--gold); }
 
