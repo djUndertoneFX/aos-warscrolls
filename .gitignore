@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# Database (don't upload - will be created on server)
+backend/warscrolls.db
+
+# Environment secrets
+backend/.env
+.env
+
+# Build output
+frontend/build/
+
+# OS files
+.DS_Store
+Thumbs.db
