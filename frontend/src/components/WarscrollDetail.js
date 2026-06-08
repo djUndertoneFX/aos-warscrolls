@@ -21,7 +21,7 @@ function WeaponTable({ weapons, type }) {
         <thead>
           <tr>
             <th className="col-weapon-name">Weapon</th>
-            {isRanged && <th>Range</th>}
+            {isRanged && <th className="col-weapon-range">Range</th>}
             <th>Atk</th>
             <th>Hit</th>
             <th>Wnd</th>

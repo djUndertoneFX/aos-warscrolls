@@ -796,25 +796,28 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
   width: 100%;
   border-collapse: collapse;
   font-size: 0.83rem;
+  table-layout: fixed;
 }
 .detail-weapon-table th {
   font-family: 'Cinzel', serif;
   font-size: 0.62rem;
   color: var(--text-dim);
   letter-spacing: 0.06em;
-  padding: 0.2rem 0.4rem;
+  padding: 0.2rem 0.3rem;
   text-align: center;
   border-bottom: 1px solid var(--border);
+  width: 42px;
 }
-.detail-weapon-table th.col-weapon-name { text-align: left; }
+.detail-weapon-table th.col-weapon-name { text-align: left; width: auto; }
+.detail-weapon-table th.col-weapon-range { width: 52px; }
 .detail-weapon-table td {
-  padding: 0.3rem 0.4rem;
+  padding: 0.3rem 0.3rem;
   text-align: center;
   color: var(--parchment);
   border-bottom: 1px solid rgba(74,56,32,0.25);
   font-size: 0.82rem;
 }
-.detail-weapon-table td.col-weapon-name { text-align: left; color: var(--gold-light); }
+.detail-weapon-table td.col-weapon-name { text-align: left; color: var(--gold-light); word-break: break-word; }
 .detail-weapon-table td.col-weapon-stat { font-family: 'Cinzel', serif; font-size: 0.78rem; }
 
 .detail-ability {
