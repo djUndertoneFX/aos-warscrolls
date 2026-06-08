@@ -123,6 +123,7 @@ export default function WarscrollsPage() {
   const alliances = ['Order', 'Chaos', 'Death', 'Destruction'];
 
   return (
+    <>
     <div className="table-page">
       <div className="page-header">
         <div className="page-title">
@@ -385,5 +386,6 @@ export default function WarscrollsPage() {
     </div>
 
     {detailUnit && <WarscrollDetail unit={detailUnit} onClose={() => setDetailUnit(null)} />}
+    </>
   );
 }
