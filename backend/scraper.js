@@ -70,7 +70,7 @@ async function scrapeFaction(faction) {
     // Unit name is in .wsHeaderIn — strip the inner search-link anchor
     const nameEl = $(el).find('.wsHeaderIn').first();
     nameEl.find('a').remove();
-    const name = nameEl.text().trim();
+    const name = nameEl.text().trim().replace(/^[^a-zA-Z0-9]+/, '');
     if (!name || name.length > 100) return;
 
     // Skip Regiments of Renown / allied units whose nails-header names a DIFFERENT faction.
