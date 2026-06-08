@@ -171,20 +171,44 @@ async function scrapeFaction(faction) {
       const timing = $(block).find('.abHeader').first().clone().find('img').remove().end().text().trim();
       const firstBold = abBody.find('b').first().text().replace(/:/g, '').trim();
       if (!firstBold || firstBold === 'Effect' || firstBold === 'KEYWORDS') return;
-      // Pad block-level and inline elements with spaces so adjacent text nodes
-      // don't merge (e.g. "roll.Add" → "roll. Add").
-      abBody.find('p, div, li, br, b, span').each((_, child) => {
-        const $c = $(child);
-        $c.replaceWith(' ' + $c.text().trim() + ' ');
+
+      // Convert list items to bullet markers, preserve line breaks at block boundaries
+      abBody.find('li').each((_, li) => {
+        $(li).replaceWith('\n• ' + $(li).text().trim());
       });
-      const bodyText = abBody.text().replace(/\s+/g, ' ').trim();
-      const declareMatch = bodyText.match(/Declare:\s*(.+?)(?=\s*Effect:)/i);
-      const effectMatch  = bodyText.match(/Effect:\s*(.+)/i);
+      abBody.find('p, br, div').each((_, node) => {
+        $(node).replaceWith('\n' + $(node).text());
+      });
+      const bodyText = abBody.text()
+        .replace(/[ \t]+/g, ' ')
+        .replace(/\n[ \t]+/g, '\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+
+      // Extract Declare section (text between "Declare:" and "Effect:")
+      const declareMatch = bodyText.match(/Declare:\s*([\s\S]+?)(?=\n*Effect:)/i);
+      // Extract Effect section
+      const effectBlock  = bodyText.match(/Effect:\s*([\s\S]+)/i);
+
+      let effectIntro = '';
+      const bullets = [];
+      if (effectBlock) {
+        const lines = effectBlock[1].split('\n').map(l => l.trim()).filter(Boolean);
+        for (const line of lines) {
+          if (line.startsWith('•')) {
+            bullets.push(line.slice(1).trim());
+          } else if (!bullets.length) {
+            effectIntro = effectIntro ? effectIntro + ' ' + line : line;
+          }
+        }
+      }
+
       abilities.push({
-        name: firstBold,
+        name:    firstBold,
         timing,
-        declare: declareMatch ? declareMatch[1].trim() : '',
-        effect:  effectMatch  ? effectMatch[1].trim()  : bodyText,
+        declare: declareMatch ? declareMatch[1].replace(/\s+/g, ' ').trim() : '',
+        effect:  effectIntro,
+        bullets,
       });
     });
 

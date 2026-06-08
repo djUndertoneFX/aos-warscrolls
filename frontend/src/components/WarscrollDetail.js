@@ -1,22 +1,5 @@
 import React, { useEffect } from 'react';
 
-// Split effect text into individual sentences for display.
-// Splits at ". " before an uppercase letter.
-function splitSentences(text) {
-  const parts = [];
-  let buf = '';
-  for (let i = 0; i < text.length; i++) {
-    buf += text[i];
-    if (text[i] === '.' && i + 1 < text.length && text[i + 1] === ' ' && /[A-Z]/.test(text[i + 2] || '')) {
-      parts.push(buf.trim());
-      buf = '';
-      i++; // skip the space
-    }
-  }
-  if (buf.trim()) parts.push(buf.trim());
-  return parts.length ? parts : [text];
-}
-
 function StatBox({ label, value }) {
   if (!value) return null;
   return (
@@ -64,8 +47,39 @@ function WeaponTable({ weapons, type }) {
   );
 }
 
+function AbilityCard({ ab }) {
+  const bullets = Array.isArray(ab.bullets) ? ab.bullets : [];
+  return (
+    <div className="detail-ability">
+      <div className="detail-ability-header">
+        <span className="detail-ability-name">{ab.name}</span>
+        {ab.timing && <span className="detail-ability-timing">{ab.timing}</span>}
+      </div>
+
+      {ab.declare && (
+        <div className="detail-ability-block">
+          <span className="detail-ability-label">Declare:</span>
+          <span className="detail-ability-text"> {ab.declare}</span>
+        </div>
+      )}
+
+      {(ab.effect || bullets.length > 0) && (
+        <div className="detail-ability-block">
+          <span className="detail-ability-label">Effect:</span>
+          {ab.effect && <span className="detail-ability-text"> {ab.effect}</span>}
+          {bullets.length > 0 && (
+            <ul className="detail-ability-bullets">
+              {bullets.map((b, i) => <li key={i}>{b}</li>)}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function WarscrollDetail({ unit, onClose }) {
-  const weapons  = React.useMemo(() => { try { return JSON.parse(unit.weapons  || '[]'); } catch { return []; } }, [unit]);
+  const weapons   = React.useMemo(() => { try { return JSON.parse(unit.weapons   || '[]'); } catch { return []; } }, [unit]);
   const abilities = React.useMemo(() => { try { return JSON.parse(unit.abilities || '[]'); } catch { return []; } }, [unit]);
 
   useEffect(() => {
@@ -119,27 +133,7 @@ export default function WarscrollDetail({ unit, onClose }) {
         {abilities.length > 0 && (
           <div className="detail-section">
             <div className="detail-section-title">Abilities</div>
-            {abilities.map((ab, i) => (
-              <div key={i} className="detail-ability">
-                <div className="detail-ability-header">
-                  <span className="detail-ability-name">{ab.name}</span>
-                  {ab.timing && <span className="detail-ability-timing">{ab.timing}</span>}
-                </div>
-                {ab.declare && (
-                  <div className="detail-ability-declare">
-                    <span className="detail-ability-label">Declare:</span> {ab.declare}
-                  </div>
-                )}
-                {ab.effect && (
-                  <div className="detail-ability-effect">
-                    <span className="detail-ability-label">Effect:</span>
-                    {splitSentences(ab.effect).map((sentence, j) => (
-                      <p key={j} className="detail-ability-sentence">{sentence}</p>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+            {abilities.map((ab, i) => <AbilityCard key={i} ab={ab} />)}
           </div>
         )}
 
