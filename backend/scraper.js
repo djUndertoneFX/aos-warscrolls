@@ -194,7 +194,7 @@ async function scrapeFaction(faction) {
     const rawText = $(el).text();
     const pointsNum = rawText.match(/Points[^\d]*(\d+)/);
     const sizeNum   = rawText.match(/Unit Size[^\d]*(\d+)/i);
-    const baseMatch = rawText.match(/Base size[^:]*:\s*([^\n<]+)/i);
+    const baseMatch = rawText.match(/Base size[^:]*:\s*([^\s,;]+)/i);
 
     // Keywords from wsKeywordLine1 and wsKeywordLine2
     const kwLine1 = $(el).find('.wsKeywordLine1 .kwb').map((_, e) => $(e).text().trim()).get();
