@@ -94,12 +94,16 @@ async function scrapeFaction(faction) {
 
   // Each warscroll is a div with class "datasheet"
   $('.datasheet').each((i, el) => {
-    // Unit name is in .wsHeaderIn — strip the inner search-link anchor.
-    // Add spaces between child element text nodes to prevent words merging.
+    // Unit name is in .wsHeaderIn. The HTML mixes bare text nodes with child
+    // elements, so we pad each child element with spaces before extracting
+    // text — this ensures both parts join with a space rather than merging.
     const nameEl = $(el).find('.wsHeaderIn').first();
     nameEl.find('a').remove();
-    const rawName = nameEl.children().map((_, c) => $(c).text().trim()).get().join(' ')
-      || nameEl.text().trim();
+    nameEl.children().each((_, child) => {
+      const $c = $(child);
+      $c.replaceWith(' ' + $c.text().trim() + ' ');
+    });
+    const rawName = nameEl.text().replace(/\s+/g, ' ').trim();
     const name = normalizeName(rawName.replace(/^[^a-zA-Z0-9]+/, ''));
     if (!name || name.length > 100) return;
 
