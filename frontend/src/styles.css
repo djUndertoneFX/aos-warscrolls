@@ -643,6 +643,19 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
 }
 
 .inline-weapon-block { flex: 1; min-width: 300px; }
+.inline-weapon-section-header {
+  font-family: 'Cinzel', serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.4rem 0 0.35rem;
+  margin-bottom: 0.3rem;
+  border-bottom: 2px solid var(--gold-dark);
+  border-top: 1px solid var(--border);
+}
+.inline-weapon-block:first-child .inline-weapon-section-header { border-top: none; }
 .inline-weapon-title {
   font-family: 'Cinzel', serif;
   font-size: 0.72rem;

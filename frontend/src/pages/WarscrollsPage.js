@@ -103,7 +103,7 @@ export default function WarscrollsPage() {
   // User unit flags: { [warscrollId]: { is_friendly, is_enemy } }
   const [userUnits, setUserUnits] = useState({});
 
-  const [expandedId, setExpandedId] = useState(null);
+  const [expandedIds, setExpandedIds] = useState(new Set());
   const [detailUnit, setDetailUnit] = useState(null);
 
   // Sort & page
@@ -377,7 +377,7 @@ export default function WarscrollsPage() {
               </thead>
               <tbody>
                 {data?.data.map(row => {
-                  const isExpanded = expandedId === row.id;
+                  const isExpanded = expandedIds.has(row.id);
                   const weapons = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
                   const ranged = weapons.filter(w => w.type === 'ranged');
                   const melee  = weapons.filter(w => w.type === 'melee');
@@ -385,7 +385,7 @@ export default function WarscrollsPage() {
                     <React.Fragment key={row.id}>
                       <tr
                         className={`unit-row${isExpanded ? ' expanded' : ''}`}
-                        onClick={() => setExpandedId(isExpanded ? null : row.id)}
+                        onClick={() => setExpandedIds(prev => { const s = new Set(prev); isExpanded ? s.delete(row.id) : s.add(row.id); return s; })}
                         style={{cursor:'pointer'}}
                       >
                         <td className="col-flag" onClick={e => { e.stopPropagation(); toggleFlag(row.id, 'is_friendly'); }}>
@@ -419,7 +419,7 @@ export default function WarscrollsPage() {
                               {weapons.length === 0 && <span style={{color:'var(--text-dim)', fontStyle:'italic'}}>No weapon data available.</span>}
                               {ranged.length > 0 && (
                                 <div className="inline-weapon-block">
-                                  <div className="inline-weapon-title">Ranged Weapons</div>
+                                  <div className="inline-weapon-section-header">Ranged Weapons</div>
                                   <table className="inline-weapon-table">
                                     <thead><tr>
                                       <th>Weapon</th><th>Range</th><th>Atk</th><th>Hit</th><th>Wnd</th><th>Rnd</th><th>Dmg</th>
@@ -437,7 +437,7 @@ export default function WarscrollsPage() {
                               )}
                               {melee.length > 0 && (
                                 <div className="inline-weapon-block">
-                                  <div className="inline-weapon-title">Melee Weapons</div>
+                                  <div className="inline-weapon-section-header">Melee Weapons</div>
                                   <table className="inline-weapon-table">
                                     <thead><tr>
                                       <th>Weapon</th><th>Atk</th><th>Hit</th><th>Wnd</th><th>Rnd</th><th>Dmg</th>
