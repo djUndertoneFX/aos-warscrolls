@@ -806,10 +806,10 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
   padding: 0.2rem 0.3rem;
   text-align: center;
   border-bottom: 1px solid var(--border);
-  width: 42px;
+  width: 38px;
 }
-.detail-weapon-table th.col-weapon-name { text-align: left; width: auto; }
-.detail-weapon-table th.col-weapon-range { width: 52px; }
+.detail-weapon-table th.col-weapon-name { text-align: left; width: 55%; }
+.detail-weapon-table th.col-weapon-range { width: 48px; }
 .detail-weapon-table td {
   padding: 0.3rem 0.3rem;
   text-align: center;

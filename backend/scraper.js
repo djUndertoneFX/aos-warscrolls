@@ -165,12 +165,17 @@ async function scrapeFaction(faction) {
 
     // Parse abilities from .BreakInsideAvoid blocks
     const abilities = [];
+    const seenAbilityNames = new Set();
     $(el).find('.BreakInsideAvoid').each((_, block) => {
+      // Skip if this block is nested inside another .BreakInsideAvoid (avoids double-parse)
+      if ($(block).parents('.BreakInsideAvoid').length > 0) return;
       const abBody = $(block).find('.abBody').first();
       if (!abBody.length) return;
       const timing = $(block).find('.abHeader').first().clone().find('img').remove().end().text().trim();
       const firstBold = abBody.find('b').first().text().replace(/:/g, '').trim();
       if (!firstBold || firstBold === 'Effect' || firstBold === 'KEYWORDS') return;
+      if (seenAbilityNames.has(firstBold)) return;
+      seenAbilityNames.add(firstBold);
 
       // Convert list items to bullet markers, preserve line breaks at block boundaries
       abBody.find('li').each((_, li) => {
