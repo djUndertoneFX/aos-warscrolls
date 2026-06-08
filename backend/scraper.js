@@ -73,6 +73,10 @@ async function scrapeFaction(faction) {
     const name = nameEl.text().trim();
     if (!name || name.length > 100) return;
 
+    // Skip Regiments of Renown / allied units whose nails-header doesn't match this faction
+    const nailsText = $(el).find('.nails-header').first().text().toUpperCase();
+    if (nailsText && !nailsText.includes(faction.name.toUpperCase())) return;
+
     // Stats from the AoS profile block
     const move    = $(el).find('.wsMove').first().text().trim();
     const health  = $(el).find('.wsWounds').first().text().trim();
