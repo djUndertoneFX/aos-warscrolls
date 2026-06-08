@@ -284,6 +284,9 @@ export default function WarscrollsPage() {
             <table>
               <thead>
                 <tr>
+                  <th style={{color:'var(--friendly-color)'}}>Friendly</th>
+                  <th style={{color:'var(--enemy-color)'}}>Enemy</th>
+                  <th></th>
                   {SORTABLE_COLS.map(col => (
                     <th
                       key={col.key}
@@ -296,9 +299,6 @@ export default function WarscrollsPage() {
                   ))}
                   <th>Types</th>
                   <th>Keywords</th>
-                  <th style={{color:'var(--friendly-color)'}}>Friendly</th>
-                  <th style={{color:'var(--enemy-color)'}}>Enemy</th>
-                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -314,6 +314,15 @@ export default function WarscrollsPage() {
                         onClick={() => setExpandedId(isExpanded ? null : row.id)}
                         style={{cursor:'pointer'}}
                       >
+                        <td className="col-flag" onClick={e => { e.stopPropagation(); toggleFlag(row.id, 'is_friendly'); }}>
+                          <span className={`flag-check friendly${(userUnits[row.id]?.is_friendly) ? ' active' : ''}`}>✓</span>
+                        </td>
+                        <td className="col-flag" onClick={e => { e.stopPropagation(); toggleFlag(row.id, 'is_enemy'); }}>
+                          <span className={`flag-check enemy${(userUnits[row.id]?.is_enemy) ? ' active' : ''}`}>✓</span>
+                        </td>
+                        <td>
+                          <span className="row-expand-hint">{isExpanded ? '▲' : '▼'}</span>
+                        </td>
                         <td className="col-name" onClick={e => { e.stopPropagation(); setDetailUnit(row); }}>
                           <span className="unit-name-link">{row.name}</span>
                         </td>
@@ -327,15 +336,6 @@ export default function WarscrollsPage() {
                         <td><TypeTags row={row} /></td>
                         <td className="col-keywords">
                           {row.keywords ? row.keywords.split(',').slice(0, 6).join(', ') : '—'}
-                        </td>
-                        <td className="col-flag" onClick={e => { e.stopPropagation(); toggleFlag(row.id, 'is_friendly'); }}>
-                          <span className={`flag-check friendly${(userUnits[row.id]?.is_friendly) ? ' active' : ''}`}>✓</span>
-                        </td>
-                        <td className="col-flag" onClick={e => { e.stopPropagation(); toggleFlag(row.id, 'is_enemy'); }}>
-                          <span className={`flag-check enemy${(userUnits[row.id]?.is_enemy) ? ' active' : ''}`}>✓</span>
-                        </td>
-                        <td>
-                          <span className="row-expand-hint">{isExpanded ? '▲' : '▼'}</span>
                         </td>
                       </tr>
                       {isExpanded && (
