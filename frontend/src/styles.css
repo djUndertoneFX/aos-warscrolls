@@ -283,7 +283,7 @@ input, select {
 /* ── Filters ── */
 .filters {
   display: grid;
-  grid-template-columns: 1fr 200px 180px auto auto auto;
+  grid-template-columns: 1fr 200px 180px auto auto auto auto auto;
   gap: 0.75rem;
   margin-bottom: 1.25rem;
   align-items: end;
@@ -480,6 +480,36 @@ td.col-keywords {
   animation: spin 2s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+:root {
+  --friendly-color: #5aaa6e;
+  --enemy-color: #cc5555;
+}
+
+/* ── Friendly / Enemy flag columns ── */
+.col-flag {
+  text-align: center;
+  width: 52px;
+  cursor: pointer;
+}
+.flag-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  font-size: 0.8rem;
+  color: transparent;
+  transition: all 0.15s;
+}
+.flag-check.friendly { border-color: rgba(90,170,110,0.3); }
+.flag-check.friendly:hover, tr:hover .flag-check.friendly { border-color: var(--friendly-color); color: rgba(90,170,110,0.4); }
+.flag-check.friendly.active { background: rgba(90,170,110,0.15); border-color: var(--friendly-color); color: var(--friendly-color); }
+.flag-check.enemy { border-color: rgba(204,85,85,0.3); }
+.flag-check.enemy:hover, tr:hover .flag-check.enemy { border-color: var(--enemy-color); color: rgba(204,85,85,0.4); }
+.flag-check.enemy.active { background: rgba(204,85,85,0.15); border-color: var(--enemy-color); color: var(--enemy-color); }
 
 /* ── Unit name click target ── */
 .unit-name-link {

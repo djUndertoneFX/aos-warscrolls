@@ -98,57 +98,94 @@ app.get('/api/auth/me', requireAuth, (req, res) => {
 
 // ─── Warscrolls Routes ────────────────────────────────────────────────────────
 
+// GET /api/user-units — returns this user's friendly/enemy flags
+app.get('/api/user-units', requireAuth, (req, res) => {
+  const db = getDb();
+  try {
+    const rows = db.prepare(
+      'SELECT warscroll_id, is_friendly, is_enemy FROM user_units WHERE user_id = ?'
+    ).all(req.user.id);
+    res.json(rows);
+  } finally {
+    db.close();
+  }
+});
+
+// POST /api/user-units/:warscrollId — set friendly/enemy flags
+app.post('/api/user-units/:warscrollId', requireAuth, (req, res) => {
+  const { is_friendly, is_enemy } = req.body;
+  const warscrollId = parseInt(req.params.warscrollId);
+  const db = getDb();
+  try {
+    db.prepare(`
+      INSERT INTO user_units (user_id, warscroll_id, is_friendly, is_enemy)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(user_id, warscroll_id) DO UPDATE SET
+        is_friendly = excluded.is_friendly,
+        is_enemy = excluded.is_enemy
+    `).run(req.user.id, warscrollId, is_friendly ? 1 : 0, is_enemy ? 1 : 0);
+    res.json({ ok: true });
+  } finally {
+    db.close();
+  }
+});
+
 // GET /api/warscrolls
-// Query params: faction, alliance, search, sortBy, sortDir, page, pageSize, isHero, isMonster
 app.get('/api/warscrolls', requireAuth, (req, res) => {
   const {
-    faction,
-    alliance,
-    search,
-    sortBy = 'name',
-    sortDir = 'asc',
-    page = 1,
-    pageSize = 50,
-    isHero,
-    isMonster,
-    isLegends,
+    faction, alliance, search,
+    sortBy = 'faction', sortDir = 'asc',
+    page = 1, pageSize = 50,
+    isHero, isMonster, isLegends,
+    showFriendly, showEnemy,
   } = req.query;
 
   const allowedSort = ['name', 'faction', 'grand_alliance', 'move', 'health', 'control', 'save', 'points'];
-  const col = allowedSort.includes(sortBy) ? sortBy : 'name';
+  const col = allowedSort.includes(sortBy) ? sortBy : 'faction';
   const dir = sortDir === 'desc' ? 'DESC' : 'ASC';
 
   const conditions = [];
   const params = [];
 
-  if (faction) { conditions.push('faction_slug = ?'); params.push(faction); }
-  if (alliance) { conditions.push('grand_alliance = ?'); params.push(alliance); }
+  if (faction)  { conditions.push('w.faction_slug = ?'); params.push(faction); }
+  if (alliance) { conditions.push('w.grand_alliance = ?'); params.push(alliance); }
   if (search) {
-    conditions.push('(name LIKE ? OR keywords LIKE ? OR faction LIKE ?)');
+    conditions.push('(w.name LIKE ? OR w.keywords LIKE ? OR w.faction LIKE ?)');
     const q = `%${search}%`;
     params.push(q, q, q);
   }
-  if (isHero === '1') { conditions.push('is_hero = 1'); }
-  if (isMonster === '1') { conditions.push('is_monster = 1'); }
-  if (isLegends === '0') { conditions.push('is_legends = 0'); }
+  if (isHero    === '1') { conditions.push('w.is_hero = 1'); }
+  if (isMonster === '1') { conditions.push('w.is_monster = 1'); }
+  if (isLegends === '0') { conditions.push('w.is_legends = 0'); }
+
+  // Friendly/enemy filter via JOIN
+  let join = '';
+  if (showFriendly === '1' || showEnemy === '1') {
+    join = `JOIN user_units uu ON uu.warscroll_id = w.id AND uu.user_id = ?`;
+    params.unshift(req.user.id);
+    const flags = [];
+    if (showFriendly === '1') flags.push('uu.is_friendly = 1');
+    if (showEnemy    === '1') flags.push('uu.is_enemy = 1');
+    conditions.push(`(${flags.join(' OR ')})`);
+  }
 
   const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
 
   const db = getDb();
   try {
-    const total = db.prepare(`SELECT COUNT(*) as count FROM warscrolls ${where}`).get(...params).count;
-    const offset = (parseInt(page) - 1) * parseInt(pageSize);
+    const total = db.prepare(
+      `SELECT COUNT(*) as count FROM warscrolls w ${join} ${where}`
+    ).get(...params).count;
 
+    const offset = (parseInt(page) - 1) * parseInt(pageSize);
     const rows = db.prepare(`
-      SELECT * FROM warscrolls ${where}
-      ORDER BY ${col} ${dir}
+      SELECT w.* FROM warscrolls w ${join} ${where}
+      ORDER BY w.${col} ${dir}
       LIMIT ? OFFSET ?
     `).all(...params, parseInt(pageSize), offset);
 
     res.json({
-      total,
-      page: parseInt(page),
-      pageSize: parseInt(pageSize),
+      total, page: parseInt(page), pageSize: parseInt(pageSize),
       totalPages: Math.ceil(total / pageSize),
       data: rows,
     });

@@ -52,6 +52,11 @@ export default function WarscrollsPage() {
   const [isHero, setIsHero]         = useState(false);
   const [isMonster, setIsMonster]   = useState(false);
   const [hideLegends, setHideLegends] = useState(true);
+  const [showFriendly, setShowFriendly] = useState(false);
+  const [showEnemy, setShowEnemy]       = useState(false);
+
+  // User unit flags: { [warscrollId]: { is_friendly, is_enemy } }
+  const [userUnits, setUserUnits] = useState({});
 
   const [expandedId, setExpandedId] = useState(null);
   const [detailUnit, setDetailUnit] = useState(null);
@@ -84,9 +89,11 @@ export default function WarscrollsPage() {
         search, faction, alliance,
         sortBy, sortDir, page,
         pageSize: PAGE_SIZE,
-        ...(isHero    ? { isHero: '1' }    : {}),
-        ...(isMonster ? { isMonster: '1' } : {}),
-        ...(hideLegends ? { isLegends: '0' } : {}),
+        ...(isHero      ? { isHero: '1' }      : {}),
+        ...(isMonster   ? { isMonster: '1' }   : {}),
+        ...(hideLegends ? { isLegends: '0' }   : {}),
+        ...(showFriendly ? { showFriendly: '1' } : {}),
+        ...(showEnemy    ? { showEnemy: '1' }    : {}),
       };
       const res = await axios.get('/api/warscrolls', { params });
       setData(res.data);
@@ -95,7 +102,27 @@ export default function WarscrollsPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, faction, alliance, sortBy, sortDir, page, isHero, isMonster, hideLegends]);
+  }, [search, faction, alliance, sortBy, sortDir, page, isHero, isMonster, hideLegends, showFriendly, showEnemy]);
+
+  // Load user's friendly/enemy flags once on mount
+  useEffect(() => {
+    axios.get('/api/user-units').then(res => {
+      const map = {};
+      res.data.forEach(r => { map[r.warscroll_id] = { is_friendly: r.is_friendly, is_enemy: r.is_enemy }; });
+      setUserUnits(map);
+    }).catch(() => {});
+  }, []);
+
+  const toggleFlag = useCallback(async (warscrollId, flag) => {
+    const current = userUnits[warscrollId] || { is_friendly: 0, is_enemy: 0 };
+    const updated = { ...current, [flag]: current[flag] ? 0 : 1 };
+    setUserUnits(prev => ({ ...prev, [warscrollId]: updated }));
+    try {
+      await axios.post(`/api/user-units/${warscrollId}`, updated);
+    } catch {
+      setUserUnits(prev => ({ ...prev, [warscrollId]: current }));
+    }
+  }, [userUnits]);
 
   useEffect(() => { fetchFactions(); }, [fetchFactions]);
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -213,6 +240,30 @@ export default function WarscrollsPage() {
             <label htmlFor="cb-legends">Hide Legends</label>
           </div>
         </div>
+
+        <div className="filter-group">
+          <div className="filter-label">&nbsp;</div>
+          <div className="filter-checkbox-group">
+            <input
+              type="checkbox" id="cb-friendly"
+              checked={showFriendly}
+              onChange={e => { setShowFriendly(e.target.checked); setPage(1); }}
+            />
+            <label htmlFor="cb-friendly" style={{color:'var(--friendly-color)'}}>My Friendly</label>
+          </div>
+        </div>
+
+        <div className="filter-group">
+          <div className="filter-label">&nbsp;</div>
+          <div className="filter-checkbox-group">
+            <input
+              type="checkbox" id="cb-enemy"
+              checked={showEnemy}
+              onChange={e => { setShowEnemy(e.target.checked); setPage(1); }}
+            />
+            <label htmlFor="cb-enemy" style={{color:'var(--enemy-color)'}}>My Enemy</label>
+          </div>
+        </div>
       </div>
 
       {/* ── Table ── */}
@@ -245,6 +296,8 @@ export default function WarscrollsPage() {
                   ))}
                   <th>Types</th>
                   <th>Keywords</th>
+                  <th style={{color:'var(--friendly-color)'}}>Friendly</th>
+                  <th style={{color:'var(--enemy-color)'}}>Enemy</th>
                   <th></th>
                 </tr>
               </thead>
@@ -275,14 +328,20 @@ export default function WarscrollsPage() {
                         <td className="col-keywords">
                           {row.keywords ? row.keywords.split(',').slice(0, 6).join(', ') : '—'}
                         </td>
+                        <td className="col-flag" onClick={e => { e.stopPropagation(); toggleFlag(row.id, 'is_friendly'); }}>
+                          <span className={`flag-check friendly${(userUnits[row.id]?.is_friendly) ? ' active' : ''}`}>✓</span>
+                        </td>
+                        <td className="col-flag" onClick={e => { e.stopPropagation(); toggleFlag(row.id, 'is_enemy'); }}>
+                          <span className={`flag-check enemy${(userUnits[row.id]?.is_enemy) ? ' active' : ''}`}>✓</span>
+                        </td>
                         <td>
                           <span className="row-expand-hint">{isExpanded ? '▲' : '▼'}</span>
                         </td>
                       </tr>
                       {isExpanded && (
                         <tr className="weapons-expand-row">
-                          <td colSpan={11}>
-                            <div className="weapons-expand-inner">
+                          <td colSpan={13}>
+                            <div className="weapons-expand-inner" onClick={e => e.stopPropagation()}>
                               {weapons.length === 0 && <span style={{color:'var(--text-dim)', fontStyle:'italic'}}>No weapon data available.</span>}
                               {ranged.length > 0 && (
                                 <div className="inline-weapon-block">

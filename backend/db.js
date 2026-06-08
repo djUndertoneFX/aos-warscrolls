@@ -53,6 +53,14 @@ function initDb() {
     CREATE INDEX IF NOT EXISTS idx_warscrolls_faction ON warscrolls(faction);
     CREATE INDEX IF NOT EXISTS idx_warscrolls_grand_alliance ON warscrolls(grand_alliance);
     CREATE INDEX IF NOT EXISTS idx_warscrolls_name ON warscrolls(name);
+
+    CREATE TABLE IF NOT EXISTS user_units (
+      user_id INTEGER NOT NULL,
+      warscroll_id INTEGER NOT NULL,
+      is_friendly INTEGER DEFAULT 0,
+      is_enemy INTEGER DEFAULT 0,
+      PRIMARY KEY (user_id, warscroll_id)
+    );
   `);
 
   // Add weapons column if it doesn't exist yet (safe migration)
