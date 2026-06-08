@@ -1,4 +1,4 @@
-const fetch = require('node-fetch');
+﻿const fetch = require('node-fetch');
 const cheerio = require('cheerio');
 const { getDb, initDb } = require('./db');
 
@@ -36,29 +36,31 @@ const FACTIONS = [
 ];
 
 // Wahapedia (a Russian site) mixes Cyrillic and Greek homoglyphs into English text.
-// Normalize to pure printable ASCII so SQLite LIKE searches work correctly.
+// All keys use \uXXXX escapes so the source file stays ASCII-safe.
 const HOMOGLYPH_MAP = {
-  // Cyrillic uppercase
+  // Cyrillic uppercase: A B E K M H O P C T X
   ‘А’:’A’,’В’:’B’,’Е’:’E’,’К’:’K’,’М’:’M’,
   ‘Н’:’H’,’О’:’O’,’Р’:’P’,’С’:’C’,’Т’:’T’,’Х’:’X’,
-  // Cyrillic lowercase
+  // Cyrillic lowercase: a e o p c u x
   ‘а’:’a’,’е’:’e’,’о’:’o’,’р’:’p’,’с’:’c’,’у’:’u’,’х’:’x’,
-  // Greek lookalikes
-  ‘α’:’a’,’ε’:’e’,’ο’:’o’,’ρ’:’p’,’υ’:’u’,
+  // Greek uppercase lookalikes
   ‘Α’:’A’,’Ε’:’E’,’Ο’:’O’,’Ρ’:’P’,
+  // Greek lowercase lookalikes
+  ‘α’:’a’,’ε’:’e’,’ο’:’o’,’ρ’:’p’,’υ’:’u’,
   // Other Latin lookalikes
   ‘ɑ’:’a’,’ᴀ’:’A’,’ɡ’:’g’,
-  // Smart quotes / dashes
+  // Smart quotes -> straight quotes
   ‘‘’:”’”,’’’:”’”,’“’:’”’,’”’:’”’,
+  // En/em dash -> hyphen
   ‘–‘:’-’,’—‘:’-’,
 };
 function normalizeName(str) {
   return str
-    .normalize(‘NFKD’)                          // decompose accented chars (é → e + combining)
-    .replace(/[̀-ͯ]/g, ‘’)            // strip combining diacritical marks
-    .replace(/./gu, ch => HOMOGLYPH_MAP[ch] ?? ch) // map known homoglyphs
+    .normalize(‘NFKD’)
+    .replace(/[\u0300-\u036f]/g, '')           // strip combining diacritical marks
+    .replace(/./gu, ch => HOMOGLYPH_MAP[ch] != null ? HOMOGLYPH_MAP[ch] : ch)
     .replace(/[^\x20-\x7E]/g, ‘ ‘)             // replace remaining non-ASCII with space
-    .replace(/\s+/g, ‘ ‘)                       // collapse multiple spaces
+    .replace(/\s+/g, ‘ ‘)
     .trim();
 }
 
