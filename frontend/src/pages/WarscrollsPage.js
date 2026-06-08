@@ -86,19 +86,34 @@ export default function WarscrollsPage() {
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState('');
 
-  // Filters
-  const [search, setSearch]         = useState('');
-  const [faction, setFaction]       = useState('');
-  const [alliance, setAlliance]     = useState('');
-  const [isHero, setIsHero]             = useState(false);
-  const [isMonster, setIsMonster]       = useState(false);
-  const [isInfantry, setIsInfantry]     = useState(false);
-  const [isCavalry, setIsCavalry]       = useState(false);
-  const [isWarMachine, setIsWarMachine] = useState(false);
-  const [isTerrain, setIsTerrain]       = useState(false);
-  const [hideLegends, setHideLegends]   = useState(true);
-  const [showFriendly, setShowFriendly] = useState(false);
-  const [showEnemy, setShowEnemy]       = useState(false);
+  // ── Persisted filter state ───────────────────────────────────────────────
+  const FILTER_KEY = 'aos-filters';
+  const saved = (() => { try { return JSON.parse(localStorage.getItem(FILTER_KEY)) || {}; } catch { return {}; } })();
+
+  const [search, setSearch]             = useState(saved.search       ?? '');
+  const [faction, setFaction]           = useState(saved.faction      ?? '');
+  const [alliance, setAlliance]         = useState(saved.alliance     ?? '');
+  const [isHero, setIsHero]             = useState(saved.isHero       ?? false);
+  const [isMonster, setIsMonster]       = useState(saved.isMonster    ?? false);
+  const [isInfantry, setIsInfantry]     = useState(saved.isInfantry   ?? false);
+  const [isCavalry, setIsCavalry]       = useState(saved.isCavalry    ?? false);
+  const [isWarMachine, setIsWarMachine] = useState(saved.isWarMachine ?? false);
+  const [isTerrain, setIsTerrain]       = useState(saved.isTerrain    ?? false);
+  const [hideLegends, setHideLegends]   = useState(saved.hideLegends  ?? true);
+  const [showFriendly, setShowFriendly] = useState(saved.showFriendly ?? false);
+  const [showEnemy, setShowEnemy]       = useState(saved.showEnemy    ?? false);
+  const [sortBy, setSortBy]             = useState(saved.sortBy       ?? 'faction');
+  const [sortDir, setSortDir]           = useState(saved.sortDir      ?? 'asc');
+
+  // Persist filters to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem(FILTER_KEY, JSON.stringify({
+      search, faction, alliance,
+      isHero, isMonster, isInfantry, isCavalry, isWarMachine, isTerrain,
+      hideLegends, showFriendly, showEnemy, sortBy, sortDir,
+    }));
+  }, [search, faction, alliance, isHero, isMonster, isInfantry, isCavalry,
+      isWarMachine, isTerrain, hideLegends, showFriendly, showEnemy, sortBy, sortDir]);
 
   // User unit flags: { [warscrollId]: { is_friendly, is_enemy } }
   const [userUnits, setUserUnits] = useState({});
@@ -106,14 +121,11 @@ export default function WarscrollsPage() {
   const [expandedIds, setExpandedIds] = useState(new Set());
   const [detailUnit, setDetailUnit] = useState(null);
 
-  // Sort & page
-  const [sortBy, setSortBy]   = useState('faction');
-  const [sortDir, setSortDir] = useState('asc');
-  const [page, setPage]       = useState(1);
+  const [page, setPage] = useState(1);
   const PAGE_SIZE = 50;
 
   // Debounced search
-  const [searchInput, setSearchInput] = useState('');
+  const [searchInput, setSearchInput] = useState(saved.search ?? '');
   useEffect(() => {
     const t = setTimeout(() => { setSearch(searchInput); setPage(1); }, 350);
     return () => clearTimeout(t);
