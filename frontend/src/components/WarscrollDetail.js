@@ -1,5 +1,22 @@
 import React, { useEffect } from 'react';
 
+// Split effect text into individual sentences for display.
+// Splits at ". " before an uppercase letter.
+function splitSentences(text) {
+  const parts = [];
+  let buf = '';
+  for (let i = 0; i < text.length; i++) {
+    buf += text[i];
+    if (text[i] === '.' && i + 1 < text.length && text[i + 1] === ' ' && /[A-Z]/.test(text[i + 2] || '')) {
+      parts.push(buf.trim());
+      buf = '';
+      i++; // skip the space
+    }
+  }
+  if (buf.trim()) parts.push(buf.trim());
+  return parts.length ? parts : [text];
+}
+
 function StatBox({ label, value }) {
   if (!value) return null;
   return (
@@ -51,7 +68,6 @@ export default function WarscrollDetail({ unit, onClose }) {
   const weapons  = React.useMemo(() => { try { return JSON.parse(unit.weapons  || '[]'); } catch { return []; } }, [unit]);
   const abilities = React.useMemo(() => { try { return JSON.parse(unit.abilities || '[]'); } catch { return []; } }, [unit]);
 
-  // Close on Escape key
   useEffect(() => {
     const handler = (e) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', handler);
@@ -109,7 +125,19 @@ export default function WarscrollDetail({ unit, onClose }) {
                   <span className="detail-ability-name">{ab.name}</span>
                   {ab.timing && <span className="detail-ability-timing">{ab.timing}</span>}
                 </div>
-                {ab.effect && <div className="detail-ability-effect">{ab.effect}</div>}
+                {ab.declare && (
+                  <div className="detail-ability-declare">
+                    <span className="detail-ability-label">Declare:</span> {ab.declare}
+                  </div>
+                )}
+                {ab.effect && (
+                  <div className="detail-ability-effect">
+                    <span className="detail-ability-label">Effect:</span>
+                    {splitSentences(ab.effect).map((sentence, j) => (
+                      <p key={j} className="detail-ability-sentence">{sentence}</p>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>

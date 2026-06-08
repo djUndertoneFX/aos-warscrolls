@@ -171,12 +171,20 @@ async function scrapeFaction(faction) {
       const timing = $(block).find('.abHeader').first().clone().find('img').remove().end().text().trim();
       const firstBold = abBody.find('b').first().text().replace(/:/g, '').trim();
       if (!firstBold || firstBold === 'Effect' || firstBold === 'KEYWORDS') return;
+      // Pad block-level and inline elements with spaces so adjacent text nodes
+      // don't merge (e.g. "roll.Add" → "roll. Add").
+      abBody.find('p, div, li, br, b, span').each((_, child) => {
+        const $c = $(child);
+        $c.replaceWith(' ' + $c.text().trim() + ' ');
+      });
       const bodyText = abBody.text().replace(/\s+/g, ' ').trim();
-      const effectMatch = bodyText.match(/Effect:\s*(.+)/i);
+      const declareMatch = bodyText.match(/Declare:\s*(.+?)(?=\s*Effect:)/i);
+      const effectMatch  = bodyText.match(/Effect:\s*(.+)/i);
       abilities.push({
         name: firstBold,
         timing,
-        effect: effectMatch ? effectMatch[1].trim() : '',
+        declare: declareMatch ? declareMatch[1].trim() : '',
+        effect:  effectMatch  ? effectMatch[1].trim()  : bodyText,
       });
     });
 
