@@ -73,9 +73,18 @@ async function scrapeFaction(faction) {
     const name = nameEl.text().trim();
     if (!name || name.length > 100) return;
 
-    // Skip Regiments of Renown / allied units whose nails-header doesn't match this faction
+    // Skip Regiments of Renown / allied units whose nails-header names a DIFFERENT faction.
+    // We only skip if the header positively identifies another faction — not if it's absent or
+    // uses non-standard text, so unique heroes with unusual headers still get included.
     const nailsText = $(el).find('.nails-header').first().text().toUpperCase();
-    if (nailsText && !nailsText.includes(faction.name.toUpperCase())) return;
+    if (nailsText) {
+      const belongsHere = nailsText.includes(faction.name.toUpperCase());
+      const belongsElsewhere = !belongsHere && FACTIONS.some(f => nailsText.includes(f.name.toUpperCase()));
+      if (belongsElsewhere) {
+        console.log(`    [skip] "${name}" — header says "${nailsText.trim()}" (not ${faction.name})`);
+        return;
+      }
+    }
 
     // Parse weapons from each .wTable
     const weapons = [];
