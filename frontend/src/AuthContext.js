@@ -3,6 +3,8 @@ import axios from 'axios';
 
 const AuthContext = createContext(null);
 
+axios.defaults.baseURL = process.env.REACT_APP_API_URL || '';
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
