@@ -38,29 +38,29 @@ const FACTIONS = [
 // Wahapedia (a Russian site) mixes Cyrillic and Greek homoglyphs into English text.
 // All keys use \uXXXX escapes so the source file stays ASCII-safe.
 const HOMOGLYPH_MAP = {
-  // Cyrillic uppercase: A B E K M H O P C T X
-  ‘А’:’A’,’В’:’B’,’Е’:’E’,’К’:’K’,’М’:’M’,
-  ‘Н’:’H’,’О’:’O’,’Р’:’P’,’С’:’C’,’Т’:’T’,’Х’:’X’,
-  // Cyrillic lowercase: a e o p c u x
-  ‘а’:’a’,’е’:’e’,’о’:’o’,’р’:’p’,’с’:’c’,’у’:’u’,’х’:’x’,
+  // Cyrillic uppercase
+  '\u0410':'A','\u0412':'B','\u0415':'E','\u041a':'K','\u041c':'M',
+  '\u041d':'H','\u041e':'O','\u0420':'P','\u0421':'C','\u0422':'T','\u0425':'X',
+  // Cyrillic lowercase
+  '\u0430':'a','\u0435':'e','\u043e':'o','\u0440':'p','\u0441':'c','\u0443':'u','\u0445':'x',
   // Greek uppercase lookalikes
-  ‘Α’:’A’,’Ε’:’E’,’Ο’:’O’,’Ρ’:’P’,
+  '\u0391':'A','\u0395':'E','\u039f':'O','\u03a1':'P',
   // Greek lowercase lookalikes
-  ‘α’:’a’,’ε’:’e’,’ο’:’o’,’ρ’:’p’,’υ’:’u’,
+  '\u03b1':'a','\u03b5':'e','\u03bf':'o','\u03c1':'p','\u03c5':'u',
   // Other Latin lookalikes
-  ‘ɑ’:’a’,’ᴀ’:’A’,’ɡ’:’g’,
+  '\u0251':'a','\u1d00':'A','\u0261':'g',
   // Smart quotes -> straight quotes
-  ‘‘’:”’”,’’’:”’”,’“’:’”’,’”’:’”’,
+  '\u2018':"'",'\u2019':"'",'\u201c':'"','\u201d':'"',
   // En/em dash -> hyphen
-  ‘–‘:’-’,’—‘:’-’,
+  '\u2013':'-','\u2014':'-',
 };
 function normalizeName(str) {
   return str
-    .normalize(‘NFKD’)
+    .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')           // strip combining diacritical marks
     .replace(/./gu, ch => HOMOGLYPH_MAP[ch] != null ? HOMOGLYPH_MAP[ch] : ch)
-    .replace(/[^\x20-\x7E]/g, ‘ ‘)             // replace remaining non-ASCII with space
-    .replace(/\s+/g, ‘ ‘)
+    .replace(/[^\x20-\x7E]/g, ' ')             // replace remaining non-ASCII with space
+    .replace(/[\s]+/g, ' ')
     .trim();
 }
 
