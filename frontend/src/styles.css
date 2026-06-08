@@ -407,7 +407,8 @@ input, select {
 
 /* ── Table ── */
 .table-wrapper {
-  overflow-x: auto;
+  overflow: auto;
+  max-height: calc(100vh - 260px);
   border: 1px solid var(--border);
   border-radius: 4px;
   box-shadow: 0 4px 24px rgba(0,0,0,0.4);
@@ -424,7 +425,7 @@ table {
 thead {
   background: var(--bg-panel);
   position: sticky;
-  top: 60px;
+  top: 0;
   z-index: 10;
 }
 
