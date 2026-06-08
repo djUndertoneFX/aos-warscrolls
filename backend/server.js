@@ -11,7 +11,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production-use-a-long
 
 // ─── Middleware ──────────────────────────────────────────────────────────────
 
-app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:3000' }));
+app.use(cors());
 app.use(express.json());
 
 // Initialize DB on startup
