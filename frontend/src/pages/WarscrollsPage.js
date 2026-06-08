@@ -240,8 +240,9 @@ export default function WarscrollsPage() {
         <div className="filter-group">
           <div className="filter-label">Faction</div>
           <select
-            className="filter-select"
+            className="filter-select faction-select"
             value={faction}
+            size={filteredFactions.length + 1}
             onChange={e => { setFaction(e.target.value); setPage(1); }}
           >
             <option value="">All Factions</option>

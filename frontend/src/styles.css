@@ -310,6 +310,20 @@ input, select {
 .filter-input:focus, .filter-select:focus { border-color: var(--gold-dark); }
 .filter-select option { background: var(--bg-card); }
 
+.faction-select {
+  overflow-y: visible;
+  height: auto;
+  padding: 0;
+}
+.faction-select option {
+  padding: 0.35rem 0.8rem;
+  cursor: pointer;
+}
+.faction-select option:checked {
+  background: var(--gold-dark);
+  color: var(--bg-dark);
+}
+
 .filter-checkbox-group {
   display: flex;
   align-items: center;
