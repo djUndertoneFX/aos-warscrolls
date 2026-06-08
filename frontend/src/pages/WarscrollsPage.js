@@ -289,42 +289,48 @@ export default function WarscrollsPage() {
         </div>
 
         <div className="filter-checkboxes">
-          <label className="cb-item">
-            <input type="checkbox" id="cb-friendly" checked={showFriendly} onChange={e => { setShowFriendly(e.target.checked); setPage(1); }} />
-            <span style={{color:'var(--friendly-color)'}}>My Friendly</span>
-          </label>
-          <label className="cb-item">
-            <input type="checkbox" id="cb-enemy" checked={showEnemy} onChange={e => { setShowEnemy(e.target.checked); setPage(1); }} />
-            <span style={{color:'var(--enemy-color)'}}>My Enemy</span>
-          </label>
-          <label className="cb-item">
-            <input type="checkbox" id="cb-hero" checked={isHero} onChange={e => { setIsHero(e.target.checked); setPage(1); }} />
-            <span>Heroes</span>
-          </label>
-          <label className="cb-item">
-            <input type="checkbox" id="cb-infantry" checked={isInfantry} onChange={e => { setIsInfantry(e.target.checked); setPage(1); }} />
-            <span>Infantry</span>
-          </label>
-          <label className="cb-item">
-            <input type="checkbox" id="cb-cavalry" checked={isCavalry} onChange={e => { setIsCavalry(e.target.checked); setPage(1); }} />
-            <span>Cavalry</span>
-          </label>
-          <label className="cb-item">
-            <input type="checkbox" id="cb-monster" checked={isMonster} onChange={e => { setIsMonster(e.target.checked); setPage(1); }} />
-            <span>Monsters</span>
-          </label>
-          <label className="cb-item">
-            <input type="checkbox" id="cb-warmachine" checked={isWarMachine} onChange={e => { setIsWarMachine(e.target.checked); setPage(1); }} />
-            <span>War Machine</span>
-          </label>
-          <label className="cb-item">
-            <input type="checkbox" id="cb-terrain" checked={isTerrain} onChange={e => { setIsTerrain(e.target.checked); setPage(1); }} />
-            <span>Faction Terrain</span>
-          </label>
-          <label className="cb-item">
-            <input type="checkbox" id="cb-legends" checked={hideLegends} onChange={e => { setHideLegends(e.target.checked); setPage(1); }} />
-            <span>Hide Legends</span>
-          </label>
+          <div className="cb-group cb-group-left">
+            <label className="cb-item">
+              <input type="checkbox" id="cb-friendly" checked={showFriendly} onChange={e => { setShowFriendly(e.target.checked); setPage(1); }} />
+              <span style={{color:'var(--friendly-color)'}}>Friendly</span>
+            </label>
+            <label className="cb-item">
+              <input type="checkbox" id="cb-enemy" checked={showEnemy} onChange={e => { setShowEnemy(e.target.checked); setPage(1); }} />
+              <span style={{color:'var(--enemy-color)'}}>Enemy</span>
+            </label>
+          </div>
+          <div className="cb-group cb-group-center">
+            <label className="cb-item">
+              <input type="checkbox" id="cb-hero" checked={isHero} onChange={e => { setIsHero(e.target.checked); setPage(1); }} />
+              <span>Heroes</span>
+            </label>
+            <label className="cb-item">
+              <input type="checkbox" id="cb-infantry" checked={isInfantry} onChange={e => { setIsInfantry(e.target.checked); setPage(1); }} />
+              <span>Infantry</span>
+            </label>
+            <label className="cb-item">
+              <input type="checkbox" id="cb-cavalry" checked={isCavalry} onChange={e => { setIsCavalry(e.target.checked); setPage(1); }} />
+              <span>Cavalry</span>
+            </label>
+            <label className="cb-item">
+              <input type="checkbox" id="cb-monster" checked={isMonster} onChange={e => { setIsMonster(e.target.checked); setPage(1); }} />
+              <span>Monsters</span>
+            </label>
+            <label className="cb-item">
+              <input type="checkbox" id="cb-warmachine" checked={isWarMachine} onChange={e => { setIsWarMachine(e.target.checked); setPage(1); }} />
+              <span>War Machine</span>
+            </label>
+            <label className="cb-item">
+              <input type="checkbox" id="cb-terrain" checked={isTerrain} onChange={e => { setIsTerrain(e.target.checked); setPage(1); }} />
+              <span>Faction Terrain</span>
+            </label>
+          </div>
+          <div className="cb-group cb-group-right">
+            <label className="cb-item">
+              <input type="checkbox" id="cb-legends" checked={hideLegends} onChange={e => { setHideLegends(e.target.checked); setPage(1); }} />
+              <span>Hide Legends</span>
+            </label>
+          </div>
         </div>
       </div>
 
