@@ -310,18 +310,53 @@ input, select {
 .filter-input:focus, .filter-select:focus { border-color: var(--gold-dark); }
 .filter-select option { background: var(--bg-card); }
 
-.faction-select {
-  overflow-y: visible;
-  height: auto;
-  padding: 0;
+.faction-dropdown {
+  position: relative;
+  width: 100%;
 }
-.faction-select option {
+.faction-dropdown-trigger {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--parchment);
+  padding: 0.55rem 0.8rem;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  transition: border-color 0.2s;
+}
+.faction-dropdown-trigger:hover,
+.faction-dropdown-trigger:focus { border-color: var(--gold-dark); outline: none; }
+.faction-dropdown-arrow { font-size: 0.65rem; color: var(--text-dim); margin-left: 0.5rem; }
+.faction-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  min-width: 100%;
+  background: var(--bg-card);
+  border: 1px solid var(--gold-dark);
+  border-radius: 3px;
+  z-index: 200;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+.faction-dropdown-item {
   padding: 0.35rem 0.8rem;
   cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--parchment);
+  white-space: nowrap;
+  transition: background 0.1s;
 }
-.faction-select option:checked {
+.faction-dropdown-item:hover { background: var(--bg-panel); }
+.faction-dropdown-item.selected {
   background: var(--gold-dark);
   color: var(--bg-dark);
+  font-weight: 600;
 }
 
 .filter-checkbox-group {

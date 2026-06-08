@@ -34,6 +34,47 @@ function TypeTags({ row }) {
   );
 }
 
+function FactionDropdown({ factions, value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const selected = factions.find(f => f.faction_slug === value);
+  const label = selected ? `${selected.faction} (${selected.unit_count})` : 'All Factions';
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const pick = (slug) => { onChange(slug); setOpen(false); };
+
+  return (
+    <div className="faction-dropdown" ref={ref}>
+      <button className="faction-dropdown-trigger" onClick={() => setOpen(o => !o)}>
+        <span>{label}</span>
+        <span className="faction-dropdown-arrow">{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div className="faction-dropdown-menu">
+          <div className={`faction-dropdown-item${value === '' ? ' selected' : ''}`} onMouseDown={() => pick('')}>
+            All Factions
+          </div>
+          {factions.map(f => (
+            <div
+              key={f.faction_slug}
+              className={`faction-dropdown-item${value === f.faction_slug ? ' selected' : ''}`}
+              onMouseDown={() => pick(f.faction_slug)}
+            >
+              {f.faction} ({f.unit_count})
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SortIcon({ col, sortBy, sortDir }) {
   if (sortBy !== col) return <span className="sort-icon">↕</span>;
   return <span className="sort-icon">{sortDir === 'asc' ? '↑' : '↓'}</span>;
@@ -239,19 +280,11 @@ export default function WarscrollsPage() {
 
         <div className="filter-group">
           <div className="filter-label">Faction</div>
-          <select
-            className="filter-select faction-select"
+          <FactionDropdown
+            factions={filteredFactions}
             value={faction}
-            size={filteredFactions.length + 1}
-            onChange={e => { setFaction(e.target.value); setPage(1); }}
-          >
-            <option value="">All Factions</option>
-            {filteredFactions.map(f => (
-              <option key={f.faction_slug} value={f.faction_slug}>
-                {f.faction} ({f.unit_count})
-              </option>
-            ))}
-          </select>
+            onChange={v => { setFaction(v); setPage(1); }}
+          />
         </div>
 
         <div className="filter-checkboxes">
