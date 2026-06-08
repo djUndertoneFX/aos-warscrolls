@@ -254,100 +254,43 @@ export default function WarscrollsPage() {
           </select>
         </div>
 
-        <div className="filter-group">
-          <div className="filter-label">&nbsp;</div>
-          <div className="filter-checkbox-group">
-            <input
-              type="checkbox" id="cb-hero"
-              checked={isHero}
-              onChange={e => { setIsHero(e.target.checked); setPage(1); }}
-            />
-            <label htmlFor="cb-hero">Heroes Only</label>
-          </div>
-        </div>
-
-        <div className="filter-group">
-          <div className="filter-label">&nbsp;</div>
-          <div className="filter-checkbox-group">
-            <input
-              type="checkbox" id="cb-monster"
-              checked={isMonster}
-              onChange={e => { setIsMonster(e.target.checked); setPage(1); }}
-            />
-            <label htmlFor="cb-monster">Monsters Only</label>
-          </div>
-        </div>
-
-        <div className="filter-group">
-          <div className="filter-label">&nbsp;</div>
-          <div className="filter-checkbox-group">
-            <input type="checkbox" id="cb-infantry" checked={isInfantry}
-              onChange={e => { setIsInfantry(e.target.checked); setPage(1); }} />
-            <label htmlFor="cb-infantry">Infantry</label>
-          </div>
-        </div>
-
-        <div className="filter-group">
-          <div className="filter-label">&nbsp;</div>
-          <div className="filter-checkbox-group">
-            <input type="checkbox" id="cb-cavalry" checked={isCavalry}
-              onChange={e => { setIsCavalry(e.target.checked); setPage(1); }} />
-            <label htmlFor="cb-cavalry">Cavalry</label>
-          </div>
-        </div>
-
-        <div className="filter-group">
-          <div className="filter-label">&nbsp;</div>
-          <div className="filter-checkbox-group">
-            <input type="checkbox" id="cb-warmachine" checked={isWarMachine}
-              onChange={e => { setIsWarMachine(e.target.checked); setPage(1); }} />
-            <label htmlFor="cb-warmachine">War Machine</label>
-          </div>
-        </div>
-
-        <div className="filter-group">
-          <div className="filter-label">&nbsp;</div>
-          <div className="filter-checkbox-group">
-            <input type="checkbox" id="cb-terrain" checked={isTerrain}
-              onChange={e => { setIsTerrain(e.target.checked); setPage(1); }} />
-            <label htmlFor="cb-terrain">Faction Terrain</label>
-          </div>
-        </div>
-
-        <div className="filter-group">
-          <div className="filter-label">&nbsp;</div>
-          <div className="filter-checkbox-group">
-            <input
-              type="checkbox" id="cb-legends"
-              checked={hideLegends}
-              onChange={e => { setHideLegends(e.target.checked); setPage(1); }}
-            />
-            <label htmlFor="cb-legends">Hide Legends</label>
-          </div>
-        </div>
-
-        <div className="filter-group">
-          <div className="filter-label">&nbsp;</div>
-          <div className="filter-checkbox-group">
-            <input
-              type="checkbox" id="cb-friendly"
-              checked={showFriendly}
-              onChange={e => { setShowFriendly(e.target.checked); setPage(1); }}
-            />
-            <label htmlFor="cb-friendly" style={{color:'var(--friendly-color)'}}>My Friendly</label>
-          </div>
-        </div>
-
-        <div className="filter-group">
-          <div className="filter-label">&nbsp;</div>
-          <div className="filter-checkbox-group">
-            <input
-              type="checkbox" id="cb-enemy"
-              checked={showEnemy}
-              onChange={e => { setShowEnemy(e.target.checked); setPage(1); }}
-            />
-            <label htmlFor="cb-enemy" style={{color:'var(--enemy-color)'}}>My Enemy</label>
-          </div>
+        <div className="filter-checkboxes">
+          <label className="cb-item">
+            <input type="checkbox" id="cb-friendly" checked={showFriendly} onChange={e => { setShowFriendly(e.target.checked); setPage(1); }} />
+            <span style={{color:'var(--friendly-color)'}}>My Friendly</span>
+          </label>
+          <label className="cb-item">
+            <input type="checkbox" id="cb-enemy" checked={showEnemy} onChange={e => { setShowEnemy(e.target.checked); setPage(1); }} />
+            <span style={{color:'var(--enemy-color)'}}>My Enemy</span>
+          </label>
+          <label className="cb-item">
+            <input type="checkbox" id="cb-hero" checked={isHero} onChange={e => { setIsHero(e.target.checked); setPage(1); }} />
+            <span>Heroes</span>
+          </label>
+          <label className="cb-item">
+            <input type="checkbox" id="cb-infantry" checked={isInfantry} onChange={e => { setIsInfantry(e.target.checked); setPage(1); }} />
+            <span>Infantry</span>
+          </label>
+          <label className="cb-item">
+            <input type="checkbox" id="cb-cavalry" checked={isCavalry} onChange={e => { setIsCavalry(e.target.checked); setPage(1); }} />
+            <span>Cavalry</span>
+          </label>
+          <label className="cb-item">
+            <input type="checkbox" id="cb-monster" checked={isMonster} onChange={e => { setIsMonster(e.target.checked); setPage(1); }} />
+            <span>Monsters</span>
+          </label>
+          <label className="cb-item">
+            <input type="checkbox" id="cb-warmachine" checked={isWarMachine} onChange={e => { setIsWarMachine(e.target.checked); setPage(1); }} />
+            <span>War Machine</span>
+          </label>
+          <label className="cb-item">
+            <input type="checkbox" id="cb-terrain" checked={isTerrain} onChange={e => { setIsTerrain(e.target.checked); setPage(1); }} />
+            <span>Faction Terrain</span>
+          </label>
+          <label className="cb-item">
+            <input type="checkbox" id="cb-legends" checked={hideLegends} onChange={e => { setHideLegends(e.target.checked); setPage(1); }} />
+            <span>Hide Legends</span>
+          </label>
         </div>
       </div>
 
