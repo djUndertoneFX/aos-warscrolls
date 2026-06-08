@@ -35,18 +35,31 @@ const FACTIONS = [
   { slug: 'sons-of-behemat',      name: 'Sons of Behemat',       alliance: 'Destruction' },
 ];
 
-// Wahapedia (a Russian site) mixes Cyrillic homoglyphs into English text.
+// Wahapedia (a Russian site) mixes Cyrillic and Greek homoglyphs into English text.
 // Normalize to pure printable ASCII so SQLite LIKE searches work correctly.
-const CYRILLIC_MAP = {
-  'А':'A','В':'B','Е':'E','К':'K','М':'M','Н':'H','О':'O','Р':'P','С':'C','Т':'T','Х':'X',
-  'а':'a','е':'e','о':'o','р':'p','с':'c','у':'y','х':'x',
-  '’':"'",'‘':"'",'“':'"','u201D':'"',
+const HOMOGLYPH_MAP = {
+  // Cyrillic uppercase
+  ‘А’:’A’,’В’:’B’,’Е’:’E’,’К’:’K’,’М’:’M’,
+  ‘Н’:’H’,’О’:’O’,’Р’:’P’,’С’:’C’,’Т’:’T’,’Х’:’X’,
+  // Cyrillic lowercase
+  ‘а’:’a’,’е’:’e’,’о’:’o’,’р’:’p’,’с’:’c’,’у’:’u’,’х’:’x’,
+  // Greek lookalikes
+  ‘α’:’a’,’ε’:’e’,’ο’:’o’,’ρ’:’p’,’υ’:’u’,
+  ‘Α’:’A’,’Ε’:’E’,’Ο’:’O’,’Ρ’:’P’,
+  // Other Latin lookalikes
+  ‘ɑ’:’a’,’ᴀ’:’A’,’ɡ’:’g’,
+  // Smart quotes / dashes
+  ‘‘’:”’”,’’’:”’”,’“’:’”’,’”’:’”’,
+  ‘–‘:’-’,’—‘:’-’,
 };
 function normalizeName(str) {
-  // First apply known homoglyph map, then strip anything still outside printable ASCII
   return str
-    .replace(/./gu, ch => CYRILLIC_MAP[ch] ?? ch)
-    .replace(/[^\x20-\x7E]/g, '');
+    .normalize(‘NFKD’)                          // decompose accented chars (é → e + combining)
+    .replace(/[̀-ͯ]/g, ‘’)            // strip combining diacritical marks
+    .replace(/./gu, ch => HOMOGLYPH_MAP[ch] ?? ch) // map known homoglyphs
+    .replace(/[^\x20-\x7E]/g, ‘ ‘)             // replace remaining non-ASCII with space
+    .replace(/\s+/g, ‘ ‘)                       // collapse multiple spaces
+    .trim();
 }
 
 function sleep(ms) {
@@ -81,10 +94,13 @@ async function scrapeFaction(faction) {
 
   // Each warscroll is a div with class "datasheet"
   $('.datasheet').each((i, el) => {
-    // Unit name is in .wsHeaderIn — strip the inner search-link anchor
+    // Unit name is in .wsHeaderIn — strip the inner search-link anchor.
+    // Add spaces between child element text nodes to prevent words merging.
     const nameEl = $(el).find('.wsHeaderIn').first();
     nameEl.find('a').remove();
-    const name = normalizeName(nameEl.text().trim().replace(/^[^a-zA-Z0-9]+/, ''));
+    const rawName = nameEl.children().map((_, c) => $(c).text().trim()).get().join(' ')
+      || nameEl.text().trim();
+    const name = normalizeName(rawName.replace(/^[^a-zA-Z0-9]+/, ''));
     if (!name || name.length > 100) return;
 
     // Skip Regiments of Renown / allied units whose nails-header names a DIFFERENT faction.
