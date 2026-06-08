@@ -192,9 +192,10 @@ export default function WarscrollsPage() {
     setPage(1);
   };
 
-  const filteredFactions = alliance
+  const filteredFactions = (alliance
     ? factions.filter(f => f.grand_alliance === alliance)
-    : factions;
+    : factions
+  ).slice().sort((a, b) => a.faction.localeCompare(b.faction));
 
   const alliances = ['Order', 'Chaos', 'Death', 'Destruction'];
 
