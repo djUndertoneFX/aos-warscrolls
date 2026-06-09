@@ -163,16 +163,11 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
   if (isLegends    === '0') { conditions.push('w.is_legends = 0'); }
 
   // Hide units whose keywords don't contain their own faction name.
-  // This removes Regiments of Renown / allied units that appear on a faction
-  // page but actually belong to a different faction.
-  if (hideOtherFactions === '1' && faction) {
-    const db2 = getDb();
-    const factionRow = db2.prepare('SELECT faction FROM warscrolls WHERE faction_slug = ? LIMIT 1').get(faction);
-    db2.close();
-    if (factionRow) {
-      conditions.push('UPPER(w.keywords) LIKE ?');
-      params.push('%' + factionRow.faction.toUpperCase() + '%');
-    }
+  // Compares each row's keywords against its own faction column — no extra
+  // query or params needed. A native unit always has its faction keyword;
+  // a Regiment of Renown borrowed from another faction won't.
+  if (hideOtherFactions === '1') {
+    conditions.push("UPPER(w.keywords) LIKE '%' || UPPER(w.faction) || '%'");
   }
 
   // Friendly/enemy filter via JOIN
