@@ -138,10 +138,14 @@ async function scrapeFaction(faction) {
         if (!weaponName) return;
 
         if (isRanged && cells.length >= 9) {
+          // Some units (e.g. monsters) put all weapons in a single "ranged" table.
+          // Classify by the actual range value: a real distance = ranged, dash/blank = melee.
+          const rangeVal = $(cells[3]).text().trim();
+          const actualType = (rangeVal && rangeVal !== '-' && rangeVal !== '—') ? 'ranged' : 'melee';
           weapons.push({
-            type: 'ranged',
+            type: actualType,
             name: weaponName,
-            range:   $(cells[3]).text().trim(),
+            range:   actualType === 'ranged' ? rangeVal : '-',
             attacks: $(cells[4]).text().trim(),
             hit:     $(cells[5]).text().trim(),
             wound:   $(cells[6]).text().trim(),
