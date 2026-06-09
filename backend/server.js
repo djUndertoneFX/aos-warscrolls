@@ -218,7 +218,7 @@ app.post('/api/user-units/:warscrollId', requireAuth, (req, res) => {
 // GET /api/warscrolls
 app.get('/api/warscrolls', requireAuth, (req, res) => {
   const {
-    faction, alliance, search,
+    faction, enemyFaction, alliance, search,
     sortBy = 'faction', sortDir = 'asc',
     page = 1, pageSize = 50,
     isHero, isMonster, isInfantry, isCavalry, isWarMachine, isTerrain, isLegends,
@@ -232,7 +232,14 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
   const conditions = [];
   const params = [];
 
-  if (faction)  { conditions.push('w.faction_slug = ?'); params.push(faction); }
+  if (faction && enemyFaction) {
+    conditions.push('(w.faction_slug = ? OR w.faction_slug = ?)');
+    params.push(faction, enemyFaction);
+  } else if (faction) {
+    conditions.push('w.faction_slug = ?'); params.push(faction);
+  } else if (enemyFaction) {
+    conditions.push('w.faction_slug = ?'); params.push(enemyFaction);
+  }
   if (alliance) { conditions.push('w.grand_alliance = ?'); params.push(alliance); }
   if (search) {
     conditions.push('(w.name LIKE ? OR w.keywords LIKE ? OR w.faction LIKE ?)');
@@ -251,18 +258,23 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
   // Keywords are stored as individual comma-separated tokens (e.g. "IDONETH, DEEPKIN")
   // so we match against the first non-trivial word from the faction slug rather than
   // the full multi-word faction name.
-  if (hideOtherFactions === '1' && faction) {
-    // Check for ANY meaningful word from the faction slug in the keywords.
-    // Works whether keywords use compound tokens ("IDONETH DEEPKIN") or
-    // individual ones ("IDONETH", "DEEPKIN") — both contain "IDONETH".
+  if (hideOtherFactions === '1' && (faction || enemyFaction)) {
+    // Check keywords contain a distinctive word from either selected faction slug.
     const skipWords = new Set(['of', 'the', 'to', 'and']);
-    const distinctiveWord = faction
+    const getDistinctWord = (slug) => slug
       .split('-')
       .filter(w => !skipWords.has(w) && w.length > 2)
       .map(w => w.toUpperCase())[0];
-    if (distinctiveWord) {
+    const words = [faction, enemyFaction]
+      .filter(Boolean)
+      .map(getDistinctWord)
+      .filter(Boolean);
+    if (words.length === 1) {
       conditions.push('instr(UPPER(w.keywords), ?) > 0');
-      params.push(distinctiveWord);
+      params.push(words[0]);
+    } else if (words.length === 2) {
+      conditions.push('(instr(UPPER(w.keywords), ?) > 0 OR instr(UPPER(w.keywords), ?) > 0)');
+      params.push(words[0], words[1]);
     }
   }
 

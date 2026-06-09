@@ -92,6 +92,7 @@ export default function WarscrollsPage() {
 
   const [search, setSearch]             = useState(saved.search       ?? '');
   const [faction, setFaction]           = useState(saved.faction      ?? '');
+  const [enemyFaction, setEnemyFaction] = useState(saved.enemyFaction ?? '');
   const [alliance, setAlliance]         = useState(saved.alliance     ?? '');
   const [isHero, setIsHero]             = useState(saved.isHero       ?? false);
   const [isMonster, setIsMonster]       = useState(saved.isMonster    ?? false);
@@ -109,11 +110,11 @@ export default function WarscrollsPage() {
   // Persist filters to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem(FILTER_KEY, JSON.stringify({
-      search, faction, alliance,
+      search, faction, enemyFaction, alliance,
       isHero, isMonster, isInfantry, isCavalry, isWarMachine, isTerrain,
       hideLegends, hideOtherFactions, showFriendly, showEnemy, sortBy, sortDir,
     }));
-  }, [search, faction, alliance, isHero, isMonster, isInfantry, isCavalry,
+  }, [search, faction, enemyFaction, alliance, isHero, isMonster, isInfantry, isCavalry,
       isWarMachine, isTerrain, hideLegends, hideOtherFactions, showFriendly, showEnemy, sortBy, sortDir]);
 
   // User unit flags: { [warscrollId]: { is_friendly, is_enemy } }
@@ -144,7 +145,7 @@ export default function WarscrollsPage() {
     setError('');
     try {
       const params = {
-        search, faction, alliance,
+        search, faction, enemyFaction, alliance,
         sortBy, sortDir, page,
         pageSize: PAGE_SIZE,
         ...(isHero       ? { isHero: '1' }       : {}),
@@ -165,7 +166,7 @@ export default function WarscrollsPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, faction, alliance, sortBy, sortDir, page, isHero, isMonster, isInfantry, isCavalry, isWarMachine, isTerrain, hideLegends, hideOtherFactions, showFriendly, showEnemy]);
+  }, [search, faction, enemyFaction, alliance, sortBy, sortDir, page, isHero, isMonster, isInfantry, isCavalry, isWarMachine, isTerrain, hideLegends, hideOtherFactions, showFriendly, showEnemy]);
 
   // Load user's friendly/enemy flags once on mount
   useEffect(() => {
@@ -203,6 +204,7 @@ export default function WarscrollsPage() {
   const handleAllianceChange = (val) => {
     setAlliance(val);
     setFaction('');
+    setEnemyFaction('');
     setPage(1);
   };
 
@@ -299,6 +301,15 @@ export default function WarscrollsPage() {
             factions={filteredFactions}
             value={faction}
             onChange={v => { setFaction(v); setPage(1); }}
+          />
+        </div>
+
+        <div className="filter-group">
+          <div className="filter-label">Enemy Faction</div>
+          <FactionDropdown
+            factions={filteredFactions}
+            value={enemyFaction}
+            onChange={v => { setEnemyFaction(v); setPage(1); }}
           />
         </div>
 
