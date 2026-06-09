@@ -183,11 +183,6 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
 
   const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
 
-  if (hideOtherFactions === '1') {
-    console.log('[hideOtherFactions] SQL:', `SELECT w.* FROM warscrolls w ${join} ${where}`);
-    console.log('[hideOtherFactions] params:', params);
-  }
-
   const db = getDb();
   try {
     const total = db.prepare(

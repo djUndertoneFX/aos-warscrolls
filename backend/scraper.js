@@ -238,8 +238,8 @@ async function scrapeFaction(faction) {
     const baseMatch = rawText.match(/Base size[^:]*:\s*([^\s,;]+)/i);
 
     // Keywords from wsKeywordLine1 and wsKeywordLine2
-    const kwLine1 = $(el).find('.wsKeywordLine1 .kwb').map((_, e) => $(e).text().trim()).get();
-    const kwLine2 = $(el).find('.wsKeywordLine2 .kwb').map((_, e) => $(e).text().trim()).get();
+    const kwLine1 = $(el).find('.wsKeywordLine1 .kwb').map((_, e) => normalizeName($(e).text().trim()).toUpperCase()).get();
+    const kwLine2 = $(el).find('.wsKeywordLine2 .kwb').map((_, e) => normalizeName($(e).text().trim()).toUpperCase()).get();
     const allKeywords = [...new Set([...kwLine1, ...kwLine2])].filter(Boolean);
     const keywords = allKeywords.join(', ');
 
