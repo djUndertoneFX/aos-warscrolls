@@ -99,7 +99,8 @@ export default function WarscrollsPage() {
   const [isCavalry, setIsCavalry]       = useState(saved.isCavalry    ?? false);
   const [isWarMachine, setIsWarMachine] = useState(saved.isWarMachine ?? false);
   const [isTerrain, setIsTerrain]       = useState(saved.isTerrain    ?? false);
-  const [hideLegends, setHideLegends]   = useState(saved.hideLegends  ?? true);
+  const [hideLegends, setHideLegends]           = useState(saved.hideLegends        ?? true);
+  const [hideOtherFactions, setHideOtherFactions] = useState(saved.hideOtherFactions ?? false);
   const [showFriendly, setShowFriendly] = useState(saved.showFriendly ?? false);
   const [showEnemy, setShowEnemy]       = useState(saved.showEnemy    ?? false);
   const [sortBy, setSortBy]             = useState(saved.sortBy       ?? 'faction');
@@ -110,10 +111,10 @@ export default function WarscrollsPage() {
     localStorage.setItem(FILTER_KEY, JSON.stringify({
       search, faction, alliance,
       isHero, isMonster, isInfantry, isCavalry, isWarMachine, isTerrain,
-      hideLegends, showFriendly, showEnemy, sortBy, sortDir,
+      hideLegends, hideOtherFactions, showFriendly, showEnemy, sortBy, sortDir,
     }));
   }, [search, faction, alliance, isHero, isMonster, isInfantry, isCavalry,
-      isWarMachine, isTerrain, hideLegends, showFriendly, showEnemy, sortBy, sortDir]);
+      isWarMachine, isTerrain, hideLegends, hideOtherFactions, showFriendly, showEnemy, sortBy, sortDir]);
 
   // User unit flags: { [warscrollId]: { is_friendly, is_enemy } }
   const [userUnits, setUserUnits] = useState({});
@@ -152,7 +153,8 @@ export default function WarscrollsPage() {
         ...(isCavalry    ? { isCavalry: '1' }   : {}),
         ...(isWarMachine ? { isWarMachine: '1' }: {}),
         ...(isTerrain    ? { isTerrain: '1' }   : {}),
-        ...(hideLegends  ? { isLegends: '0' }   : {}),
+        ...(hideLegends        ? { isLegends: '0' }          : {}),
+        ...(hideOtherFactions  ? { hideOtherFactions: '1' }  : {}),
         ...(showFriendly ? { showFriendly: '1' } : {}),
         ...(showEnemy    ? { showEnemy: '1' }    : {}),
       };
@@ -163,7 +165,7 @@ export default function WarscrollsPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, faction, alliance, sortBy, sortDir, page, isHero, isMonster, isInfantry, isCavalry, isWarMachine, isTerrain, hideLegends, showFriendly, showEnemy]);
+  }, [search, faction, alliance, sortBy, sortDir, page, isHero, isMonster, isInfantry, isCavalry, isWarMachine, isTerrain, hideLegends, hideOtherFactions, showFriendly, showEnemy]);
 
   // Load user's friendly/enemy flags once on mount
   useEffect(() => {
@@ -338,6 +340,10 @@ export default function WarscrollsPage() {
             </label>
           </div>
           <div className="cb-group cb-group-right">
+            <label className={`cb-item${!faction ? ' cb-disabled' : ''}`} title={!faction ? 'Select a faction first' : ''}>
+              <input type="checkbox" id="cb-other-factions" checked={hideOtherFactions} disabled={!faction} onChange={e => { setHideOtherFactions(e.target.checked); setPage(1); }} />
+              <span>Hide Other Factions</span>
+            </label>
             <label className="cb-item">
               <input type="checkbox" id="cb-legends" checked={hideLegends} onChange={e => { setHideLegends(e.target.checked); setPage(1); }} />
               <span>Hide Legends</span>

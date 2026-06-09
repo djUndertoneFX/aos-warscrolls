@@ -137,7 +137,7 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
     sortBy = 'faction', sortDir = 'asc',
     page = 1, pageSize = 50,
     isHero, isMonster, isInfantry, isCavalry, isWarMachine, isTerrain, isLegends,
-    showFriendly, showEnemy,
+    showFriendly, showEnemy, hideOtherFactions,
   } = req.query;
 
   const allowedSort = ['name', 'faction', 'grand_alliance', 'move', 'health', 'control', 'save', 'points'];
@@ -161,6 +161,19 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
   if (isWarMachine === '1') { conditions.push('w.is_war_machine = 1'); }
   if (isTerrain    === '1') { conditions.push('w.is_terrain = 1'); }
   if (isLegends    === '0') { conditions.push('w.is_legends = 0'); }
+
+  // Hide units whose keywords don't contain their own faction name.
+  // This removes Regiments of Renown / allied units that appear on a faction
+  // page but actually belong to a different faction.
+  if (hideOtherFactions === '1' && faction) {
+    const db2 = getDb();
+    const factionRow = db2.prepare('SELECT faction FROM warscrolls WHERE faction_slug = ? LIMIT 1').get(faction);
+    db2.close();
+    if (factionRow) {
+      conditions.push('UPPER(w.keywords) LIKE ?');
+      params.push('%' + factionRow.faction.toUpperCase() + '%');
+    }
+  }
 
   // Friendly/enemy filter via JOIN
   let join = '';
