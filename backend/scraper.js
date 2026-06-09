@@ -237,10 +237,31 @@ async function scrapeFaction(faction) {
     const sizeNum   = rawText.match(/Unit Size[^\d]*(\d+)/i);
     const baseMatch = rawText.match(/Base size[^:]*:\s*([^\s,;]+)/i);
 
-    // Keywords from wsKeywordLine1 and wsKeywordLine2
+    // Keywords from wsKeywordLine1 and wsKeywordLine2.
+    // Wahapedia stores multi-word faction names as separate .kwb elements
+    // (e.g. "IDONETH" + "DEEPKIN"). Merge consecutive tokens that together
+    // match a known faction name so they display as one keyword.
+    const FACTION_KEYWORDS = new Set(FACTIONS.map(f =>
+      normalizeName(f.name).toUpperCase()
+    ));
+    function mergeKwTokens(tokens) {
+      const result = [];
+      let i = 0;
+      while (i < tokens.length) {
+        // Try to merge with next token(s) to form a known faction keyword
+        let merged = null;
+        for (let j = tokens.length; j > i + 1; j--) {
+          const candidate = tokens.slice(i, j).join(' ');
+          if (FACTION_KEYWORDS.has(candidate)) { merged = candidate; i = j; break; }
+        }
+        if (merged) { result.push(merged); }
+        else { result.push(tokens[i]); i++; }
+      }
+      return result;
+    }
     const kwLine1 = $(el).find('.wsKeywordLine1 .kwb').map((_, e) => normalizeName($(e).text().trim()).toUpperCase()).get();
     const kwLine2 = $(el).find('.wsKeywordLine2 .kwb').map((_, e) => normalizeName($(e).text().trim()).toUpperCase()).get();
-    const allKeywords = [...new Set([...kwLine1, ...kwLine2])].filter(Boolean);
+    const allKeywords = [...new Set(mergeKwTokens([...kwLine1, ...kwLine2]))].filter(Boolean);
     const keywords = allKeywords.join(', ');
 
     const kwText = allKeywords.join(' ');

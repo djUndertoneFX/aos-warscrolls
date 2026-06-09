@@ -252,6 +252,9 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
   // so we match against the first non-trivial word from the faction slug rather than
   // the full multi-word faction name.
   if (hideOtherFactions === '1' && faction) {
+    // Check for ANY meaningful word from the faction slug in the keywords.
+    // Works whether keywords use compound tokens ("IDONETH DEEPKIN") or
+    // individual ones ("IDONETH", "DEEPKIN") — both contain "IDONETH".
     const skipWords = new Set(['of', 'the', 'to', 'and']);
     const distinctiveWord = faction
       .split('-')
