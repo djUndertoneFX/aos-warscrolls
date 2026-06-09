@@ -3,14 +3,14 @@ import axios from 'axios';
 import WarscrollDetail from '../components/WarscrollDetail';
 
 const SORTABLE_COLS = [
-  { key: 'name',          label: 'Unit Name' },
-  { key: 'faction',       label: 'Faction' },
-  { key: 'grand_alliance',label: 'Alliance' },
-  { key: 'move',          label: 'Move' },
-  { key: 'health',        label: 'Health' },
-  { key: 'control',       label: 'Control' },
-  { key: 'save',          label: 'Save' },
-  { key: 'points',        label: 'Points' },
+  { key: 'name',          label: 'Unit Name', abbr: null },
+  { key: 'faction',       label: 'Faction',   abbr: null },
+  { key: 'grand_alliance',label: 'Alliance',  abbr: null },
+  { key: 'move',          label: 'Move',      abbr: 'Mv' },
+  { key: 'health',        label: 'Health',    abbr: 'HP' },
+  { key: 'control',       label: 'Control',   abbr: 'Ctrl' },
+  { key: 'save',          label: 'Save',      abbr: 'Sv' },
+  { key: 'points',        label: 'Points',    abbr: 'Pts' },
 ];
 
 function AllianceBadge({ alliance }) {
@@ -213,12 +213,12 @@ export default function WarscrollsPage() {
 
   // ── Column resizing ──────────────────────────────────────────────────────
   const DEFAULT_COL_WIDTHS = {
-    friendly: 68, enemy: 68, expand: 36,
-    name: 280, faction: 160, alliance: 90,
-    move: 58, health: 60, control: 64, save: 54, points: 62,
-    types: 110, keywords: 220,
+    friendly: 38, enemy: 38, expand: 30,
+    name: 240, faction: 150, alliance: 82,
+    move: 46, health: 46, control: 46, save: 46, points: 52,
+    types: 100, keywords: 200,
   };
-  const STORAGE_KEY = 'aos-col-widths';
+  const STORAGE_KEY = 'aos-col-widths-v2';
   const [colWidths, setColWidths] = useState(() => {
     try { return { ...DEFAULT_COL_WIDTHS, ...JSON.parse(localStorage.getItem(STORAGE_KEY)) }; }
     catch { return DEFAULT_COL_WIDTHS; }
@@ -364,8 +364,8 @@ export default function WarscrollsPage() {
             <table>
               <thead>
                 <tr>
-                  <th style={{...thStyle('friendly'), color:'var(--friendly-color)'}}>Friendly<span className="col-resize-handle" onMouseDown={e => startResize(e,'friendly')} /></th>
-                  <th style={{...thStyle('enemy'), color:'var(--enemy-color)'}}>Enemy<span className="col-resize-handle" onMouseDown={e => startResize(e,'enemy')} /></th>
+                  <th style={{...thStyle('friendly'), color:'var(--friendly-color)'}} title="Friendly"><span className="th-abbr" style={{color:'var(--friendly-color)'}}>F</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'friendly')} /></th>
+                  <th style={{...thStyle('enemy'), color:'var(--enemy-color)'}} title="Enemy"><span className="th-abbr" style={{color:'var(--enemy-color)'}}>E</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'enemy')} /></th>
                   <th style={thStyle('expand')}><span className="col-resize-handle" onMouseDown={e => startResize(e,'expand')} /></th>
                   {SORTABLE_COLS.map(col => {
                     const keyMap = { name:'name', faction:'faction', grand_alliance:'alliance', move:'move', health:'health', control:'control', save:'save', points:'points' };
@@ -375,9 +375,10 @@ export default function WarscrollsPage() {
                         key={col.key}
                         style={thStyle(wKey)}
                         className={`sortable ${sortBy === col.key ? 'sort-active' : ''}`}
+                        title={col.abbr ? col.label : undefined}
                         onClick={() => handleSort(col.key)}
                       >
-                        {col.label}
+                        {col.abbr ? <span className="th-abbr">{col.abbr}</span> : col.label}
                         <SortIcon col={col.key} sortBy={sortBy} sortDir={sortDir} />
                         <span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e, wKey); }} />
                       </th>

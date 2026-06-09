@@ -502,6 +502,13 @@ td.col-name a { color: var(--gold-light); }
 td.col-name a:hover { color: var(--gold); }
 
 td.col-faction { font-size: 0.85rem; }
+/* Abbreviated column header text */
+.th-abbr {
+  font-family: 'Cinzel', serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.04em;
+}
+
 td.col-stat {
   text-align: center;
   font-family: 'Cinzel', serif;
@@ -592,18 +599,19 @@ td.col-keywords {
 /* ── Friendly / Enemy flag columns ── */
 .col-flag {
   text-align: center;
-  width: 52px;
+  width: 36px;
+  padding: 0 2px !important;
   cursor: pointer;
 }
 .flag-check {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border-radius: 3px;
   border: 1px solid var(--border);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: transparent;
   transition: all 0.15s;
 }
