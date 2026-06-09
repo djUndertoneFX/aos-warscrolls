@@ -235,6 +235,17 @@ input, select {
 .auth-switch a { color: var(--gold); }
 .auth-switch a:hover { color: var(--gold-light); }
 
+.auth-success {
+  color: var(--parchment);
+  font-size: 0.92rem;
+  background: rgba(42,107,26,0.2);
+  border: 1px solid rgba(42,107,26,0.5);
+  border-radius: 3px;
+  padding: 0.85rem 1rem;
+  text-align: center;
+  line-height: 1.5;
+}
+
 .error-msg {
   color: #e07070;
   font-size: 0.88rem;

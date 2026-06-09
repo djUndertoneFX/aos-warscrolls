@@ -61,6 +61,14 @@ function initDb() {
       is_enemy INTEGER DEFAULT 0,
       PRIMARY KEY (user_id, warscroll_id)
     );
+
+    CREATE TABLE IF NOT EXISTS password_resets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      token TEXT NOT NULL UNIQUE,
+      expires_at INTEGER NOT NULL,
+      used INTEGER DEFAULT 0
+    );
   `);
 
   // Safe migrations — ALTER TABLE is a no-op if the column already exists

@@ -62,6 +62,9 @@ export default function LoginPage() {
         <p className="auth-switch">
           No account? <Link to="/register">Forge your legend</Link>
         </p>
+        <p className="auth-switch" style={{ marginTop: '0.4rem' }}>
+          <Link to="/forgot-password">Forgot your password?</Link>
+        </p>
       </div>
     </div>
   );

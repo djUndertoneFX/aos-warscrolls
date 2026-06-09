@@ -3,7 +3,42 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const nodemailer = require('nodemailer');
 const { getDb, initDb } = require('./db');
+
+// ─── Email transporter ───────────────────────────────────────────────────────
+function createTransporter() {
+  return nodemailer.createTransport({
+    host:   process.env.SMTP_HOST,
+    port:   parseInt(process.env.SMTP_PORT || '587'),
+    secure: process.env.SMTP_PORT === '465',
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+}
+
+async function sendResetEmail(toEmail, resetUrl) {
+  if (!process.env.SMTP_HOST) {
+    // No email configured — log the link so it's still usable in dev/testing
+    console.log(`[password-reset] No SMTP configured. Reset URL: ${resetUrl}`);
+    return;
+  }
+  const transporter = createTransporter();
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM || process.env.SMTP_USER,
+    to: toEmail,
+    subject: 'AoS Warscrolls — Password Reset',
+    html: `
+      <p>A password reset was requested for your AoS Warscrolls account.</p>
+      <p><a href="${resetUrl}" style="font-size:1.1rem">Click here to reset your password</a></p>
+      <p>This link expires in 1 hour. If you didn't request this, you can ignore this email.</p>
+    `,
+    text: `Reset your AoS Warscrolls password here: ${resetUrl}\n\nExpires in 1 hour.`,
+  });
+}
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -94,6 +129,56 @@ app.post('/api/auth/login', async (req, res) => {
 // GET /api/auth/me
 app.get('/api/auth/me', requireAuth, (req, res) => {
   res.json({ username: req.user.username });
+});
+
+// POST /api/auth/forgot-password
+app.post('/api/auth/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email is required.' });
+
+  const db = getDb();
+  try {
+    const user = db.prepare('SELECT id, email FROM users WHERE email = ?').get(email);
+    // Always respond success to prevent email enumeration
+    if (!user) return res.json({ ok: true });
+
+    // Invalidate any existing tokens for this user
+    db.prepare('DELETE FROM password_resets WHERE user_id = ?').run(user.id);
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = Date.now() + 60 * 60 * 1000; // 1 hour
+    db.prepare('INSERT INTO password_resets (user_id, token, expires_at) VALUES (?, ?, ?)').run(user.id, token, expiresAt);
+
+    const appUrl = process.env.APP_URL || 'https://easygoing-embrace-production-f3bb.up.railway.app';
+    const resetUrl = `${appUrl}/reset-password?token=${token}`;
+    await sendResetEmail(user.email, resetUrl);
+
+    res.json({ ok: true });
+  } finally {
+    db.close();
+  }
+});
+
+// POST /api/auth/reset-password
+app.post('/api/auth/reset-password', async (req, res) => {
+  const { token, password } = req.body;
+  if (!token || !password) return res.status(400).json({ error: 'Token and password are required.' });
+  if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+
+  const db = getDb();
+  try {
+    const reset = db.prepare('SELECT * FROM password_resets WHERE token = ? AND used = 0').get(token);
+    if (!reset) return res.status(400).json({ error: 'Invalid or expired reset link.' });
+    if (Date.now() > reset.expires_at) return res.status(400).json({ error: 'Reset link has expired. Please request a new one.' });
+
+    const hash = await bcrypt.hash(password, 12);
+    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, reset.user_id);
+    db.prepare('UPDATE password_resets SET used = 1 WHERE id = ?').run(reset.id);
+
+    res.json({ ok: true });
+  } finally {
+    db.close();
+  }
 });
 
 // ─── Warscrolls Routes ────────────────────────────────────────────────────────
