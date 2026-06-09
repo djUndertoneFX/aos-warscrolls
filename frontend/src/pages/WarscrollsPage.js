@@ -361,7 +361,7 @@ export default function WarscrollsPage() {
       ) : (
         <>
           <div className="table-wrapper">
-            <table>
+            <table data-sort={sortBy}>
               <thead>
                 <tr>
                   <th style={{...thStyle('friendly'), color:'var(--friendly-color)'}} title="Friendly"><span className="th-abbr" style={{color:'var(--friendly-color)'}}>F</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'friendly')} /></th>

@@ -243,9 +243,7 @@ input, select {
 /* ── Warscroll Table Page ── */
 .table-page {
   flex: 1;
-  padding: 1.5rem 2rem 3rem;
-  max-width: 1600px;
-  margin: 0 auto;
+  padding: 1.5rem 1.5rem 3rem;
   width: 100%;
 }
 
@@ -457,6 +455,38 @@ th.sortable { cursor: pointer; }
 th.sortable:hover { color: var(--gold); }
 th.sort-active { color: var(--gold); }
 .sort-icon { margin-left: 4px; opacity: 0.7; }
+
+/* ── Sort column highlight ─────────────────────────────────────────────────
+   Column positions: 1=F 2=E 3=▼ 4=name 5=faction 6=alliance
+                     7=move 8=health 9=control 10=save 11=points
+                     12=types 13=keywords
+   Primary sort: gold tint. Secondary (faction grouping within primary): none
+   shown — only one user-controlled sort exists.
+────────────────────────────────────────────────────────────────────────── */
+table[data-sort] th.sort-active {
+  background: rgba(201,168,76,0.12);
+}
+table[data-sort="name"]          td:nth-child(4),
+table[data-sort="faction"]       td:nth-child(5),
+table[data-sort="grand_alliance"] td:nth-child(6),
+table[data-sort="move"]          td:nth-child(7),
+table[data-sort="health"]        td:nth-child(8),
+table[data-sort="control"]       td:nth-child(9),
+table[data-sort="save"]          td:nth-child(10),
+table[data-sort="points"]        td:nth-child(11) {
+  background: rgba(201,168,76,0.06);
+}
+/* Stronger tint on the active header cell itself */
+table[data-sort="name"]          th:nth-child(4),
+table[data-sort="faction"]       th:nth-child(5),
+table[data-sort="grand_alliance"] th:nth-child(6),
+table[data-sort="move"]          th:nth-child(7),
+table[data-sort="health"]        th:nth-child(8),
+table[data-sort="control"]       th:nth-child(9),
+table[data-sort="save"]          th:nth-child(10),
+table[data-sort="points"]        th:nth-child(11) {
+  background: rgba(201,168,76,0.14);
+}
 
 tbody tr {
   border-bottom: 1px solid rgba(74,56,32,0.4);
