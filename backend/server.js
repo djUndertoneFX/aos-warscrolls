@@ -247,12 +247,20 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
   if (isTerrain    === '1') { conditions.push('w.is_terrain = 1'); }
   if (isLegends    === '0') { conditions.push('w.is_legends = 0'); }
 
-  // Hide units whose keywords don't contain their own faction name.
-  // instr(haystack, needle) returns 0 when not found, >0 when found.
-  // A native unit's keywords always include its faction name;
-  // a Regiment of Renown borrowed from another faction won't.
-  if (hideOtherFactions === '1') {
-    conditions.push("instr(UPPER(w.keywords), UPPER(w.faction)) > 0");
+  // Hide units whose keywords don't contain their own faction's distinctive word.
+  // Keywords are stored as individual comma-separated tokens (e.g. "IDONETH, DEEPKIN")
+  // so we match against the first non-trivial word from the faction slug rather than
+  // the full multi-word faction name.
+  if (hideOtherFactions === '1' && faction) {
+    const skipWords = new Set(['of', 'the', 'to', 'and']);
+    const distinctiveWord = faction
+      .split('-')
+      .filter(w => !skipWords.has(w) && w.length > 2)
+      .map(w => w.toUpperCase())[0];
+    if (distinctiveWord) {
+      conditions.push('instr(UPPER(w.keywords), ?) > 0');
+      params.push(distinctiveWord);
+    }
   }
 
   // Friendly/enemy filter via JOIN
