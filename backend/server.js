@@ -290,6 +290,10 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
 
   const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
 
+  console.log('[warscrolls] query:', { faction, enemyFaction, showFriendly, showEnemy, hideOtherFactions });
+  console.log('[warscrolls] WHERE:', where);
+  console.log('[warscrolls] PARAMS:', params);
+
   const db = getDb();
   try {
     const total = db.prepare(
