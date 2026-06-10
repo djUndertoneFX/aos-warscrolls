@@ -59,6 +59,27 @@ function normalizeName(str) {
     .trim();
 }
 
+// Sanitize a string for use as a filename
+function safeFilename(str) {
+  return str.replace(/[/\\:*?"<>|]/g, '-').replace(/\s+/g, ' ').trim();
+}
+
+// Score how well two normalized names match (0 = no match, 1 = exact)
+function matchScore(a, b) {
+  if (a === b) return 1;
+  // Remove leading "the " for comparison
+  const strip = s => s.replace(/^the /, '');
+  if (strip(a) === strip(b)) return 0.95;
+  // Word-based: count shared words
+  const wordsA = new Set(a.split(' ').filter(w => w.length > 2));
+  const wordsB = new Set(b.split(' ').filter(w => w.length > 2));
+  if (wordsA.size === 0 || wordsB.size === 0) return 0;
+  let shared = 0;
+  for (const w of wordsA) { if (wordsB.has(w)) shared++; }
+  const score = shared / Math.max(wordsA.size, wordsB.size);
+  return score >= 0.75 ? score : 0; // require 75% word overlap
+}
+
 async function getJwt() {
   if (!LOGIN_USER || !LOGIN_PASS) return null;
   const res = await fetch(`${RAILWAY_API}/api/auth/login`, {
@@ -90,19 +111,27 @@ async function fetchWarscrolls(jwt) {
 }
 
 async function scrapeLexicanum() {
-  console.log('📖 Fetching Lexicanum List_of_units...');
-  const res = await fetch(`${LEXICANUM_BASE}/wiki/List_of_units`, {
-    headers: {
-      ...BROWSER_HEADERS,
-      'Sec-Fetch-Dest': 'document',
-      'Sec-Fetch-Mode': 'navigate',
-      'Sec-Fetch-Site': 'none',
-      'Sec-Fetch-User': '?1',
-    },
-    compress: true,
-  });
-  if (!res.ok) throw new Error(`Lexicanum HTTP ${res.status}`);
-  const html = await res.text();
+  // If a saved local copy exists, use it instead of fetching (avoids 403)
+  const localFile = path.join(__dirname, 'list_of_units.html');
+  let html;
+  if (fs.existsSync(localFile)) {
+    console.log('📖 Reading saved list_of_units.html...');
+    html = fs.readFileSync(localFile, 'utf8');
+  } else {
+    console.log('📖 Fetching Lexicanum List_of_units...');
+    const res = await fetch(`${LEXICANUM_BASE}/wiki/List_of_units`, {
+      headers: {
+        ...BROWSER_HEADERS,
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1',
+      },
+      compress: true,
+    });
+    if (!res.ok) throw new Error(`Lexicanum HTTP ${res.status}`);
+    html = await res.text();
+  }
 
   const $ = cheerio.load(html);
   const imageMap = {};
@@ -144,22 +173,28 @@ async function main() {
   console.log(`  Got ${warscrolls.length} warscrolls`);
 
   // 3. Match, download, upload
-  let matched = 0, uploaded = 0, skipped = 0;
+  let matched = 0, uploaded = 0;
+  const imageMapEntries = Object.entries(imageMap);
 
   for (const ws of warscrolls) {
     const key = normalizeName(ws.name);
-    let imgUrl = imageMap[key];
 
-    // Partial match fallback
+    // Find best match in imageMap
+    let imgUrl = imageMap[key]; // exact match first
+    let bestScore = imgUrl ? 1 : 0;
+
     if (!imgUrl) {
-      for (const [k, v] of Object.entries(imageMap)) {
-        if (k.startsWith(key) || key.startsWith(k)) { imgUrl = v; break; }
+      for (const [k, v] of imageMapEntries) {
+        const score = matchScore(key, k);
+        if (score > bestScore) { bestScore = score; imgUrl = v; }
       }
     }
     if (!imgUrl) continue;
     matched++;
 
-    const localPath = path.join(LOCAL_IMG_DIR, `${ws.id}.jpg`);
+    // Human-readable local filename for easy debugging
+    const localFilename = `${safeFilename(ws.faction)} - ${safeFilename(ws.name)}.jpg`;
+    const localPath = path.join(LOCAL_IMG_DIR, localFilename);
 
     // Download if not already on disk
     if (!fs.existsSync(localPath)) {
@@ -201,7 +236,8 @@ async function main() {
       });
       if (upRes.ok) {
         uploaded++;
-        process.stdout.write(`  ✓ ${ws.name}\n`);
+        const scoreStr = bestScore < 1 ? ` (match: ${Math.round(bestScore*100)}%)` : '';
+        process.stdout.write(`  ✓ ${ws.faction} - ${ws.name}${scoreStr}\n`);
       } else {
         const txt = await upRes.text();
         console.warn(`  ✗ Upload failed for "${ws.name}": ${upRes.status} ${txt}`);
