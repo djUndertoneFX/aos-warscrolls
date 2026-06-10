@@ -302,7 +302,7 @@ export default function WarscrollsPage() {
             factions={filteredFactions}
             value={faction}
             onChange={v => { setFaction(v); setPage(1); }}
-            liveCount={hideOtherFactions && faction && !enemyFaction ? data?.total : undefined}
+            liveCount={faction && !enemyFaction ? data?.total : undefined}
           />
         </div>
 
@@ -312,7 +312,7 @@ export default function WarscrollsPage() {
             factions={filteredFactions}
             value={enemyFaction}
             onChange={v => { setEnemyFaction(v); setPage(1); }}
-            liveCount={hideOtherFactions && enemyFaction && !faction ? data?.total : undefined}
+            liveCount={enemyFaction && !faction ? data?.total : undefined}
           />
         </div>
 
