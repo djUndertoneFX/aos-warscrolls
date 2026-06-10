@@ -333,8 +333,8 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
   }
 });
 
-// GET /api/unit-image/:id — serve unit image from persistent volume
-app.get('/api/unit-image/:id', requireAuth, (req, res) => {
+// GET /api/unit-image/:id — serve unit image from persistent volume (no auth needed)
+app.get('/api/unit-image/:id', (req, res) => {
   const id = parseInt(req.params.id);
   if (!id) return res.status(400).json({ error: 'Invalid id' });
 
