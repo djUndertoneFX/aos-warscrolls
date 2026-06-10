@@ -187,8 +187,13 @@ app.post('/api/auth/reset-password', async (req, res) => {
 app.get('/api/user-units', requireAuth, (req, res) => {
   const db = getDb();
   try {
+    // JOIN warscrolls to automatically exclude stale marks pointing to
+    // deleted warscroll IDs (e.g. after the scraper re-runs and re-numbers IDs)
     const rows = db.prepare(
-      'SELECT warscroll_id, is_friendly, is_enemy FROM user_units WHERE user_id = ?'
+      `SELECT uu.warscroll_id, uu.is_friendly, uu.is_enemy
+       FROM user_units uu
+       JOIN warscrolls w ON w.id = uu.warscroll_id
+       WHERE uu.user_id = ?`
     ).all(req.user.id);
     res.json(rows);
   } finally {
@@ -289,10 +294,6 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
   }
 
   const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
-
-  console.log('[warscrolls] query:', { faction, enemyFaction, showFriendly, showEnemy, hideOtherFactions });
-  console.log('[warscrolls] WHERE:', where);
-  console.log('[warscrolls] PARAMS:', params);
 
   const db = getDb();
   try {
