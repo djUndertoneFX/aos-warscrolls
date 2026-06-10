@@ -156,13 +156,14 @@ export default function WarscrollsPage() {
     } catch {}
   }, []);
 
+  // Stable booleans derived from userUnits — used in fetchData deps (avoids object ref churn)
+  const hasFriendlyMarks = Object.values(userUnits).some(u => u.is_friendly);
+  const hasEnemyMarks    = Object.values(userUnits).some(u => u.is_enemy);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      // Decide how each filter side behaves based on whether marks exist
-      const hasFriendlyMarks = Object.values(userUnits).some(u => u.is_friendly);
-      const hasEnemyMarks    = Object.values(userUnits).some(u => u.is_enemy);
 
       // "byFaction" = filter on but no marks → show the whole faction from the dropdown
       const friendlyByFaction = showFriendly && !hasFriendlyMarks;
@@ -201,7 +202,7 @@ export default function WarscrollsPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, faction, enemyFaction, alliance, sortBy, sortDir, page, isHero, isMonster, isInfantry, isCavalry, isWarMachine, isTerrain, hideLegends, hideOtherFactions, showFriendly, showEnemy, userUnits]);
+  }, [search, faction, enemyFaction, alliance, sortBy, sortDir, page, isHero, isMonster, isInfantry, isCavalry, isWarMachine, isTerrain, hideLegends, hideOtherFactions, showFriendly, showEnemy, hasFriendlyMarks, hasEnemyMarks]);
 
   // Load user's friendly/enemy flags once on mount
   useEffect(() => {
