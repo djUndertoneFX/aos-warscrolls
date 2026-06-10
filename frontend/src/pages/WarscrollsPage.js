@@ -338,11 +338,10 @@ export default function WarscrollsPage() {
               <span style={{color:'var(--friendly-color)'}}>Friendly</span>
             </label>
             <button
-              className={`btn-both-toggle${showFriendly && showEnemy ? ' active' : ''}`}
+              className={`btn-both-toggle${showFriendly !== showEnemy ? ' active' : ''}`}
               title="Toggle both Friendly and Enemy"
               onClick={() => {
-                const next = !(showFriendly && showEnemy);
-                setShowFriendly(next); setShowEnemy(next); setPage(1);
+                setShowFriendly(showEnemy); setShowEnemy(showFriendly); setPage(1);
               }}
             >⇔</button>
             <label className="cb-item">
