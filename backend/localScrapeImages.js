@@ -181,92 +181,114 @@ async function main() {
   let matched = 0, uploaded = 0;
   const imageMapEntries = Object.entries(imageMap);
 
-  for (const ws of warscrolls) {
-    const key = normalizeName(ws.name);
-
-    // Find best match in imageMap
-    let imgUrl = imageMap[key]; // exact match first
+  function findBestMatch(key) {
+    let imgUrl = imageMap[key];
     let bestScore = imgUrl ? 1 : 0;
-
     if (!imgUrl) {
       for (const [k, v] of imageMapEntries) {
         const score = matchScore(key, k);
         if (score > bestScore) { bestScore = score; imgUrl = v; }
       }
     }
-    // Title prefix fallback: strip prefix and match base unit name
-    if (!imgUrl) {
+    return { imgUrl, bestScore };
+  }
+
+  function findImagesForUnit(wsName) {
+    const key = normalizeName(wsName);
+
+    // Split on " and " to handle combined units like "Blue Horrors and Brimstone Horrors"
+    const parts = key.split(' and ');
+    if (parts.length > 1) {
+      const results = parts.map(p => findBestMatch(p.trim())).filter(r => r.imgUrl);
+      if (results.length > 0) return results;
+    }
+
+    // Single match
+    let result = findBestMatch(key);
+
+    // Title prefix fallback
+    if (!result.imgUrl) {
       for (const prefix of TITLE_PREFIXES) {
         if (key.startsWith(prefix + ' ')) {
-          const baseName = key.slice(prefix.length + 1);
-          if (imageMap[baseName]) { imgUrl = imageMap[baseName]; bestScore = 0.9; break; }
-          for (const [k, v] of imageMapEntries) {
-            const score = matchScore(baseName, k);
-            if (score > bestScore) { bestScore = score; imgUrl = v; }
-          }
-          break;
+          result = findBestMatch(key.slice(prefix.length + 1));
+          if (result.imgUrl) { result.bestScore = Math.min(result.bestScore, 0.9); break; }
         }
       }
     }
 
-    if (!imgUrl) continue;
+    return result.imgUrl ? [result] : [];
+  }
+
+  async function downloadImage(imgUrl, localPath) {
+    if (fs.existsSync(localPath)) return true;
+    try {
+      const imgRes = await fetch(imgUrl, {
+        headers: {
+          ...BROWSER_HEADERS,
+          'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+          'Referer': `${LEXICANUM_BASE}/wiki/List_of_units`,
+          'Sec-Fetch-Dest': 'image',
+          'Sec-Fetch-Mode': 'no-cors',
+          'Sec-Fetch-Site': 'same-origin',
+        },
+        compress: true,
+      });
+      if (!imgRes.ok) { console.warn(`  ✗ Download HTTP ${imgRes.status}: ${imgUrl}`); return false; }
+      fs.writeFileSync(localPath, await imgRes.buffer());
+      await sleep(150);
+      return true;
+    } catch (err) {
+      console.warn(`  ✗ Download error: ${err.message}`);
+      return false;
+    }
+  }
+
+  async function uploadImage(localPath, railwayId, slot) {
+    // slot 0 → {id}.jpg, slot 1+ → {id}_{slot}.jpg
+    const suffix = slot === 0 ? '' : `_${slot}`;
+    const upRes = await fetch(`${RAILWAY_API}/api/unit-image/${railwayId}${suffix ? `?slot=${slot}` : ''}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'image/jpeg', 'x-upload-secret': UPLOAD_SECRET },
+      body: fs.readFileSync(localPath),
+    });
+    return upRes.ok;
+  }
+
+  for (const ws of warscrolls) {
+    const matches = findImagesForUnit(ws.name);
+    if (matches.length === 0) continue;
     matched++;
 
-    // Human-readable local filename for easy debugging
-    const localFilename = `${safeFilename(ws.faction)} - ${safeFilename(ws.name)}.jpg`;
-    const localPath = path.join(LOCAL_IMG_DIR, localFilename);
+    const baseName = `${safeFilename(ws.faction)} - ${safeFilename(ws.name)}`;
+    let anyUploaded = false;
 
-    // Download if not already on disk
-    if (!fs.existsSync(localPath)) {
+    for (let i = 0; i < matches.length; i++) {
+      const { imgUrl, bestScore } = matches[i];
+      const suffix = matches.length > 1 ? `_${i}` : '';
+      const localPath = path.join(LOCAL_IMG_DIR, `${baseName}${suffix}.jpg`);
+
+      const ok = await downloadImage(imgUrl, localPath);
+      if (!ok) continue;
+
       try {
-        const imgRes = await fetch(imgUrl, {
-          headers: {
-            ...BROWSER_HEADERS,
-            'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
-            'Referer': `${LEXICANUM_BASE}/wiki/List_of_units`,
-            'Sec-Fetch-Dest': 'image',
-            'Sec-Fetch-Mode': 'no-cors',
-            'Sec-Fetch-Site': 'same-origin',
-          },
-          compress: true,
-        });
-        if (!imgRes.ok) {
-          console.warn(`  ✗ Image download failed for "${ws.name}": HTTP ${imgRes.status}`);
-          continue;
+        const upOk = await uploadImage(localPath, ws.id, i);
+        if (upOk) {
+          anyUploaded = true;
+        } else {
+          console.warn(`  ✗ Upload failed for "${ws.name}" slot ${i}`);
         }
-        const buf = await imgRes.buffer();
-        fs.writeFileSync(localPath, buf);
-        await sleep(150);
       } catch (err) {
-        console.warn(`  ✗ Download error for "${ws.name}": ${err.message}`);
-        continue;
+        console.warn(`  ✗ Upload error for "${ws.name}": ${err.message}`);
       }
+      await sleep(50);
     }
 
-    // Upload to Railway
-    const imgBuf = fs.readFileSync(localPath);
-    try {
-      const upRes = await fetch(`${RAILWAY_API}/api/unit-image/${ws.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'image/jpeg',
-          'x-upload-secret': UPLOAD_SECRET,
-        },
-        body: imgBuf,
-      });
-      if (upRes.ok) {
-        uploaded++;
-        const scoreStr = bestScore < 1 ? ` (match: ${Math.round(bestScore*100)}%)` : '';
-        process.stdout.write(`  ✓ ${ws.faction} - ${ws.name}${scoreStr}\n`);
-      } else {
-        const txt = await upRes.text();
-        console.warn(`  ✗ Upload failed for "${ws.name}": ${upRes.status} ${txt}`);
-      }
-    } catch (err) {
-      console.warn(`  ✗ Upload error for "${ws.name}": ${err.message}`);
+    if (anyUploaded) {
+      uploaded++;
+      const scoreStr = matches[0].bestScore < 1 ? ` (match: ${Math.round(matches[0].bestScore*100)}%)` : '';
+      const multi = matches.length > 1 ? ` [${matches.length} images]` : '';
+      process.stdout.write(`  ✓ ${ws.faction} - ${ws.name}${scoreStr}${multi}\n`);
     }
-
-    await sleep(50);
   }
 
   console.log(`\n✅ Done. Matched: ${matched}, Uploaded: ${uploaded}, Skipped: ${warscrolls.length - matched}`);

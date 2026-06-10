@@ -344,38 +344,75 @@ function serveImage(imgPath, res) {
   fs.createReadStream(imgPath).pipe(res);
 }
 
-// GET /api/unit-image/:id — serve unit image from persistent volume (no auth needed)
-app.get('/api/unit-image/:id', (req, res) => {
+function resolveImagePaths(id, db) {
+  // Returns array of existing image paths for a unit (slot 0, 1, 2…)
+  const paths = [];
+  const primary = path.join(IMAGE_DIR, `${id}.jpg`);
+  if (fs.existsSync(primary)) {
+    paths.push(primary);
+    // Check for additional slots
+    for (let slot = 1; slot <= 4; slot++) {
+      const p = path.join(IMAGE_DIR, `${id}_${slot}.jpg`);
+      if (fs.existsSync(p)) paths.push(p); else break;
+    }
+    return paths;
+  }
+
+  // Fallback: strip title prefixes and try the base unit
+  if (!db) return paths;
+  const ws = db.prepare('SELECT name FROM warscrolls WHERE id = ?').get(id);
+  if (!ws) return paths;
+  for (const prefix of TITLE_PREFIXES) {
+    if (ws.name.startsWith(prefix + ' ')) {
+      const baseName = ws.name.slice(prefix.length + 1);
+      const base = db.prepare('SELECT id FROM warscrolls WHERE name = ?').get(baseName);
+      if (base) return resolveImagePaths(base.id, null);
+    }
+  }
+  return paths;
+}
+
+// GET /api/unit-images/:id — return JSON list of image URLs for a unit
+app.get('/api/unit-images/:id', (req, res) => {
   const id = parseInt(req.params.id);
   if (!id) return res.status(400).json({ error: 'Invalid id' });
-
-  const imgPath = path.join(IMAGE_DIR, `${id}.jpg`);
-  if (fs.existsSync(imgPath)) return serveImage(imgPath, res);
-
-  // Fallback: strip title prefixes and try serving the base unit's image
   const db = getDb();
   try {
-    const ws = db.prepare('SELECT name FROM warscrolls WHERE id = ?').get(id);
-    if (!ws) return res.status(404).json({ error: 'Not found' });
-
-    for (const prefix of TITLE_PREFIXES) {
-      if (ws.name.startsWith(prefix + ' ')) {
-        const baseName = ws.name.slice(prefix.length + 1);
-        const base = db.prepare('SELECT id FROM warscrolls WHERE name = ?').get(baseName);
-        if (base) {
-          const basePath = path.join(IMAGE_DIR, `${base.id}.jpg`);
-          if (fs.existsSync(basePath)) return serveImage(basePath, res);
-        }
-      }
-    }
+    const paths = resolveImagePaths(id, db);
+    const base = process.env.REACT_APP_API_URL || '';
+    const urls = paths.map((_, i) =>
+      i === 0 ? `${base}/api/unit-image/${id}` : `${base}/api/unit-image/${id}?slot=${i}`
+    );
+    res.json(urls);
   } finally {
     db.close();
   }
+});
 
-  return res.status(404).json({ error: 'No image' });
+// GET /api/unit-image/:id — serve unit image (slot 0 by default, or ?slot=N)
+app.get('/api/unit-image/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  const slot = parseInt(req.query.slot || '0');
+  if (!id) return res.status(400).json({ error: 'Invalid id' });
+
+  if (slot > 0) {
+    const imgPath = path.join(IMAGE_DIR, `${id}_${slot}.jpg`);
+    if (fs.existsSync(imgPath)) return serveImage(imgPath, res);
+    return res.status(404).json({ error: 'No image' });
+  }
+
+  const db = getDb();
+  try {
+    const paths = resolveImagePaths(id, db);
+    if (paths.length > 0) return serveImage(paths[0], res);
+    return res.status(404).json({ error: 'No image' });
+  } finally {
+    db.close();
+  }
 });
 
 // PUT /api/unit-image/:id — upload image from local scraper script
+// Optional ?slot=N for multi-image units (slot 0 = primary, 1 = secondary, etc.)
 // Protected by UPLOAD_SECRET env var (not user JWT)
 app.put('/api/unit-image/:id', express.raw({ type: 'image/jpeg', limit: '2mb' }), (req, res) => {
   const secret = process.env.UPLOAD_SECRET;
@@ -383,19 +420,20 @@ app.put('/api/unit-image/:id', express.raw({ type: 'image/jpeg', limit: '2mb' })
     return res.status(401).json({ error: 'Unauthorized' });
   }
   const id = parseInt(req.params.id);
+  const slot = parseInt(req.query.slot || '0');
   if (!id || !req.body || !req.body.length) {
     return res.status(400).json({ error: 'Invalid request' });
   }
 
   if (!fs.existsSync(IMAGE_DIR)) fs.mkdirSync(IMAGE_DIR, { recursive: true });
 
-  const imgPath = path.join(IMAGE_DIR, `${id}.jpg`);
+  const filename = slot === 0 ? `${id}.jpg` : `${id}_${slot}.jpg`;
+  const imgPath = path.join(IMAGE_DIR, filename);
   fs.writeFileSync(imgPath, req.body);
 
-  // Update image_path in DB
   const db = getDb();
   try {
-    db.prepare('UPDATE warscrolls SET image_path = ? WHERE id = ?').run(imgPath, id);
+    if (slot === 0) db.prepare('UPDATE warscrolls SET image_path = ? WHERE id = ?').run(imgPath, id);
   } finally {
     db.close();
   }

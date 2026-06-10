@@ -83,13 +83,19 @@ export default function WarscrollDetail({ unit, onClose }) {
   const weapons   = React.useMemo(() => { try { return JSON.parse(unit.weapons   || '[]'); } catch { return []; } }, [unit]);
   const abilities = React.useMemo(() => { try { return JSON.parse(unit.abilities || '[]'); } catch { return []; } }, [unit]);
 
-  const [imageUrl, setImageUrl] = useState(null);
+  const [imageUrls, setImageUrls] = useState([]);
 
   useEffect(() => {
-    setImageUrl(null);
+    setImageUrls([]);
     if (!unit?.id) return;
     const base = axios.defaults.baseURL || '';
-    setImageUrl(`${base}/api/unit-image/${unit.id}`);
+    axios.get(`/api/unit-images/${unit.id}`)
+      .then(r => setImageUrls(r.data || []))
+      .catch(() => {
+        // Fallback: try single image
+        const url = `${base}/api/unit-image/${unit.id}`;
+        setImageUrls([url]);
+      });
   }, [unit?.id]);
 
   useEffect(() => {
@@ -106,15 +112,18 @@ export default function WarscrollDetail({ unit, onClose }) {
       <div className="detail-panel">
         <button className="detail-close" onClick={onClose}>✕</button>
 
-        {/* Unit image */}
-        {imageUrl && (
-          <div className="detail-image-wrap">
-            <img
-              src={imageUrl}
-              alt={unit.name}
-              className="detail-unit-image"
-              onError={e => { e.target.style.display = 'none'; }}
-            />
+        {/* Unit image(s) */}
+        {imageUrls.length > 0 && (
+          <div className={`detail-image-wrap${imageUrls.length > 1 ? ' multi' : ''}`}>
+            {imageUrls.map((url, i) => (
+              <img
+                key={i}
+                src={url}
+                alt={`${unit.name}${imageUrls.length > 1 ? ` ${i + 1}` : ''}`}
+                className="detail-unit-image"
+                onError={e => { e.target.style.display = 'none'; }}
+              />
+            ))}
           </div>
         )}
 
