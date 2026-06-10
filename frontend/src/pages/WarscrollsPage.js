@@ -118,6 +118,21 @@ export default function WarscrollsPage() {
   }, [search, faction, enemyFaction, alliance, isHero, isMonster, isInfantry, isCavalry,
       isWarMachine, isTerrain, hideLegends, hideOtherFactions, showFriendly, showEnemy, sortBy, sortDir]);
 
+  // Per-faction filtered counts when hideOtherFactions is active
+  const [filteredCounts, setFilteredCounts] = useState({});
+  useEffect(() => {
+    if (!hideOtherFactions) { setFilteredCounts({}); return; }
+    const slugs = [faction, enemyFaction].filter(Boolean);
+    if (slugs.length === 0) { setFilteredCounts({}); return; }
+    Promise.all(
+      slugs.map(slug =>
+        axios.get('/api/warscrolls', { params: { faction: slug, hideOtherFactions: '1', pageSize: 1, page: 1, ...(hideLegends ? { isLegends: '0' } : {}) } })
+          .then(r => [slug, r.data.total])
+          .catch(() => [slug, null])
+      )
+    ).then(entries => setFilteredCounts(Object.fromEntries(entries)));
+  }, [hideOtherFactions, faction, enemyFaction, hideLegends]);
+
   // User unit flags: { [warscrollId]: { is_friendly, is_enemy } }
   const [userUnits, setUserUnits] = useState({});
 
@@ -302,7 +317,7 @@ export default function WarscrollsPage() {
             factions={filteredFactions}
             value={faction}
             onChange={v => { setFaction(v); setPage(1); }}
-            liveCount={faction && !enemyFaction ? data?.total : undefined}
+            liveCount={faction ? (filteredCounts[faction] ?? (enemyFaction ? undefined : data?.total)) : undefined}
           />
         </div>
 
@@ -312,7 +327,7 @@ export default function WarscrollsPage() {
             factions={filteredFactions}
             value={enemyFaction}
             onChange={v => { setEnemyFaction(v); setPage(1); }}
-            liveCount={enemyFaction && !faction ? data?.total : undefined}
+            liveCount={enemyFaction ? (filteredCounts[enemyFaction] ?? (faction ? undefined : data?.total)) : undefined}
           />
         </div>
 
