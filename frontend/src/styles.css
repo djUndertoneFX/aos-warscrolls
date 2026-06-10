@@ -703,10 +703,10 @@ td.col-keywords {
   transition: all 0.15s;
 }
 .flag-check.friendly { border-color: rgba(90,170,110,0.3); }
-.flag-check.friendly:hover, tr:hover .flag-check.friendly { border-color: var(--friendly-color); color: rgba(90,170,110,0.4); }
+.flag-check.friendly:hover { border-color: var(--friendly-color); color: rgba(90,170,110,0.4); }
 .flag-check.friendly.active { background: rgba(90,170,110,0.15); border-color: var(--friendly-color); color: var(--friendly-color); }
 .flag-check.enemy { border-color: rgba(204,85,85,0.3); }
-.flag-check.enemy:hover, tr:hover .flag-check.enemy { border-color: var(--enemy-color); color: rgba(204,85,85,0.4); }
+.flag-check.enemy:hover { border-color: var(--enemy-color); color: rgba(204,85,85,0.4); }
 .flag-check.enemy.active { background: rgba(204,85,85,0.15); border-color: var(--enemy-color); color: var(--enemy-color); }
 
 /* ── Unit name click target ── */
