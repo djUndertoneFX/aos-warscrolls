@@ -1,6 +1,15 @@
 ﻿const fetch = require('node-fetch');
 const cheerio = require('cheerio');
+const fs = require('fs');
+const path = require('path');
 const { getDb, initDb } = require('./db');
+
+const IMAGE_DIR = process.env.IMAGE_DIR ||
+  (process.env.DB_PATH
+    ? path.join(path.dirname(process.env.DB_PATH), 'unit-images')
+    : path.join(__dirname, 'unit-images'));
+
+const LEXICANUM_BASE = 'https://ageofsigmar.lexicanum.com';
 
 const BASE_URL = 'https://wahapedia.ru/aos4/factions';
 
@@ -350,7 +359,147 @@ async function scrapeAll() {
   console.log(`\n✅ Scraping complete! Saved ${totalUnits} warscrolls to database.`);
 }
 
-scrapeAll().catch(err => {
-  console.error('Scraper failed:', err);
-  process.exit(1);
-});
+// ── Image scraping from Lexicanum ────────────────────────────────────────────
+
+function normalizeName(str) {
+  return str
+    .toLowerCase()
+    .replace(/[''`]/g, "'")
+    .replace(/[^a-z0-9 ']/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+async function scrapeImages() {
+  if (!fs.existsSync(IMAGE_DIR)) {
+    fs.mkdirSync(IMAGE_DIR, { recursive: true });
+  }
+
+  const db = getDb();
+
+  console.log('\n📷 Scraping unit images from Lexicanum...');
+
+  let html;
+  try {
+    const res = await fetch(`${LEXICANUM_BASE}/wiki/List_of_units`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Referer': 'https://ageofsigmar.lexicanum.com/',
+      },
+    });
+    if (!res.ok) {
+      console.error(`  Lexicanum fetch failed: HTTP ${res.status}`);
+      db.close();
+      return;
+    }
+    html = await res.text();
+  } catch (err) {
+    console.error('  Lexicanum fetch error:', err.message);
+    db.close();
+    return;
+  }
+
+  const $ = cheerio.load(html);
+
+  // Build map: normalizedName -> imageUrl
+  const imageMap = {};
+  $('table tr').each((_, tr) => {
+    const cells = $(tr).find('td');
+    if (cells.length < 2) return;
+
+    // Image is usually in first cell, name in second
+    let imgSrc = null;
+    const img = $(cells[0]).find('img').first();
+    if (img.length) {
+      imgSrc = img.attr('src') || img.attr('data-src') || '';
+      if (imgSrc && !imgSrc.startsWith('http')) {
+        imgSrc = LEXICANUM_BASE + imgSrc;
+      }
+    }
+
+    // Get unit name from the row — try second cell first, then first cell text
+    let unitName = $(cells[1]).text().trim() || $(cells[0]).text().trim();
+    // Strip any sub-text in parens like "(Legend)"
+    unitName = unitName.replace(/\s*\(.*?\)\s*/g, '').trim();
+
+    if (unitName && imgSrc && imgSrc.includes('/mediawiki/')) {
+      const key = normalizeName(unitName);
+      if (key && !imageMap[key]) {
+        imageMap[key] = imgSrc;
+      }
+    }
+  });
+
+  console.log(`  Found ${Object.keys(imageMap).length} image entries on Lexicanum`);
+
+  // Load all warscrolls from DB
+  const warscrolls = db.prepare('SELECT id, name FROM warscrolls').all();
+  const updateStmt = db.prepare('UPDATE warscrolls SET image_path = ? WHERE id = ?');
+
+  let matched = 0;
+  let downloaded = 0;
+
+  for (const ws of warscrolls) {
+    const key = normalizeName(ws.name);
+    let imgUrl = imageMap[key];
+
+    // Fallback: try partial match
+    if (!imgUrl) {
+      for (const [k, v] of Object.entries(imageMap)) {
+        if (k.startsWith(key) || key.startsWith(k)) {
+          imgUrl = v;
+          break;
+        }
+      }
+    }
+
+    if (!imgUrl) continue;
+    matched++;
+
+    const imgPath = path.join(IMAGE_DIR, `${ws.id}.jpg`);
+
+    // Skip download if already exists
+    if (!fs.existsSync(imgPath)) {
+      try {
+        const imgRes = await fetch(imgUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Referer': `${LEXICANUM_BASE}/wiki/List_of_units`,
+          },
+        });
+        if (imgRes.ok) {
+          const buf = await imgRes.buffer();
+          fs.writeFileSync(imgPath, buf);
+          downloaded++;
+          await sleep(200); // polite delay
+        } else {
+          console.warn(`  Image fetch failed for "${ws.name}": HTTP ${imgRes.status}`);
+          continue;
+        }
+      } catch (err) {
+        console.warn(`  Image download error for "${ws.name}": ${err.message}`);
+        continue;
+      }
+    } else {
+      downloaded++; // already on disk
+    }
+
+    updateStmt.run(imgPath, ws.id);
+  }
+
+  db.close();
+  console.log(`  Matched ${matched} units, images saved for ${downloaded}`);
+}
+
+// ── Entry points ──────────────────────────────────────────────────────────────
+
+if (require.main === module) {
+  scrapeAll().catch(err => {
+    console.error('Scraper failed:', err);
+    process.exit(1);
+  });
+}
+
+module.exports = { scrapeImages };

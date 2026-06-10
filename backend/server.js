@@ -5,7 +5,14 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
+const fs = require('fs');
+const path = require('path');
 const { getDb, initDb } = require('./db');
+
+const IMAGE_DIR = process.env.IMAGE_DIR ||
+  (process.env.DB_PATH
+    ? path.join(path.dirname(process.env.DB_PATH), 'unit-images')
+    : path.join(__dirname, 'unit-images'));
 
 // ─── Email transporter ───────────────────────────────────────────────────────
 function createTransporter() {
@@ -324,6 +331,20 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
   } finally {
     db.close();
   }
+});
+
+// GET /api/unit-image/:id — serve unit image from persistent volume
+app.get('/api/unit-image/:id', requireAuth, (req, res) => {
+  const id = parseInt(req.params.id);
+  if (!id) return res.status(400).json({ error: 'Invalid id' });
+
+  const imgPath = path.join(IMAGE_DIR, `${id}.jpg`);
+  if (!fs.existsSync(imgPath)) {
+    return res.status(404).json({ error: 'No image' });
+  }
+  res.setHeader('Content-Type', 'image/jpeg');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  fs.createReadStream(imgPath).pipe(res);
 });
 
 // GET /api/warscrolls/:id

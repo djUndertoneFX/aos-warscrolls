@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
 
 function StatBox({ label, value }) {
   if (!value) return null;
@@ -82,6 +83,16 @@ export default function WarscrollDetail({ unit, onClose }) {
   const weapons   = React.useMemo(() => { try { return JSON.parse(unit.weapons   || '[]'); } catch { return []; } }, [unit]);
   const abilities = React.useMemo(() => { try { return JSON.parse(unit.abilities || '[]'); } catch { return []; } }, [unit]);
 
+  const [imageUrl, setImageUrl] = useState(null);
+
+  useEffect(() => {
+    setImageUrl(null);
+    if (!unit?.id) return;
+    // Check if the image exists; use the URL if it responds 200
+    const url = `/api/unit-image/${unit.id}`;
+    axios.head(url).then(() => setImageUrl(url)).catch(() => {});
+  }, [unit?.id]);
+
   useEffect(() => {
     const handler = (e) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', handler);
@@ -95,6 +106,13 @@ export default function WarscrollDetail({ unit, onClose }) {
       <div className="detail-overlay" onClick={onClose} />
       <div className="detail-panel">
         <button className="detail-close" onClick={onClose}>✕</button>
+
+        {/* Unit image */}
+        {imageUrl && (
+          <div className="detail-image-wrap">
+            <img src={imageUrl} alt={unit.name} className="detail-unit-image" />
+          </div>
+        )}
 
         {/* Header */}
         <div className="detail-header">
