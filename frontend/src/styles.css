@@ -411,6 +411,27 @@ input, select {
   flex-wrap: wrap;
 }
 .cb-group-left  { justify-content: flex-start; margin-right: auto; }
+.btn-both-toggle {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-dim);
+  font-size: 0.7rem;
+  padding: 1px 5px;
+  cursor: pointer;
+  line-height: 1;
+  letter-spacing: -1px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.btn-both-toggle:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.btn-both-toggle.active {
+  background: rgba(201,168,76,0.15);
+  border-color: var(--gold);
+  color: var(--gold);
+}
 .cb-group-center{ justify-content: center; flex: 1; }
 .cb-group-right { justify-content: flex-end; margin-left: auto; }
 .cb-item {

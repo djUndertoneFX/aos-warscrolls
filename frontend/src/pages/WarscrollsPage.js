@@ -337,6 +337,14 @@ export default function WarscrollsPage() {
               <input type="checkbox" id="cb-friendly" checked={showFriendly} onChange={e => { setShowFriendly(e.target.checked); setPage(1); }} />
               <span style={{color:'var(--friendly-color)'}}>Friendly</span>
             </label>
+            <button
+              className={`btn-both-toggle${showFriendly && showEnemy ? ' active' : ''}`}
+              title="Toggle both Friendly and Enemy"
+              onClick={() => {
+                const next = !(showFriendly && showEnemy);
+                setShowFriendly(next); setShowEnemy(next); setPage(1);
+              }}
+            >◄►</button>
             <label className="cb-item">
               <input type="checkbox" id="cb-enemy" checked={showEnemy} onChange={e => { setShowEnemy(e.target.checked); setPage(1); }} />
               <span style={{color:'var(--enemy-color)'}}>Enemy</span>
