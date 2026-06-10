@@ -347,6 +347,34 @@ app.get('/api/unit-image/:id', requireAuth, (req, res) => {
   fs.createReadStream(imgPath).pipe(res);
 });
 
+// PUT /api/unit-image/:id — upload image from local scraper script
+// Protected by UPLOAD_SECRET env var (not user JWT)
+app.put('/api/unit-image/:id', express.raw({ type: 'image/jpeg', limit: '2mb' }), (req, res) => {
+  const secret = process.env.UPLOAD_SECRET;
+  if (!secret || req.headers['x-upload-secret'] !== secret) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  const id = parseInt(req.params.id);
+  if (!id || !req.body || !req.body.length) {
+    return res.status(400).json({ error: 'Invalid request' });
+  }
+
+  if (!fs.existsSync(IMAGE_DIR)) fs.mkdirSync(IMAGE_DIR, { recursive: true });
+
+  const imgPath = path.join(IMAGE_DIR, `${id}.jpg`);
+  fs.writeFileSync(imgPath, req.body);
+
+  // Update image_path in DB
+  const db = getDb();
+  try {
+    db.prepare('UPDATE warscrolls SET image_path = ? WHERE id = ?').run(imgPath, id);
+  } finally {
+    db.close();
+  }
+
+  res.json({ ok: true });
+});
+
 // GET /api/warscrolls/:id
 app.get('/api/warscrolls/:id', requireAuth, (req, res) => {
   const db = getDb();
