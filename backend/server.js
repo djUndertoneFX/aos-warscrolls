@@ -229,48 +229,18 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
   const col = allowedSort.includes(sortBy) ? sortBy : 'faction';
   const dir = sortDir === 'desc' ? 'DESC' : 'ASC';
 
-  // ── Pre-check mark counts so we can decide how each filter side behaves ──
-  let friendlyCount = 0, enemyCount = 0;
-  if (showFriendly === '1' || showEnemy === '1') {
-    const dbCount = getDb();
-    try {
-      if (showFriendly === '1')
-        friendlyCount = dbCount.prepare('SELECT COUNT(*) as c FROM user_units WHERE user_id = ? AND is_friendly = 1').get(req.user.id).c;
-      if (showEnemy === '1')
-        enemyCount = dbCount.prepare('SELECT COUNT(*) as c FROM user_units WHERE user_id = ? AND is_enemy = 1').get(req.user.id).c;
-    } finally { dbCount.close(); }
-  }
-  // "byFaction" = filter is on but no marks exist → show entire faction from dropdown
-  // "byMark"    = filter is on and marks exist   → show only individually-marked units
-  const friendlyByFaction = showFriendly === '1' && friendlyCount === 0;
-  const enemyByFaction    = showEnemy    === '1' && enemyCount    === 0;
-  const friendlyByMark    = showFriendly === '1' && friendlyCount  > 0;
-  const enemyByMark       = showEnemy    === '1' && enemyCount     > 0;
-  const filterActive      = showFriendly === '1' || showEnemy === '1';
-
   const conditions = [];
   const params = [];
 
-  // ── Faction slug filter ──────────────────────────────────────────────────
-  // When a byFaction filter is active, its side drives the slug restriction
-  // (replacing the dropdown-driven OR condition for that side).
-  // When byMark, the JOIN handles it — no slug restriction needed for that side.
-  {
-    let slugs = [];
-    if (filterActive) {
-      if (friendlyByFaction && faction)    slugs.push(faction);
-      if (enemyByFaction   && enemyFaction) slugs.push(enemyFaction);
-      // byMark sides: no slug restriction here (JOIN handles visibility)
-      // If neither side contributes a slug (both byMark), skip slug condition entirely
-    } else {
-      if (faction)      slugs.push(faction);
-      if (enemyFaction) slugs.push(enemyFaction);
-    }
-    if (slugs.length === 1) {
-      conditions.push('w.faction_slug = ?'); params.push(slugs[0]);
-    } else if (slugs.length >= 2) {
-      conditions.push('(w.faction_slug = ? OR w.faction_slug = ?)'); params.push(slugs[0], slugs[1]);
-    }
+  // Faction slug filter — frontend has already computed which slugs to send
+  // based on whether friendly/enemy marks exist (byFaction vs byMark logic).
+  if (faction && enemyFaction) {
+    conditions.push('(w.faction_slug = ? OR w.faction_slug = ?)');
+    params.push(faction, enemyFaction);
+  } else if (faction) {
+    conditions.push('w.faction_slug = ?'); params.push(faction);
+  } else if (enemyFaction) {
+    conditions.push('w.faction_slug = ?'); params.push(enemyFaction);
   }
 
   if (alliance) { conditions.push('w.grand_alliance = ?'); params.push(alliance); }
@@ -306,23 +276,16 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
     }
   }
 
-  // ── Mark-based JOIN filter ───────────────────────────────────────────────
-  // Only needed when at least one side has actual marks.
-  // byFaction sides are already handled by the slug condition above.
+  // Mark-based JOIN — only active when frontend sends showFriendly/showEnemy,
+  // which it only does when the user actually has marked units.
   let join = '';
-  if (friendlyByMark || enemyByMark) {
-    const orParts = [];
-    const markExtraParams = [];
-    if (friendlyByMark) orParts.push('uu.is_friendly = 1');
-    if (enemyByMark)    orParts.push('uu.is_enemy = 1');
-    // If the OTHER side has no marks, include its faction slug in the OR so those units show too
-    if (friendlyByFaction && faction)    { orParts.push('w.faction_slug = ?'); markExtraParams.push(faction); }
-    if (enemyByFaction   && enemyFaction) { orParts.push('w.faction_slug = ?'); markExtraParams.push(enemyFaction); }
-
-    conditions.push(`(${orParts.join(' OR ')})`);
-    params.push(...markExtraParams);
-    join = `LEFT JOIN user_units uu ON uu.warscroll_id = w.id AND uu.user_id = ?`;
+  if (showFriendly === '1' || showEnemy === '1') {
+    join = `JOIN user_units uu ON uu.warscroll_id = w.id AND uu.user_id = ?`;
     params.unshift(req.user.id);
+    const flags = [];
+    if (showFriendly === '1') flags.push('uu.is_friendly = 1');
+    if (showEnemy    === '1') flags.push('uu.is_enemy = 1');
+    conditions.push(`(${flags.join(' OR ')})`);
   }
 
   const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';

@@ -160,8 +160,26 @@ export default function WarscrollsPage() {
     setLoading(true);
     setError('');
     try {
+      // Decide how each filter side behaves based on whether marks exist
+      const hasFriendlyMarks = Object.values(userUnits).some(u => u.is_friendly);
+      const hasEnemyMarks    = Object.values(userUnits).some(u => u.is_enemy);
+
+      // "byFaction" = filter on but no marks → show the whole faction from the dropdown
+      const friendlyByFaction = showFriendly && !hasFriendlyMarks;
+      const enemyByFaction    = showEnemy    && !hasEnemyMarks;
+
+      // Control which faction slugs reach the backend
+      // If only one side is a faction-filter, suppress the other so it doesn't bleed through
+      let qFaction      = faction;
+      let qEnemyFaction = enemyFaction;
+      if (friendlyByFaction && !enemyByFaction && !showEnemy) qEnemyFaction = '';
+      if (enemyByFaction    && !friendlyByFaction && !showFriendly) qFaction = '';
+
       const params = {
-        search, faction, enemyFaction, alliance,
+        search,
+        faction: qFaction,
+        enemyFaction: qEnemyFaction,
+        alliance,
         sortBy, sortDir, page,
         pageSize: PAGE_SIZE,
         ...(isHero       ? { isHero: '1' }       : {}),
@@ -172,8 +190,9 @@ export default function WarscrollsPage() {
         ...(isTerrain    ? { isTerrain: '1' }   : {}),
         ...(hideLegends        ? { isLegends: '0' }          : {}),
         ...(hideOtherFactions  ? { hideOtherFactions: '1' }  : {}),
-        ...(showFriendly ? { showFriendly: '1' } : {}),
-        ...(showEnemy    ? { showEnemy: '1' }    : {}),
+        // Only send mark-based filters to backend when marks actually exist
+        ...(showFriendly && hasFriendlyMarks ? { showFriendly: '1' } : {}),
+        ...(showEnemy    && hasEnemyMarks    ? { showEnemy: '1' }    : {}),
       };
       const res = await axios.get('/api/warscrolls', { params });
       setData(res.data);
@@ -182,7 +201,7 @@ export default function WarscrollsPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, faction, enemyFaction, alliance, sortBy, sortDir, page, isHero, isMonster, isInfantry, isCavalry, isWarMachine, isTerrain, hideLegends, hideOtherFactions, showFriendly, showEnemy]);
+  }, [search, faction, enemyFaction, alliance, sortBy, sortDir, page, isHero, isMonster, isInfantry, isCavalry, isWarMachine, isTerrain, hideLegends, hideOtherFactions, showFriendly, showEnemy, userUnits]);
 
   // Load user's friendly/enemy flags once on mount
   useEffect(() => {
