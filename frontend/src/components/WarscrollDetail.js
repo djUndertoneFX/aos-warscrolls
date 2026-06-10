@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import axios from 'axios';
 
 function StatBox({ label, value }) {
   if (!value) return null;
@@ -87,7 +88,8 @@ export default function WarscrollDetail({ unit, onClose }) {
   useEffect(() => {
     setImageUrl(null);
     if (!unit?.id) return;
-    setImageUrl(`/api/unit-image/${unit.id}`);
+    const base = axios.defaults.baseURL || '';
+    setImageUrl(`${base}/api/unit-image/${unit.id}`);
   }, [unit?.id]);
 
   useEffect(() => {
