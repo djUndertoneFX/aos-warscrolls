@@ -34,11 +34,12 @@ function TypeTags({ row }) {
   );
 }
 
-function FactionDropdown({ factions, value, onChange }) {
+function FactionDropdown({ factions, value, onChange, liveCount }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const selected = factions.find(f => f.faction_slug === value);
-  const label = selected ? `${selected.faction} (${selected.unit_count})` : 'All Factions';
+  const displayCount = (selected && liveCount != null) ? liveCount : selected?.unit_count;
+  const label = selected ? `${selected.faction} (${displayCount})` : 'All Factions';
 
   useEffect(() => {
     if (!open) return;
@@ -301,6 +302,7 @@ export default function WarscrollsPage() {
             factions={filteredFactions}
             value={faction}
             onChange={v => { setFaction(v); setPage(1); }}
+            liveCount={hideOtherFactions && faction && !enemyFaction ? data?.total : undefined}
           />
         </div>
 
@@ -310,6 +312,7 @@ export default function WarscrollsPage() {
             factions={filteredFactions}
             value={enemyFaction}
             onChange={v => { setEnemyFaction(v); setPage(1); }}
+            liveCount={hideOtherFactions && enemyFaction && !faction ? data?.total : undefined}
           />
         </div>
 
