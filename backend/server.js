@@ -278,15 +278,47 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
     }
   }
 
-  // Friendly/enemy filter via JOIN
+  // Friendly/enemy filter:
+  // If the user has marked units, show only those marked rows (JOIN).
+  // If no units are marked for that side, fall back to showing all units
+  // from the corresponding faction dropdown.
   let join = '';
   if (showFriendly === '1' || showEnemy === '1') {
-    join = `JOIN user_units uu ON uu.warscroll_id = w.id AND uu.user_id = ?`;
-    params.unshift(req.user.id);
-    const flags = [];
-    if (showFriendly === '1') flags.push('uu.is_friendly = 1');
-    if (showEnemy    === '1') flags.push('uu.is_enemy = 1');
-    conditions.push(`(${flags.join(' OR ')})`);
+    const db0 = getDb();
+    const friendlyCount = showFriendly === '1'
+      ? db0.prepare('SELECT COUNT(*) as c FROM user_units WHERE user_id = ? AND is_friendly = 1').get(req.user.id).c
+      : 0;
+    const enemyCount = showEnemy === '1'
+      ? db0.prepare('SELECT COUNT(*) as c FROM user_units WHERE user_id = ? AND is_enemy = 1').get(req.user.id).c
+      : 0;
+    db0.close();
+
+    const needsJoin = (showFriendly === '1' && friendlyCount > 0) || (showEnemy === '1' && enemyCount > 0);
+    const orParts = [];
+
+    if (showFriendly === '1') {
+      if (friendlyCount > 0) {
+        orParts.push('uu.is_friendly = 1');
+      } else if (faction) {
+        orParts.push('w.faction_slug = ?');
+        params.push(faction);
+      }
+    }
+    if (showEnemy === '1') {
+      if (enemyCount > 0) {
+        orParts.push('uu.is_enemy = 1');
+      } else if (enemyFaction) {
+        orParts.push('w.faction_slug = ?');
+        params.push(enemyFaction);
+      }
+    }
+
+    if (orParts.length > 0) conditions.push(`(${orParts.join(' OR ')})`);
+
+    if (needsJoin) {
+      join = `LEFT JOIN user_units uu ON uu.warscroll_id = w.id AND uu.user_id = ?`;
+      params.unshift(req.user.id);
+    }
   }
 
   const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
