@@ -14,6 +14,11 @@ const IMAGE_DIR = process.env.IMAGE_DIR ||
     ? path.join(path.dirname(process.env.DB_PATH), 'unit-images')
     : path.join(__dirname, 'unit-images'));
 
+// Seasonal/title prefixes prepended to unit names — strip these to find the base unit image
+const TITLE_PREFIXES = [
+  'Scourge of Ghyran',
+];
+
 // ─── Email transporter ───────────────────────────────────────────────────────
 function createTransporter() {
   return nodemailer.createTransport({
@@ -333,18 +338,41 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
   }
 });
 
+function serveImage(imgPath, res) {
+  res.setHeader('Content-Type', 'image/jpeg');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  fs.createReadStream(imgPath).pipe(res);
+}
+
 // GET /api/unit-image/:id — serve unit image from persistent volume (no auth needed)
 app.get('/api/unit-image/:id', (req, res) => {
   const id = parseInt(req.params.id);
   if (!id) return res.status(400).json({ error: 'Invalid id' });
 
   const imgPath = path.join(IMAGE_DIR, `${id}.jpg`);
-  if (!fs.existsSync(imgPath)) {
-    return res.status(404).json({ error: 'No image' });
+  if (fs.existsSync(imgPath)) return serveImage(imgPath, res);
+
+  // Fallback: strip title prefixes and try serving the base unit's image
+  const db = getDb();
+  try {
+    const ws = db.prepare('SELECT name FROM warscrolls WHERE id = ?').get(id);
+    if (!ws) return res.status(404).json({ error: 'Not found' });
+
+    for (const prefix of TITLE_PREFIXES) {
+      if (ws.name.startsWith(prefix + ' ')) {
+        const baseName = ws.name.slice(prefix.length + 1);
+        const base = db.prepare('SELECT id FROM warscrolls WHERE name = ?').get(baseName);
+        if (base) {
+          const basePath = path.join(IMAGE_DIR, `${base.id}.jpg`);
+          if (fs.existsSync(basePath)) return serveImage(basePath, res);
+        }
+      }
+    }
+  } finally {
+    db.close();
   }
-  res.setHeader('Content-Type', 'image/jpeg');
-  res.setHeader('Cache-Control', 'public, max-age=86400');
-  fs.createReadStream(imgPath).pipe(res);
+
+  return res.status(404).json({ error: 'No image' });
 });
 
 // PUT /api/unit-image/:id — upload image from local scraper script

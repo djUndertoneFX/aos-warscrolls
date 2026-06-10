@@ -64,6 +64,11 @@ function safeFilename(str) {
   return str.replace(/[/\\:*?"<>|]/g, '-').replace(/\s+/g, ' ').trim();
 }
 
+// Seasonal/title prefixes — strip these to find the base unit image
+const TITLE_PREFIXES = [
+  'scourge of ghyran',
+];
+
 // Score how well two normalized names match (0 = no match, 1 = exact)
 function matchScore(a, b) {
   if (a === b) return 1;
@@ -189,6 +194,21 @@ async function main() {
         if (score > bestScore) { bestScore = score; imgUrl = v; }
       }
     }
+    // Title prefix fallback: strip prefix and match base unit name
+    if (!imgUrl) {
+      for (const prefix of TITLE_PREFIXES) {
+        if (key.startsWith(prefix + ' ')) {
+          const baseName = key.slice(prefix.length + 1);
+          if (imageMap[baseName]) { imgUrl = imageMap[baseName]; bestScore = 0.9; break; }
+          for (const [k, v] of imageMapEntries) {
+            const score = matchScore(baseName, k);
+            if (score > bestScore) { bestScore = score; imgUrl = v; }
+          }
+          break;
+        }
+      }
+    }
+
     if (!imgUrl) continue;
     matched++;
 
