@@ -492,25 +492,25 @@ th.sort-active { color: var(--gold); }
 table[data-sort] th.sort-active {
   background: rgba(201,168,76,0.12);
 }
-table[data-sort="name"]          td:nth-child(4),
-table[data-sort="faction"]       td:nth-child(5),
-table[data-sort="grand_alliance"] td:nth-child(6),
-table[data-sort="move"]          td:nth-child(7),
-table[data-sort="health"]        td:nth-child(8),
-table[data-sort="control"]       td:nth-child(9),
-table[data-sort="save"]          td:nth-child(10),
-table[data-sort="points"]        td:nth-child(11) {
+table[data-sort="name"]          td:nth-child(5),
+table[data-sort="faction"]       td:nth-child(6),
+table[data-sort="grand_alliance"] td:nth-child(7),
+table[data-sort="move"]          td:nth-child(8),
+table[data-sort="health"]        td:nth-child(9),
+table[data-sort="control"]       td:nth-child(10),
+table[data-sort="save"]          td:nth-child(11),
+table[data-sort="points"]        td:nth-child(12) {
   background: rgba(201,168,76,0.06);
 }
 /* Stronger tint on the active header cell itself */
-table[data-sort="name"]          th:nth-child(4),
-table[data-sort="faction"]       th:nth-child(5),
-table[data-sort="grand_alliance"] th:nth-child(6),
-table[data-sort="move"]          th:nth-child(7),
-table[data-sort="health"]        th:nth-child(8),
-table[data-sort="control"]       th:nth-child(9),
-table[data-sort="save"]          th:nth-child(10),
-table[data-sort="points"]        th:nth-child(11) {
+table[data-sort="name"]          th:nth-child(5),
+table[data-sort="faction"]       th:nth-child(6),
+table[data-sort="grand_alliance"] th:nth-child(7),
+table[data-sort="move"]          th:nth-child(8),
+table[data-sort="health"]        th:nth-child(9),
+table[data-sort="control"]       th:nth-child(10),
+table[data-sort="save"]          th:nth-child(11),
+table[data-sort="points"]        th:nth-child(12) {
   background: rgba(201,168,76,0.14);
 }
 
@@ -653,6 +653,14 @@ td.col-keywords {
 }
 
 /* ── Friendly / Enemy flag columns ── */
+.col-rownum {
+  text-align: right;
+  padding: 0 6px 0 4px !important;
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
 .col-flag {
   text-align: center;
   width: 36px;

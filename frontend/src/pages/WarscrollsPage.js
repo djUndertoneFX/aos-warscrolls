@@ -217,7 +217,7 @@ export default function WarscrollsPage() {
 
   // ── Column resizing ──────────────────────────────────────────────────────
   const DEFAULT_COL_WIDTHS = {
-    friendly: 38, enemy: 38, expand: 30,
+    rownum: 36, friendly: 38, enemy: 38, expand: 30,
     name: 240, faction: 150, alliance: 82,
     move: 46, health: 46, control: 46, save: 46, points: 52,
     types: 100, keywords: 200,
@@ -381,6 +381,7 @@ export default function WarscrollsPage() {
             <table data-sort={sortBy}>
               <thead>
                 <tr>
+                  <th style={{...thStyle('rownum'), textAlign:'right'}} title="Row number"><span className="th-abbr" style={{color:'var(--text-dim)'}}>#</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'rownum')} /></th>
                   <th style={{...thStyle('friendly'), color:'var(--friendly-color)'}} title="Friendly"><span className="th-abbr" style={{color:'var(--friendly-color)'}}>F</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'friendly')} /></th>
                   <th style={{...thStyle('enemy'), color:'var(--enemy-color)'}} title="Enemy"><span className="th-abbr" style={{color:'var(--enemy-color)'}}>E</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'enemy')} /></th>
                   <th style={thStyle('expand')}><span className="col-resize-handle" onMouseDown={e => startResize(e,'expand')} /></th>
@@ -406,7 +407,8 @@ export default function WarscrollsPage() {
                 </tr>
               </thead>
               <tbody>
-                {data?.data.map(row => {
+                {data?.data.map((row, idx) => {
+                  const rowNum = (page - 1) * PAGE_SIZE + idx + 1;
                   const isExpanded = expandedIds.has(row.id);
                   const weapons = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
                   const ranged = weapons.filter(w => w.type === 'ranged');
@@ -418,6 +420,7 @@ export default function WarscrollsPage() {
                         onClick={() => setExpandedIds(prev => { const s = new Set(prev); isExpanded ? s.delete(row.id) : s.add(row.id); return s; })}
                         style={{cursor:'pointer'}}
                       >
+                        <td className="col-rownum">{rowNum}</td>
                         <td className="col-flag" onClick={e => { e.stopPropagation(); toggleFlag(row.id, 'is_friendly'); }}>
                           <span className={`flag-check friendly${(userUnits[row.id]?.is_friendly) ? ' active' : ''}`}>✓</span>
                         </td>
@@ -444,7 +447,7 @@ export default function WarscrollsPage() {
                       </tr>
                       {isExpanded && (
                         <tr className="weapons-expand-row">
-                          <td colSpan={13}>
+                          <td colSpan={14}>
                             <div className="weapons-expand-inner" onClick={e => e.stopPropagation()}>
                               {weapons.length === 0 && <span style={{color:'var(--text-dim)', fontStyle:'italic'}}>No weapon data available.</span>}
                               {ranged.length > 0 && (
