@@ -412,15 +412,17 @@ input, select {
 }
 .cb-group-left  { justify-content: flex-start; margin-right: auto; }
 .btn-both-toggle {
-  background: transparent;
+  background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 4px;
-  color: var(--text-dim);
-  font-size: 0.7rem;
-  padding: 1px 5px;
+  color: var(--text-muted, #aaa);
+  font-size: 1rem;
+  padding: 0 7px;
+  height: 22px;
   cursor: pointer;
   line-height: 1;
-  letter-spacing: -1px;
+  display: inline-flex;
+  align-items: center;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 .btn-both-toggle:hover {

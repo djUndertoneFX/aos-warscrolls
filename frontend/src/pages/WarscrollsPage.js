@@ -344,7 +344,7 @@ export default function WarscrollsPage() {
                 const next = !(showFriendly && showEnemy);
                 setShowFriendly(next); setShowEnemy(next); setPage(1);
               }}
-            >◄►</button>
+            >⇔</button>
             <label className="cb-item">
               <input type="checkbox" id="cb-enemy" checked={showEnemy} onChange={e => { setShowEnemy(e.target.checked); setPage(1); }} />
               <span style={{color:'var(--enemy-color)'}}>Enemy</span>
