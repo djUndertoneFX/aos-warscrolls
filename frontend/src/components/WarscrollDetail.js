@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
 
 function StatBox({ label, value }) {
   if (!value) return null;
@@ -88,9 +87,7 @@ export default function WarscrollDetail({ unit, onClose }) {
   useEffect(() => {
     setImageUrl(null);
     if (!unit?.id) return;
-    // Check if the image exists; use the URL if it responds 200
-    const url = `/api/unit-image/${unit.id}`;
-    axios.head(url).then(() => setImageUrl(url)).catch(() => {});
+    setImageUrl(`/api/unit-image/${unit.id}`);
   }, [unit?.id]);
 
   useEffect(() => {
@@ -110,7 +107,12 @@ export default function WarscrollDetail({ unit, onClose }) {
         {/* Unit image */}
         {imageUrl && (
           <div className="detail-image-wrap">
-            <img src={imageUrl} alt={unit.name} className="detail-unit-image" />
+            <img
+              src={imageUrl}
+              alt={unit.name}
+              className="detail-unit-image"
+              onError={e => { e.target.style.display = 'none'; }}
+            />
           </div>
         )}
 
