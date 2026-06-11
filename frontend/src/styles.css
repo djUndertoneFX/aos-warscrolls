@@ -569,6 +569,49 @@ td.col-name {
   text-overflow: ellipsis;
 }
 
+/* ── Thumbnail column ── */
+td.col-thumb {
+  padding: 1px 2px;
+  text-align: center;
+  vertical-align: middle;
+  overflow: visible;
+}
+.thumb-wrap {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+}
+.thumb-img {
+  height: 28px;
+  width: auto;
+  max-width: 40px;
+  object-fit: contain;
+  display: block;
+  border-radius: 2px;
+  cursor: pointer;
+}
+.thumb-popup {
+  display: none;
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  transform: translateX(-50%);
+  z-index: 9999;
+  background: var(--bg-card, #1a1a2e);
+  border: 1px solid var(--gold, #c9a84c);
+  border-radius: 4px;
+  padding: 4px;
+  pointer-events: none;
+}
+.thumb-popup img {
+  max-width: 200px;
+  max-height: 250px;
+  display: block;
+}
+.thumb-wrap:hover .thumb-popup {
+  display: block;
+}
+
 /* ── Column resize handle ── */
 .col-resize-handle {
   position: absolute;

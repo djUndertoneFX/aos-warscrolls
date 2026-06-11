@@ -263,7 +263,7 @@ export default function WarscrollsPage() {
 
   // ── Column resizing ──────────────────────────────────────────────────────
   const DEFAULT_COL_WIDTHS = {
-    rownum: 36, friendly: 38, enemy: 38, expand: 30,
+    rownum: 36, friendly: 38, enemy: 38, expand: 30, thumb: 44,
     name: 240, faction: 150, alliance: 82,
     move: 46, health: 46, control: 46, save: 46, points: 52,
     types: 100, keywords: 200,
@@ -457,17 +457,21 @@ export default function WarscrollsPage() {
                     const keyMap = { name:'name', faction:'faction', grand_alliance:'alliance', move:'move', health:'health', control:'control', save:'save', points:'points' };
                     const wKey = keyMap[col.key] || col.key;
                     return (
-                      <th
-                        key={col.key}
-                        style={thStyle(wKey)}
-                        className={`sortable ${sortBy === col.key ? 'sort-active' : ''}`}
-                        title={col.abbr ? col.label : undefined}
-                        onClick={() => handleSort(col.key)}
-                      >
-                        {col.abbr ? <span className="th-abbr">{col.abbr}</span> : col.label}
-                        <SortIcon col={col.key} sortBy={sortBy} sortDir={sortDir} />
-                        <span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e, wKey); }} />
-                      </th>
+                      <React.Fragment key={col.key}>
+                        <th
+                          style={thStyle(wKey)}
+                          className={`sortable ${sortBy === col.key ? 'sort-active' : ''}`}
+                          title={col.abbr ? col.label : undefined}
+                          onClick={() => handleSort(col.key)}
+                        >
+                          {col.abbr ? <span className="th-abbr">{col.abbr}</span> : col.label}
+                          <SortIcon col={col.key} sortBy={sortBy} sortDir={sortDir} />
+                          <span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e, wKey); }} />
+                        </th>
+                        {col.key === 'name' && (
+                          <th style={thStyle('thumb')}><span className="col-resize-handle" onMouseDown={e => startResize(e,'thumb')} /></th>
+                        )}
+                      </React.Fragment>
                     );
                   })}
                   <th style={thStyle('types')}>Types<span className="col-resize-handle" onMouseDown={e => startResize(e,'types')} /></th>
@@ -501,6 +505,23 @@ export default function WarscrollsPage() {
                         <td className="col-name" onClick={e => { e.stopPropagation(); setDetailUnit(row); }}>
                           <span className="unit-name-link">{row.name}</span>
                         </td>
+                        <td className="col-thumb">
+                          <div className="thumb-wrap">
+                            <img
+                              src={`${axios.defaults.baseURL || ''}/api/unit-image/${row.id}`}
+                              alt=""
+                              className="thumb-img"
+                              onError={e => { e.target.style.display = 'none'; e.target.parentNode.style.display='none'; }}
+                            />
+                            <div className="thumb-popup">
+                              <img
+                                src={`${axios.defaults.baseURL || ''}/api/unit-image/${row.id}`}
+                                alt={row.name}
+                                onError={e => { e.target.style.display = 'none'; }}
+                              />
+                            </div>
+                          </div>
+                        </td>
                         <td className="col-faction">{row.faction}</td>
                         <td>{row.grand_alliance && <AllianceBadge alliance={row.grand_alliance} />}</td>
                         <td className="col-stat">{row.move || '—'}</td>
@@ -515,7 +536,7 @@ export default function WarscrollsPage() {
                       </tr>
                       {isExpanded && (
                         <tr className="weapons-expand-row">
-                          <td colSpan={14}>
+                          <td colSpan={15}>
                             <div className="weapons-expand-inner" onClick={e => e.stopPropagation()}>
                               {weapons.length === 0 && <span style={{color:'var(--text-dim)', fontStyle:'italic'}}>No weapon data available.</span>}
                               {ranged.length > 0 && (
