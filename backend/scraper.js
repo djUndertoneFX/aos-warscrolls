@@ -277,7 +277,8 @@ async function scrapeFaction(faction) {
     }
     const kwLine1 = $(el).find('.wsKeywordLine1 .kwb').map((_, e) => normalizeName($(e).text().trim()).toUpperCase()).get();
     const kwLine2 = $(el).find('.wsKeywordLine2 .kwb').map((_, e) => normalizeName($(e).text().trim()).toUpperCase()).get();
-    const allKeywords = [...new Set(mergeKwTokens([...kwLine1, ...kwLine2]))].filter(Boolean);
+    const allKeywords = [...new Set(mergeKwTokens([...kwLine1, ...kwLine2]))].filter(Boolean)
+      .map(k => k.replace(/^(WIZARD|PRIEST) (\d+)$/, '$1 ($2)'));
     const keywords = allKeywords.join(', ');
 
     const kwText = allKeywords.join(' ');
