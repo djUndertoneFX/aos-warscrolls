@@ -522,6 +522,7 @@ export default function WarscrollsPage() {
                             src={`${axios.defaults.baseURL || ''}/api/unit-image/${row.id}`}
                             alt=""
                             className="thumb-img"
+                            loading="lazy"
                             onMouseEnter={e => setThumbHover({ id: row.id, x: e.clientX, y: e.clientY })}
                             onMouseMove={e => setThumbHover(h => h ? { ...h, x: e.clientX, y: e.clientY } : h)}
                             onMouseLeave={() => setThumbHover(null)}
