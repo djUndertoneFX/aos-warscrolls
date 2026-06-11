@@ -372,16 +372,15 @@ function resolveImagePaths(id, db) {
   return paths;
 }
 
-// GET /api/unit-images/:id — return JSON list of image URLs for a unit
+// GET /api/unit-images/:id — return JSON list of relative image paths for a unit
 app.get('/api/unit-images/:id', (req, res) => {
   const id = parseInt(req.params.id);
   if (!id) return res.status(400).json({ error: 'Invalid id' });
   const db = getDb();
   try {
     const paths = resolveImagePaths(id, db);
-    const base = process.env.REACT_APP_API_URL || '';
     const urls = paths.map((_, i) =>
-      i === 0 ? `${base}/api/unit-image/${id}` : `${base}/api/unit-image/${id}?slot=${i}`
+      i === 0 ? `/api/unit-image/${id}` : `/api/unit-image/${id}?slot=${i}`
     );
     res.json(urls);
   } finally {

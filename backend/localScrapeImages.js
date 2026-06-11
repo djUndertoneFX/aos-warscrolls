@@ -69,20 +69,34 @@ const TITLE_PREFIXES = [
   'scourge of ghyran',
 ];
 
+// Stem a word: strip trailing 's' for basic singular/plural handling
+function stem(w) { return w.length > 3 && w.endsWith('s') ? w.slice(0, -1) : w; }
+
 // Score how well two normalized names match (0 = no match, 1 = exact)
 function matchScore(a, b) {
   if (a === b) return 1;
-  // Remove leading "the " for comparison
-  const strip = s => s.replace(/^the /, '');
-  if (strip(a) === strip(b)) return 0.95;
-  // Word-based: count shared words
-  const wordsA = new Set(a.split(' ').filter(w => w.length > 2));
-  const wordsB = new Set(b.split(' ').filter(w => w.length > 2));
-  if (wordsA.size === 0 || wordsB.size === 0) return 0;
+
+  // Strip leading "the "
+  const sa = a.replace(/^the /, '');
+  const sb = b.replace(/^the /, '');
+  if (sa === sb) return 0.98;
+
+  // Containment: shorter name is a prefix of longer + " of ..." (e.g. "Pink Horrors" in "Pink Horrors of Tzeentch")
+  const [shorter, longer] = sa.length <= sb.length ? [sa, sb] : [sb, sa];
+  if (longer.startsWith(shorter + ' of ')) return 0.95;
+  if (longer.startsWith(shorter + ' ') && shorter.split(' ').length >= 2) return 0.88;
+
+  // Stemmed word overlap (handles singular/plural like Flamer/Flamers)
+  const wordsA = [...new Set(sa.split(' ').filter(w => w.length > 2).map(stem))];
+  const wordsB = new Set(sb.split(' ').filter(w => w.length > 2).map(stem));
+  if (wordsA.length === 0 || wordsB.size === 0) return 0;
   let shared = 0;
   for (const w of wordsA) { if (wordsB.has(w)) shared++; }
-  const score = shared / Math.max(wordsA.size, wordsB.size);
-  return score >= 0.75 ? score : 0; // require 75% word overlap
+  // Use min denominator when shorter name has ≥ 2 significant words (avoids over-matching short names)
+  const minSize = Math.min(wordsA.length, wordsB.size);
+  const denom = minSize >= 2 ? minSize : Math.max(wordsA.length, wordsB.size);
+  const score = shared / denom;
+  return score >= 0.75 ? score : 0;
 }
 
 async function getJwt() {

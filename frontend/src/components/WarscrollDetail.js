@@ -90,12 +90,11 @@ export default function WarscrollDetail({ unit, onClose }) {
     if (!unit?.id) return;
     const base = axios.defaults.baseURL || '';
     axios.get(`/api/unit-images/${unit.id}`)
-      .then(r => setImageUrls(r.data || []))
-      .catch(() => {
-        // Fallback: try single image
-        const url = `${base}/api/unit-image/${unit.id}`;
-        setImageUrls([url]);
-      });
+      .then(r => {
+        const paths = r.data || [];
+        setImageUrls(paths.map(p => `${base}${p}`));
+      })
+      .catch(() => setImageUrls([`${base}/api/unit-image/${unit.id}`]));
   }, [unit?.id]);
 
   useEffect(() => {
