@@ -424,7 +424,7 @@ export default function WarscrollsPage() {
             </label>
           </div>
           <div className="cb-group cb-group-right">
-            <div className="cb-group-header">Hide</div>
+            <div className="cb-group-header">Hide:</div>
             <label className="cb-item">
               <input type="checkbox" id="cb-scourge" checked={hideScourgeOfGhyran} onChange={e => { setHideScourgeOfGhyran(e.target.checked); setPage(1); }} />
               <span>Scourge of Ghyran</span>
