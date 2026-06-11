@@ -145,6 +145,7 @@ export default function WarscrollsPage() {
 
   const [expandedIds, setExpandedIds] = useState(new Set());
   const [detailUnit, setDetailUnit] = useState(null);
+  const [thumbHover, setThumbHover] = useState(null); // { id, x, y }
 
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 50;
@@ -303,6 +304,15 @@ export default function WarscrollsPage() {
 
   return (
     <>
+    {thumbHover && (
+      <div className="thumb-popup-fixed" style={{ left: thumbHover.x + 16, top: thumbHover.y + 16 }}>
+        <img
+          src={`${axios.defaults.baseURL || ''}/api/unit-image/${thumbHover.id}`}
+          alt=""
+          onError={e => { e.target.style.display = 'none'; }}
+        />
+      </div>
+    )}
     <div className="table-page">
       <div className="page-header">
         <div className="page-title">
@@ -506,21 +516,15 @@ export default function WarscrollsPage() {
                           <span className="unit-name-link">{row.name}</span>
                         </td>
                         <td className="col-thumb">
-                          <div className="thumb-wrap">
-                            <img
-                              src={`${axios.defaults.baseURL || ''}/api/unit-image/${row.id}`}
-                              alt=""
-                              className="thumb-img"
-                              onError={e => { e.target.style.display = 'none'; e.target.parentNode.style.display='none'; }}
-                            />
-                            <div className="thumb-popup">
-                              <img
-                                src={`${axios.defaults.baseURL || ''}/api/unit-image/${row.id}`}
-                                alt={row.name}
-                                onError={e => { e.target.style.display = 'none'; }}
-                              />
-                            </div>
-                          </div>
+                          <img
+                            src={`${axios.defaults.baseURL || ''}/api/unit-image/${row.id}`}
+                            alt=""
+                            className="thumb-img"
+                            onMouseEnter={e => setThumbHover({ id: row.id, x: e.clientX, y: e.clientY })}
+                            onMouseMove={e => setThumbHover(h => h ? { ...h, x: e.clientX, y: e.clientY } : h)}
+                            onMouseLeave={() => setThumbHover(null)}
+                            onError={e => { e.target.style.display = 'none'; }}
+                          />
                         </td>
                         <td className="col-faction">{row.faction}</td>
                         <td>{row.grand_alliance && <AllianceBadge alliance={row.grand_alliance} />}</td>

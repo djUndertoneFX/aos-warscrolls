@@ -576,11 +576,6 @@ td.col-thumb {
   vertical-align: middle;
   overflow: visible;
 }
-.thumb-wrap {
-  position: relative;
-  display: inline-block;
-  line-height: 0;
-}
 .thumb-img {
   height: 28px;
   width: auto;
@@ -590,25 +585,18 @@ td.col-thumb {
   border-radius: 2px;
   cursor: pointer;
 }
-.thumb-popup {
-  display: none;
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 6px);
-  transform: translateX(-50%);
-  z-index: 9999;
+.thumb-popup-fixed {
+  position: fixed;
+  z-index: 99999;
   background: var(--bg-card, #1a1a2e);
   border: 1px solid var(--gold, #c9a84c);
   border-radius: 4px;
   padding: 4px;
   pointer-events: none;
 }
-.thumb-popup img {
+.thumb-popup-fixed img {
   max-width: 200px;
   max-height: 250px;
-  display: block;
-}
-.thumb-wrap:hover .thumb-popup {
   display: block;
 }
 
