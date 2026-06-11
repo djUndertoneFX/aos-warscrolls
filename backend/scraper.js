@@ -255,8 +255,8 @@ async function scrapeFaction(faction) {
       return fullText.split(',').map(k => {
         const trimmed = k.trim();
         if (!trimmed) return '';
-        // Preserve "(N)" suffix (e.g. WIZARD (2), PRIEST (1))
-        const m = trimmed.match(/^(.+?)\s*\((\d+)\)\s*$/);
+        // Preserve "(N)" or "(N+)" suffix (e.g. WIZARD (2), PRIEST (1), WARD (5+))
+        const m = trimmed.match(/^(.+?)\s*\((\d+\+?)\)\s*$/);
         if (m) return normalizeName(m[1]).toUpperCase() + ` (${m[2]})`;
         return normalizeName(trimmed).toUpperCase();
       }).filter(Boolean);
