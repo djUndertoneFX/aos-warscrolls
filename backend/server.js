@@ -338,9 +338,11 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
   }
 });
 
+const IMAGE_CACHE_SECONDS = parseInt(process.env.IMAGE_CACHE_SECONDS || '86400');
+
 function serveImage(imgPath, res) {
   res.setHeader('Content-Type', 'image/jpeg');
-  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.setHeader('Cache-Control', `public, max-age=${IMAGE_CACHE_SECONDS}`);
   fs.createReadStream(imgPath).pipe(res);
 }
 
