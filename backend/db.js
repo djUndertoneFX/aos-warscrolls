@@ -76,6 +76,8 @@ function initDb() {
   try { db.exec('ALTER TABLE warscrolls ADD COLUMN is_war_machine INTEGER DEFAULT 0'); } catch {}
   try { db.exec('ALTER TABLE warscrolls ADD COLUMN is_terrain INTEGER DEFAULT 0'); } catch {}
   try { db.exec('ALTER TABLE warscrolls ADD COLUMN image_path TEXT DEFAULT NULL'); } catch {}
+  try { db.exec('ALTER TABLE warscrolls ADD COLUMN is_beast INTEGER DEFAULT 0'); } catch {}
+  try { db.exec('ALTER TABLE warscrolls ADD COLUMN is_manifestation INTEGER DEFAULT 0'); } catch {}
 
   db.close();
   console.log('Database initialized.');

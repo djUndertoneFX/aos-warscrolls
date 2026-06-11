@@ -99,8 +99,10 @@ export default function WarscrollsPage() {
   const [isMonster, setIsMonster]       = useState(saved.isMonster    ?? false);
   const [isInfantry, setIsInfantry]     = useState(saved.isInfantry   ?? false);
   const [isCavalry, setIsCavalry]       = useState(saved.isCavalry    ?? false);
+  const [isBeast, setIsBeast]           = useState(saved.isBeast       ?? false);
   const [isWarMachine, setIsWarMachine] = useState(saved.isWarMachine ?? false);
   const [isTerrain, setIsTerrain]       = useState(saved.isTerrain    ?? false);
+  const [isManifestation, setIsManifestation] = useState(saved.isManifestation ?? false);
   const [hideLegends, setHideLegends]           = useState(saved.hideLegends        ?? true);
   const [hideOtherFactions, setHideOtherFactions] = useState(saved.hideOtherFactions ?? false);
   const [showFriendly, setShowFriendly] = useState(saved.showFriendly ?? false);
@@ -112,11 +114,11 @@ export default function WarscrollsPage() {
   useEffect(() => {
     localStorage.setItem(FILTER_KEY, JSON.stringify({
       search, faction, enemyFaction, alliance,
-      isHero, isMonster, isInfantry, isCavalry, isWarMachine, isTerrain,
+      isHero, isMonster, isInfantry, isCavalry, isBeast, isWarMachine, isTerrain, isManifestation,
       hideLegends, hideOtherFactions, showFriendly, showEnemy, sortBy, sortDir,
     }));
   }, [search, faction, enemyFaction, alliance, isHero, isMonster, isInfantry, isCavalry,
-      isWarMachine, isTerrain, hideLegends, hideOtherFactions, showFriendly, showEnemy, sortBy, sortDir]);
+      isBeast, isWarMachine, isTerrain, isManifestation, hideLegends, hideOtherFactions, showFriendly, showEnemy, sortBy, sortDir]);
 
   // Per-faction filtered counts when hideOtherFactions is active
   const [filteredCounts, setFilteredCounts] = useState({});
@@ -187,8 +189,10 @@ export default function WarscrollsPage() {
         ...(isMonster    ? { isMonster: '1' }    : {}),
         ...(isInfantry   ? { isInfantry: '1' }  : {}),
         ...(isCavalry    ? { isCavalry: '1' }   : {}),
-        ...(isWarMachine ? { isWarMachine: '1' }: {}),
-        ...(isTerrain    ? { isTerrain: '1' }   : {}),
+        ...(isBeast         ? { isBeast: '1' }         : {}),
+        ...(isWarMachine    ? { isWarMachine: '1' }    : {}),
+        ...(isTerrain       ? { isTerrain: '1' }       : {}),
+        ...(isManifestation ? { isManifestation: '1' } : {}),
         ...(hideLegends        ? { isLegends: '0' }          : {}),
         ...(hideOtherFactions  ? { hideOtherFactions: '1' }  : {}),
         // Only send mark-based filters to backend when marks actually exist
@@ -202,7 +206,7 @@ export default function WarscrollsPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, faction, enemyFaction, alliance, sortBy, sortDir, page, isHero, isMonster, isInfantry, isCavalry, isWarMachine, isTerrain, hideLegends, hideOtherFactions, showFriendly, showEnemy, hasFriendlyMarks, hasEnemyMarks]);
+  }, [search, faction, enemyFaction, alliance, sortBy, sortDir, page, isHero, isMonster, isInfantry, isCavalry, isBeast, isWarMachine, isTerrain, isManifestation, hideLegends, hideOtherFactions, showFriendly, showEnemy, hasFriendlyMarks, hasEnemyMarks]);
 
   // Load user's friendly/enemy flags once on mount
   useEffect(() => {
@@ -383,6 +387,10 @@ export default function WarscrollsPage() {
               <span>Cavalry</span>
             </label>
             <label className="cb-item">
+              <input type="checkbox" id="cb-beast" checked={isBeast} onChange={e => { setIsBeast(e.target.checked); setPage(1); }} />
+              <span>Beast</span>
+            </label>
+            <label className="cb-item">
               <input type="checkbox" id="cb-monster" checked={isMonster} onChange={e => { setIsMonster(e.target.checked); setPage(1); }} />
               <span>Monsters</span>
             </label>
@@ -393,6 +401,10 @@ export default function WarscrollsPage() {
             <label className="cb-item">
               <input type="checkbox" id="cb-terrain" checked={isTerrain} onChange={e => { setIsTerrain(e.target.checked); setPage(1); }} />
               <span>Faction Terrain</span>
+            </label>
+            <label className="cb-item">
+              <input type="checkbox" id="cb-manifestation" checked={isManifestation} onChange={e => { setIsManifestation(e.target.checked); setPage(1); }} />
+              <span>Manifestation</span>
             </label>
           </div>
           <div className="cb-group cb-group-right">

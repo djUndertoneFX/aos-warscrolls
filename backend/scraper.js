@@ -274,14 +274,16 @@ async function scrapeFaction(faction) {
     const keywords = allKeywords.join(', ');
 
     const kwText = allKeywords.join(' ');
-    const isHero       = /\bHERO\b/.test(kwText);
-    const isMonster    = /\bMONSTER\b/.test(kwText);
-    const isCavalry    = /\bCAVALRY\b/.test(kwText);
-    const isInfantry   = /\bINFANTRY\b/.test(kwText);
-    const isUnique     = /\bUNIQUE\b/.test(kwText);
-    const isWarMachine = /\bWAR\s+MACHINE\b/.test(kwText);
-    const isTerrain    = /\bFACTION\s+TERRAIN\b/.test(kwText);
-    const isLegends    = /Warhammer Legends/i.test(rawText);
+    const isHero            = /\bHERO\b/.test(kwText);
+    const isMonster         = /\bMONSTER\b/.test(kwText);
+    const isCavalry         = /\bCAVALRY\b/.test(kwText);
+    const isInfantry        = /\bINFANTRY\b/.test(kwText);
+    const isBeast           = /\bBEAST\b/.test(kwText);
+    const isUnique          = /\bUNIQUE\b/.test(kwText);
+    const isWarMachine      = /\bWAR\s+MACHINE\b/.test(kwText);
+    const isTerrain         = /\bFACTION\s+TERRAIN\b/.test(kwText);
+    const isManifestation   = /\bMANIFESTATION\b/.test(kwText);
+    const isLegends         = /Warhammer Legends/i.test(rawText);
 
     units.push({
       name,
@@ -299,14 +301,16 @@ async function scrapeFaction(faction) {
       keywords,
       abilities: JSON.stringify(abilities),
       weapons:   JSON.stringify(weapons),
-      is_hero:        isHero       ? 1 : 0,
-      is_monster:     isMonster    ? 1 : 0,
-      is_cavalry:     isCavalry    ? 1 : 0,
-      is_infantry:    isInfantry   ? 1 : 0,
-      is_unique:      isUnique     ? 1 : 0,
-      is_war_machine: isWarMachine ? 1 : 0,
-      is_terrain:     isTerrain    ? 1 : 0,
-      is_legends:     isLegends    ? 1 : 0,
+      is_hero:          isHero          ? 1 : 0,
+      is_monster:       isMonster       ? 1 : 0,
+      is_cavalry:       isCavalry       ? 1 : 0,
+      is_infantry:      isInfantry      ? 1 : 0,
+      is_beast:         isBeast         ? 1 : 0,
+      is_unique:        isUnique        ? 1 : 0,
+      is_war_machine:   isWarMachine    ? 1 : 0,
+      is_terrain:       isTerrain       ? 1 : 0,
+      is_manifestation: isManifestation ? 1 : 0,
+      is_legends:       isLegends       ? 1 : 0,
       url,
     });
   });
@@ -328,15 +332,15 @@ async function scrapeAll() {
       move, health, control, save, ward,
       points, unit_size, base_size,
       keywords, abilities, weapons,
-      is_hero, is_monster, is_cavalry, is_infantry,
-      is_unique, is_war_machine, is_terrain, is_legends, url
+      is_hero, is_monster, is_cavalry, is_infantry, is_beast,
+      is_unique, is_war_machine, is_terrain, is_manifestation, is_legends, url
     ) VALUES (
       @name, @faction, @faction_slug, @grand_alliance,
       @move, @health, @control, @save, @ward,
       @points, @unit_size, @base_size,
       @keywords, @abilities, @weapons,
-      @is_hero, @is_monster, @is_cavalry, @is_infantry,
-      @is_unique, @is_war_machine, @is_terrain, @is_legends, @url
+      @is_hero, @is_monster, @is_cavalry, @is_infantry, @is_beast,
+      @is_unique, @is_war_machine, @is_terrain, @is_manifestation, @is_legends, @url
     )
   `);
 

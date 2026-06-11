@@ -238,7 +238,7 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
     faction, enemyFaction, alliance, search,
     sortBy = 'faction', sortDir = 'asc',
     page = 1, pageSize = 50,
-    isHero, isMonster, isInfantry, isCavalry, isWarMachine, isTerrain, isLegends,
+    isHero, isMonster, isInfantry, isCavalry, isBeast, isWarMachine, isTerrain, isManifestation, isLegends,
     showFriendly, showEnemy, hideOtherFactions,
   } = req.query;
 
@@ -266,12 +266,14 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
     const q = `%${search}%`;
     params.push(q, q, q);
   }
-  if (isHero       === '1') { conditions.push('w.is_hero = 1'); }
-  if (isMonster    === '1') { conditions.push('w.is_monster = 1'); }
-  if (isInfantry   === '1') { conditions.push('w.is_infantry = 1'); }
-  if (isCavalry    === '1') { conditions.push('w.is_cavalry = 1'); }
-  if (isWarMachine === '1') { conditions.push('w.is_war_machine = 1'); }
-  if (isTerrain    === '1') { conditions.push('w.is_terrain = 1'); }
+  if (isHero            === '1') { conditions.push('w.is_hero = 1'); }
+  if (isMonster         === '1') { conditions.push('w.is_monster = 1'); }
+  if (isInfantry        === '1') { conditions.push('w.is_infantry = 1'); }
+  if (isCavalry         === '1') { conditions.push('w.is_cavalry = 1'); }
+  if (isBeast           === '1') { conditions.push('w.is_beast = 1'); }
+  if (isWarMachine      === '1') { conditions.push('w.is_war_machine = 1'); }
+  if (isTerrain         === '1') { conditions.push('w.is_terrain = 1'); }
+  if (isManifestation   === '1') { conditions.push('w.is_manifestation = 1'); }
   if (isLegends    === '0') { conditions.push('w.is_legends = 0'); }
 
   if (hideOtherFactions === '1' && (faction || enemyFaction)) {
@@ -318,9 +320,11 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
       WHEN w.is_hero=1 THEN 1
       WHEN w.is_infantry=1 THEN 2
       WHEN w.is_cavalry=1 THEN 3
-      WHEN w.is_monster=1 THEN 4
-      WHEN w.is_war_machine=1 THEN 5
-      WHEN w.is_terrain=1 THEN 6
+      WHEN w.is_beast=1 THEN 4
+      WHEN w.is_monster=1 THEN 5
+      WHEN w.is_war_machine=1 THEN 6
+      WHEN w.is_terrain=1 THEN 7
+      WHEN w.is_manifestation=1 THEN 8
       ELSE 7 END`;
     const rows = db.prepare(`
       SELECT w.* FROM warscrolls w ${join} ${where}
