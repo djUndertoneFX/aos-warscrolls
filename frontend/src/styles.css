@@ -181,6 +181,22 @@ input, select {
 
 .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
 
+.input-with-eye { position: relative; display: flex; align-items: center; }
+.input-with-eye input { width: 100%; padding-right: 2.4rem; }
+.eye-toggle {
+  position: absolute;
+  right: 0.6rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0;
+  color: var(--text-dim);
+  opacity: 0.7;
+}
+.eye-toggle:hover { opacity: 1; }
+
 .form-group label {
   font-family: 'Cinzel', serif;
   font-size: 0.75rem;

@@ -6,6 +6,7 @@ export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({ login: '', password: '' });
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -45,13 +46,18 @@ export default function LoginPage() {
 
           <div className="form-group">
             <label>Password</label>
-            <input
-              type="password"
-              placeholder="••••••••"
-              value={form.password}
-              onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-              required
-            />
+            <div className="input-with-eye">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={form.password}
+                onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                required
+              />
+              <button type="button" className="eye-toggle" onClick={() => setShowPassword(s => !s)} tabIndex={-1}>
+                {showPassword ? '🙈' : '👁'}
+              </button>
+            </div>
           </div>
 
           <button type="submit" className="btn-primary" disabled={loading}>
