@@ -250,35 +250,20 @@ async function scrapeFaction(faction) {
     // Wahapedia stores multi-word faction names as separate .kwb elements
     // (e.g. "IDONETH" + "DEEPKIN"). Merge consecutive tokens that together
     // match a known faction name so they display as one keyword.
-    const FACTION_KEYWORDS = new Set([
-      ...FACTIONS.map(f => normalizeName(f.name).toUpperCase()),
-      // Multi-word game keywords that should never be split
-      'FACTION TERRAIN', 'WAR MACHINE',
-    ]);
-    function mergeKwTokens(tokens) {
-      const result = [];
-      let i = 0;
-      while (i < tokens.length) {
-        // Bare digit after a keyword = "(N)" suffix e.g. WIZARD (1), PRIEST (2)
-        if (/^\d+$/.test(tokens[i]) && result.length > 0) {
-          result[result.length - 1] += ` (${tokens[i]})`;
-          i++; continue;
-        }
-        // Try to merge with next token(s) to form a known multi-word keyword
-        let merged = null;
-        for (let j = tokens.length; j > i + 1; j--) {
-          const candidate = tokens.slice(i, j).join(' ');
-          if (FACTION_KEYWORDS.has(candidate)) { merged = candidate; i = j; break; }
-        }
-        if (merged) { result.push(merged); }
-        else { result.push(tokens[i]); i++; }
-      }
-      return result;
+    function parseKwLine(selector) {
+      const fullText = $(el).find(selector).text();
+      return fullText.split(',').map(k => {
+        const trimmed = k.trim();
+        if (!trimmed) return '';
+        // Preserve "(N)" suffix (e.g. WIZARD (2), PRIEST (1))
+        const m = trimmed.match(/^(.+?)\s*\((\d+)\)\s*$/);
+        if (m) return normalizeName(m[1]).toUpperCase() + ` (${m[2]})`;
+        return normalizeName(trimmed).toUpperCase();
+      }).filter(Boolean);
     }
-    const kwLine1 = $(el).find('.wsKeywordLine1 .kwb').map((_, e) => normalizeName($(e).text().trim()).toUpperCase()).get();
-    const kwLine2 = $(el).find('.wsKeywordLine2 .kwb').map((_, e) => normalizeName($(e).text().trim()).toUpperCase()).get();
-    const allKeywords = [...new Set(mergeKwTokens([...kwLine1, ...kwLine2]))].filter(Boolean)
-      .map(k => k.replace(/^(WIZARD|PRIEST) (\d+)$/, '$1 ($2)'));
+    const kwLine1 = parseKwLine('.wsKeywordLine1');
+    const kwLine2 = parseKwLine('.wsKeywordLine2');
+    const allKeywords = [...new Set([...kwLine1, ...kwLine2])].filter(Boolean);
     const keywords = allKeywords.join(', ');
 
     const kwText = allKeywords.join(' ');
