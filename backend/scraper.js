@@ -250,14 +250,16 @@ async function scrapeFaction(faction) {
     // Wahapedia stores multi-word faction names as separate .kwb elements
     // (e.g. "IDONETH" + "DEEPKIN"). Merge consecutive tokens that together
     // match a known faction name so they display as one keyword.
-    const FACTION_KEYWORDS = new Set(FACTIONS.map(f =>
-      normalizeName(f.name).toUpperCase()
-    ));
+    const FACTION_KEYWORDS = new Set([
+      ...FACTIONS.map(f => normalizeName(f.name).toUpperCase()),
+      // Multi-word game keywords that should never be split
+      'FACTION TERRAIN', 'WAR MACHINE',
+    ]);
     function mergeKwTokens(tokens) {
       const result = [];
       let i = 0;
       while (i < tokens.length) {
-        // Try to merge with next token(s) to form a known faction keyword
+        // Try to merge with next token(s) to form a known multi-word keyword
         let merged = null;
         for (let j = tokens.length; j > i + 1; j--) {
           const candidate = tokens.slice(i, j).join(' ');

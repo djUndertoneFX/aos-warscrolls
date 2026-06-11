@@ -21,11 +21,15 @@ function AllianceBadge({ alliance }) {
 
 function TypeTags({ row }) {
   const tags = [];
-  if (row.is_hero)    tags.push('Hero');
-  if (row.is_monster) tags.push('Monster');
-  if (row.is_cavalry) tags.push('Cavalry');
-  if (row.is_infantry)tags.push('Infantry');
-  if (row.is_unique)  tags.push('Unique');
+  if (row.is_hero)          tags.push('Hero');
+  if (row.is_infantry)      tags.push('Infantry');
+  if (row.is_cavalry)       tags.push('Cavalry');
+  if (row.is_beast)         tags.push('Beast');
+  if (row.is_monster)       tags.push('Monster');
+  if (row.is_war_machine)   tags.push('War Machine');
+  if (row.is_terrain)       tags.push('Faction Terrain');
+  if (row.is_manifestation) tags.push('Manifestation');
+  if (row.is_unique)        tags.push('Unique');
   return (
     <div className="type-tags">
       {tags.map(t => <span key={t} className="type-tag">{t}</span>)}
