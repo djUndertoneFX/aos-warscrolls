@@ -72,6 +72,17 @@ const TITLE_PREFIXES = [
 // Stem a word: strip trailing 's' for basic singular/plural handling
 function stem(w) { return w.length > 3 && w.endsWith('s') ? w.slice(0, -1) : w; }
 
+// Fuzzy single-word match: allow 1-char difference for words of length >= 5
+function fuzzyWord(a, b) {
+  if (a === b) return true;
+  if (Math.min(a.length, b.length) < 5) return false;
+  if (Math.abs(a.length - b.length) > 1) return false;
+  let diffs = Math.abs(a.length - b.length);
+  const len = Math.min(a.length, b.length);
+  for (let i = 0; i < len && diffs <= 1; i++) { if (a[i] !== b[i]) diffs++; }
+  return diffs <= 1;
+}
+
 // Score how well two normalized names match (0 = no match, 1 = exact)
 function matchScore(a, b) {
   if (a === b) return 1;
@@ -90,11 +101,12 @@ function matchScore(a, b) {
   const wordsA = [...new Set(sa.split(' ').filter(w => w.length > 2).map(stem))];
   const wordsB = [...new Set(sb.split(' ').filter(w => w.length > 2).map(stem))];
   if (wordsA.length === 0 || wordsB.length === 0) return 0;
-  const setB = new Set(wordsB);
   let shared = 0;
-  for (const w of wordsA) { if (setB.has(w)) shared++; }
-  const precision = shared / wordsA.length; // how much of A is in B
-  const recall    = shared / wordsB.length; // how much of B is in A
+  for (const w of wordsA) {
+    if (wordsB.some(wb => fuzzyWord(w, wb))) shared++;
+  }
+  const precision = shared / wordsA.length;
+  const recall    = shared / wordsB.length;
   if (precision === 0 || recall === 0) return 0;
   const f1 = 2 * precision * recall / (precision + recall);
   return f1 >= 0.75 ? f1 : 0;

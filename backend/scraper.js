@@ -259,6 +259,11 @@ async function scrapeFaction(faction) {
       const result = [];
       let i = 0;
       while (i < tokens.length) {
+        // Bare digit after a keyword = "(N)" suffix e.g. WIZARD (1), PRIEST (2)
+        if (/^\d+$/.test(tokens[i]) && result.length > 0) {
+          result[result.length - 1] += ` (${tokens[i]})`;
+          i++; continue;
+        }
         // Try to merge with next token(s) to form a known multi-word keyword
         let merged = null;
         for (let j = tokens.length; j > i + 1; j--) {
