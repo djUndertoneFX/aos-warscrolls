@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import axios from 'axios';
 import WarscrollDetail from '../components/WarscrollDetail';
 
@@ -304,14 +305,15 @@ export default function WarscrollsPage() {
 
   return (
     <>
-    {thumbHover && (
+    {thumbHover && ReactDOM.createPortal(
       <div className="thumb-popup-fixed" style={{ left: thumbHover.x + 16, top: thumbHover.y + 16 }}>
         <img
           src={`${axios.defaults.baseURL || ''}/api/unit-image/${thumbHover.id}`}
           alt=""
           onError={e => { e.target.style.display = 'none'; }}
         />
-      </div>
+      </div>,
+      document.body
     )}
     <div className="table-page">
       <div className="page-header">
