@@ -81,22 +81,23 @@ function matchScore(a, b) {
   const sb = b.replace(/^the /, '');
   if (sa === sb) return 0.98;
 
-  // Containment: shorter name is a prefix of longer + " of ..." (e.g. "Pink Horrors" in "Pink Horrors of Tzeentch")
+  // Containment: shorter is a prefix of longer + " of ..." (e.g. "Pink Horrors" → "Pink Horrors of Tzeentch")
   const [shorter, longer] = sa.length <= sb.length ? [sa, sb] : [sb, sa];
   if (longer.startsWith(shorter + ' of ')) return 0.95;
-  if (longer.startsWith(shorter + ' ') && shorter.split(' ').length >= 2) return 0.88;
 
-  // Stemmed word overlap (handles singular/plural like Flamer/Flamers)
+  // Stemmed word overlap — use symmetric F1-style scoring to prevent
+  // short names falsely matching longer ones (e.g. "Flamers" ≠ "Exalted Flamer")
   const wordsA = [...new Set(sa.split(' ').filter(w => w.length > 2).map(stem))];
-  const wordsB = new Set(sb.split(' ').filter(w => w.length > 2).map(stem));
-  if (wordsA.length === 0 || wordsB.size === 0) return 0;
+  const wordsB = [...new Set(sb.split(' ').filter(w => w.length > 2).map(stem))];
+  if (wordsA.length === 0 || wordsB.length === 0) return 0;
+  const setB = new Set(wordsB);
   let shared = 0;
-  for (const w of wordsA) { if (wordsB.has(w)) shared++; }
-  // Use min denominator when shorter name has ≥ 2 significant words (avoids over-matching short names)
-  const minSize = Math.min(wordsA.length, wordsB.size);
-  const denom = minSize >= 2 ? minSize : Math.max(wordsA.length, wordsB.size);
-  const score = shared / denom;
-  return score >= 0.75 ? score : 0;
+  for (const w of wordsA) { if (setB.has(w)) shared++; }
+  const precision = shared / wordsA.length; // how much of A is in B
+  const recall    = shared / wordsB.length; // how much of B is in A
+  if (precision === 0 || recall === 0) return 0;
+  const f1 = 2 * precision * recall / (precision + recall);
+  return f1 >= 0.75 ? f1 : 0;
 }
 
 async function getJwt() {
