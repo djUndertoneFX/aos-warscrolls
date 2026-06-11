@@ -107,8 +107,9 @@ export default function WarscrollsPage() {
   const [isWarMachine, setIsWarMachine] = useState(saved.isWarMachine ?? false);
   const [isTerrain, setIsTerrain]       = useState(saved.isTerrain    ?? false);
   const [isManifestation, setIsManifestation] = useState(saved.isManifestation ?? false);
-  const [hideLegends, setHideLegends]           = useState(saved.hideLegends        ?? true);
-  const [hideOtherFactions, setHideOtherFactions] = useState(saved.hideOtherFactions ?? false);
+  const [hideLegends, setHideLegends]                 = useState(saved.hideLegends           ?? true);
+  const [hideOtherFactions, setHideOtherFactions]     = useState(saved.hideOtherFactions     ?? false);
+  const [hideScourgeOfGhyran, setHideScourgeOfGhyran] = useState(saved.hideScourgeOfGhyran   ?? false);
   const [showFriendly, setShowFriendly] = useState(saved.showFriendly ?? false);
   const [showEnemy, setShowEnemy]       = useState(saved.showEnemy    ?? false);
   const [sortBy, setSortBy]             = useState(saved.sortBy       ?? 'faction');
@@ -119,10 +120,10 @@ export default function WarscrollsPage() {
     localStorage.setItem(FILTER_KEY, JSON.stringify({
       search, faction, enemyFaction, alliance,
       isHero, isMonster, isInfantry, isCavalry, isBeast, isWarMachine, isTerrain, isManifestation,
-      hideLegends, hideOtherFactions, showFriendly, showEnemy, sortBy, sortDir,
+      hideLegends, hideOtherFactions, hideScourgeOfGhyran, showFriendly, showEnemy, sortBy, sortDir,
     }));
   }, [search, faction, enemyFaction, alliance, isHero, isMonster, isInfantry, isCavalry,
-      isBeast, isWarMachine, isTerrain, isManifestation, hideLegends, hideOtherFactions, showFriendly, showEnemy, sortBy, sortDir]);
+      isBeast, isWarMachine, isTerrain, isManifestation, hideLegends, hideOtherFactions, hideScourgeOfGhyran, showFriendly, showEnemy, sortBy, sortDir]);
 
   // Per-faction filtered counts when hideOtherFactions is active
   const [filteredCounts, setFilteredCounts] = useState({});
@@ -197,8 +198,9 @@ export default function WarscrollsPage() {
         ...(isWarMachine    ? { isWarMachine: '1' }    : {}),
         ...(isTerrain       ? { isTerrain: '1' }       : {}),
         ...(isManifestation ? { isManifestation: '1' } : {}),
-        ...(hideLegends        ? { isLegends: '0' }          : {}),
-        ...(hideOtherFactions  ? { hideOtherFactions: '1' }  : {}),
+        ...(hideLegends          ? { isLegends: '0' }             : {}),
+        ...(hideOtherFactions    ? { hideOtherFactions: '1' }    : {}),
+        ...(hideScourgeOfGhyran  ? { hideScourgeOfGhyran: '1' }  : {}),
         // Only send mark-based filters to backend when marks actually exist
         ...(showFriendly && hasFriendlyMarks ? { showFriendly: '1' } : {}),
         ...(showEnemy    && hasEnemyMarks    ? { showEnemy: '1' }    : {}),
@@ -210,7 +212,7 @@ export default function WarscrollsPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, faction, enemyFaction, alliance, sortBy, sortDir, page, isHero, isMonster, isInfantry, isCavalry, isBeast, isWarMachine, isTerrain, isManifestation, hideLegends, hideOtherFactions, showFriendly, showEnemy, hasFriendlyMarks, hasEnemyMarks]);
+  }, [search, faction, enemyFaction, alliance, sortBy, sortDir, page, isHero, isMonster, isInfantry, isCavalry, isBeast, isWarMachine, isTerrain, isManifestation, hideLegends, hideOtherFactions, hideScourgeOfGhyran, showFriendly, showEnemy, hasFriendlyMarks, hasEnemyMarks]);
 
   // Load user's friendly/enemy flags once on mount
   useEffect(() => {
@@ -412,13 +414,18 @@ export default function WarscrollsPage() {
             </label>
           </div>
           <div className="cb-group cb-group-right">
+            <div className="cb-group-header">Hide</div>
+            <label className="cb-item">
+              <input type="checkbox" id="cb-scourge" checked={hideScourgeOfGhyran} onChange={e => { setHideScourgeOfGhyran(e.target.checked); setPage(1); }} />
+              <span>Scourge of Ghyran</span>
+            </label>
             <label className={`cb-item${!faction ? ' cb-disabled' : ''}`} title={!faction ? 'Select a faction first' : ''}>
               <input type="checkbox" id="cb-other-factions" checked={hideOtherFactions} disabled={!faction} onChange={e => { setHideOtherFactions(e.target.checked); setPage(1); }} />
-              <span>Hide Other Factions</span>
+              <span>Other Factions</span>
             </label>
             <label className="cb-item">
               <input type="checkbox" id="cb-legends" checked={hideLegends} onChange={e => { setHideLegends(e.target.checked); setPage(1); }} />
-              <span>Hide Legends</span>
+              <span>Legends</span>
             </label>
           </div>
         </div>
