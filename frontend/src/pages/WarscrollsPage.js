@@ -149,7 +149,7 @@ export default function WarscrollsPage() {
   const [thumbHover, setThumbHover] = useState(null); // { id, x, y }
 
   const [page, setPage] = useState(1);
-  const PAGE_SIZE = 50;
+  const PAGE_SIZE = 9999;
 
   // Debounced search
   const [searchInput, setSearchInput] = useState(saved.search ?? '');
@@ -593,56 +593,6 @@ export default function WarscrollsPage() {
             </table>
           </div>
 
-          {/* ── Pagination ── */}
-          {data && data.totalPages > 1 && (
-            <div className="pagination">
-              <button
-                className="page-btn"
-                disabled={page === 1}
-                onClick={() => setPage(1)}
-              >«</button>
-              <button
-                className="page-btn"
-                disabled={page === 1}
-                onClick={() => setPage(p => p - 1)}
-              >‹</button>
-
-              {Array.from({ length: Math.min(7, data.totalPages) }, (_, i) => {
-                let p;
-                if (data.totalPages <= 7) {
-                  p = i + 1;
-                } else if (page <= 4) {
-                  p = i + 1;
-                } else if (page >= data.totalPages - 3) {
-                  p = data.totalPages - 6 + i;
-                } else {
-                  p = page - 3 + i;
-                }
-                return (
-                  <button
-                    key={p}
-                    className={`page-btn ${p === page ? 'active' : ''}`}
-                    onClick={() => setPage(p)}
-                  >{p}</button>
-                );
-              })}
-
-              <button
-                className="page-btn"
-                disabled={page === data.totalPages}
-                onClick={() => setPage(p => p + 1)}
-              >›</button>
-              <button
-                className="page-btn"
-                disabled={page === data.totalPages}
-                onClick={() => setPage(data.totalPages)}
-              >»</button>
-
-              <span className="page-info">
-                Page {page} of {data.totalPages}
-              </span>
-            </div>
-          )}
         </>
       )}
     </div>
