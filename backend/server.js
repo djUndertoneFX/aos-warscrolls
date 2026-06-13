@@ -481,6 +481,29 @@ app.put('/api/unit-image/:id', express.raw({ type: 'image/jpeg', limit: '2mb' })
   }
 });
 
+// DELETE /api/warscrolls/no-stats — remove warscrolls with no move/health/keywords (Warcry ally entries)
+// Protected by UPLOAD_SECRET (not user JWT)
+app.delete('/api/warscrolls/no-stats', (req, res) => {
+  const secret = process.env.UPLOAD_SECRET;
+  if (!secret || req.headers['x-upload-secret'] !== secret) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  const db = getDb();
+  try {
+    const toDelete = db.prepare(
+      `SELECT id FROM warscrolls WHERE (move IS NULL OR move = '') AND (health IS NULL OR health = '') AND (keywords IS NULL OR keywords = '')`
+    ).all();
+    if (toDelete.length === 0) return res.json({ deleted: 0 });
+    const ids = toDelete.map(r => r.id);
+    const placeholders = ids.map(() => '?').join(',');
+    db.prepare(`DELETE FROM user_units WHERE warscroll_id IN (${placeholders})`).run(...ids);
+    const result = db.prepare(`DELETE FROM warscrolls WHERE id IN (${placeholders})`).run(...ids);
+    res.json({ deleted: result.changes });
+  } finally {
+    db.close();
+  }
+});
+
 // GET /api/warscrolls/:id
 app.get('/api/warscrolls/:id', requireAuth, (req, res) => {
   const db = getDb();
