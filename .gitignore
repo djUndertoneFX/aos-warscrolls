@@ -6,7 +6,20 @@ backend/warscrolls.db
 
 # Environment secrets
 backend/.env
+backend/.env.local
 .env
+
+# Local-only scraper data (large files, not needed in repo)
+backend/downloaded-images/
+backend/algolia-all-products.json
+backend/algolia-response.json
+backend/warhammer-products.json
+backend/next-data.json
+backend/list_of_units.html
+backend/warhammer-aos.html
+backend/age-of-sigmar.htm
+backend/age-of-sigmar_files/
+backend/warhammer-debug.png
 
 # Build output
 frontend/build/
