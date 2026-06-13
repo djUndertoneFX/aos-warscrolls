@@ -19,6 +19,11 @@ const TITLE_PREFIXES = [
   'Scourge of Ghyran',
 ];
 
+// Convert a unit name to a stable filename slug (survives re-scrapes)
+function nameSlug(name) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
 // ─── Email transporter ───────────────────────────────────────────────────────
 function createTransporter() {
   return nodemailer.createTransport({
@@ -354,27 +359,37 @@ function serveImage(imgPath, res) {
 
 function resolveImagePaths(id, db) {
   // Returns array of existing image paths for a unit (slot 0, 1, 2…)
+  // Images are keyed by name slug so they survive re-scrapes that change IDs.
+  if (!db) return [];
+  const ws = db.prepare('SELECT name FROM warscrolls WHERE id = ?').get(id);
+  if (!ws) return [];
+
+  const slug = nameSlug(ws.name);
   const paths = [];
-  const primary = path.join(IMAGE_DIR, `${id}.jpg`);
+  const primary = path.join(IMAGE_DIR, `${slug}.jpg`);
   if (fs.existsSync(primary)) {
     paths.push(primary);
-    // Check for additional slots
     for (let slot = 1; slot <= 4; slot++) {
-      const p = path.join(IMAGE_DIR, `${id}_${slot}.jpg`);
+      const p = path.join(IMAGE_DIR, `${slug}_${slot}.jpg`);
       if (fs.existsSync(p)) paths.push(p); else break;
     }
     return paths;
   }
 
-  // Fallback: strip title prefixes and try the base unit
-  if (!db) return paths;
-  const ws = db.prepare('SELECT name FROM warscrolls WHERE id = ?').get(id);
-  if (!ws) return paths;
+  // Fallback: strip title prefixes and try the base unit slug
   for (const prefix of TITLE_PREFIXES) {
     if (ws.name.startsWith(prefix + ' ')) {
       const baseName = ws.name.slice(prefix.length + 1);
-      const base = db.prepare('SELECT id FROM warscrolls WHERE name = ?').get(baseName);
-      if (base) return resolveImagePaths(base.id, null);
+      const baseSlug = nameSlug(baseName);
+      const basePrimary = path.join(IMAGE_DIR, `${baseSlug}.jpg`);
+      if (fs.existsSync(basePrimary)) {
+        paths.push(basePrimary);
+        for (let slot = 1; slot <= 4; slot++) {
+          const p = path.join(IMAGE_DIR, `${baseSlug}_${slot}.jpg`);
+          if (fs.existsSync(p)) paths.push(p); else break;
+        }
+        return paths;
+      }
     }
   }
   return paths;
@@ -402,14 +417,17 @@ app.get('/api/unit-image/:id', (req, res) => {
   const slot = parseInt(req.query.slot || '0');
   if (!id) return res.status(400).json({ error: 'Invalid id' });
 
-  if (slot > 0) {
-    const imgPath = path.join(IMAGE_DIR, `${id}_${slot}.jpg`);
-    if (fs.existsSync(imgPath)) return serveImage(imgPath, res);
-    return res.status(404).json({ error: 'No image' });
-  }
-
   const db = getDb();
   try {
+    if (slot > 0) {
+      const ws = db.prepare('SELECT name FROM warscrolls WHERE id = ?').get(id);
+      if (ws) {
+        const imgPath = path.join(IMAGE_DIR, `${nameSlug(ws.name)}_${slot}.jpg`);
+        if (fs.existsSync(imgPath)) return serveImage(imgPath, res);
+      }
+      return res.status(404).json({ error: 'No image' });
+    }
+
     const paths = resolveImagePaths(id, db);
     if (paths.length > 0) return serveImage(paths[0], res);
     return res.status(404).json({ error: 'No image' });
@@ -432,20 +450,23 @@ app.put('/api/unit-image/:id', express.raw({ type: 'image/jpeg', limit: '2mb' })
     return res.status(400).json({ error: 'Invalid request' });
   }
 
-  if (!fs.existsSync(IMAGE_DIR)) fs.mkdirSync(IMAGE_DIR, { recursive: true });
-
-  const filename = slot === 0 ? `${id}.jpg` : `${id}_${slot}.jpg`;
-  const imgPath = path.join(IMAGE_DIR, filename);
-  fs.writeFileSync(imgPath, req.body);
-
   const db = getDb();
   try {
+    const ws = db.prepare('SELECT name FROM warscrolls WHERE id = ?').get(id);
+    if (!ws) return res.status(404).json({ error: 'Unit not found' });
+
+    if (!fs.existsSync(IMAGE_DIR)) fs.mkdirSync(IMAGE_DIR, { recursive: true });
+
+    const slug = nameSlug(ws.name);
+    const filename = slot === 0 ? `${slug}.jpg` : `${slug}_${slot}.jpg`;
+    const imgPath = path.join(IMAGE_DIR, filename);
+    fs.writeFileSync(imgPath, req.body);
+
     if (slot === 0) db.prepare('UPDATE warscrolls SET image_path = ? WHERE id = ?').run(imgPath, id);
+    res.json({ ok: true });
   } finally {
     db.close();
   }
-
-  res.json({ ok: true });
 });
 
 // GET /api/warscrolls/:id
