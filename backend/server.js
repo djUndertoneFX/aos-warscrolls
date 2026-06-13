@@ -24,6 +24,25 @@ function nameSlug(name) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
+// Image source preference: 'warhammer' tries Warhammer/ first, falls back to Lexicanum/
+// Change IMAGE_SOURCE env var to 'lexicanum' to flip the order.
+const IMAGE_SOURCE = process.env.IMAGE_SOURCE || 'warhammer';
+const SOURCE_ORDER = IMAGE_SOURCE === 'lexicanum'
+  ? ['Lexicanum', 'Warhammer']
+  : ['Warhammer', 'Lexicanum'];
+
+function resolveBySlug(slug, subdir) {
+  const dir = path.join(IMAGE_DIR, subdir);
+  const primary = path.join(dir, `${slug}.jpg`);
+  if (!fs.existsSync(primary)) return [];
+  const paths = [primary];
+  for (let slot = 1; slot <= 4; slot++) {
+    const p = path.join(dir, `${slug}_${slot}.jpg`);
+    if (fs.existsSync(p)) paths.push(p); else break;
+  }
+  return paths;
+}
+
 // ─── Email transporter ───────────────────────────────────────────────────────
 function createTransporter() {
   return nodemailer.createTransport({
@@ -359,40 +378,28 @@ function serveImage(imgPath, res) {
 
 function resolveImagePaths(id, db) {
   // Returns array of existing image paths for a unit (slot 0, 1, 2…)
-  // Images are keyed by name slug so they survive re-scrapes that change IDs.
+  // Checks SOURCE_ORDER subdirs (Warhammer, Lexicanum) and picks the first hit.
   if (!db) return [];
   const ws = db.prepare('SELECT name FROM warscrolls WHERE id = ?').get(id);
   if (!ws) return [];
 
   const slug = nameSlug(ws.name);
-  const paths = [];
-  const primary = path.join(IMAGE_DIR, `${slug}.jpg`);
-  if (fs.existsSync(primary)) {
-    paths.push(primary);
-    for (let slot = 1; slot <= 4; slot++) {
-      const p = path.join(IMAGE_DIR, `${slug}_${slot}.jpg`);
-      if (fs.existsSync(p)) paths.push(p); else break;
-    }
-    return paths;
+  for (const subdir of SOURCE_ORDER) {
+    const found = resolveBySlug(slug, subdir);
+    if (found.length > 0) return found;
   }
 
   // Fallback: strip title prefixes and try the base unit slug
   for (const prefix of TITLE_PREFIXES) {
     if (ws.name.startsWith(prefix + ' ')) {
-      const baseName = ws.name.slice(prefix.length + 1);
-      const baseSlug = nameSlug(baseName);
-      const basePrimary = path.join(IMAGE_DIR, `${baseSlug}.jpg`);
-      if (fs.existsSync(basePrimary)) {
-        paths.push(basePrimary);
-        for (let slot = 1; slot <= 4; slot++) {
-          const p = path.join(IMAGE_DIR, `${baseSlug}_${slot}.jpg`);
-          if (fs.existsSync(p)) paths.push(p); else break;
-        }
-        return paths;
+      const baseSlug = nameSlug(ws.name.slice(prefix.length + 1));
+      for (const subdir of SOURCE_ORDER) {
+        const found = resolveBySlug(baseSlug, subdir);
+        if (found.length > 0) return found;
       }
     }
   }
-  return paths;
+  return [];
 }
 
 // GET /api/unit-images/:id — return JSON list of relative image paths for a unit
@@ -422,8 +429,11 @@ app.get('/api/unit-image/:id', (req, res) => {
     if (slot > 0) {
       const ws = db.prepare('SELECT name FROM warscrolls WHERE id = ?').get(id);
       if (ws) {
-        const imgPath = path.join(IMAGE_DIR, `${nameSlug(ws.name)}_${slot}.jpg`);
-        if (fs.existsSync(imgPath)) return serveImage(imgPath, res);
+        const slug = nameSlug(ws.name);
+        for (const subdir of SOURCE_ORDER) {
+          const imgPath = path.join(IMAGE_DIR, subdir, `${slug}_${slot}.jpg`);
+          if (fs.existsSync(imgPath)) return serveImage(imgPath, res);
+        }
       }
       return res.status(404).json({ error: 'No image' });
     }
@@ -455,11 +465,13 @@ app.put('/api/unit-image/:id', express.raw({ type: 'image/jpeg', limit: '2mb' })
     const ws = db.prepare('SELECT name FROM warscrolls WHERE id = ?').get(id);
     if (!ws) return res.status(404).json({ error: 'Unit not found' });
 
-    if (!fs.existsSync(IMAGE_DIR)) fs.mkdirSync(IMAGE_DIR, { recursive: true });
+    const subdir = req.query.source === 'warhammer' ? 'Warhammer' : 'Lexicanum';
+    const dir = path.join(IMAGE_DIR, subdir);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
     const slug = nameSlug(ws.name);
     const filename = slot === 0 ? `${slug}.jpg` : `${slug}_${slot}.jpg`;
-    const imgPath = path.join(IMAGE_DIR, filename);
+    const imgPath = path.join(dir, filename);
     fs.writeFileSync(imgPath, req.body);
 
     if (slot === 0) db.prepare('UPDATE warscrolls SET image_path = ? WHERE id = ?').run(imgPath, id);

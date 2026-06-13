@@ -27,7 +27,7 @@ const fs = require('fs');
 const path = require('path');
 
 const LEXICANUM_BASE = 'https://ageofsigmar.lexicanum.com';
-const LOCAL_IMG_DIR  = path.join(__dirname, 'downloaded-images');
+const LOCAL_IMG_DIR  = path.join(__dirname, 'downloaded-images', 'Lexicanum');
 
 const RAILWAY_API    = (process.env.RAILWAY_API_URL || '').replace(/\/$/, '');
 const UPLOAD_SECRET  = process.env.UPLOAD_SECRET || '';
