@@ -569,6 +569,39 @@ tbody tr {
 tbody tr:nth-child(even) { background: rgba(255,255,255,0.02); }
 tbody tr:hover { background: rgba(201,168,76,0.06); }
 
+/* Faction header row — prominent gold bar */
+tr.separator-faction {
+  background: var(--gold-dark) !important;
+  border-top: 2px solid var(--gold);
+  border-bottom: 1px solid var(--gold);
+  cursor: default;
+}
+tr.separator-faction td {
+  padding: 0.45rem 0.8rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--bg-dark);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+tr.separator-faction:hover { background: var(--gold-dark) !important; }
+
+/* Unit-type sub-header row — subtle dark band */
+tr.separator-type {
+  background: rgba(74,56,32,0.55) !important;
+  border-top: 1px solid rgba(201,168,76,0.3);
+  cursor: default;
+}
+tr.separator-type td {
+  padding: 0.25rem 0.8rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--gold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+tr.separator-type:hover { background: rgba(74,56,32,0.55) !important; }
+
 td {
   padding: 0.6rem 0.9rem;
   color: var(--parchment);

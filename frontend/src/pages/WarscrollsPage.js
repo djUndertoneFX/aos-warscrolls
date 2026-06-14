@@ -20,6 +20,18 @@ function AllianceBadge({ alliance }) {
   );
 }
 
+function unitTypeLabel(row) {
+  if (row.is_hero)          return 'Heroes';
+  if (row.is_infantry)      return 'Infantry';
+  if (row.is_cavalry)       return 'Cavalry';
+  if (row.is_beast)         return 'Beasts';
+  if (row.is_monster)       return 'Monsters';
+  if (row.is_war_machine)   return 'War Machines';
+  if (row.is_terrain)       return 'Faction Terrain';
+  if (row.is_manifestation) return 'Manifestations';
+  return 'Other';
+}
+
 function TypeTags({ row }) {
   const tags = [];
   if (row.is_hero)          tags.push('Hero');
@@ -497,8 +509,22 @@ export default function WarscrollsPage() {
                   const weapons = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
                   const ranged = weapons.filter(w => w.type === 'ranged');
                   const melee  = weapons.filter(w => w.type === 'melee');
+                  const prev = data.data[idx - 1];
+                  const factionChanged = !prev || prev.faction !== row.faction;
+                  const typeChanged    = !prev || prev.faction !== row.faction || unitTypeLabel(prev) !== unitTypeLabel(row);
+                  const colSpan = 14;
                   return (
                     <React.Fragment key={row.id}>
+                      {factionChanged && sortBy === 'faction' && (
+                        <tr className="separator-faction">
+                          <td colSpan={colSpan}>{row.faction}</td>
+                        </tr>
+                      )}
+                      {typeChanged && sortBy === 'faction' && (
+                        <tr className="separator-type">
+                          <td colSpan={colSpan}>{unitTypeLabel(row)}</td>
+                        </tr>
+                      )}
                       <tr
                         className={`unit-row${isExpanded ? ' expanded' : ''}`}
                         onClick={() => setExpandedIds(prev => { const s = new Set(prev); isExpanded ? s.delete(row.id) : s.add(row.id); return s; })}
