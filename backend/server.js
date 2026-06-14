@@ -26,6 +26,7 @@ function nameSlug(name) {
 
 // Image source preference: 'warhammer' tries Warhammer/ first, falls back to Lexicanum/
 // Change IMAGE_SOURCE env var to 'lexicanum' to flip the order.
+// Custom/ is always checked first regardless of IMAGE_SOURCE.
 const IMAGE_SOURCE = process.env.IMAGE_SOURCE || 'warhammer';
 const SOURCE_ORDER = IMAGE_SOURCE === 'lexicanum'
   ? ['Lexicanum', 'Warhammer']
@@ -41,6 +42,22 @@ function resolveBySlug(slug, subdir) {
     if (fs.existsSync(p)) paths.push(p); else break;
   }
   return paths;
+}
+
+// Search Custom/ and all its subfolders for "slug.jpg"
+function resolveCustom(slug) {
+  const customDir = path.join(IMAGE_DIR, 'Custom');
+  if (!fs.existsSync(customDir)) return [];
+  const found = [];
+  function scan(dir) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isDirectory()) { scan(path.join(dir, entry.name)); continue; }
+      if (entry.name === `${slug}.jpg`) found.push(path.join(dir, entry.name));
+      else if (entry.name.match(new RegExp(`^${slug}_\\d+\\.jpg$`))) found.push(path.join(dir, entry.name));
+    }
+  }
+  scan(customDir);
+  return found.sort();
 }
 
 // ─── Email transporter ───────────────────────────────────────────────────────
@@ -384,6 +401,11 @@ function resolveImagePaths(id, db) {
   if (!ws) return [];
 
   const slug = nameSlug(ws.name);
+
+  // Custom/ always wins — checked before Warhammer or Lexicanum
+  const custom = resolveCustom(slug);
+  if (custom.length > 0) return custom;
+
   for (const subdir of SOURCE_ORDER) {
     const found = resolveBySlug(slug, subdir);
     if (found.length > 0) return found;
@@ -393,6 +415,8 @@ function resolveImagePaths(id, db) {
   for (const prefix of TITLE_PREFIXES) {
     if (ws.name.startsWith(prefix + ' ')) {
       const baseSlug = nameSlug(ws.name.slice(prefix.length + 1));
+      const customBase = resolveCustom(baseSlug);
+      if (customBase.length > 0) return customBase;
       for (const subdir of SOURCE_ORDER) {
         const found = resolveBySlug(baseSlug, subdir);
         if (found.length > 0) return found;
@@ -465,7 +489,8 @@ app.put('/api/unit-image/:id', express.raw({ type: 'image/jpeg', limit: '2mb' })
     const ws = db.prepare('SELECT name FROM warscrolls WHERE id = ?').get(id);
     if (!ws) return res.status(404).json({ error: 'Unit not found' });
 
-    const subdir = req.query.source === 'warhammer' ? 'Warhammer' : 'Lexicanum';
+    const src = req.query.source;
+    const subdir = src === 'warhammer' ? 'Warhammer' : src === 'custom' ? 'Custom' : 'Lexicanum';
     const dir = path.join(IMAGE_DIR, subdir);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
