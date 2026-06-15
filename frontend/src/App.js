@@ -18,8 +18,8 @@ function Navbar({ headerCollapsed, onToggleCollapse }) {
           {headerCollapsed ? '▶' : '▼'}
         </button>
         ⚔ <span>AoS</span> Warscrolls
+        {headerCollapsed && <span id="navbar-extras" />}
       </span>
-      {headerCollapsed && <span id="navbar-extras" />}
       <div className="navbar-right">
         <span className="navbar-username">{user.username}</span>
         <button className="btn-logout" onClick={logout}>Sign Out</button>
