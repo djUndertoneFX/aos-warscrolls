@@ -323,7 +323,10 @@ export default function WarscrollsPage({ headerCollapsed }) {
     >⇔</button>
   );
 
-  const navbarExtras = headerCollapsed ? document.getElementById('navbar-extras') : null;
+  const [navbarExtrasEl, setNavbarExtrasEl] = useState(null);
+  useEffect(() => {
+    setNavbarExtrasEl(headerCollapsed ? document.getElementById('navbar-extras') : null);
+  }, [headerCollapsed]);
 
   return (
     <>
@@ -337,7 +340,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
       </div>,
       document.body
     )}
-    {navbarExtras && ReactDOM.createPortal(toggleBothBtn, navbarExtras)}
+    {navbarExtrasEl && ReactDOM.createPortal(toggleBothBtn, navbarExtrasEl)}
     <div className="table-page">
       {!headerCollapsed && (
       <>
