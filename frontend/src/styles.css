@@ -90,9 +90,31 @@ input, select {
   color: var(--gold);
   text-shadow: 0 0 20px rgba(201,168,76,0.4);
   letter-spacing: 0.12em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .navbar-brand span { color: var(--gold-light); }
+
+.collapse-toggle {
+  background: transparent;
+  border: none;
+  color: var(--gold);
+  font-size: 0.65rem;
+  padding: 0 0.1rem;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+  line-height: 1;
+}
+.collapse-toggle:hover { opacity: 1; }
+
+#navbar-extras {
+  display: flex;
+  align-items: center;
+  margin-left: 0.75rem;
+}
 
 .navbar-right {
   display: flex;

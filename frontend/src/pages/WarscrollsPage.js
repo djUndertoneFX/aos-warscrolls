@@ -98,7 +98,7 @@ function SortIcon({ col, sortBy, sortDir }) {
   return <span className="sort-icon">{sortDir === 'asc' ? '↑' : '↓'}</span>;
 }
 
-export default function WarscrollsPage() {
+export default function WarscrollsPage({ headerCollapsed }) {
   const [data, setData]           = useState(null);
   const [factions, setFactions]   = useState([]);
   const [loading, setLoading]     = useState(true);
@@ -315,6 +315,16 @@ export default function WarscrollsPage() {
 
   const thStyle = (key) => ({ width: colWidths[key], minWidth: colWidths[key], position: 'relative' });
 
+  const toggleBothBtn = (
+    <button
+      className={`btn-both-toggle${showFriendly !== showEnemy ? ' active' : ''}`}
+      title="Toggle both Friendly and Enemy"
+      onClick={() => { setShowFriendly(showEnemy); setShowEnemy(showFriendly); setPage(1); }}
+    >⇔</button>
+  );
+
+  const navbarExtras = headerCollapsed ? document.getElementById('navbar-extras') : null;
+
   return (
     <>
     {thumbHover && ReactDOM.createPortal(
@@ -327,7 +337,10 @@ export default function WarscrollsPage() {
       </div>,
       document.body
     )}
+    {navbarExtras && ReactDOM.createPortal(toggleBothBtn, navbarExtras)}
     <div className="table-page">
+      {!headerCollapsed && (
+      <>
       <div className="page-header">
         <div className="page-title">
           Warscrolls
@@ -454,6 +467,8 @@ export default function WarscrollsPage() {
           </div>
         </div>
       </div>
+      </>
+      )}
 
       {/* ── Table ── */}
       {error && <div className="error-msg" style={{marginBottom:'1rem'}}>{error}</div>}
