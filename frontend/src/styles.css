@@ -395,13 +395,14 @@ input, select {
 }
 
 .page-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: flex-end;
-  justify-content: space-between;
   margin-bottom: 0.6rem;
   padding-bottom: 0.6rem;
   border-bottom: 1px solid var(--border);
 }
+.page-header > :last-child { justify-self: end; }
 
 .page-title {
   font-family: 'Cinzel', serif;
@@ -450,6 +451,8 @@ input, select {
   font-size: 0.9rem;
   line-height: 1;
 }
+
+.sim-battle-wrapper { flex: unset; }
 
 .sim-fight-bar {
   padding: 1rem 0 0.5rem;

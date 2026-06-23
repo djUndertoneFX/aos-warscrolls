@@ -191,7 +191,7 @@ function SimulacrumBattle({ friendly, enemy, colWidths, thStyle }) {
   };
 
   return (
-    <div className="table-wrapper">
+    <div className="table-wrapper sim-battle-wrapper">
       <table>
         <thead>
           <tr>
