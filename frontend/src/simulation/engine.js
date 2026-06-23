@@ -115,8 +115,9 @@ function resolveWeapon(weapon, sideState, defSide, defSave, charged, isShootingP
   const hits   = hitRolls.filter(r => r >= hitNeeded);
   const misses = hitRolls.filter(r => r < hitNeeded);
 
-  push(`      Hit rolls (${totalAttacks} dice, vs ${hitNeeded}+):  ${hitRolls.slice().sort((a,b)=>b-a).join(', ')}`, 'roll-summary');
-  push(`        → ${hits.length} hit${hits.length !== 1 ? 's' : ''}${crits.length > 0 ? ` (${crits.length} crit${crits.length !== 1 ? 's' : ''})` : ''}  ·  ${misses.length} miss${misses.length !== 1 ? 'es' : ''}`, 'roll-result');
+  const hitSuccessLabel = `${hits.length} hit${hits.length !== 1 ? 's' : ''}${crits.length > 0 ? ` (${crits.length} crit${crits.length !== 1 ? 's' : ''})` : ''}`;
+  push(`      Hit rolls   (${totalAttacks} dice, vs ${hitNeeded}+:  ${hitSuccessLabel}):  ${hitRolls.slice().sort((a,b)=>b-a).join(', ')}`, 'roll-summary');
+  push(`        → ${hitSuccessLabel}  ·  ${misses.length} miss${misses.length !== 1 ? 'es' : ''}`, 'roll-result');
 
   if (hits.length === 0) return;
 
@@ -137,7 +138,7 @@ function resolveWeapon(weapon, sideState, defSide, defSave, charged, isShootingP
   if (totalWoundDice > 0) {
     for (let w = 0; w < totalWoundDice; w++) woundRolls.push(d6());
     wounds = woundRolls.filter(r => r >= woundNeeded).length;
-    push(`      Wound rolls (${totalWoundDice} dice, vs ${woundNeeded}+):  ${woundRolls.slice().sort((a,b)=>b-a).join(', ')}`, 'roll-summary');
+    push(`      Wound rolls (${totalWoundDice} dice, vs ${woundNeeded}+:  ${wounds} wound${wounds !== 1 ? 's' : ''}):  ${woundRolls.slice().sort((a,b)=>b-a).join(', ')}`, 'roll-summary');
     push(`        → ${wounds} wound${wounds !== 1 ? 's' : ''}  ·  ${totalWoundDice - wounds} fail${totalWoundDice - wounds !== 1 ? 's' : ''}`, 'roll-result');
   }
 
@@ -149,7 +150,8 @@ function resolveWeapon(weapon, sideState, defSide, defSave, charged, isShootingP
     for (let s = 0; s < totalSaveDice; s++) saveRolls.push(d6());
     const saved = saveRolls.filter(r => r >= saveNeeded).length;
     unsaved = totalSaveDice - saved;
-    push(`      Save rolls  (${totalSaveDice} dice, vs ${saveNeeded}+):  ${saveRolls.slice().sort((a,b)=>b-a).join(', ')}`, 'roll-summary');
+    const rendNote = rend > 0 ? ` [base ${defSave}+, Rend ${rend}]` : '';
+    push(`      Save rolls  (${totalSaveDice} dice, vs ${saveNeeded}+${rendNote}:  ${saved} saved):  ${saveRolls.slice().sort((a,b)=>b-a).join(', ')}`, 'roll-summary');
     push(`        → ${saved} saved  ·  ${unsaved} unsaved`, 'roll-result');
   }
 
