@@ -137,6 +137,8 @@ input, select {
 }
 .nav-link:hover { color: var(--gold-light); background: rgba(201,168,76,0.08); }
 .nav-link-active { color: var(--gold) !important; background: rgba(201,168,76,0.13); }
+.nav-link-soon { font-size: 0.62rem; color: #555; }
+.nav-link-soon:hover { color: #777; background: transparent; }
 
 .navbar-right {
   display: flex;

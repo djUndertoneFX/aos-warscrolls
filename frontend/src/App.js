@@ -11,10 +11,10 @@ import './styles.css';
 
 const NAV_PAGES = [
   { label: 'Warscrolls',    path: '/warscrolls' },
-  { label: 'Army Builder',  path: '/army-builder' },
+  { label: 'Army Builder',  path: '/army-builder', soon: true },
   { label: 'Simulacrum',    path: '/simulacrum' },
-  { label: 'Spearhead',     path: '/spearhead' },
-  { label: 'Path to Glory', path: '/path-to-glory' },
+  { label: 'Spearhead',     path: '/spearhead',     soon: true },
+  { label: 'Path to Glory', path: '/path-to-glory', soon: true },
 ];
 
 function Navbar({ headerCollapsed, onToggleCollapse }) {
@@ -37,7 +37,7 @@ function Navbar({ headerCollapsed, onToggleCollapse }) {
         </span>
         <div className="navbar-nav">
           {NAV_PAGES.map(p => (
-            <NavLink key={p.path} to={p.path} className={({ isActive }) => 'nav-link' + (isActive ? ' nav-link-active' : '')}>
+            <NavLink key={p.path} to={p.path} className={({ isActive }) => 'nav-link' + (p.soon ? ' nav-link-soon' : '') + (isActive ? ' nav-link-active' : '')}>
               {p.label}
             </NavLink>
           ))}
@@ -53,7 +53,7 @@ function Navbar({ headerCollapsed, onToggleCollapse }) {
       {menuOpen && (
         <div className="mobile-menu">
           {NAV_PAGES.map(p => (
-            <NavLink key={p.path} to={p.path} className={({ isActive }) => 'mobile-nav-link' + (isActive ? ' nav-link-active' : '')}
+            <NavLink key={p.path} to={p.path} className={({ isActive }) => 'mobile-nav-link' + (p.soon ? ' nav-link-soon' : '') + (isActive ? ' nav-link-active' : '')}
               onClick={() => setMenuOpen(false)}>
               {p.label}
             </NavLink>
