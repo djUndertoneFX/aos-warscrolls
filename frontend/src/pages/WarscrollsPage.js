@@ -222,7 +222,11 @@ export default function WarscrollsPage({ headerCollapsed }) {
       const res = await axios.get('/api/warscrolls', { params });
       setData(res.data);
     } catch (err) {
-      setError('Failed to load warscrolls. Is the backend running?');
+      if (err.response?.status === 401) {
+        setError('Session expired. Please sign out and log back in.');
+      } else {
+        setError('Failed to load warscrolls. Is the backend running?');
+      }
     } finally {
       setLoading(false);
     }
