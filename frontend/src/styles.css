@@ -430,15 +430,15 @@ input, select {
   font-family: 'Cinzel', serif;
   font-size: 0.72rem;
   letter-spacing: 0.05em;
-  color: #666;
+  color: var(--text-dim);
   background: transparent;
-  border: 1px solid transparent;
+  border: 1px solid var(--border);
   border-radius: 3px;
   padding: 0.25rem 0.6rem;
   cursor: pointer;
-  transition: color 0.2s, border-color 0.2s;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
 }
-.sim-stage-btn:hover { color: var(--gold-light); border-color: var(--border); }
+.sim-stage-btn:hover { color: var(--gold-light); border-color: var(--border-gold); }
 .sim-stage-btn.sim-stage-active {
   color: var(--gold);
   font-size: 0.82rem;

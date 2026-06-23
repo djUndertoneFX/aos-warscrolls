@@ -129,77 +129,93 @@ const STAGES = [
   { id: 2, label: 'SimulacEm!' },
 ];
 
-function BattleUnitRow({ row, label, colWidths }) {
-  const thStyle = (key) => ({ width: colWidths[key], minWidth: colWidths[key] });
-  const weapons = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
-  const ranged = weapons.filter(w => w.type === 'ranged');
-  const melee  = weapons.filter(w => w.type === 'melee');
-  return (
-    <>
-      <tr className={`unit-row sim-battle-row sim-battle-${label}`}>
-        <td className="sim-battle-label">{label === 'friendly' ? 'F' : 'E'}</td>
-        <td className="col-name"><span className="unit-name-link">{row.name}</span></td>
-        <td className="col-faction">{row.faction}</td>
-        <td>{row.grand_alliance && <AllianceBadge alliance={row.grand_alliance} />}</td>
-        <td className="col-stat">{row.move || '—'}</td>
-        <td className="col-stat">{row.health || '—'}</td>
-        <td className="col-stat">{row.control || '—'}</td>
-        <td className="col-stat">{row.save || '—'}</td>
-        <td className="col-stat">{row.points || '—'}</td>
-        <td><TypeTags row={row} /></td>
-      </tr>
-      <tr className="weapons-expand-row">
-        <td colSpan={10}>
-          <div className="weapons-expand-inner">
-            {weapons.length === 0 && <span style={{color:'var(--text-dim)',fontStyle:'italic'}}>No weapon data available.</span>}
-            {ranged.length > 0 && (
-              <div className="inline-weapon-block">
-                <div className="inline-weapon-section-header">Ranged Weapons</div>
-                <table className="inline-weapon-table"><thead><tr>
-                  <th>Weapon</th><th>Range</th><th>Atk</th><th>Hit</th><th>Wnd</th><th>Rnd</th><th>Dmg</th>
-                </tr></thead><tbody>
-                  {ranged.map((w,i) => <tr key={i}><td>{w.name}</td><td>{w.range}</td><td>{w.attacks}</td><td>{w.hit}</td><td>{w.wound}</td><td>{w.rend}</td><td>{w.damage}</td></tr>)}
-                </tbody></table>
-              </div>
-            )}
-            {melee.length > 0 && (
-              <div className="inline-weapon-block">
-                <div className="inline-weapon-section-header">Melee Weapons</div>
-                <table className="inline-weapon-table"><thead><tr>
-                  <th>Weapon</th><th>Atk</th><th>Hit</th><th>Wnd</th><th>Rnd</th><th>Dmg</th>
-                </tr></thead><tbody>
-                  {melee.map((w,i) => <tr key={i}><td>{w.name}</td><td>{w.attacks}</td><td>{w.hit}</td><td>{w.wound}</td><td>{w.rend}</td><td>{w.damage}</td></tr>)}
-                </tbody></table>
-              </div>
-            )}
-          </div>
-        </td>
-      </tr>
-    </>
-  );
-}
+function SimulacrumBattle({ friendly, enemy, colWidths, thStyle }) {
+  const colSpan = 14;
+  const renderRow = (row, label) => {
+    const weapons = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
+    const ranged = weapons.filter(w => w.type === 'ranged');
+    const melee  = weapons.filter(w => w.type === 'melee');
+    return (
+      <React.Fragment key={label}>
+        <tr className={`unit-row expanded sim-battle-row sim-battle-${label}`}>
+          <td className="col-rownum" style={{color: label==='friendly'?'var(--friendly-color)':'var(--enemy-color)', fontWeight:700, textAlign:'center'}}>
+            {label === 'friendly' ? 'F' : 'E'}
+          </td>
+          <td style={{color: label==='friendly'?'var(--friendly-color)':'var(--enemy-color)', fontWeight:700, textAlign:'center'}}></td>
+          <td style={{color: label==='friendly'?'var(--friendly-color)':'var(--enemy-color)', fontWeight:700, textAlign:'center'}}></td>
+          <td></td>
+          <td className="col-name"><span className="unit-name-link">{row.name}</span></td>
+          <td className="col-thumb">
+            <img src={`${axios.defaults.baseURL || ''}/api/unit-image/${row.id}`} alt="" className="thumb-img"
+              onError={e => { e.target.style.display='none'; }} />
+          </td>
+          <td className="col-faction">{row.faction}</td>
+          <td>{row.grand_alliance && <AllianceBadge alliance={row.grand_alliance} />}</td>
+          <td className="col-stat">{row.move || '—'}</td>
+          <td className="col-stat">{row.health || '—'}</td>
+          <td className="col-stat">{row.control || '—'}</td>
+          <td className="col-stat">{row.save || '—'}</td>
+          <td className="col-stat">{row.points || '—'}</td>
+          <td><TypeTags row={row} /></td>
+          <td className="col-keywords">{row.keywords ? row.keywords.split(',').slice(0,6).join(', ') : '—'}</td>
+        </tr>
+        <tr className="weapons-expand-row">
+          <td colSpan={15}>
+            <div className="weapons-expand-inner" onClick={e => e.stopPropagation()}>
+              {weapons.length === 0 && <span style={{color:'var(--text-dim)',fontStyle:'italic'}}>No weapon data available.</span>}
+              {ranged.length > 0 && (
+                <div className="inline-weapon-block">
+                  <div className="inline-weapon-section-header">Ranged Weapons</div>
+                  <table className="inline-weapon-table"><thead><tr>
+                    <th>Weapon</th><th>Range</th><th>Atk</th><th>Hit</th><th>Wnd</th><th>Rnd</th><th>Dmg</th>
+                  </tr></thead><tbody>
+                    {ranged.map((w,i) => <tr key={i}><td>{w.name}</td><td>{w.range}</td><td>{w.attacks}</td><td>{w.hit}</td><td>{w.wound}</td><td>{w.rend}</td><td>{w.damage}</td></tr>)}
+                  </tbody></table>
+                </div>
+              )}
+              {melee.length > 0 && (
+                <div className="inline-weapon-block">
+                  <div className="inline-weapon-section-header">Melee Weapons</div>
+                  <table className="inline-weapon-table"><thead><tr>
+                    <th>Weapon</th><th>Atk</th><th>Hit</th><th>Wnd</th><th>Rnd</th><th>Dmg</th>
+                  </tr></thead><tbody>
+                    {melee.map((w,i) => <tr key={i}><td>{w.name}</td><td>{w.attacks}</td><td>{w.hit}</td><td>{w.wound}</td><td>{w.rend}</td><td>{w.damage}</td></tr>)}
+                  </tbody></table>
+                </div>
+              )}
+            </div>
+          </td>
+        </tr>
+      </React.Fragment>
+    );
+  };
 
-function SimulacrumBattle({ friendly, enemy, colWidths }) {
   return (
-    <div className="table-wrapper sim-battle-table">
+    <div className="table-wrapper">
       <table>
         <thead>
           <tr>
-            <th style={{width:36}}></th>
-            <th>Unit Name</th>
-            <th>Faction</th>
-            <th>Alliance</th>
-            <th title="Move"><span className="th-abbr">Mv</span></th>
-            <th title="Health"><span className="th-abbr">HP</span></th>
-            <th title="Control"><span className="th-abbr">Ctrl</span></th>
-            <th title="Save"><span className="th-abbr">Sv</span></th>
-            <th title="Points"><span className="th-abbr">Pts</span></th>
-            <th>Types</th>
+            <th style={thStyle('rownum')}><span className="th-abbr" style={{color:'var(--text-dim)'}}>#</span></th>
+            <th style={thStyle('friendly')}><span className="th-abbr" style={{color:'var(--friendly-color)'}}>F</span></th>
+            <th style={thStyle('enemy')}><span className="th-abbr" style={{color:'var(--enemy-color)'}}>E</span></th>
+            <th style={thStyle('expand')}></th>
+            {SORTABLE_COLS.map(col => {
+              const keyMap = {name:'name',faction:'faction',grand_alliance:'alliance',move:'move',health:'health',control:'control',save:'save',points:'points'};
+              const wKey = keyMap[col.key] || col.key;
+              return (
+                <React.Fragment key={col.key}>
+                  <th style={thStyle(wKey)}>{col.abbr ? <span className="th-abbr">{col.abbr}</span> : col.label}</th>
+                  {col.key === 'name' && <th style={thStyle('thumb')}></th>}
+                </React.Fragment>
+              );
+            })}
+            <th style={thStyle('types')}>Types</th>
+            <th style={thStyle('keywords')}>Keywords</th>
           </tr>
         </thead>
         <tbody>
-          <BattleUnitRow row={friendly} label="friendly" colWidths={colWidths} />
-          <BattleUnitRow row={enemy}    label="enemy"    colWidths={colWidths} />
+          {renderRow(friendly, 'friendly')}
+          {renderRow(enemy, 'enemy')}
         </tbody>
       </table>
     </div>
