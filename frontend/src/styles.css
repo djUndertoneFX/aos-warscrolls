@@ -482,6 +482,26 @@ input, select {
 }
 .sim-model-input:focus { outline: none; border-color: var(--border-gold); }
 
+.col-reinforce {
+  width: 76px;
+  min-width: 76px;
+  text-align: center;
+  font-family: 'Cinzel', serif;
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.reinforce-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-family: 'Cinzel', serif;
+  font-size: 0.75rem;
+  cursor: pointer;
+  user-select: none;
+}
+.reinforce-label input[type=checkbox] { accent-color: var(--gold); cursor: pointer; }
+
 .sim-fight-bar {
   display: flex;
   flex-direction: column;

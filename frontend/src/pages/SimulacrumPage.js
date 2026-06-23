@@ -351,6 +351,8 @@ export default function SimulacrumPage({ headerCollapsed }) {
   const [simSpeed, setSimSpeed] = useState('hasted'); // 'hasted' | 'slog'
   const [friendlyModelCount, setFriendlyModelCount] = useState(1);
   const [enemyModelCount, setEnemyModelCount]       = useState(1);
+  const [friendlyReinforced, setFriendlyReinforced] = useState(false);
+  const [enemyReinforced, setEnemyReinforced]       = useState(false);
 
   // Auto-populate model counts from unit_size when selections change
   useEffect(() => {
@@ -358,12 +360,14 @@ export default function SimulacrumPage({ headerCollapsed }) {
       const n = parseInt(selectedFriendly.unit_size);
       if (n > 0) setFriendlyModelCount(n);
     }
+    setFriendlyReinforced(false);
   }, [selectedFriendly?.id]);
   useEffect(() => {
     if (selectedEnemy) {
       const n = parseInt(selectedEnemy.unit_size);
       if (n > 0) setEnemyModelCount(n);
     }
+    setEnemyReinforced(false);
   }, [selectedEnemy?.id]);
 
   // Battle results: { left: SimResult, right: SimResult }
@@ -546,8 +550,8 @@ export default function SimulacrumPage({ headerCollapsed }) {
   // ── Run simulation ───────────────────────────────────────────────────────
   const runFight = () => {
     const count  = battleCount === 'forever' ? 10000 : parseInt(battleCount) || 1;
-    const fCount = Math.max(1, friendlyModelCount || 1);
-    const eCount = Math.max(1, enemyModelCount    || 1);
+    const fCount = Math.max(1, (friendlyModelCount || 1) * (friendlyReinforced ? 2 : 1));
+    const eCount = Math.max(1, (enemyModelCount    || 1) * (enemyReinforced   ? 2 : 1));
     const leftResult  = simulateBattle(selectedFriendly, selectedEnemy, { count, friendlyFirst: true,  friendlyModelCount: fCount, enemyModelCount: eCount });
     const rightResult = simulateBattle(selectedFriendly, selectedEnemy, { count, friendlyFirst: false, friendlyModelCount: fCount, enemyModelCount: eCount });
     setBattleResults({ left: leftResult, right: rightResult });
@@ -767,6 +771,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
                 })}
                 <th style={thStyle('types')}>Types<span className="col-resize-handle" onMouseDown={e => startResize(e,'types')} /></th>
                 <th style={thStyle('keywords')}>Keywords<span className="col-resize-handle" onMouseDown={e => startResize(e,'keywords')} /></th>
+                <th className="col-reinforce">Reinforce</th>
               </tr>
             </thead>
             <tbody>
@@ -779,7 +784,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
                 const prev = data.data[idx - 1];
                 const factionChanged = !prev || prev.faction !== row.faction;
                 const typeChanged    = !prev || prev.faction !== row.faction || unitTypeLabel(prev) !== unitTypeLabel(row);
-                const colSpan = 14;
+                const colSpan = 16;
                 return (
                   <React.Fragment key={row.id}>
                     {factionChanged && sortBy === 'faction' && <tr className="separator-faction"><td colSpan={colSpan}>{row.faction}</td></tr>}
@@ -810,10 +815,24 @@ export default function SimulacrumPage({ headerCollapsed }) {
                       <td className="col-stat">{row.points || '—'}</td>
                       <td><TypeTags row={row} /></td>
                       <td className="col-keywords">{row.keywords ? row.keywords.split(',').slice(0,6).join(', ') : '—'}</td>
+                      <td className="col-reinforce" onClick={e => e.stopPropagation()}>
+                        {selectedFriendly?.id === row.id && (
+                          <label className="reinforce-label" style={{color:'var(--friendly-color)'}}>
+                            <input type="checkbox" checked={friendlyReinforced} onChange={e => { setFriendlyReinforced(e.target.checked); setBattleResults(null); }} />
+                            ×2
+                          </label>
+                        )}
+                        {selectedEnemy?.id === row.id && (
+                          <label className="reinforce-label" style={{color:'var(--enemy-color)'}}>
+                            <input type="checkbox" checked={enemyReinforced} onChange={e => { setEnemyReinforced(e.target.checked); setBattleResults(null); }} />
+                            ×2
+                          </label>
+                        )}
+                      </td>
                     </tr>
                     {isExpanded && (
                       <tr className="weapons-expand-row">
-                        <td colSpan={15}>
+                        <td colSpan={16}>
                           <div className="weapons-expand-inner" onClick={e => e.stopPropagation()}>
                             {weapons.length === 0 && <span style={{color:'var(--text-dim)',fontStyle:'italic'}}>No weapon data available.</span>}
                             {ranged.length > 0 && (
