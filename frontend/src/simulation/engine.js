@@ -115,7 +115,7 @@ function resolveWeapon(weapon, sideState, defSide, defSave, charged, isShootingP
   const hits   = hitRolls.filter(r => r >= hitNeeded);
   const misses = hitRolls.filter(r => r < hitNeeded);
 
-  push(`      Hit rolls (${totalAttacks}):  ${hitRolls.join(', ')}`, 'roll-summary');
+  push(`      Hit rolls (${totalAttacks}):  ${hitRolls.slice().sort((a,b)=>b-a).join(', ')}`, 'roll-summary');
   push(`        → ${hits.length} hit${hits.length !== 1 ? 's' : ''}${crits.length > 0 ? ` (${crits.length} crit${crits.length !== 1 ? 's' : ''})` : ''}  ·  ${misses.length} miss${misses.length !== 1 ? 'es' : ''}`, 'roll-result');
 
   if (hits.length === 0) return;
@@ -137,7 +137,7 @@ function resolveWeapon(weapon, sideState, defSide, defSave, charged, isShootingP
   if (totalWoundDice > 0) {
     for (let w = 0; w < totalWoundDice; w++) woundRolls.push(d6());
     wounds = woundRolls.filter(r => r >= woundNeeded).length;
-    push(`      Wound rolls (${totalWoundDice}):  ${woundRolls.join(', ')}`, 'roll-summary');
+    push(`      Wound rolls (${totalWoundDice}):  ${woundRolls.slice().sort((a,b)=>b-a).join(', ')}`, 'roll-summary');
     push(`        → ${wounds} wound${wounds !== 1 ? 's' : ''}  ·  ${totalWoundDice - wounds} fail${totalWoundDice - wounds !== 1 ? 's' : ''}`, 'roll-result');
   }
 
@@ -149,7 +149,7 @@ function resolveWeapon(weapon, sideState, defSide, defSave, charged, isShootingP
     for (let s = 0; s < totalSaveDice; s++) saveRolls.push(d6());
     const saved = saveRolls.filter(r => r >= saveNeeded).length;
     unsaved = totalSaveDice - saved;
-    push(`      Save rolls  (${totalSaveDice}, vs ${saveNeeded}+):  ${saveRolls.join(', ')}`, 'roll-summary');
+    push(`      Save rolls  (${totalSaveDice}, vs ${saveNeeded}+):  ${saveRolls.slice().sort((a,b)=>b-a).join(', ')}`, 'roll-summary');
     push(`        → ${saved} saved  ·  ${unsaved} unsaved`, 'roll-result');
   }
 
