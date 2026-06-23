@@ -240,42 +240,36 @@ const TYPE_CLASS = {
 
 function winnerSummary(result, friendlyUnit, enemyUnit) {
   if (!result) return null;
-  const { winner, isMultiBattle, fWins, eWins, draws, count } = result;
+  const { winner, isMultiBattle } = result;
 
   if (isMultiBattle) {
-    const side = winner.side;
-    if (side === 'friendly') {
-      return {
-        label: `Friendly Unit "${friendlyUnit.name}" wins more often!`,
-        detail: `${fWins} / ${count} battles (${((fWins/count)*100).toFixed(1)}% win rate)`,
-        side: 'friendly',
-      };
-    } else if (side === 'enemy') {
-      return {
-        label: `Enemy Unit "${enemyUnit.name}" wins more often!`,
-        detail: `${eWins} / ${count} battles (${((eWins/count)*100).toFixed(1)}% win rate)`,
-        side: 'enemy',
-      };
+    const { fWins, eWins, draws, count } = winner;
+    if (winner.side === 'friendly') {
+      return { label: `Friendly Unit "${friendlyUnit.name}" wins more often!`, detail: `${fWins} / ${count} battles  ·  ${((fWins/count)*100).toFixed(1)}% win rate`, side: 'friendly' };
+    } else if (winner.side === 'enemy') {
+      return { label: `Enemy Unit "${enemyUnit.name}" wins more often!`, detail: `${eWins} / ${count} battles  ·  ${((eWins/count)*100).toFixed(1)}% win rate`, side: 'enemy' };
     } else {
-      return { label: 'Evenly Matched!', detail: `${fWins} friendly / ${eWins} enemy / ${draws} draws over ${count} battles`, side: 'draw' };
+      return { label: 'Evenly Matched!', detail: `${fWins} friendly  ·  ${eWins} enemy  ·  ${draws} draws  (${count} battles)`, side: 'draw' };
     }
   }
 
   const { side } = winner;
   if (side === 'friendly') {
+    const dmg = winner.damageOnCurrent > 0 ? `  ·  ${winner.damageOnCurrent}/${winner.hpPerModel} damage on surviving model` : '';
     return {
       label: `Friendly Unit "${friendlyUnit.name}" stands Victorious!`,
-      detail: `With ${winner.hpRemaining} HP remaining and ${winner.damageTaken} damage taken.`,
+      detail: `${winner.modelsAlive} of ${winner.modelCount} models remain  ·  ${winner.modelsKilled} model${winner.modelsKilled !== 1 ? 's' : ''} lost${dmg}`,
       side: 'friendly',
     };
   } else if (side === 'enemy') {
+    const dmg = winner.damageOnCurrent > 0 ? `  ·  ${winner.damageOnCurrent}/${winner.hpPerModel} damage on surviving model` : '';
     return {
       label: `Enemy Unit "${enemyUnit.name}" stands Victorious!`,
-      detail: `With ${winner.hpRemaining} HP remaining and ${winner.damageTaken} damage taken.`,
+      detail: `${winner.modelsAlive} of ${winner.modelCount} models remain  ·  ${winner.modelsKilled} model${winner.modelsKilled !== 1 ? 's' : ''} lost${dmg}`,
       side: 'enemy',
     };
   } else if (side === 'mutual') {
-    return { label: 'Mutual Destruction!', detail: 'Both units fell simultaneously.', side: 'draw' };
+    return { label: 'Mutual Destruction!', detail: 'Both units destroyed simultaneously.', side: 'draw' };
   } else {
     return { label: 'Stalemate!', detail: `Neither unit fell after ${winner.rounds} rounds.`, side: 'draw' };
   }
@@ -353,6 +347,8 @@ export default function SimulacrumPage({ headerCollapsed }) {
   const [battleMode, setBattleMode]   = useState('server');
   const [battleCount, setBattleCount] = useState('1');
   const [simSpeed, setSimSpeed] = useState('hasted'); // 'hasted' | 'slog'
+  const [friendlyModelCount, setFriendlyModelCount] = useState(1);
+  const [enemyModelCount, setEnemyModelCount]       = useState(1);
 
   // Battle results: { left: SimResult, right: SimResult }
   const [battleResults, setBattleResults] = useState(null);
@@ -533,9 +529,11 @@ export default function SimulacrumPage({ headerCollapsed }) {
 
   // ── Run simulation ───────────────────────────────────────────────────────
   const runFight = () => {
-    const count = battleCount === 'forever' ? 10000 : parseInt(battleCount) || 1;
-    const leftResult  = simulateBattle(selectedFriendly, selectedEnemy, { count, friendlyFirst: true });
-    const rightResult = simulateBattle(selectedFriendly, selectedEnemy, { count, friendlyFirst: false });
+    const count  = battleCount === 'forever' ? 10000 : parseInt(battleCount) || 1;
+    const fCount = Math.max(1, friendlyModelCount || 1);
+    const eCount = Math.max(1, enemyModelCount    || 1);
+    const leftResult  = simulateBattle(selectedFriendly, selectedEnemy, { count, friendlyFirst: true,  friendlyModelCount: fCount, enemyModelCount: eCount });
+    const rightResult = simulateBattle(selectedFriendly, selectedEnemy, { count, friendlyFirst: false, friendlyModelCount: fCount, enemyModelCount: eCount });
     setBattleResults({ left: leftResult, right: rightResult });
     setStepIndex(0);
   };
@@ -686,6 +684,18 @@ export default function SimulacrumPage({ headerCollapsed }) {
       {stage === 2 && (
         <>
           <SimulacrumBattle friendly={selectedFriendly} enemy={selectedEnemy} colWidths={colWidths} startResize={startResize} thStyle={thStyle} />
+          <div className="sim-model-counts">
+            <label className="sim-model-label">
+              <span style={{color:'var(--friendly-color)'}}>Friendly models:</span>
+              <input className="sim-model-input" type="number" min="1" max="30" value={friendlyModelCount}
+                onChange={e => { setFriendlyModelCount(parseInt(e.target.value) || 1); setBattleResults(null); }} />
+            </label>
+            <label className="sim-model-label">
+              <span style={{color:'var(--enemy-color)'}}>Enemy models:</span>
+              <input className="sim-model-input" type="number" min="1" max="30" value={enemyModelCount}
+                onChange={e => { setEnemyModelCount(parseInt(e.target.value) || 1); setBattleResults(null); }} />
+            </label>
+          </div>
           {showBattleResults && (
             <div className="battle-results">
               <BattlePane
