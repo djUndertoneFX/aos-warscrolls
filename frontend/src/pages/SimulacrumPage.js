@@ -98,7 +98,13 @@ function SortIcon({ col, sortBy, sortDir }) {
   return <span className="sort-icon">{sortDir === 'asc' ? '↑' : '↓'}</span>;
 }
 
+const STAGES = [
+  { id: 1, label: 'Select two Units.' },
+  { id: 2, label: 'SimulacEm!' },
+];
+
 export default function WarscrollsPage({ headerCollapsed }) {
+  const [stage, setStage]         = useState(1);
   const [data, setData]           = useState(null);
   const [factions, setFactions]   = useState([]);
   const [loading, setLoading]     = useState(true);
@@ -352,6 +358,16 @@ export default function WarscrollsPage({ headerCollapsed }) {
         <div className="page-title">
           Simulacrum
           <span>Age of Sigmar 4th Edition · Data from Wahapedia</span>
+        </div>
+        <div className="sim-stages">
+          {STAGES.map((s, i) => (
+            <React.Fragment key={s.id}>
+              {i > 0 && <span className="sim-stage-arrow">›</span>}
+              <span className={`sim-stage${stage === s.id ? ' sim-stage-active' : ''}`}>
+                {s.id}. {s.label}
+              </span>
+            </React.Fragment>
+          ))}
         </div>
         {data && (
           <div className="unit-count">
