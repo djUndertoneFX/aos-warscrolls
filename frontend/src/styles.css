@@ -464,7 +464,8 @@ input, select {
 .sim-fight-options {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
+  width: 100%;
   gap: 3rem;
   flex-wrap: wrap;
 }
@@ -628,8 +629,9 @@ input, select {
 .btn-proceed-done { color: var(--text-dim); border-color: var(--border); background: transparent; cursor: default; }
 .sim-fight-stepthrough {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
   gap: 0.15rem;
 }
 .sim-hotkey-hint {

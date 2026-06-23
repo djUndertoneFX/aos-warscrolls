@@ -607,14 +607,13 @@ export default function SimulacrumPage({ headerCollapsed }) {
                 </label>
               ))}
             </div>
-            <div className="sim-fight-section sim-fight-stepthrough">
+            <div className="sim-fight-stepthrough">
               {[{val:'hasted',label:'Hasted'},{val:'slog',label:'Slog it out.'}].map(opt => (
                 <label key={opt.val} className={`sim-radio${simSpeed===opt.val?' sim-radio-active':''}`}>
                   <input type="radio" name="simSpeed" value={opt.val} checked={simSpeed===opt.val} onChange={() => { setSimSpeed(opt.val); setStepIndex(0); }} />
                   {opt.label}
                 </label>
               ))}
-              {stepThrough && <div className="sim-hotkey-hint">Numpad ↵ to advance</div>}
             </div>
           </div>
         </div>
