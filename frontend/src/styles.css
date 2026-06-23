@@ -146,6 +146,59 @@ input, select {
   color: var(--text-dim);
 }
 
+.hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+}
+.hamburger span {
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: var(--gold);
+  border-radius: 2px;
+  transition: background 0.2s;
+}
+.hamburger:hover span { background: var(--gold-light); }
+
+.mobile-menu {
+  display: none;
+  flex-direction: column;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border-gold);
+  z-index: 99;
+}
+.mobile-nav-link {
+  font-family: 'Cinzel', serif;
+  font-size: 0.85rem;
+  letter-spacing: 0.07em;
+  color: var(--text-dim);
+  text-decoration: none;
+  padding: 0.85rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  transition: color 0.2s, background 0.2s;
+}
+.mobile-nav-link:hover { color: var(--gold-light); background: rgba(201,168,76,0.08); }
+.mobile-nav-link.nav-link-active { color: var(--gold); }
+.mobile-signout {
+  font-family: 'Cinzel', serif;
+  font-size: 0.85rem;
+  letter-spacing: 0.07em;
+  color: var(--text-dim);
+  background: transparent;
+  border: none;
+  text-align: left;
+  padding: 0.85rem 1.5rem;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.mobile-signout:hover { color: #e06060; }
+
 .coming-soon {
   flex: 1;
   display: flex;
@@ -1172,7 +1225,9 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
   .navbar-nav { display: none; }
   .navbar-right { gap: 0.75rem; }
   .navbar-username { display: none; }
-  .btn-logout { padding: 0.3rem 0.6rem; font-size: 0.72rem; }
+  .btn-logout { display: none; }
+  .hamburger { display: flex; }
+  .mobile-menu { display: flex; }
   .cb-group-center { justify-content: flex-start; flex: unset; flex-direction: column; align-items: flex-start; }
   .cb-group-right  { justify-content: flex-start; margin-left: 1.5rem; flex-direction: column; align-items: flex-start; }
 }

@@ -19,31 +19,48 @@ const NAV_PAGES = [
 function Navbar({ headerCollapsed, onToggleCollapse }) {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
   const isWarscrolls = location.pathname === '/warscrolls';
   if (!user) return null;
   return (
-    <nav className="navbar">
-      <span className="navbar-brand">
-        {isWarscrolls && (
-          <button className="collapse-toggle" onClick={onToggleCollapse} title={headerCollapsed ? 'Expand filters' : 'Collapse filters'}>
-            {headerCollapsed ? '▶' : '▼'}
+    <>
+      <nav className="navbar">
+        <span className="navbar-brand">
+          {isWarscrolls && (
+            <button className="collapse-toggle" onClick={onToggleCollapse} title={headerCollapsed ? 'Expand filters' : 'Collapse filters'}>
+              {headerCollapsed ? '▶' : '▼'}
+            </button>
+          )}
+          ⚔ <span>AoS</span> Warscrolls
+          {isWarscrolls && headerCollapsed && <span id="navbar-extras" />}
+        </span>
+        <div className="navbar-nav">
+          {NAV_PAGES.map(p => (
+            <NavLink key={p.path} to={p.path} className={({ isActive }) => 'nav-link' + (isActive ? ' nav-link-active' : '')}>
+              {p.label}
+            </NavLink>
+          ))}
+        </div>
+        <div className="navbar-right">
+          <button className="hamburger" onClick={() => setMenuOpen(o => !o)} aria-label="Menu">
+            <span /><span /><span />
           </button>
-        )}
-        ⚔ <span>AoS</span> Warscrolls
-        {isWarscrolls && headerCollapsed && <span id="navbar-extras" />}
-      </span>
-      <div className="navbar-nav">
-        {NAV_PAGES.map(p => (
-          <NavLink key={p.path} to={p.path} className={({ isActive }) => 'nav-link' + (isActive ? ' nav-link-active' : '')}>
-            {p.label}
-          </NavLink>
-        ))}
-      </div>
-      <div className="navbar-right">
-        <span className="navbar-username">{user.username}</span>
-        <button className="btn-logout" onClick={logout}>Sign Out</button>
-      </div>
-    </nav>
+          <span className="navbar-username">{user.username}</span>
+          <button className="btn-logout" onClick={logout}>Sign Out</button>
+        </div>
+      </nav>
+      {menuOpen && (
+        <div className="mobile-menu">
+          {NAV_PAGES.map(p => (
+            <NavLink key={p.path} to={p.path} className={({ isActive }) => 'mobile-nav-link' + (isActive ? ' nav-link-active' : '')}
+              onClick={() => setMenuOpen(false)}>
+              {p.label}
+            </NavLink>
+          ))}
+          <button className="mobile-signout" onClick={() => { setMenuOpen(false); logout(); }}>Sign Out</button>
+        </div>
+      )}
+    </>
   );
 }
 
