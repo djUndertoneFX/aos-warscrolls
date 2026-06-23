@@ -350,7 +350,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
       <>
       <div className="page-header">
         <div className="page-title">
-          Warscrolls
+          Simulacrum
           <span>Age of Sigmar 4th Edition · Data from Wahapedia</span>
         </div>
         {data && (
