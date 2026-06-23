@@ -10,11 +10,12 @@ import SimulacrumPage from './pages/SimulacrumPage';
 import './styles.css';
 
 const NAV_PAGES = [
-  { label: 'Warscrolls',    path: '/warscrolls' },
-  { label: 'Army Builder',  path: '/army-builder', soon: true },
-  { label: 'Simulacrum',    path: '/simulacrum' },
-  { label: 'Spearhead',     path: '/spearhead',     soon: true },
-  { label: 'Path to Glory', path: '/path-to-glory', soon: true },
+  { label: 'Warscrolls',         path: '/warscrolls' },
+  { label: 'Army Builder',       path: '/army-builder',    soon: true },
+  { label: 'Simulacrum',         path: '/simulacrum' },
+  { label: 'Spearhead',          path: '/spearhead',       soon: true },
+  { label: 'Path to Glory',      path: '/path-to-glory',   soon: true },
+  { label: 'Consult the Oracle', path: '/consult-oracle',  soon: true },
 ];
 
 function Navbar({ headerCollapsed, onToggleCollapse }) {
@@ -109,7 +110,8 @@ function AppRoutes() {
         <Route path="/army-builder"  element={<ProtectedRoute><ComingSoon title="Army Builder" /></ProtectedRoute>} />
         <Route path="/simulacrum"    element={<ProtectedRoute><SimulacrumPage headerCollapsed={headerCollapsed} /></ProtectedRoute>} />
         <Route path="/spearhead"     element={<ProtectedRoute><ComingSoon title="Spearhead" /></ProtectedRoute>} />
-        <Route path="/path-to-glory" element={<ProtectedRoute><ComingSoon title="Path to Glory" /></ProtectedRoute>} />
+        <Route path="/path-to-glory"  element={<ProtectedRoute><ComingSoon title="Path to Glory" /></ProtectedRoute>} />
+        <Route path="/consult-oracle" element={<ProtectedRoute><ComingSoon title="Consult the Oracle" /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to={user ? "/warscrolls" : "/login"} />} />
       </Routes>
     </div>

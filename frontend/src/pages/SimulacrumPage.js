@@ -352,7 +352,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
   const [showRitualError, setShowRitualError]   = useState(false);
   const [battleMode, setBattleMode]   = useState('server');
   const [battleCount, setBattleCount] = useState('1');
-  const [stepThrough, setStepThrough] = useState(false);
+  const [simSpeed, setSimSpeed] = useState('hasted'); // 'hasted' | 'slog'
 
   // Battle results: { left: SimResult, right: SimResult }
   const [battleResults, setBattleResults] = useState(null);
@@ -513,6 +513,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
   useEffect(() => { setNavbarExtrasEl(headerCollapsed ? document.getElementById('navbar-extras') : null); }, [headerCollapsed]);
 
   // ── Numpad Enter hotkey for step-through ────────────────────────────────
+  const stepThrough = simSpeed === 'slog';
   const maxStepIndex = battleResults
     ? Math.max(battleResults.left?.steps?.length || 0, battleResults.right?.steps?.length || 0)
     : 0;
@@ -609,10 +610,12 @@ export default function SimulacrumPage({ headerCollapsed }) {
               )}
             </div>
             <div className="sim-fight-section sim-fight-stepthrough">
-              <label className={`sim-radio${stepThrough?' sim-radio-active':''}`}>
-                <input type="checkbox" checked={stepThrough} onChange={e => { setStepThrough(e.target.checked); setStepIndex(0); }} />
-                Step Through
-              </label>
+              {[{val:'hasted',label:'Hasted'},{val:'slog',label:'Slog it out.'}].map(opt => (
+                <label key={opt.val} className={`sim-radio${simSpeed===opt.val?' sim-radio-active':''}`}>
+                  <input type="radio" name="simSpeed" value={opt.val} checked={simSpeed===opt.val} onChange={() => { setSimSpeed(opt.val); setStepIndex(0); }} />
+                  {opt.label}
+                </label>
+              ))}
               {stepThrough && <div className="sim-hotkey-hint">Numpad ↵ to advance</div>}
             </div>
           </div>
