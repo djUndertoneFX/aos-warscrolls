@@ -579,6 +579,17 @@ export default function SimulacrumPage({ headerCollapsed }) {
       {/* ── Stage 2 options bar ── */}
       {stage === 2 && (
         <div className="sim-fight-bar">
+          <button className="btn-fight-eternity" onClick={runFight}>⚔ Fight for Eternity</button>
+          {stepThrough && showBattleResults && (
+            <button
+              className={`btn-proceed${canProceed ? '' : ' btn-proceed-done'}`}
+              onClick={proceed}
+              disabled={!canProceed}
+              title="Numpad Enter"
+            >
+              {canProceed ? '▶ Proceed' : '✓ Done'}
+            </button>
+          )}
           <div className="sim-fight-options">
             <div className="sim-fight-section">
               {[{val:'local',label:'On our soil!'},{val:'server',label:'Summon the Gods.'}].map(opt => (
@@ -595,19 +606,6 @@ export default function SimulacrumPage({ headerCollapsed }) {
                   {opt.label}
                 </label>
               ))}
-            </div>
-            <div className="sim-fight-section sim-fight-actions">
-              <button className="btn-fight-eternity" onClick={runFight}>⚔ Fight for Eternity</button>
-              {stepThrough && showBattleResults && (
-                <button
-                  className={`btn-proceed${canProceed ? '' : ' btn-proceed-done'}`}
-                  onClick={proceed}
-                  disabled={!canProceed}
-                  title="Numpad Enter"
-                >
-                  {canProceed ? '▶ Proceed' : '✓ Done'}
-                </button>
-              )}
             </div>
             <div className="sim-fight-section sim-fight-stepthrough">
               {[{val:'hasted',label:'Hasted'},{val:'slog',label:'Slog it out.'}].map(opt => (
