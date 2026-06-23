@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, NavLink, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './AuthContext';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -8,23 +8,51 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 import WarscrollsPage from './pages/WarscrollsPage';
 import './styles.css';
 
+const NAV_PAGES = [
+  { label: 'Warscrolls',    path: '/warscrolls' },
+  { label: 'Army Builder',  path: '/army-builder' },
+  { label: 'Simulacrum',    path: '/simulacrum' },
+  { label: 'Spearhead',     path: '/spearhead' },
+  { label: 'Path to Glory', path: '/path-to-glory' },
+];
+
 function Navbar({ headerCollapsed, onToggleCollapse }) {
   const { user, logout } = useAuth();
+  const location = useLocation();
+  const isWarscrolls = location.pathname === '/warscrolls';
   if (!user) return null;
   return (
     <nav className="navbar">
       <span className="navbar-brand">
-        <button className="collapse-toggle" onClick={onToggleCollapse} title={headerCollapsed ? 'Expand filters' : 'Collapse filters'}>
-          {headerCollapsed ? '▶' : '▼'}
-        </button>
+        {isWarscrolls && (
+          <button className="collapse-toggle" onClick={onToggleCollapse} title={headerCollapsed ? 'Expand filters' : 'Collapse filters'}>
+            {headerCollapsed ? '▶' : '▼'}
+          </button>
+        )}
         ⚔ <span>AoS</span> Warscrolls
-        {headerCollapsed && <span id="navbar-extras" />}
+        {isWarscrolls && headerCollapsed && <span id="navbar-extras" />}
       </span>
+      <div className="navbar-nav">
+        {NAV_PAGES.map(p => (
+          <NavLink key={p.path} to={p.path} className={({ isActive }) => 'nav-link' + (isActive ? ' nav-link-active' : '')}>
+            {p.label}
+          </NavLink>
+        ))}
+      </div>
       <div className="navbar-right">
         <span className="navbar-username">{user.username}</span>
         <button className="btn-logout" onClick={logout}>Sign Out</button>
       </div>
     </nav>
+  );
+}
+
+function ComingSoon({ title }) {
+  return (
+    <div className="coming-soon">
+      <h2>{title}</h2>
+      <p>Preparing for Ambush</p>
+    </div>
   );
 }
 
@@ -60,6 +88,10 @@ function AppRoutes() {
         <Route path="/warscrolls" element={
           <ProtectedRoute><WarscrollsPage headerCollapsed={headerCollapsed} /></ProtectedRoute>
         } />
+        <Route path="/army-builder"  element={<ProtectedRoute><ComingSoon title="Army Builder" /></ProtectedRoute>} />
+        <Route path="/simulacrum"    element={<ProtectedRoute><ComingSoon title="Simulacrum" /></ProtectedRoute>} />
+        <Route path="/spearhead"     element={<ProtectedRoute><ComingSoon title="Spearhead" /></ProtectedRoute>} />
+        <Route path="/path-to-glory" element={<ProtectedRoute><ComingSoon title="Path to Glory" /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to={user ? "/warscrolls" : "/login"} />} />
       </Routes>
     </div>
