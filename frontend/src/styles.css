@@ -473,6 +473,42 @@ input, select {
   box-shadow: 0 0 12px rgba(201,168,76,0.3);
 }
 
+.battle-results {
+  display: flex;
+  margin-top: 1.5rem;
+  border: 1px solid var(--border-gold);
+  border-radius: 4px;
+  overflow: hidden;
+  min-height: 200px;
+}
+.battle-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.battle-pane-header {
+  font-family: 'Cinzel', serif;
+  font-size: 0.95rem;
+  letter-spacing: 0.1em;
+  color: var(--gold);
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--border-gold);
+  background: rgba(201,168,76,0.06);
+}
+.battle-pane-body {
+  flex: 1;
+  padding: 1.25rem;
+  color: var(--text-dim);
+  font-family: 'Crimson Pro', serif;
+  font-size: 0.95rem;
+  font-style: italic;
+}
+.battle-divider {
+  width: 1px;
+  background: var(--border-gold);
+  flex-shrink: 0;
+}
+
 /* Battle view */
 .sim-battle-row.sim-battle-friendly td:first-child { color: var(--friendly-color); font-weight: 700; }
 .sim-battle-row.sim-battle-enemy   td:first-child { color: var(--enemy-color);    font-weight: 700; }

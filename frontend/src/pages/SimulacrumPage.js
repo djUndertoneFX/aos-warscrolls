@@ -239,6 +239,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
   const [selectedFriendly, setSelectedFriendly] = useState(null);
   const [selectedEnemy, setSelectedEnemy]       = useState(null);
   const [showRitualError, setShowRitualError]   = useState(false);
+  const [showBattleResults, setShowBattleResults] = useState(false);
   const [data, setData]           = useState(null);
   const [factions, setFactions]   = useState([]);
   const [loading, setLoading]     = useState(true);
@@ -494,7 +495,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
           <span>Age of Sigmar 4th Edition · Data from Wahapedia</span>
         </div>
         <div className="sim-stages">
-          <button className={`sim-stage-btn${stage === 1 ? ' sim-stage-active' : ''}`} onClick={() => setStage(1)}>
+          <button className={`sim-stage-btn${stage === 1 ? ' sim-stage-active' : ''}`} onClick={() => { setStage(1); setShowBattleResults(false); }}>
             1. Select two Units.
           </button>
           <span className="sim-stage-arrow">›</span>
@@ -518,7 +519,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
       {/* ── Filters (stage 1 only) ── */}
       {stage === 2 && (
         <div className="sim-fight-bar">
-          <button className="btn-fight-eternity">⚔ Fight for Eternity</button>
+          <button className="btn-fight-eternity" onClick={() => setShowBattleResults(true)}>⚔ Fight for Eternity</button>
         </div>
       )}
       {stage === 1 && <div className="filters">
@@ -615,7 +616,22 @@ export default function WarscrollsPage({ headerCollapsed }) {
 
       {/* ── Stage 2: battle view ── */}
       {stage === 2 && (
-        <SimulacrumBattle friendly={selectedFriendly} enemy={selectedEnemy} colWidths={colWidths} startResize={startResize} thStyle={thStyle} />
+        <>
+          <SimulacrumBattle friendly={selectedFriendly} enemy={selectedEnemy} colWidths={colWidths} startResize={startResize} thStyle={thStyle} />
+          {showBattleResults && (
+            <div className="battle-results">
+              <div className="battle-pane">
+                <div className="battle-pane-header">Take their heads!</div>
+                <div className="battle-pane-body">Battle results incoming…</div>
+              </div>
+              <div className="battle-divider" />
+              <div className="battle-pane">
+                <div className="battle-pane-header">Caught off guard!</div>
+                <div className="battle-pane-body">Battle results incoming…</div>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* ── Stage 1: Table ── */}
