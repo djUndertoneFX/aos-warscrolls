@@ -103,8 +103,100 @@ const STAGES = [
   { id: 2, label: 'SimulacEm!' },
 ];
 
+function BattleUnitRow({ row, label, colWidths }) {
+  const thStyle = (key) => ({ width: colWidths[key], minWidth: colWidths[key] });
+  const weapons = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
+  const ranged = weapons.filter(w => w.type === 'ranged');
+  const melee  = weapons.filter(w => w.type === 'melee');
+  return (
+    <>
+      <tr className={`unit-row sim-battle-row sim-battle-${label}`}>
+        <td className="sim-battle-label">{label === 'friendly' ? 'F' : 'E'}</td>
+        <td className="col-name"><span className="unit-name-link">{row.name}</span></td>
+        <td className="col-faction">{row.faction}</td>
+        <td>{row.grand_alliance && <AllianceBadge alliance={row.grand_alliance} />}</td>
+        <td className="col-stat">{row.move || '—'}</td>
+        <td className="col-stat">{row.health || '—'}</td>
+        <td className="col-stat">{row.control || '—'}</td>
+        <td className="col-stat">{row.save || '—'}</td>
+        <td className="col-stat">{row.points || '—'}</td>
+        <td><TypeTags row={row} /></td>
+      </tr>
+      <tr className="weapons-expand-row">
+        <td colSpan={10}>
+          <div className="weapons-expand-inner">
+            {weapons.length === 0 && <span style={{color:'var(--text-dim)',fontStyle:'italic'}}>No weapon data available.</span>}
+            {ranged.length > 0 && (
+              <div className="inline-weapon-block">
+                <div className="inline-weapon-section-header">Ranged Weapons</div>
+                <table className="inline-weapon-table"><thead><tr>
+                  <th>Weapon</th><th>Range</th><th>Atk</th><th>Hit</th><th>Wnd</th><th>Rnd</th><th>Dmg</th>
+                </tr></thead><tbody>
+                  {ranged.map((w,i) => <tr key={i}><td>{w.name}</td><td>{w.range}</td><td>{w.attacks}</td><td>{w.hit}</td><td>{w.wound}</td><td>{w.rend}</td><td>{w.damage}</td></tr>)}
+                </tbody></table>
+              </div>
+            )}
+            {melee.length > 0 && (
+              <div className="inline-weapon-block">
+                <div className="inline-weapon-section-header">Melee Weapons</div>
+                <table className="inline-weapon-table"><thead><tr>
+                  <th>Weapon</th><th>Atk</th><th>Hit</th><th>Wnd</th><th>Rnd</th><th>Dmg</th>
+                </tr></thead><tbody>
+                  {melee.map((w,i) => <tr key={i}><td>{w.name}</td><td>{w.attacks}</td><td>{w.hit}</td><td>{w.wound}</td><td>{w.rend}</td><td>{w.damage}</td></tr>)}
+                </tbody></table>
+              </div>
+            )}
+          </div>
+        </td>
+      </tr>
+    </>
+  );
+}
+
+function SimulacrumBattle({ friendly, enemy, colWidths }) {
+  return (
+    <div className="table-wrapper sim-battle-table">
+      <table>
+        <thead>
+          <tr>
+            <th style={{width:36}}></th>
+            <th>Unit Name</th>
+            <th>Faction</th>
+            <th>Alliance</th>
+            <th title="Move"><span className="th-abbr">Mv</span></th>
+            <th title="Health"><span className="th-abbr">HP</span></th>
+            <th title="Control"><span className="th-abbr">Ctrl</span></th>
+            <th title="Save"><span className="th-abbr">Sv</span></th>
+            <th title="Points"><span className="th-abbr">Pts</span></th>
+            <th>Types</th>
+          </tr>
+        </thead>
+        <tbody>
+          <BattleUnitRow row={friendly} label="friendly" colWidths={colWidths} />
+          <BattleUnitRow row={enemy}    label="enemy"    colWidths={colWidths} />
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function RitualErrorModal({ onClose }) {
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-box" onClick={e => e.stopPropagation()}>
+        <h2 className="modal-title">The ritual has resulted in Demons eating souls.</h2>
+        <p className="modal-body">You have not provided the correct reagents… Select Two Units… to see how they fare in mortal battle against one another!</p>
+        <button className="modal-ok" onClick={onClose}>OK</button>
+      </div>
+    </div>
+  );
+}
+
 export default function WarscrollsPage({ headerCollapsed }) {
-  const [stage, setStage]         = useState(1);
+  const [stage, setStage]           = useState(1);
+  const [selectedFriendly, setSelectedFriendly] = useState(null);
+  const [selectedEnemy, setSelectedEnemy]       = useState(null);
+  const [showRitualError, setShowRitualError]   = useState(false);
   const [data, setData]           = useState(null);
   const [factions, setFactions]   = useState([]);
   const [loading, setLoading]     = useState(true);
@@ -360,14 +452,19 @@ export default function WarscrollsPage({ headerCollapsed }) {
           <span>Age of Sigmar 4th Edition · Data from Wahapedia</span>
         </div>
         <div className="sim-stages">
-          {STAGES.map((s, i) => (
-            <React.Fragment key={s.id}>
-              {i > 0 && <span className="sim-stage-arrow">›</span>}
-              <span className={`sim-stage${stage === s.id ? ' sim-stage-active' : ''}`}>
-                {s.id}. {s.label}
-              </span>
-            </React.Fragment>
-          ))}
+          <button className={`sim-stage-btn${stage === 1 ? ' sim-stage-active' : ''}`} onClick={() => setStage(1)}>
+            1. Select two Units.
+          </button>
+          <span className="sim-stage-arrow">›</span>
+          <button
+            className={`sim-stage-btn${stage === 2 ? ' sim-stage-active' : ''}`}
+            onClick={() => {
+              if (!selectedFriendly || !selectedEnemy) { setShowRitualError(true); }
+              else { setStage(2); }
+            }}
+          >
+            2. SimulacEm!
+          </button>
         </div>
         {data && (
           <div className="unit-count">
@@ -493,10 +590,15 @@ export default function WarscrollsPage({ headerCollapsed }) {
       </>
       )}
 
-      {/* ── Table ── */}
-      {error && <div className="error-msg" style={{marginBottom:'1rem'}}>{error}</div>}
+      {/* ── Stage 2: battle view ── */}
+      {stage === 2 && (
+        <SimulacrumBattle friendly={selectedFriendly} enemy={selectedEnemy} colWidths={colWidths} startResize={startResize} thStyle={thStyle} />
+      )}
 
-      {loading ? (
+      {/* ── Stage 1: Table ── */}
+      {stage === 1 && error && <div className="error-msg" style={{marginBottom:'1rem'}}>{error}</div>}
+
+      {stage === 1 && (<>{loading ? (
         <div className="loading-state">
           <span className="loading-rune">⚙</span>
           Consulting the Grand Conclave…
@@ -569,11 +671,11 @@ export default function WarscrollsPage({ headerCollapsed }) {
                         style={{cursor:'pointer'}}
                       >
                         <td className="col-rownum">{rowNum}</td>
-                        <td className="col-flag" onClick={e => { e.stopPropagation(); toggleFlag(row.id, 'is_friendly'); }}>
-                          <span className={`flag-check friendly${(userUnits[row.id]?.is_friendly) ? ' active' : ''}`}>✓</span>
+                        <td className="col-flag" onClick={e => { e.stopPropagation(); setSelectedFriendly(f => f?.id === row.id ? null : row); }}>
+                          <span className={`flag-check friendly${selectedFriendly?.id === row.id ? ' active' : ''}`}>✓</span>
                         </td>
-                        <td className="col-flag" onClick={e => { e.stopPropagation(); toggleFlag(row.id, 'is_enemy'); }}>
-                          <span className={`flag-check enemy${(userUnits[row.id]?.is_enemy) ? ' active' : ''}`}>✓</span>
+                        <td className="col-flag" onClick={e => { e.stopPropagation(); setSelectedEnemy(f => f?.id === row.id ? null : row); }}>
+                          <span className={`flag-check enemy${selectedEnemy?.id === row.id ? ' active' : ''}`}>✓</span>
                         </td>
                         <td>
                           <span className="row-expand-hint">{isExpanded ? '▲' : '▼'}</span>
@@ -659,8 +761,10 @@ export default function WarscrollsPage({ headerCollapsed }) {
 
         </>
       )}
+      </>)}
     </div>
 
+    {showRitualError && <RitualErrorModal onClose={() => { setShowRitualError(false); setStage(1); }} />}
     {detailUnit && <WarscrollDetail unit={detailUnit} onClose={() => setDetailUnit(null)} />}
     </>
   );
