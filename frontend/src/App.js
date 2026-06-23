@@ -6,6 +6,7 @@ import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import WarscrollsPage from './pages/WarscrollsPage';
+import SimulacrumPage from './pages/SimulacrumPage';
 import './styles.css';
 
 const NAV_PAGES = [
@@ -20,7 +21,7 @@ function Navbar({ headerCollapsed, onToggleCollapse }) {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
-  const isWarscrolls = location.pathname === '/warscrolls';
+  const isWarscrolls = location.pathname === '/warscrolls' || location.pathname === '/simulacrum';
   if (!user) return null;
   return (
     <>
@@ -106,7 +107,7 @@ function AppRoutes() {
           <ProtectedRoute><WarscrollsPage headerCollapsed={headerCollapsed} /></ProtectedRoute>
         } />
         <Route path="/army-builder"  element={<ProtectedRoute><ComingSoon title="Army Builder" /></ProtectedRoute>} />
-        <Route path="/simulacrum"    element={<ProtectedRoute><ComingSoon title="Simulacrum" /></ProtectedRoute>} />
+        <Route path="/simulacrum"    element={<ProtectedRoute><SimulacrumPage headerCollapsed={headerCollapsed} /></ProtectedRoute>} />
         <Route path="/spearhead"     element={<ProtectedRoute><ComingSoon title="Spearhead" /></ProtectedRoute>} />
         <Route path="/path-to-glory" element={<ProtectedRoute><ComingSoon title="Path to Glory" /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to={user ? "/warscrolls" : "/login"} />} />
