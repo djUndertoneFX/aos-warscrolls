@@ -452,10 +452,36 @@ input, select {
 }
 
 .sim-fight-bar {
-  display: flex;
-  justify-content: center;
   padding: 1rem 0 0.5rem;
 }
+.sim-fight-options {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 3rem;
+  flex-wrap: wrap;
+}
+.sim-fight-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+.sim-fight-counts { border-left: 1px solid var(--border); border-right: 1px solid var(--border); padding: 0 2rem; }
+.sim-radio {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: 'Cinzel', serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.sim-radio input[type=radio] { accent-color: var(--gold); cursor: pointer; }
+.sim-radio:hover { color: var(--gold-light); }
+.sim-radio-active { color: var(--gold); }
 .btn-fight-eternity {
   font-family: 'Cinzel', serif;
   font-size: 1rem;

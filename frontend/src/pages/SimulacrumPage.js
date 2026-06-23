@@ -240,6 +240,8 @@ export default function WarscrollsPage({ headerCollapsed }) {
   const [selectedEnemy, setSelectedEnemy]       = useState(null);
   const [showRitualError, setShowRitualError]   = useState(false);
   const [showBattleResults, setShowBattleResults] = useState(false);
+  const [battleMode, setBattleMode]   = useState('server'); // 'local' | 'server'
+  const [battleCount, setBattleCount] = useState('1');      // '1'|'10'|'100'|'1000'|'forever'
   const [data, setData]           = useState(null);
   const [factions, setFactions]   = useState([]);
   const [loading, setLoading]     = useState(true);
@@ -519,7 +521,33 @@ export default function WarscrollsPage({ headerCollapsed }) {
       {/* ── Filters (stage 1 only) ── */}
       {stage === 2 && (
         <div className="sim-fight-bar">
-          <button className="btn-fight-eternity" onClick={() => setShowBattleResults(true)}>⚔ Fight for Eternity</button>
+          <div className="sim-fight-options">
+            <div className="sim-fight-section">
+              {[{val:'local',label:'On our soil!'},{val:'server',label:'Summon the Gods.'}].map(opt => (
+                <label key={opt.val} className={`sim-radio${battleMode===opt.val?' sim-radio-active':''}`}>
+                  <input type="radio" name="battleMode" value={opt.val} checked={battleMode===opt.val} onChange={() => setBattleMode(opt.val)} />
+                  {opt.label}
+                </label>
+              ))}
+            </div>
+            <div className="sim-fight-section sim-fight-counts">
+              {[
+                {val:'1',      label:'Fight Once'},
+                {val:'10',     label:'Ten Battles'},
+                {val:'100',    label:'A Hundred Battles'},
+                {val:'1000',   label:'A Thousand Battles!'},
+                {val:'forever',label:'Till the Next Version of Age of Sigmar!'},
+              ].map(opt => (
+                <label key={opt.val} className={`sim-radio${battleCount===opt.val?' sim-radio-active':''}`}>
+                  <input type="radio" name="battleCount" value={opt.val} checked={battleCount===opt.val} onChange={() => setBattleCount(opt.val)} />
+                  {opt.label}
+                </label>
+              ))}
+            </div>
+            <div className="sim-fight-section">
+              <button className="btn-fight-eternity" onClick={() => setShowBattleResults(true)}>⚔ Fight for Eternity</button>
+            </div>
+          </div>
         </div>
       )}
       {stage === 1 && <div className="filters">
