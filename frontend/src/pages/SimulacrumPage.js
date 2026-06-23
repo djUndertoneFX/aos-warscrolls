@@ -239,9 +239,15 @@ const TYPE_CLASS = {
   spacer: 'log-spacer', normal: '',
 };
 
+function sideDetail(side, label) {
+  if (!side) return null;
+  const dmg = side.currentModelHp < side.hpPerModel ? `  (${side.hpPerModel - side.currentModelHp} dmg on front model)` : '';
+  return `${label}: ${side.modelsAlive} of ${side.modelCount} remain  ·  ${side.modelsKilled} lost${dmg}`;
+}
+
 function winnerSummary(result, friendlyUnit, enemyUnit) {
   if (!result) return null;
-  const { winner, isMultiBattle } = result;
+  const { winner, isMultiBattle, fSide, eSide } = result;
 
   if (isMultiBattle) {
     const { fWins, eWins, draws, count } = winner;
@@ -255,24 +261,17 @@ function winnerSummary(result, friendlyUnit, enemyUnit) {
   }
 
   const { side } = winner;
+  const fDetail = sideDetail(fSide, 'Friendly');
+  const eDetail = sideDetail(eSide, 'Enemy');
+
   if (side === 'friendly') {
-    const dmg = winner.damageOnCurrent > 0 ? `  ·  ${winner.damageOnCurrent}/${winner.hpPerModel} damage on surviving model` : '';
-    return {
-      label: `Friendly Unit "${friendlyUnit.name}" stands Victorious!`,
-      detail: `${winner.modelsAlive} of ${winner.modelCount} models remain  ·  ${winner.modelsKilled} model${winner.modelsKilled !== 1 ? 's' : ''} lost${dmg}`,
-      side: 'friendly',
-    };
+    return { label: `Friendly Unit "${friendlyUnit.name}" stands Victorious!`, fDetail, eDetail, side: 'friendly' };
   } else if (side === 'enemy') {
-    const dmg = winner.damageOnCurrent > 0 ? `  ·  ${winner.damageOnCurrent}/${winner.hpPerModel} damage on surviving model` : '';
-    return {
-      label: `Enemy Unit "${enemyUnit.name}" stands Victorious!`,
-      detail: `${winner.modelsAlive} of ${winner.modelCount} models remain  ·  ${winner.modelsKilled} model${winner.modelsKilled !== 1 ? 's' : ''} lost${dmg}`,
-      side: 'enemy',
-    };
+    return { label: `Enemy Unit "${enemyUnit.name}" stands Victorious!`, fDetail, eDetail, side: 'enemy' };
   } else if (side === 'mutual') {
-    return { label: 'Mutual Destruction!', detail: 'Both units destroyed simultaneously.', side: 'draw' };
+    return { label: 'Mutual Destruction!', fDetail, eDetail, side: 'draw' };
   } else {
-    return { label: 'Stalemate!', detail: `Neither unit fell after ${winner.rounds} rounds.`, side: 'draw' };
+    return { label: 'Stalemate!', fDetail, eDetail, side: 'draw' };
   }
 }
 
@@ -295,10 +294,10 @@ function BattlePane({ label, result, friendlyUnit, enemyUnit, stepIndex, isStepT
   const visibleSteps = isStepThrough ? allSteps.slice(0, stepIndex) : allSteps;
   const isComplete = !isStepThrough || stepIndex >= allSteps.length;
 
-  // Auto-scroll log to bottom as steps appear
+  // Scroll to top when a new battle result loads
   useEffect(() => {
-    if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
-  }, [visibleSteps.length]);
+    if (logRef.current) logRef.current.scrollTop = 0;
+  }, [result]);
 
   return (
     <div className="battle-pane">
@@ -307,7 +306,9 @@ function BattlePane({ label, result, friendlyUnit, enemyUnit, stepIndex, isStepT
         {summary ? (
           <>
             <div className={`battle-winner battle-winner-${summary.side}`}>{summary.label}</div>
-            <div className="battle-winner-detail">{summary.detail}</div>
+            {summary.detail && <div className="battle-winner-detail">{summary.detail}</div>}
+            {summary.fDetail && <div className="battle-winner-detail" style={{color:'var(--friendly-color)'}}>{summary.fDetail}</div>}
+            {summary.eDetail && <div className="battle-winner-detail" style={{color:'var(--enemy-color)'}}>{summary.eDetail}</div>}
           </>
         ) : (
           <div className="battle-winner-placeholder">Awaiting battle…</div>
