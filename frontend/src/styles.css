@@ -672,6 +672,24 @@ input, select {
   width: 15px; height: 15px;
   cursor: pointer;
 }
+.tri-checkbox { cursor: pointer; user-select: none; }
+.tri-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  border: 1px solid #555;
+  border-radius: 2px;
+  font-size: 0.7rem;
+  line-height: 1;
+  background: transparent;
+  flex-shrink: 0;
+}
+.tri-check.tri-include { border-color: var(--gold); color: var(--gold); }
+.tri-check.tri-exclude { border-color: var(--red, #c04040); color: var(--red, #c04040); }
+.cb-exclude > span:last-child { color: var(--red, #c04040); }
+
 .cb-disabled {
   opacity: 0.35;
   cursor: not-allowed;

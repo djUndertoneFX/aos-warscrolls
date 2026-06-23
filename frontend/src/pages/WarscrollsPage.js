@@ -3,6 +3,34 @@ import ReactDOM from 'react-dom';
 import axios from 'axios';
 import WarscrollDetail from '../components/WarscrollDetail';
 
+// Tri-state cycle: false → true → false (left-click), false → 'exclude' → false (right-click)
+function nextTriState(cur, isRight) {
+  if (isRight) return cur === 'exclude' ? false : 'exclude';
+  return cur === true ? false : true;
+}
+function triParam(val) {
+  if (val === true)      return '1';
+  if (val === 'exclude') return '-1';
+  return undefined;
+}
+
+function TriCheckbox({ value, onChange, label }) {
+  const isExclude = value === 'exclude';
+  const isInclude = value === true;
+  return (
+    <span
+      className={`cb-item tri-checkbox${isExclude ? ' cb-exclude' : ''}`}
+      onClick={() => onChange(nextTriState(value, false))}
+      onContextMenu={e => { e.preventDefault(); onChange(nextTriState(value, true)); }}
+    >
+      <span className={`tri-check${isInclude ? ' tri-include' : isExclude ? ' tri-exclude' : ''}`}>
+        {isInclude ? '✓' : isExclude ? '✕' : ''}
+      </span>
+      <span>{label}</span>
+    </span>
+  );
+}
+
 const SORTABLE_COLS = [
   { key: 'name',          label: 'Unit Name', abbr: null },
   { key: 'faction',       label: 'Faction',   abbr: null },
@@ -204,14 +232,14 @@ export default function WarscrollsPage({ headerCollapsed }) {
         alliance,
         sortBy, sortDir, page,
         pageSize: PAGE_SIZE,
-        ...(isHero       ? { isHero: '1' }       : {}),
-        ...(isMonster    ? { isMonster: '1' }    : {}),
-        ...(isInfantry   ? { isInfantry: '1' }  : {}),
-        ...(isCavalry    ? { isCavalry: '1' }   : {}),
-        ...(isBeast         ? { isBeast: '1' }         : {}),
-        ...(isWarMachine    ? { isWarMachine: '1' }    : {}),
-        ...(isTerrain       ? { isTerrain: '1' }       : {}),
-        ...(isManifestation ? { isManifestation: '1' } : {}),
+        ...(triParam(isHero)          ? { isHero:          triParam(isHero)          } : {}),
+        ...(triParam(isMonster)       ? { isMonster:       triParam(isMonster)       } : {}),
+        ...(triParam(isInfantry)      ? { isInfantry:      triParam(isInfantry)      } : {}),
+        ...(triParam(isCavalry)       ? { isCavalry:       triParam(isCavalry)       } : {}),
+        ...(triParam(isBeast)         ? { isBeast:         triParam(isBeast)         } : {}),
+        ...(triParam(isWarMachine)    ? { isWarMachine:    triParam(isWarMachine)    } : {}),
+        ...(triParam(isTerrain)       ? { isTerrain:       triParam(isTerrain)       } : {}),
+        ...(triParam(isManifestation) ? { isManifestation: triParam(isManifestation) } : {}),
         ...(hideLegends          ? { isLegends: '0' }             : {}),
         ...(hideOtherFactions    ? { hideOtherFactions: '1' }    : {}),
         ...(hideScourgeOfGhyran  ? { hideScourgeOfGhyran: '1' }  : {}),
@@ -424,38 +452,14 @@ export default function WarscrollsPage({ headerCollapsed }) {
             </label>
           </div>
           <div className="cb-group cb-group-center">
-            <label className="cb-item">
-              <input type="checkbox" id="cb-hero" checked={isHero} onChange={e => { setIsHero(e.target.checked); setPage(1); }} />
-              <span>Heroes</span>
-            </label>
-            <label className="cb-item">
-              <input type="checkbox" id="cb-infantry" checked={isInfantry} onChange={e => { setIsInfantry(e.target.checked); setPage(1); }} />
-              <span>Infantry</span>
-            </label>
-            <label className="cb-item">
-              <input type="checkbox" id="cb-cavalry" checked={isCavalry} onChange={e => { setIsCavalry(e.target.checked); setPage(1); }} />
-              <span>Cavalry</span>
-            </label>
-            <label className="cb-item">
-              <input type="checkbox" id="cb-beast" checked={isBeast} onChange={e => { setIsBeast(e.target.checked); setPage(1); }} />
-              <span>Beast</span>
-            </label>
-            <label className="cb-item">
-              <input type="checkbox" id="cb-monster" checked={isMonster} onChange={e => { setIsMonster(e.target.checked); setPage(1); }} />
-              <span>Monsters</span>
-            </label>
-            <label className="cb-item">
-              <input type="checkbox" id="cb-warmachine" checked={isWarMachine} onChange={e => { setIsWarMachine(e.target.checked); setPage(1); }} />
-              <span>War Machine</span>
-            </label>
-            <label className="cb-item">
-              <input type="checkbox" id="cb-terrain" checked={isTerrain} onChange={e => { setIsTerrain(e.target.checked); setPage(1); }} />
-              <span>Faction Terrain</span>
-            </label>
-            <label className="cb-item">
-              <input type="checkbox" id="cb-manifestation" checked={isManifestation} onChange={e => { setIsManifestation(e.target.checked); setPage(1); }} />
-              <span>Manifestation</span>
-            </label>
+            <TriCheckbox value={isHero}          onChange={v => { setIsHero(v);          setPage(1); }} label="Heroes"         />
+            <TriCheckbox value={isInfantry}      onChange={v => { setIsInfantry(v);      setPage(1); }} label="Infantry"       />
+            <TriCheckbox value={isCavalry}       onChange={v => { setIsCavalry(v);       setPage(1); }} label="Cavalry"        />
+            <TriCheckbox value={isBeast}         onChange={v => { setIsBeast(v);         setPage(1); }} label="Beast"          />
+            <TriCheckbox value={isMonster}       onChange={v => { setIsMonster(v);       setPage(1); }} label="Monsters"       />
+            <TriCheckbox value={isWarMachine}    onChange={v => { setIsWarMachine(v);    setPage(1); }} label="War Machine"    />
+            <TriCheckbox value={isTerrain}       onChange={v => { setIsTerrain(v);       setPage(1); }} label="Faction Terrain"/>
+            <TriCheckbox value={isManifestation} onChange={v => { setIsManifestation(v); setPage(1); }} label="Manifestation"  />
           </div>
           <div className="cb-group cb-group-right">
             <div className="cb-group-header">Hide:</div>
