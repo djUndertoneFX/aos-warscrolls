@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import axios from 'axios';
 import WarscrollDetail from '../components/WarscrollDetail';
+import { simulateBattle } from '../simulation/engine';
 
 function nextTriState(cur, isRight) {
   if (isRight) return cur === 'exclude' ? false : 'exclude';
@@ -41,9 +42,7 @@ const SORTABLE_COLS = [
 ];
 
 function AllianceBadge({ alliance }) {
-  return (
-    <span className={`alliance-badge alliance-${alliance}`}>{alliance}</span>
-  );
+  return <span className={`alliance-badge alliance-${alliance}`}>{alliance}</span>;
 }
 
 function unitTypeLabel(row) {
@@ -105,11 +104,7 @@ function FactionDropdown({ factions, value, onChange, liveCount }) {
             All Factions
           </div>
           {factions.map(f => (
-            <div
-              key={f.faction_slug}
-              className={`faction-dropdown-item${value === f.faction_slug ? ' selected' : ''}`}
-              onMouseDown={() => pick(f.faction_slug)}
-            >
+            <div key={f.faction_slug} className={`faction-dropdown-item${value === f.faction_slug ? ' selected' : ''}`} onMouseDown={() => pick(f.faction_slug)}>
               {f.faction} ({f.unit_count})
             </div>
           ))}
@@ -130,7 +125,6 @@ const STAGES = [
 ];
 
 function SimulacrumBattle({ friendly, enemy, colWidths, thStyle }) {
-  const colSpan = 14;
   const renderRow = (row, label) => {
     const weapons = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
     const ranged = weapons.filter(w => w.type === 'ranged');
@@ -234,21 +228,142 @@ function RitualErrorModal({ onClose }) {
   );
 }
 
-export default function WarscrollsPage({ headerCollapsed }) {
+// Map step type to CSS class suffix
+const TYPE_CLASS = {
+  title: 'log-title', divider: 'log-divider', round: 'log-round', phase: 'log-phase',
+  info: 'log-info', fight: 'log-fight', weapon: 'log-weapon',
+  hit: 'log-hit', miss: 'log-miss', crit: 'log-crit',
+  wound: 'log-wound', saved: 'log-saved', damage: 'log-damage',
+  hp: 'log-hp', status: 'log-status', victory: 'log-victory', draw: 'log-draw',
+  spacer: 'log-spacer', normal: '',
+};
+
+function winnerSummary(result, friendlyUnit, enemyUnit) {
+  if (!result) return null;
+  const { winner, isMultiBattle, fWins, eWins, draws, count } = result;
+
+  if (isMultiBattle) {
+    const side = winner.side;
+    if (side === 'friendly') {
+      return {
+        label: `Friendly Unit "${friendlyUnit.name}" wins more often!`,
+        detail: `${fWins} / ${count} battles (${((fWins/count)*100).toFixed(1)}% win rate)`,
+        side: 'friendly',
+      };
+    } else if (side === 'enemy') {
+      return {
+        label: `Enemy Unit "${enemyUnit.name}" wins more often!`,
+        detail: `${eWins} / ${count} battles (${((eWins/count)*100).toFixed(1)}% win rate)`,
+        side: 'enemy',
+      };
+    } else {
+      return { label: 'Evenly Matched!', detail: `${fWins} friendly / ${eWins} enemy / ${draws} draws over ${count} battles`, side: 'draw' };
+    }
+  }
+
+  const { side } = winner;
+  if (side === 'friendly') {
+    return {
+      label: `Friendly Unit "${friendlyUnit.name}" stands Victorious!`,
+      detail: `With ${winner.hpRemaining} HP remaining and ${winner.damageTaken} damage taken.`,
+      side: 'friendly',
+    };
+  } else if (side === 'enemy') {
+    return {
+      label: `Enemy Unit "${enemyUnit.name}" stands Victorious!`,
+      detail: `With ${winner.hpRemaining} HP remaining and ${winner.damageTaken} damage taken.`,
+      side: 'enemy',
+    };
+  } else if (side === 'mutual') {
+    return { label: 'Mutual Destruction!', detail: 'Both units fell simultaneously.', side: 'draw' };
+  } else {
+    return { label: 'Stalemate!', detail: `Neither unit fell after ${winner.rounds} rounds.`, side: 'draw' };
+  }
+}
+
+function saveLog(steps, paneLabel) {
+  const text = steps.map(s => s.msg).join('\n');
+  const blob = new Blob([text], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `simulacrum-${paneLabel.replace(/\s+/g, '-').toLowerCase()}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function BattlePane({ label, result, friendlyUnit, enemyUnit, stepIndex, isStepThrough }) {
+  const logRef = useRef(null);
+
+  const summary = result ? winnerSummary(result, friendlyUnit, enemyUnit) : null;
+  const allSteps = result?.steps || [];
+  const visibleSteps = isStepThrough ? allSteps.slice(0, stepIndex) : allSteps;
+  const isComplete = !isStepThrough || stepIndex >= allSteps.length;
+
+  // Auto-scroll log to bottom as steps appear
+  useEffect(() => {
+    if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
+  }, [visibleSteps.length]);
+
+  return (
+    <div className="battle-pane">
+      <div className="battle-pane-header">{label}</div>
+      <div className="battle-pane-summary">
+        {summary ? (
+          <>
+            <div className={`battle-winner battle-winner-${summary.side}`}>{summary.label}</div>
+            <div className="battle-winner-detail">{summary.detail}</div>
+          </>
+        ) : (
+          <div className="battle-winner-placeholder">Awaiting battle…</div>
+        )}
+      </div>
+      <div className="battle-pane-log" ref={logRef}>
+        {visibleSteps.map((step, i) =>
+          step.type === 'spacer'
+            ? <div key={i} className="log-spacer" />
+            : <div key={i} className={`log-line ${TYPE_CLASS[step.type] || ''}`}>{step.msg}</div>
+        )}
+        {isStepThrough && !isComplete && result && (
+          <div className="log-line log-dim">— {allSteps.length - stepIndex} steps remaining —</div>
+        )}
+      </div>
+      {result && (
+        <button className="btn-save-log" onClick={() => saveLog(allSteps, label)}>
+          ⬇ Save Log
+        </button>
+      )}
+    </div>
+  );
+}
+
+const BATTLE_COUNT_OPTS = [
+  { val: '1',       label: 'Fight Once' },
+  { val: '10',      label: 'Ten Battles' },
+  { val: '100',     label: 'A Hundred Battles' },
+  { val: '1000',    label: 'A Thousand Battles!' },
+  { val: 'forever', label: 'Till the Next Version of Age of Sigmar!' },
+];
+
+export default function SimulacrumPage({ headerCollapsed }) {
   const [stage, setStage]           = useState(1);
   const [selectedFriendly, setSelectedFriendly] = useState(null);
   const [selectedEnemy, setSelectedEnemy]       = useState(null);
   const [showRitualError, setShowRitualError]   = useState(false);
-  const [showBattleResults, setShowBattleResults] = useState(false);
-  const [battleMode, setBattleMode]   = useState('server'); // 'local' | 'server'
-  const [battleCount, setBattleCount] = useState('1');      // '1'|'10'|'100'|'1000'|'forever'
+  const [battleMode, setBattleMode]   = useState('server');
+  const [battleCount, setBattleCount] = useState('1');
+  const [stepThrough, setStepThrough] = useState(false);
+
+  // Battle results: { left: SimResult, right: SimResult }
+  const [battleResults, setBattleResults] = useState(null);
+  const [stepIndex, setStepIndex] = useState(0);
+
   const [data, setData]           = useState(null);
   const [factions, setFactions]   = useState([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState('');
 
-  // ── Persisted filter state ───────────────────────────────────────────────
-  const FILTER_KEY = 'aos-filters';
+  const FILTER_KEY = 'aos-sim-filters';
   const saved = (() => { try { return JSON.parse(localStorage.getItem(FILTER_KEY)) || {}; } catch { return {}; } })();
 
   const [search, setSearch]             = useState(saved.search       ?? '');
@@ -271,7 +386,6 @@ export default function WarscrollsPage({ headerCollapsed }) {
   const [sortBy, setSortBy]             = useState(saved.sortBy       ?? 'faction');
   const [sortDir, setSortDir]           = useState(saved.sortDir      ?? 'asc');
 
-  // Persist filters to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem(FILTER_KEY, JSON.stringify({
       search, faction, enemyFaction, alliance,
@@ -281,7 +395,6 @@ export default function WarscrollsPage({ headerCollapsed }) {
   }, [search, faction, enemyFaction, alliance, isHero, isMonster, isInfantry, isCavalry,
       isBeast, isWarMachine, isTerrain, isManifestation, hideLegends, hideOtherFactions, hideScourgeOfGhyran, showFriendly, showEnemy, sortBy, sortDir]);
 
-  // Per-faction filtered counts when hideOtherFactions is active
   const [filteredCounts, setFilteredCounts] = useState({});
   useEffect(() => {
     if (!hideOtherFactions) { setFilteredCounts({}); return; }
@@ -296,17 +409,13 @@ export default function WarscrollsPage({ headerCollapsed }) {
     ).then(entries => setFilteredCounts(Object.fromEntries(entries)));
   }, [hideOtherFactions, faction, enemyFaction, hideLegends, hideScourgeOfGhyran]);
 
-  // User unit flags: { [warscrollId]: { is_friendly, is_enemy } }
   const [userUnits, setUserUnits] = useState({});
-
   const [expandedIds, setExpandedIds] = useState(new Set());
   const [detailUnit, setDetailUnit] = useState(null);
-  const [thumbHover, setThumbHover] = useState(null); // { id, x, y }
-
+  const [thumbHover, setThumbHover] = useState(null);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 9999;
 
-  // Debounced search
   const [searchInput, setSearchInput] = useState(saved.search ?? '');
   useEffect(() => {
     const t = setTimeout(() => { setSearch(searchInput); setPage(1); }, 350);
@@ -314,39 +423,25 @@ export default function WarscrollsPage({ headerCollapsed }) {
   }, [searchInput]);
 
   const fetchFactions = useCallback(async () => {
-    try {
-      const res = await axios.get('/api/factions');
-      setFactions(res.data);
-    } catch {}
+    try { const res = await axios.get('/api/factions'); setFactions(res.data); } catch {}
   }, []);
 
-  // Stable booleans derived from userUnits — used in fetchData deps (avoids object ref churn)
   const hasFriendlyMarks = Object.values(userUnits).some(u => u.is_friendly);
   const hasEnemyMarks    = Object.values(userUnits).some(u => u.is_enemy);
 
   const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError('');
+    setLoading(true); setError('');
     try {
-
-      // "byFaction" = filter on but no marks → show the whole faction from the dropdown
       const friendlyByFaction = showFriendly && !hasFriendlyMarks;
       const enemyByFaction    = showEnemy    && !hasEnemyMarks;
-
-      // Control which faction slugs reach the backend
-      // If only one side is a faction-filter, suppress the other so it doesn't bleed through
       let qFaction      = faction;
       let qEnemyFaction = enemyFaction;
       if (friendlyByFaction && !enemyByFaction && !showEnemy) qEnemyFaction = '';
       if (enemyByFaction    && !friendlyByFaction && !showFriendly) qFaction = '';
 
       const params = {
-        search,
-        faction: qFaction,
-        enemyFaction: qEnemyFaction,
-        alliance,
-        sortBy, sortDir, page,
-        pageSize: PAGE_SIZE,
+        search, faction: qFaction, enemyFaction: qEnemyFaction, alliance,
+        sortBy, sortDir, page, pageSize: PAGE_SIZE,
         ...(triParam(isHero)          ? { isHero:          triParam(isHero)          } : {}),
         ...(triParam(isMonster)       ? { isMonster:       triParam(isMonster)       } : {}),
         ...(triParam(isInfantry)      ? { isInfantry:      triParam(isInfantry)      } : {}),
@@ -358,71 +453,33 @@ export default function WarscrollsPage({ headerCollapsed }) {
         ...(hideLegends          ? { isLegends: '0' }             : {}),
         ...(hideOtherFactions    ? { hideOtherFactions: '1' }    : {}),
         ...(hideScourgeOfGhyran  ? { hideScourgeOfGhyran: '1' }  : {}),
-        // Only send mark-based filters to backend when marks actually exist
         ...(showFriendly && hasFriendlyMarks ? { showFriendly: '1' } : {}),
         ...(showEnemy    && hasEnemyMarks    ? { showEnemy: '1' }    : {}),
       };
       const res = await axios.get('/api/warscrolls', { params });
       setData(res.data);
     } catch (err) {
-      if (err.response?.status === 401) {
-        setError('Session expired. Please sign out and log back in.');
-      } else {
-        setError('Failed to load warscrolls. Is the backend running?');
-      }
-    } finally {
-      setLoading(false);
-    }
+      if (err.response?.status === 401) setError('Session expired. Please sign out and log back in.');
+      else setError('Failed to load warscrolls. Is the backend running?');
+    } finally { setLoading(false); }
   }, [search, faction, enemyFaction, alliance, sortBy, sortDir, page, isHero, isMonster, isInfantry, isCavalry, isBeast, isWarMachine, isTerrain, isManifestation, hideLegends, hideOtherFactions, hideScourgeOfGhyran, showFriendly, showEnemy, hasFriendlyMarks, hasEnemyMarks]);
 
-  // Load user's friendly/enemy flags once on mount
-  useEffect(() => {
-    axios.get('/api/user-units').then(res => {
-      const map = {};
-      res.data.forEach(r => { map[r.warscroll_id] = { is_friendly: r.is_friendly, is_enemy: r.is_enemy }; });
-      setUserUnits(map);
-    }).catch(() => {});
-  }, []);
-
-  const toggleFlag = useCallback(async (warscrollId, flag) => {
-    const current = userUnits[warscrollId] || { is_friendly: 0, is_enemy: 0 };
-    const updated = { ...current, [flag]: current[flag] ? 0 : 1 };
-    setUserUnits(prev => ({ ...prev, [warscrollId]: updated }));
-    try {
-      await axios.post(`/api/user-units/${warscrollId}`, updated);
-    } catch {
-      setUserUnits(prev => ({ ...prev, [warscrollId]: current }));
-    }
-  }, [userUnits]);
-
+  useEffect(() => { axios.get('/api/user-units').then(res => { const map = {}; res.data.forEach(r => { map[r.warscroll_id] = { is_friendly: r.is_friendly, is_enemy: r.is_enemy }; }); setUserUnits(map); }).catch(() => {}); }, []);
   useEffect(() => { fetchFactions(); }, [fetchFactions]);
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const handleSort = (col) => {
-    if (sortBy === col) {
-      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(col);
-      setSortDir('asc');
-    }
+    if (sortBy === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortBy(col); setSortDir('asc'); }
     setPage(1);
   };
 
-  const handleAllianceChange = (val) => {
-    setAlliance(val);
-    setFaction('');
-    setEnemyFaction('');
-    setPage(1);
-  };
+  const handleAllianceChange = (val) => { setAlliance(val); setFaction(''); setEnemyFaction(''); setPage(1); };
 
-  const filteredFactions = (alliance
-    ? factions.filter(f => f.grand_alliance === alliance)
-    : factions
-  ).slice().sort((a, b) => a.faction.localeCompare(b.faction));
-
+  const filteredFactions = (alliance ? factions.filter(f => f.grand_alliance === alliance) : factions)
+    .slice().sort((a, b) => a.faction.localeCompare(b.faction));
   const alliances = ['Order', 'Chaos', 'Death', 'Destruction'];
 
-  // ── Column resizing ──────────────────────────────────────────────────────
   const DEFAULT_COL_WIDTHS = {
     rownum: 36, friendly: 38, enemy: 38, expand: 30, thumb: 44,
     name: 240, faction: 150, alliance: 82,
@@ -438,56 +495,60 @@ export default function WarscrollsPage({ headerCollapsed }) {
 
   const startResize = useCallback((e, colKey) => {
     e.preventDefault();
-    const startX = e.clientX;
-    const startW = colWidths[colKey];
+    const startX = e.clientX, startW = colWidths[colKey];
     dragRef.current = { colKey, startX, startW };
-
     const onMove = (ev) => {
       const { colKey: k, startX: sx, startW: sw } = dragRef.current;
       const newW = Math.max(30, sw + ev.clientX - sx);
-      setColWidths(prev => {
-        const next = { ...prev, [k]: newW };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-        return next;
-      });
+      setColWidths(prev => { const next = { ...prev, [k]: newW }; localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); return next; });
     };
-    const onUp = () => {
-      dragRef.current = null;
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-    };
+    const onUp = () => { dragRef.current = null; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
   }, [colWidths]);
 
   const thStyle = (key) => ({ width: colWidths[key], minWidth: colWidths[key], position: 'relative' });
 
-  const toggleBothBtn = (
-    <button
-      className={`btn-both-toggle${showFriendly !== showEnemy ? ' active' : ''}`}
-      title="Toggle both Friendly and Enemy"
-      onClick={() => { setShowFriendly(showEnemy); setShowEnemy(showFriendly); setPage(1); }}
-    >⇔</button>
-  );
-
   const [navbarExtrasEl, setNavbarExtrasEl] = useState(null);
+  useEffect(() => { setNavbarExtrasEl(headerCollapsed ? document.getElementById('navbar-extras') : null); }, [headerCollapsed]);
+
+  // ── Numpad Enter hotkey for step-through ────────────────────────────────
+  const maxStepIndex = battleResults
+    ? Math.max(battleResults.left?.steps?.length || 0, battleResults.right?.steps?.length || 0)
+    : 0;
+  const canProceed = stepThrough && battleResults && stepIndex < maxStepIndex;
+
+  const proceed = useCallback(() => {
+    if (canProceed) setStepIndex(i => i + 1);
+  }, [canProceed]);
+
   useEffect(() => {
-    setNavbarExtrasEl(headerCollapsed ? document.getElementById('navbar-extras') : null);
-  }, [headerCollapsed]);
+    const handler = (e) => {
+      if (e.code === 'NumpadEnter' || (e.code === 'Enter' && e.altKey)) proceed();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [proceed]);
+
+  // ── Run simulation ───────────────────────────────────────────────────────
+  const runFight = () => {
+    const count = battleCount === 'forever' ? 10000 : parseInt(battleCount) || 1;
+    const leftResult  = simulateBattle(selectedFriendly, selectedEnemy, { count, friendlyFirst: true });
+    const rightResult = simulateBattle(selectedFriendly, selectedEnemy, { count, friendlyFirst: false });
+    setBattleResults({ left: leftResult, right: rightResult });
+    setStepIndex(0);
+  };
+
+  const showBattleResults = !!battleResults;
 
   return (
     <>
     {thumbHover && ReactDOM.createPortal(
       <div className="thumb-popup-fixed" style={{ left: thumbHover.x + 16, top: thumbHover.y + 16 }}>
-        <img
-          src={`${axios.defaults.baseURL || ''}/api/unit-image/${thumbHover.id}`}
-          alt=""
-          onError={e => { e.target.style.display = 'none'; }}
-        />
+        <img src={`${axios.defaults.baseURL || ''}/api/unit-image/${thumbHover.id}`} alt="" onError={e => { e.target.style.display='none'; }} />
       </div>,
       document.body
     )}
-    {navbarExtrasEl && ReactDOM.createPortal(toggleBothBtn, navbarExtrasEl)}
     <div className="table-page">
       {!headerCollapsed && (
       <>
@@ -497,28 +558,24 @@ export default function WarscrollsPage({ headerCollapsed }) {
           <span>Age of Sigmar 4th Edition · Data from Wahapedia</span>
         </div>
         <div className="sim-stages">
-          <button className={`sim-stage-btn${stage === 1 ? ' sim-stage-active' : ''}`} onClick={() => { setStage(1); setShowBattleResults(false); }}>
+          <button className={`sim-stage-btn${stage === 1 ? ' sim-stage-active' : ''}`} onClick={() => { setStage(1); setBattleResults(null); }}>
             1. Select two Units.
           </button>
           <span className="sim-stage-arrow">›</span>
           <button
             className={`sim-stage-btn${stage === 2 ? ' sim-stage-active' : ''}`}
             onClick={() => {
-              if (!selectedFriendly || !selectedEnemy) { setShowRitualError(true); }
-              else { setStage(2); }
+              if (!selectedFriendly || !selectedEnemy) setShowRitualError(true);
+              else setStage(2);
             }}
           >
             2. SimulacEm!
           </button>
         </div>
-        {stage === 1 && data && (
-          <div className="unit-count">
-            {data.total.toLocaleString()} units found
-          </div>
-        )}
+        {stage === 1 && data && <div className="unit-count">{data.total.toLocaleString()} units found</div>}
       </div>
 
-      {/* ── Filters (stage 1 only) ── */}
+      {/* ── Stage 2 options bar ── */}
       {stage === 2 && (
         <div className="sim-fight-bar">
           <div className="sim-fight-options">
@@ -531,84 +588,67 @@ export default function WarscrollsPage({ headerCollapsed }) {
               ))}
             </div>
             <div className="sim-fight-section sim-fight-counts">
-              {[
-                {val:'1',      label:'Fight Once'},
-                {val:'10',     label:'Ten Battles'},
-                {val:'100',    label:'A Hundred Battles'},
-                {val:'1000',   label:'A Thousand Battles!'},
-                {val:'forever',label:'Till the Next Version of Age of Sigmar!'},
-              ].map(opt => (
+              {BATTLE_COUNT_OPTS.map(opt => (
                 <label key={opt.val} className={`sim-radio${battleCount===opt.val?' sim-radio-active':''}`}>
                   <input type="radio" name="battleCount" value={opt.val} checked={battleCount===opt.val} onChange={() => setBattleCount(opt.val)} />
                   {opt.label}
                 </label>
               ))}
             </div>
-            <div className="sim-fight-section">
-              <button className="btn-fight-eternity" onClick={() => setShowBattleResults(true)}>⚔ Fight for Eternity</button>
+            <div className="sim-fight-section sim-fight-actions">
+              <button className="btn-fight-eternity" onClick={runFight}>⚔ Fight for Eternity</button>
+              {stepThrough && showBattleResults && (
+                <button
+                  className={`btn-proceed${canProceed ? '' : ' btn-proceed-done'}`}
+                  onClick={proceed}
+                  disabled={!canProceed}
+                  title="Numpad Enter"
+                >
+                  {canProceed ? '▶ Proceed' : '✓ Done'}
+                </button>
+              )}
+            </div>
+            <div className="sim-fight-section sim-fight-stepthrough">
+              <label className={`sim-radio${stepThrough?' sim-radio-active':''}`}>
+                <input type="checkbox" checked={stepThrough} onChange={e => { setStepThrough(e.target.checked); setStepIndex(0); }} />
+                Step Through
+              </label>
+              {stepThrough && <div className="sim-hotkey-hint">Numpad ↵ to advance</div>}
             </div>
           </div>
         </div>
       )}
+
+      {/* ── Stage 1 filters ── */}
       {stage === 1 && <div className="filters">
         <div className="filter-group">
           <div className="filter-label">Search</div>
-          <input
-            className="filter-input"
-            type="text"
-            placeholder="Name, faction, keyword…"
-            value={searchInput}
-            onChange={e => setSearchInput(e.target.value)}
-          />
+          <input className="filter-input" type="text" placeholder="Name, faction, keyword…" value={searchInput} onChange={e => setSearchInput(e.target.value)} />
         </div>
-
         <div className="filter-group">
           <div className="filter-label">Grand Alliance</div>
-          <select
-            className="filter-select"
-            value={alliance}
-            onChange={e => handleAllianceChange(e.target.value)}
-          >
+          <select className="filter-select" value={alliance} onChange={e => handleAllianceChange(e.target.value)}>
             <option value="">All Alliances</option>
             {alliances.map(a => <option key={a} value={a}>{a}</option>)}
           </select>
         </div>
-
         <div className="filter-group">
           <div className="filter-label">Faction</div>
-          <FactionDropdown
-            factions={filteredFactions}
-            value={faction}
-            onChange={v => { setFaction(v); setPage(1); }}
-            liveCount={faction ? (enemyFaction ? filteredCounts[faction] : data?.total) : undefined}
-          />
+          <FactionDropdown factions={filteredFactions} value={faction} onChange={v => { setFaction(v); setPage(1); }} liveCount={faction ? (enemyFaction ? filteredCounts[faction] : data?.total) : undefined} />
         </div>
-
         <div className="filter-group">
           <div className="filter-label">Enemy Faction</div>
-          <FactionDropdown
-            factions={filteredFactions}
-            value={enemyFaction}
-            onChange={v => { setEnemyFaction(v); setPage(1); }}
-            liveCount={enemyFaction ? (faction ? filteredCounts[enemyFaction] : data?.total) : undefined}
-          />
+          <FactionDropdown factions={filteredFactions} value={enemyFaction} onChange={v => { setEnemyFaction(v); setPage(1); }} liveCount={enemyFaction ? (faction ? filteredCounts[enemyFaction] : data?.total) : undefined} />
         </div>
-
         <div className="filter-checkboxes">
           <div className="cb-group cb-group-left">
             <label className="cb-item">
-              <input type="checkbox" id="cb-friendly" checked={showFriendly} onChange={e => { setShowFriendly(e.target.checked); setPage(1); }} />
+              <input type="checkbox" checked={showFriendly} onChange={e => { setShowFriendly(e.target.checked); setPage(1); }} />
               <span style={{color:'var(--friendly-color)'}}>Friendly</span>
             </label>
-            <button
-              className={`btn-both-toggle${showFriendly !== showEnemy ? ' active' : ''}`}
-              title="Toggle both Friendly and Enemy"
-              onClick={() => {
-                setShowFriendly(showEnemy); setShowEnemy(showFriendly); setPage(1);
-              }}
-            >⇔</button>
+            <button className={`btn-both-toggle${showFriendly !== showEnemy ? ' active' : ''}`} onClick={() => { setShowFriendly(showEnemy); setShowEnemy(showFriendly); setPage(1); }}>⇔</button>
             <label className="cb-item">
-              <input type="checkbox" id="cb-enemy" checked={showEnemy} onChange={e => { setShowEnemy(e.target.checked); setPage(1); }} />
+              <input type="checkbox" checked={showEnemy} onChange={e => { setShowEnemy(e.target.checked); setPage(1); }} />
               <span style={{color:'var(--enemy-color)'}}>Enemy</span>
             </label>
           </div>
@@ -625,15 +665,15 @@ export default function WarscrollsPage({ headerCollapsed }) {
           <div className="cb-group cb-group-right">
             <div className="cb-group-header">Hide:</div>
             <label className="cb-item">
-              <input type="checkbox" id="cb-scourge" checked={hideScourgeOfGhyran} onChange={e => { setHideScourgeOfGhyran(e.target.checked); setPage(1); }} />
+              <input type="checkbox" checked={hideScourgeOfGhyran} onChange={e => { setHideScourgeOfGhyran(e.target.checked); setPage(1); }} />
               <span>Scourge of Ghyran</span>
             </label>
             <label className={`cb-item${!faction ? ' cb-disabled' : ''}`} title={!faction ? 'Select a faction first' : ''}>
-              <input type="checkbox" id="cb-other-factions" checked={hideOtherFactions} disabled={!faction} onChange={e => { setHideOtherFactions(e.target.checked); setPage(1); }} />
+              <input type="checkbox" checked={hideOtherFactions} disabled={!faction} onChange={e => { setHideOtherFactions(e.target.checked); setPage(1); }} />
               <span>Other Factions</span>
             </label>
             <label className="cb-item">
-              <input type="checkbox" id="cb-legends" checked={hideLegends} onChange={e => { setHideLegends(e.target.checked); setPage(1); }} />
+              <input type="checkbox" checked={hideLegends} onChange={e => { setHideLegends(e.target.checked); setPage(1); }} />
               <span>Legends</span>
             </label>
           </div>
@@ -648,15 +688,23 @@ export default function WarscrollsPage({ headerCollapsed }) {
           <SimulacrumBattle friendly={selectedFriendly} enemy={selectedEnemy} colWidths={colWidths} startResize={startResize} thStyle={thStyle} />
           {showBattleResults && (
             <div className="battle-results">
-              <div className="battle-pane">
-                <div className="battle-pane-header">Take their heads!</div>
-                <div className="battle-pane-body">Battle results incoming…</div>
-              </div>
+              <BattlePane
+                label="Take their heads!"
+                result={battleResults?.left}
+                friendlyUnit={selectedFriendly}
+                enemyUnit={selectedEnemy}
+                stepIndex={stepIndex}
+                isStepThrough={stepThrough}
+              />
               <div className="battle-divider" />
-              <div className="battle-pane">
-                <div className="battle-pane-header">Caught off guard!</div>
-                <div className="battle-pane-body">Battle results incoming…</div>
-              </div>
+              <BattlePane
+                label="Caught off guard!"
+                result={battleResults?.right}
+                friendlyUnit={selectedFriendly}
+                enemyUnit={selectedEnemy}
+                stepIndex={stepIndex}
+                isStepThrough={stepThrough}
+              />
             </div>
           )}
         </>
@@ -664,171 +712,109 @@ export default function WarscrollsPage({ headerCollapsed }) {
 
       {/* ── Stage 1: Table ── */}
       {stage === 1 && error && <div className="error-msg" style={{marginBottom:'1rem'}}>{error}</div>}
-
       {stage === 1 && (<>{loading ? (
-        <div className="loading-state">
-          <span className="loading-rune">⚙</span>
-          Consulting the Grand Conclave…
-        </div>
+        <div className="loading-state"><span className="loading-rune">⚙</span>Consulting the Grand Conclave…</div>
       ) : data && data.data.length === 0 ? (
-        <div className="empty-state">
-          No warscrolls found. Try adjusting your filters, or run <code>npm run scrape</code> to populate the database.
-        </div>
+        <div className="empty-state">No warscrolls found. Try adjusting your filters.</div>
       ) : (
-        <>
-          <div className="table-wrapper">
-            <table data-sort={sortBy}>
-              <thead>
-                <tr>
-                  <th style={{...thStyle('rownum'), textAlign:'right'}} title="Row number"><span className="th-abbr" style={{color:'var(--text-dim)'}}>#</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'rownum')} /></th>
-                  <th style={{...thStyle('friendly'), color:'var(--friendly-color)'}} title="Friendly"><span className="th-abbr" style={{color:'var(--friendly-color)'}}>F</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'friendly')} /></th>
-                  <th style={{...thStyle('enemy'), color:'var(--enemy-color)'}} title="Enemy"><span className="th-abbr" style={{color:'var(--enemy-color)'}}>E</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'enemy')} /></th>
-                  <th style={thStyle('expand')}><span className="col-resize-handle" onMouseDown={e => startResize(e,'expand')} /></th>
-                  {SORTABLE_COLS.map(col => {
-                    const keyMap = { name:'name', faction:'faction', grand_alliance:'alliance', move:'move', health:'health', control:'control', save:'save', points:'points' };
-                    const wKey = keyMap[col.key] || col.key;
-                    return (
-                      <React.Fragment key={col.key}>
-                        <th
-                          style={thStyle(wKey)}
-                          className={`sortable ${sortBy === col.key ? 'sort-active' : ''}`}
-                          title={col.abbr ? col.label : undefined}
-                          onClick={() => handleSort(col.key)}
-                        >
-                          {col.abbr ? <span className="th-abbr">{col.abbr}</span> : col.label}
-                          <SortIcon col={col.key} sortBy={sortBy} sortDir={sortDir} />
-                          <span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e, wKey); }} />
-                        </th>
-                        {col.key === 'name' && (
-                          <th style={thStyle('thumb')}><span className="col-resize-handle" onMouseDown={e => startResize(e,'thumb')} /></th>
-                        )}
-                      </React.Fragment>
-                    );
-                  })}
-                  <th style={thStyle('types')}>Types<span className="col-resize-handle" onMouseDown={e => startResize(e,'types')} /></th>
-                  <th style={thStyle('keywords')}>Keywords<span className="col-resize-handle" onMouseDown={e => startResize(e,'keywords')} /></th>
-                </tr>
-              </thead>
-              <tbody>
-                {data?.data.map((row, idx) => {
-                  const rowNum = (page - 1) * PAGE_SIZE + idx + 1;
-                  const isExpanded = expandedIds.has(row.id);
-                  const weapons = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
-                  const ranged = weapons.filter(w => w.type === 'ranged');
-                  const melee  = weapons.filter(w => w.type === 'melee');
-                  const prev = data.data[idx - 1];
-                  const factionChanged = !prev || prev.faction !== row.faction;
-                  const typeChanged    = !prev || prev.faction !== row.faction || unitTypeLabel(prev) !== unitTypeLabel(row);
-                  const colSpan = 14;
+        <div className="table-wrapper">
+          <table data-sort={sortBy}>
+            <thead>
+              <tr>
+                <th style={{...thStyle('rownum'), textAlign:'right'}} title="Row number"><span className="th-abbr" style={{color:'var(--text-dim)'}}>#</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'rownum')} /></th>
+                <th style={{...thStyle('friendly'), color:'var(--friendly-color)'}} title="Friendly"><span className="th-abbr" style={{color:'var(--friendly-color)'}}>F</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'friendly')} /></th>
+                <th style={{...thStyle('enemy'), color:'var(--enemy-color)'}} title="Enemy"><span className="th-abbr" style={{color:'var(--enemy-color)'}}>E</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'enemy')} /></th>
+                <th style={thStyle('expand')}><span className="col-resize-handle" onMouseDown={e => startResize(e,'expand')} /></th>
+                {SORTABLE_COLS.map(col => {
+                  const keyMap = { name:'name', faction:'faction', grand_alliance:'alliance', move:'move', health:'health', control:'control', save:'save', points:'points' };
+                  const wKey = keyMap[col.key] || col.key;
                   return (
-                    <React.Fragment key={row.id}>
-                      {factionChanged && sortBy === 'faction' && (
-                        <tr className="separator-faction">
-                          <td colSpan={colSpan}>{row.faction}</td>
-                        </tr>
-                      )}
-                      {typeChanged && sortBy === 'faction' && (
-                        <tr className="separator-type">
-                          <td colSpan={colSpan}>{unitTypeLabel(row)}</td>
-                        </tr>
-                      )}
-                      <tr
-                        className={`unit-row${isExpanded ? ' expanded' : ''}`}
-                        onClick={() => setExpandedIds(prev => { const s = new Set(prev); isExpanded ? s.delete(row.id) : s.add(row.id); return s; })}
-                        style={{cursor:'pointer'}}
-                      >
-                        <td className="col-rownum">{rowNum}</td>
-                        <td className="col-flag" onClick={e => { e.stopPropagation(); setSelectedFriendly(f => f?.id === row.id ? null : row); }}>
-                          <span className={`flag-check friendly${selectedFriendly?.id === row.id ? ' active' : ''}`}>✓</span>
-                        </td>
-                        <td className="col-flag" onClick={e => { e.stopPropagation(); setSelectedEnemy(f => f?.id === row.id ? null : row); }}>
-                          <span className={`flag-check enemy${selectedEnemy?.id === row.id ? ' active' : ''}`}>✓</span>
-                        </td>
-                        <td>
-                          <span className="row-expand-hint">{isExpanded ? '▲' : '▼'}</span>
-                        </td>
-                        <td className="col-name" onClick={e => { e.stopPropagation(); setDetailUnit(row); }}>
-                          <span className="unit-name-link">{row.name}</span>
-                        </td>
-                        <td className="col-thumb">
-                          <img
-                            src={`${axios.defaults.baseURL || ''}/api/unit-image/${row.id}`}
-                            alt=""
-                            className="thumb-img"
-                            loading="lazy"
-                            onMouseEnter={e => setThumbHover({ id: row.id, x: e.clientX, y: e.clientY })}
-                            onMouseMove={e => setThumbHover(h => h ? { ...h, x: e.clientX, y: e.clientY } : h)}
-                            onMouseLeave={() => setThumbHover(null)}
-                            onError={e => { e.target.style.display = 'none'; }}
-                          />
-                        </td>
-                        <td className="col-faction">{row.faction}</td>
-                        <td>{row.grand_alliance && <AllianceBadge alliance={row.grand_alliance} />}</td>
-                        <td className="col-stat">{row.move || '—'}</td>
-                        <td className="col-stat">{row.health || '—'}</td>
-                        <td className="col-stat">{row.control || '—'}</td>
-                        <td className="col-stat">{row.save || '—'}</td>
-                        <td className="col-stat">{row.points || '—'}</td>
-                        <td><TypeTags row={row} /></td>
-                        <td className="col-keywords">
-                          {row.keywords ? row.keywords.split(',').slice(0, 6).join(', ') : '—'}
-                        </td>
-                      </tr>
-                      {isExpanded && (
-                        <tr className="weapons-expand-row">
-                          <td colSpan={15}>
-                            <div className="weapons-expand-inner" onClick={e => e.stopPropagation()}>
-                              {weapons.length === 0 && <span style={{color:'var(--text-dim)', fontStyle:'italic'}}>No weapon data available.</span>}
-                              {ranged.length > 0 && (
-                                <div className="inline-weapon-block">
-                                  <div className="inline-weapon-section-header">Ranged Weapons</div>
-                                  <table className="inline-weapon-table">
-                                    <thead><tr>
-                                      <th>Weapon</th><th>Range</th><th>Atk</th><th>Hit</th><th>Wnd</th><th>Rnd</th><th>Dmg</th>
-                                    </tr></thead>
-                                    <tbody>
-                                      {ranged.map((w, i) => (
-                                        <tr key={i}>
-                                          <td>{w.name}</td><td>{w.range}</td><td>{w.attacks}</td>
-                                          <td>{w.hit}</td><td>{w.wound}</td><td>{w.rend}</td><td>{w.damage}</td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              )}
-                              {melee.length > 0 && (
-                                <div className="inline-weapon-block">
-                                  <div className="inline-weapon-section-header">Melee Weapons</div>
-                                  <table className="inline-weapon-table">
-                                    <thead><tr>
-                                      <th>Weapon</th><th>Atk</th><th>Hit</th><th>Wnd</th><th>Rnd</th><th>Dmg</th>
-                                    </tr></thead>
-                                    <tbody>
-                                      {melee.map((w, i) => (
-                                        <tr key={i}>
-                                          <td>{w.name}</td><td>{w.attacks}</td>
-                                          <td>{w.hit}</td><td>{w.wound}</td><td>{w.rend}</td><td>{w.damage}</td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      )}
+                    <React.Fragment key={col.key}>
+                      <th style={thStyle(wKey)} className={`sortable ${sortBy === col.key ? 'sort-active' : ''}`} title={col.abbr ? col.label : undefined} onClick={() => handleSort(col.key)}>
+                        {col.abbr ? <span className="th-abbr">{col.abbr}</span> : col.label}
+                        <SortIcon col={col.key} sortBy={sortBy} sortDir={sortDir} />
+                        <span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e, wKey); }} />
+                      </th>
+                      {col.key === 'name' && <th style={thStyle('thumb')}><span className="col-resize-handle" onMouseDown={e => startResize(e,'thumb')} /></th>}
                     </React.Fragment>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
-
-        </>
-      )}
-      </>)}
+                <th style={thStyle('types')}>Types<span className="col-resize-handle" onMouseDown={e => startResize(e,'types')} /></th>
+                <th style={thStyle('keywords')}>Keywords<span className="col-resize-handle" onMouseDown={e => startResize(e,'keywords')} /></th>
+              </tr>
+            </thead>
+            <tbody>
+              {data?.data.map((row, idx) => {
+                const rowNum = (page - 1) * PAGE_SIZE + idx + 1;
+                const isExpanded = expandedIds.has(row.id);
+                const weapons = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
+                const ranged = weapons.filter(w => w.type === 'ranged');
+                const melee  = weapons.filter(w => w.type === 'melee');
+                const prev = data.data[idx - 1];
+                const factionChanged = !prev || prev.faction !== row.faction;
+                const typeChanged    = !prev || prev.faction !== row.faction || unitTypeLabel(prev) !== unitTypeLabel(row);
+                const colSpan = 14;
+                return (
+                  <React.Fragment key={row.id}>
+                    {factionChanged && sortBy === 'faction' && <tr className="separator-faction"><td colSpan={colSpan}>{row.faction}</td></tr>}
+                    {typeChanged    && sortBy === 'faction' && <tr className="separator-type"><td colSpan={colSpan}>{unitTypeLabel(row)}</td></tr>}
+                    <tr className={`unit-row${isExpanded ? ' expanded' : ''}`} onClick={() => setExpandedIds(prev => { const s = new Set(prev); isExpanded ? s.delete(row.id) : s.add(row.id); return s; })} style={{cursor:'pointer'}}>
+                      <td className="col-rownum">{rowNum}</td>
+                      <td className="col-flag" onClick={e => { e.stopPropagation(); setSelectedFriendly(f => f?.id === row.id ? null : row); }}>
+                        <span className={`flag-check friendly${selectedFriendly?.id === row.id ? ' active' : ''}`}>✓</span>
+                      </td>
+                      <td className="col-flag" onClick={e => { e.stopPropagation(); setSelectedEnemy(f => f?.id === row.id ? null : row); }}>
+                        <span className={`flag-check enemy${selectedEnemy?.id === row.id ? ' active' : ''}`}>✓</span>
+                      </td>
+                      <td><span className="row-expand-hint">{isExpanded ? '▲' : '▼'}</span></td>
+                      <td className="col-name" onClick={e => { e.stopPropagation(); setDetailUnit(row); }}><span className="unit-name-link">{row.name}</span></td>
+                      <td className="col-thumb">
+                        <img src={`${axios.defaults.baseURL || ''}/api/unit-image/${row.id}`} alt="" className="thumb-img" loading="lazy"
+                          onMouseEnter={e => setThumbHover({ id: row.id, x: e.clientX, y: e.clientY })}
+                          onMouseMove={e => setThumbHover(h => h ? { ...h, x: e.clientX, y: e.clientY } : h)}
+                          onMouseLeave={() => setThumbHover(null)}
+                          onError={e => { e.target.style.display='none'; }} />
+                      </td>
+                      <td className="col-faction">{row.faction}</td>
+                      <td>{row.grand_alliance && <AllianceBadge alliance={row.grand_alliance} />}</td>
+                      <td className="col-stat">{row.move || '—'}</td>
+                      <td className="col-stat">{row.health || '—'}</td>
+                      <td className="col-stat">{row.control || '—'}</td>
+                      <td className="col-stat">{row.save || '—'}</td>
+                      <td className="col-stat">{row.points || '—'}</td>
+                      <td><TypeTags row={row} /></td>
+                      <td className="col-keywords">{row.keywords ? row.keywords.split(',').slice(0,6).join(', ') : '—'}</td>
+                    </tr>
+                    {isExpanded && (
+                      <tr className="weapons-expand-row">
+                        <td colSpan={15}>
+                          <div className="weapons-expand-inner" onClick={e => e.stopPropagation()}>
+                            {weapons.length === 0 && <span style={{color:'var(--text-dim)',fontStyle:'italic'}}>No weapon data available.</span>}
+                            {ranged.length > 0 && (
+                              <div className="inline-weapon-block">
+                                <div className="inline-weapon-section-header">Ranged Weapons</div>
+                                <table className="inline-weapon-table"><thead><tr><th>Weapon</th><th>Range</th><th>Atk</th><th>Hit</th><th>Wnd</th><th>Rnd</th><th>Dmg</th></tr></thead>
+                                <tbody>{ranged.map((w,i) => <tr key={i}><td>{w.name}</td><td>{w.range}</td><td>{w.attacks}</td><td>{w.hit}</td><td>{w.wound}</td><td>{w.rend}</td><td>{w.damage}</td></tr>)}</tbody></table>
+                              </div>
+                            )}
+                            {melee.length > 0 && (
+                              <div className="inline-weapon-block">
+                                <div className="inline-weapon-section-header">Melee Weapons</div>
+                                <table className="inline-weapon-table"><thead><tr><th>Weapon</th><th>Atk</th><th>Hit</th><th>Wnd</th><th>Rnd</th><th>Dmg</th></tr></thead>
+                                <tbody>{melee.map((w,i) => <tr key={i}><td>{w.name}</td><td>{w.attacks}</td><td>{w.hit}</td><td>{w.wound}</td><td>{w.rend}</td><td>{w.damage}</td></tr>)}</tbody></table>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}</>)}
     </div>
 
     {showRitualError && <RitualErrorModal onClose={() => { setShowRitualError(false); setStage(1); }} />}
