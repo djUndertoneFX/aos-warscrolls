@@ -508,15 +508,20 @@ export default function WarscrollsPage({ headerCollapsed }) {
             2. SimulacEm!
           </button>
         </div>
-        {data && (
+        {stage === 1 && data && (
           <div className="unit-count">
             {data.total.toLocaleString()} units found
           </div>
         )}
       </div>
 
-      {/* ── Filters ── */}
-      <div className="filters">
+      {/* ── Filters (stage 1 only) ── */}
+      {stage === 2 && (
+        <div className="sim-fight-bar">
+          <button className="btn-fight-eternity">⚔ Fight for Eternity</button>
+        </div>
+      )}
+      {stage === 1 && <div className="filters">
         <div className="filter-group">
           <div className="filter-label">Search</div>
           <input
@@ -604,7 +609,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
             </label>
           </div>
         </div>
-      </div>
+      </div>}
       </>
       )}
 
