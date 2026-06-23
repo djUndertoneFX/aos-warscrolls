@@ -4,7 +4,6 @@ function d6() {
   return Math.floor(Math.random() * 6) + 1;
 }
 
-// Parse a dice expression like "D3", "D6", "2D6", or a fixed number into a roller function
 function parseDice(val) {
   const s = String(val || '1').trim();
   if (s === '-' || s === '') return () => 0;
@@ -20,13 +19,11 @@ function parseDice(val) {
   return () => (isNaN(n) ? 1 : n);
 }
 
-// Parse a threshold like "3+" or "4" -> minimum roll needed
 function parseThreshold(val) {
   const m = String(val || '7').match(/(\d+)/);
   return m ? parseInt(m[1]) : 7;
 }
 
-// Parse rend: "-" or "" = 0, "1" = 1
 function parseRend(val) {
   const s = String(val || '0').trim();
   if (s === '-' || s === '') return 0;
@@ -34,7 +31,6 @@ function parseRend(val) {
   return isNaN(n) ? 0 : Math.abs(n);
 }
 
-// Parse save like "4+" -> 4
 function parseSaveValue(val) {
   const m = String(val || '7+').match(/(\d+)/);
   return m ? parseInt(m[1]) : 7;
@@ -44,15 +40,6 @@ function parseWeapons(json) {
   try { return JSON.parse(json || '[]'); } catch { return []; }
 }
 
-// Roll total attacks for a weapon across all alive models — one roll per model
-function rollTotalAttacks(weapon, modelsAlive) {
-  const roller = parseDice(weapon.attacks);
-  let total = 0;
-  for (let i = 0; i < modelsAlive; i++) total += roller();
-  return total;
-}
-
-// Detect critical hit special abilities from weapon name/ability text
 function detectCritAbility(weapon) {
   const combined = ((weapon.name || '') + ' ' + (weapon.ability || weapon.abilities || '')).toLowerCase();
   if (combined.includes('crit (mortal)') || combined.includes('crit(mortal)')) return 'mortal';
@@ -68,19 +55,18 @@ function hasChargeBonus(weapon) {
   return combined.includes('charge') && combined.includes('+1 damage');
 }
 
-// Side state — tracks models alive and wound on the current front model
 function makeSide(unit, modelCount) {
   const hpPerModel = parseInt(unit.health) || 1;
   return {
     modelsAlive: modelCount,
-    modelCount,       // original total
+    modelCount,
     hpPerModel,
-    currentModelHp: hpPerModel,  // HP remaining on the frontmost model
+    currentModelHp: hpPerModel,
     modelsKilled: 0,
   };
 }
 
-// Apply damage to a side, cascading through models. Returns a log of events.
+// Apply damage cascading through models; returns number of models newly killed this hit
 function applyDamage(side, damage, push) {
   let dmgLeft = damage;
   while (dmgLeft > 0 && side.modelsAlive > 0) {
@@ -90,9 +76,9 @@ function applyDamage(side, damage, push) {
       side.modelsKilled++;
       side.currentModelHp = side.hpPerModel;
       if (side.modelsAlive > 0) {
-        push(`        Model slain! ${side.modelsAlive} model${side.modelsAlive !== 1 ? 's' : ''} remaining.${dmgLeft > 0 ? ` (${dmgLeft} damage overflows to next model)` : ''}`, 'damage');
+        push(`              ☠ Model slain! ${side.modelsAlive} model${side.modelsAlive !== 1 ? 's' : ''} remaining${dmgLeft > 0 ? ` (${dmgLeft} dmg overflows)` : ''}.`, 'damage');
       } else {
-        push(`        Model slain! Unit destroyed!`, 'damage');
+        push(`              ☠ Model slain! Unit destroyed!`, 'damage');
       }
     } else {
       side.currentModelHp -= dmgLeft;
@@ -101,123 +87,126 @@ function applyDamage(side, damage, push) {
   }
 }
 
+// Execute attacks for one unit's weapon against a defender.
+// Shows: batch dice summary first, then per-attack detail.
+function resolveWeapon(weapon, sideState, defSide, defSave, charged, isShootingPhase, push) {
+  if (defSide.modelsAlive === 0 || sideState.modelsAlive === 0) return;
+
+  const critType    = detectCritAbility(weapon);
+  const chargeBonus = !isShootingPhase && hasChargeBonus(weapon) && charged;
+  const hitNeeded   = parseThreshold(weapon.hit);
+  const woundNeeded = parseThreshold(weapon.wound);
+  const rend        = parseRend(weapon.rend);
+  const saveNeeded  = defSave + rend;
+
+  // Roll the full attack pool — one roll per model per weapon.attacks
+  const attackRoller = parseDice(weapon.attacks);
+  const attacksPerModel = [];
+  for (let m = 0; m < sideState.modelsAlive; m++) attacksPerModel.push(attackRoller());
+  const totalAttacks = attacksPerModel.reduce((a, b) => a + b, 0);
+
+  push(`    Weapon: "${weapon.name}"  [${sideState.modelsAlive} model${sideState.modelsAlive !== 1 ? 's' : ''} × ${weapon.attacks} Atk = ${totalAttacks} dice | Hit:${weapon.hit}, Wnd:${weapon.wound}, Rnd:${weapon.rend || '-'}, Dmg:${weapon.damage}${chargeBonus ? ' +1 Dmg (charge)' : ''}]`, 'weapon');
+
+  // ── Phase 1: Roll ALL hit dice ───────────────────────────────────────────
+  const hitRolls = [];
+  for (let a = 0; a < totalAttacks; a++) hitRolls.push(d6());
+
+  const crits  = hitRolls.filter(r => r === 6);
+  const hits   = hitRolls.filter(r => r >= hitNeeded);
+  const misses = hitRolls.filter(r => r < hitNeeded);
+
+  push(`      Hit rolls (${totalAttacks}):  ${hitRolls.join(', ')}`, 'roll-summary');
+  push(`        → ${hits.length} hit${hits.length !== 1 ? 's' : ''}${crits.length > 0 ? ` (${crits.length} crit${crits.length !== 1 ? 's' : ''})` : ''}  ·  ${misses.length} miss${misses.length !== 1 ? 'es' : ''}`, 'roll-result');
+
+  if (hits.length === 0) return;
+
+  // ── Phase 2: Roll ALL wound dice (for non-auto hits) ────────────────────
+  // Separate crits by ability — mortals skip everything, auto-wounds skip wound roll
+  let mortalCrits     = critType === 'mortal'     ? crits.length : 0;
+  let autoWoundCrits  = critType === 'auto-wound' ? crits.length : 0;
+  let doubleHitCrits  = critType === '2hits'      ? crits.length : 0;
+  let normalHits      = hits.length - crits.length + (doubleHitCrits > 0 ? crits.length : 0); // crits still hit normally unless mortal/auto
+  if (critType === 'mortal' || critType === 'auto-wound') normalHits = hits.length - crits.length;
+
+  // Extra hits from 2-hit crits
+  const extraHitsFromCrits = doubleHitCrits; // each crit scores an extra hit
+  const totalWoundDice = normalHits + extraHitsFromCrits + autoWoundCrits; // auto-wound crits go straight to wound pool
+
+  let woundRolls = [];
+  let wounds = 0;
+  if (totalWoundDice > 0) {
+    for (let w = 0; w < totalWoundDice; w++) woundRolls.push(d6());
+    wounds = woundRolls.filter(r => r >= woundNeeded).length;
+    push(`      Wound rolls (${totalWoundDice}):  ${woundRolls.join(', ')}`, 'roll-summary');
+    push(`        → ${wounds} wound${wounds !== 1 ? 's' : ''}  ·  ${totalWoundDice - wounds} fail${totalWoundDice - wounds !== 1 ? 's' : ''}`, 'roll-result');
+  }
+
+  // ── Phase 3: Roll ALL save dice ─────────────────────────────────────────
+  const totalSaveDice = wounds + autoWoundCrits;
+  let saveRolls = [];
+  let unsaved = 0;
+  if (totalSaveDice > 0) {
+    for (let s = 0; s < totalSaveDice; s++) saveRolls.push(d6());
+    const saved = saveRolls.filter(r => r >= saveNeeded).length;
+    unsaved = totalSaveDice - saved;
+    push(`      Save rolls  (${totalSaveDice}, vs ${saveNeeded}+):  ${saveRolls.join(', ')}`, 'roll-summary');
+    push(`        → ${saved} saved  ·  ${unsaved} unsaved`, 'roll-result');
+  }
+
+  // Mortal crit damage — no save, no wound
+  if (mortalCrits > 0) {
+    push(`      Crit mortals (${mortalCrits}):  ${mortalCrits} automatic unsaved mortal hit${mortalCrits !== 1 ? 's' : ''}`, 'crit');
+  }
+
+  const totalUnsaved = unsaved + mortalCrits;
+  if (totalUnsaved === 0) {
+    push(`      All attacks saved or missed — no damage this weapon.`, 'saved');
+    return;
+  }
+
+  // ── Phase 4: Per-unsaved-wound detail ───────────────────────────────────
+  push(`      ── Damage Detail (${totalUnsaved} unsaved hit${totalUnsaved !== 1 ? 's' : ''}) ──`, 'phase');
+
+  for (let i = 0; i < totalUnsaved; i++) {
+    if (defSide.modelsAlive === 0) break;
+    const dmgRoller = parseDice(weapon.damage);
+    const dmgRaw    = dmgRoller();
+    const dmgVal    = dmgRaw + (chargeBonus ? 1 : 0);
+    const isMortal  = i >= unsaved; // mortal crits come after regular unsaved
+    push(`        Hit ${i + 1}${isMortal ? ' (Mortal Crit)' : ''}:  ${dmgVal} damage${chargeBonus ? ' (+1 charge)' : ''}  →  Defender ${defSide.modelsAlive}/${defSide.modelCount} models, ${defSide.currentModelHp}/${defSide.hpPerModel} HP on front model`, 'hp');
+    applyDamage(defSide, dmgVal, push);
+  }
+}
+
 function runSingleBattle(friendly, enemy, friendlyFirst, friendlyModelCount, enemyModelCount) {
   const steps = [];
-  const push = (msg, type = 'normal') => steps.push({ msg, type });
+  const push  = (msg, type = 'normal') => steps.push({ msg, type });
 
   const fSave = parseSaveValue(friendly.save);
   const eSave = parseSaveValue(enemy.save);
-
   const fSide = makeSide(friendly, friendlyModelCount);
   const eSide = makeSide(enemy, enemyModelCount);
 
-  const fMeleeWeapons  = parseWeapons(friendly.weapons).filter(w => w.type === 'melee');
-  const eMeleeWeapons  = parseWeapons(enemy.weapons).filter(w => w.type === 'melee');
-  const fRangedWeapons = parseWeapons(friendly.weapons).filter(w => w.type === 'ranged');
-  const eRangedWeapons = parseWeapons(enemy.weapons).filter(w => w.type === 'ranged');
+  const fMelee  = parseWeapons(friendly.weapons).filter(w => w.type === 'melee');
+  const eMelee  = parseWeapons(enemy.weapons).filter(w => w.type === 'melee');
+  const fRanged = parseWeapons(friendly.weapons).filter(w => w.type === 'ranged');
+  const eRanged = parseWeapons(enemy.weapons).filter(w => w.type === 'ranged');
 
   push(`══════════════════════════════════`, 'divider');
   push(`SIMULACRUM: ${friendly.name} vs. ${enemy.name}`, 'title');
   push(`Initiative: ${friendlyFirst ? 'Friendly charges' : 'Enemy charges'}`, 'info');
-  push(`Friendly — ${friendly.name}: ${friendlyModelCount} model${friendlyModelCount !== 1 ? 's' : ''} × ${fSide.hpPerModel} HP = ${friendlyModelCount * fSide.hpPerModel} total HP, Save: ${friendly.save}`, 'info');
-  push(`Enemy   — ${enemy.name}: ${enemyModelCount} model${enemyModelCount !== 1 ? 's' : ''} × ${eSide.hpPerModel} HP = ${enemyModelCount * eSide.hpPerModel} total HP, Save: ${enemy.save}`, 'info');
+  push(`Friendly — ${friendly.name}: ${friendlyModelCount} model${friendlyModelCount !== 1 ? 's' : ''} × ${fSide.hpPerModel} HP, Save: ${friendly.save}`, 'info');
+  push(`Enemy   — ${enemy.name}: ${enemyModelCount} model${enemyModelCount !== 1 ? 's' : ''} × ${eSide.hpPerModel} HP, Save: ${enemy.save}`, 'info');
   push(`══════════════════════════════════`, 'divider');
 
-  const fight = ({ attackerName, attackerSide, sideState, meleeWeapons, rangedWeapons, defSave, charged, defSide, isShootingPhase }) => {
-    const weapons = isShootingPhase ? rangedWeapons : meleeWeapons;
-    if (weapons.length === 0 || sideState.modelsAlive === 0) return;
-
+  const fightUnit = (attackerName, attackerSide, sideState, weapons, defSide, defSave, charged, isShootingPhase) => {
+    if (sideState.modelsAlive === 0 || weapons.length === 0) return;
     const prefix = attackerSide === 'friendly' ? '[FRIENDLY]' : '[ENEMY]  ';
-    if (isShootingPhase) {
-      push(`  ${prefix} ${attackerName} (${sideState.modelsAlive} model${sideState.modelsAlive !== 1 ? 's' : ''}) — SHOOT!`, 'fight');
-    } else {
-      push(`  ${prefix} ${attackerName} (${sideState.modelsAlive} model${sideState.modelsAlive !== 1 ? 's' : ''}) — FIGHT!${charged ? '  ⚡ (Charging!)' : ''}`, 'fight');
-    }
-
+    const phase  = isShootingPhase ? 'SHOOT' : 'FIGHT';
+    push(`  ${prefix} ${attackerName} (${sideState.modelsAlive} model${sideState.modelsAlive !== 1 ? 's' : ''}) — ${phase}!${!isShootingPhase && charged ? '  ⚡ Charging!' : ''}`, 'fight');
     for (const weapon of weapons) {
       if (defSide.modelsAlive === 0) break;
-
-      const chargeBonus = !isShootingPhase && hasChargeBonus(weapon) && charged;
-      const critType = detectCritAbility(weapon);
-
-      // Roll attacks per model alive — this is the dice pool
-      const numAttacks = rollTotalAttacks(weapon, sideState.modelsAlive);
-      const hitNeeded   = parseThreshold(weapon.hit);
-      const woundNeeded = parseThreshold(weapon.wound);
-      const rend        = parseRend(weapon.rend);
-      const saveNeeded  = defSave + rend;
-
-      push(`    Weapon: "${weapon.name}" [${sideState.modelsAlive} model${sideState.modelsAlive !== 1 ? 's' : ''} × ${weapon.attacks} Atk = ${numAttacks} dice | Hit:${weapon.hit}, Wnd:${weapon.wound}, Rnd:${weapon.rend || '-'}, Dmg:${weapon.damage}${chargeBonus ? ' +1 Dmg (charge)' : ''}]`, 'weapon');
-
-      for (let a = 1; a <= numAttacks; a++) {
-        if (defSide.modelsAlive === 0) break;
-
-        const hitRoll = d6();
-        const isCrit  = hitRoll === 6;
-        const isHit   = hitRoll >= hitNeeded;
-
-        if (!isHit) {
-          push(`      Attack ${a}: Hit ${hitRoll} vs ${hitNeeded}+  →  Miss`, 'miss');
-          continue;
-        }
-
-        // Critical — Mortal damage (no wound or save)
-        if (isCrit && critType === 'mortal') {
-          const roller = parseDice(weapon.damage);
-          const dmgVal = roller() + (chargeBonus ? 1 : 0);
-          push(`      Attack ${a}: Hit 6  →  CRITICAL! ✦ Mortal — ${dmgVal} damage (no save)`, 'crit');
-          applyDamage(defSide, dmgVal, push);
-          push(`        Defender: ${defSide.modelsAlive}/${defSide.modelCount} models remain`, 'hp');
-          continue;
-        }
-
-        // Critical — Auto-wound (skip wound roll)
-        if (isCrit && critType === 'auto-wound') {
-          push(`      Attack ${a}: Hit 6  →  CRITICAL! ✦ Auto-wounds (skip wound roll)`, 'crit');
-          const saveRoll = d6();
-          const saved = saveRoll >= saveNeeded;
-          push(`        Save: ${saveRoll} vs ${saveNeeded}+ (base ${defSave}+, Rend ${rend})  →  ${saved ? 'Saved' : 'Failed!'}`, saved ? 'saved' : 'damage');
-          if (!saved) {
-            const roller = parseDice(weapon.damage);
-            const dmgVal = roller() + (chargeBonus ? 1 : 0);
-            applyDamage(defSide, dmgVal, push);
-            push(`        Defender: ${defSide.modelsAlive}/${defSide.modelCount} models remain`, 'hp');
-          }
-          continue;
-        }
-
-        // Critical — 2 Hits
-        const hitCount = isCrit && critType === '2hits' ? 2 : 1;
-        if (isCrit && critType === '2hits') {
-          push(`      Attack ${a}: Hit 6  →  CRITICAL! ✦ 2 hits!`, 'crit');
-        } else {
-          push(`      Attack ${a}: Hit ${hitRoll} vs ${hitNeeded}+  →  Hit!${isCrit ? ' (Critical)' : ''}`, 'hit');
-        }
-
-        for (let h = 0; h < hitCount; h++) {
-          if (defSide.modelsAlive === 0) break;
-          const hLabel = hitCount > 1 ? `Hit ${h + 1}: ` : '';
-
-          const woundRoll = d6();
-          const isWound   = woundRoll >= woundNeeded;
-          if (!isWound) {
-            push(`        ${hLabel}Wound: ${woundRoll} vs ${woundNeeded}+  →  No wound`, 'miss');
-            continue;
-          }
-          push(`        ${hLabel}Wound: ${woundRoll} vs ${woundNeeded}+  →  Wound!`, 'wound');
-
-          const saveRoll = d6();
-          const saved    = saveRoll >= saveNeeded;
-          push(`        ${hLabel}Save: ${saveRoll} vs ${saveNeeded}+ (base ${defSave}+, Rend ${rend})  →  ${saved ? 'Saved' : 'Failed!'}`, saved ? 'saved' : 'damage');
-
-          if (!saved) {
-            const roller = parseDice(weapon.damage);
-            const dmgVal = roller() + (chargeBonus ? 1 : 0);
-            applyDamage(defSide, dmgVal, push);
-            push(`        ${hLabel}Defender: ${defSide.modelsAlive}/${defSide.modelCount} models  (${defSide.currentModelHp}/${defSide.hpPerModel} HP on current model)`, 'hp');
-          }
-        }
-      }
+      resolveWeapon(weapon, sideState, defSide, defSave, charged, isShootingPhase, push);
     }
   };
 
@@ -228,28 +217,27 @@ function runSingleBattle(friendly, enemy, friendlyFirst, friendlyModelCount, ene
     push(``, 'spacer');
     push(`══ BATTLE ROUND ${round} ══`, 'round');
 
-    const isFirstRound = round === 1;
-    const fCharged = isFirstRound && friendlyFirst;
-    const eCharged = isFirstRound && !friendlyFirst;
+    const first = round === 1;
+    const fCharged = first && friendlyFirst;
+    const eCharged = first && !friendlyFirst;
 
-    const hasShooting = fRangedWeapons.length > 0 || eRangedWeapons.length > 0;
-    if (hasShooting) {
+    if (fRanged.length > 0 || eRanged.length > 0) {
       push(`  — Shooting Phase —`, 'phase');
-      fight({ attackerName: friendly.name, attackerSide: 'friendly', sideState: fSide, meleeWeapons: fMeleeWeapons, rangedWeapons: fRangedWeapons, defSave: eSave, charged: false, defSide: eSide, isShootingPhase: true });
+      fightUnit(friendly.name, 'friendly', fSide, fRanged, eSide, eSave, false, true);
       if (eSide.modelsAlive > 0)
-        fight({ attackerName: enemy.name, attackerSide: 'enemy', sideState: eSide, meleeWeapons: eMeleeWeapons, rangedWeapons: eRangedWeapons, defSave: fSave, charged: false, defSide: fSide, isShootingPhase: true });
+        fightUnit(enemy.name, 'enemy', eSide, eRanged, fSide, fSave, false, true);
     }
 
     if (fSide.modelsAlive > 0 && eSide.modelsAlive > 0) {
       push(`  — Combat Phase —`, 'phase');
       if (friendlyFirst) {
-        fight({ attackerName: friendly.name, attackerSide: 'friendly', sideState: fSide, meleeWeapons: fMeleeWeapons, rangedWeapons: fRangedWeapons, defSave: eSave, charged: fCharged, defSide: eSide, isShootingPhase: false });
+        fightUnit(friendly.name, 'friendly', fSide, fMelee, eSide, eSave, fCharged, false);
         if (eSide.modelsAlive > 0)
-          fight({ attackerName: enemy.name, attackerSide: 'enemy', sideState: eSide, meleeWeapons: eMeleeWeapons, rangedWeapons: eRangedWeapons, defSave: fSave, charged: eCharged, defSide: fSide, isShootingPhase: false });
+          fightUnit(enemy.name, 'enemy', eSide, eMelee, fSide, fSave, eCharged, false);
       } else {
-        fight({ attackerName: enemy.name, attackerSide: 'enemy', sideState: eSide, meleeWeapons: eMeleeWeapons, rangedWeapons: eRangedWeapons, defSave: fSave, charged: eCharged, defSide: fSide, isShootingPhase: false });
+        fightUnit(enemy.name, 'enemy', eSide, eMelee, fSide, fSave, eCharged, false);
         if (fSide.modelsAlive > 0)
-          fight({ attackerName: friendly.name, attackerSide: 'friendly', sideState: fSide, meleeWeapons: fMeleeWeapons, rangedWeapons: fRangedWeapons, defSave: eSave, charged: fCharged, defSide: eSide, isShootingPhase: false });
+          fightUnit(friendly.name, 'friendly', fSide, fMelee, eSide, eSave, fCharged, false);
       }
     }
 
@@ -267,11 +255,11 @@ function runSingleBattle(friendly, enemy, friendlyFirst, friendlyModelCount, ene
   if (fSide.modelsAlive > 0 && eSide.modelsAlive === 0) {
     winner = { side: 'friendly', unit: friendly, modelsAlive: fSide.modelsAlive, modelsKilled: fSide.modelsKilled, modelCount: fSide.modelCount, damageOnCurrent: fSide.hpPerModel - fSide.currentModelHp, hpPerModel: fSide.hpPerModel };
     push(`FRIENDLY UNIT "${friendly.name}" STANDS VICTORIOUS!`, 'victory');
-    push(`${fSide.modelsAlive} of ${fSide.modelCount} models survive. ${fSide.modelsKilled} model${fSide.modelsKilled !== 1 ? 's' : ''} lost. ${fSide.currentModelHp < fSide.hpPerModel ? `(${fSide.hpPerModel - fSide.currentModelHp} damage on surviving champion)` : ''}`, 'victory');
+    push(`${fSide.modelsAlive} of ${fSide.modelCount} models survive  ·  ${fSide.modelsKilled} model${fSide.modelsKilled !== 1 ? 's' : ''} lost${fSide.currentModelHp < fSide.hpPerModel ? `  ·  ${fSide.hpPerModel - fSide.currentModelHp} dmg on surviving model` : ''}`, 'victory');
   } else if (eSide.modelsAlive > 0 && fSide.modelsAlive === 0) {
     winner = { side: 'enemy', unit: enemy, modelsAlive: eSide.modelsAlive, modelsKilled: eSide.modelsKilled, modelCount: eSide.modelCount, damageOnCurrent: eSide.hpPerModel - eSide.currentModelHp, hpPerModel: eSide.hpPerModel };
     push(`ENEMY UNIT "${enemy.name}" STANDS VICTORIOUS!`, 'victory');
-    push(`${eSide.modelsAlive} of ${eSide.modelCount} models survive. ${eSide.modelsKilled} model${eSide.modelsKilled !== 1 ? 's' : ''} lost. ${eSide.currentModelHp < eSide.hpPerModel ? `(${eSide.hpPerModel - eSide.currentModelHp} damage on surviving champion)` : ''}`, 'victory');
+    push(`${eSide.modelsAlive} of ${eSide.modelCount} models survive  ·  ${eSide.modelsKilled} model${eSide.modelsKilled !== 1 ? 's' : ''} lost${eSide.currentModelHp < eSide.hpPerModel ? `  ·  ${eSide.hpPerModel - eSide.currentModelHp} dmg on surviving model` : ''}`, 'victory');
   } else if (fSide.modelsAlive > 0 && eSide.modelsAlive > 0) {
     winner = { side: 'draw', fModels: fSide.modelsAlive, eModels: eSide.modelsAlive, rounds: MAX_ROUNDS };
     push(`STALEMATE — Battle lasted ${MAX_ROUNDS} rounds with no victor!`, 'draw');
@@ -286,17 +274,16 @@ function runSingleBattle(friendly, enemy, friendlyFirst, friendlyModelCount, ene
 
 function runMultiBattle(friendly, enemy, friendlyFirst, count, friendlyModelCount, enemyModelCount) {
   let fWins = 0, eWins = 0, draws = 0;
-
   for (let i = 0; i < count; i++) {
-    const result = runSingleBattle(friendly, enemy, friendlyFirst, friendlyModelCount, enemyModelCount);
-    const s = result.winner.side;
+    const r = runSingleBattle(friendly, enemy, friendlyFirst, friendlyModelCount, enemyModelCount);
+    const s = r.winner.side;
     if (s === 'friendly') fWins++;
     else if (s === 'enemy') eWins++;
     else draws++;
   }
 
   const steps = [];
-  const push = (msg, type = 'normal') => steps.push({ msg, type });
+  const push  = (msg, type = 'normal') => steps.push({ msg, type });
   push(`MULTI-BATTLE RESULTS — ${count.toLocaleString()} battles`, 'title');
   push(`Friendly: ${friendlyModelCount} model${friendlyModelCount !== 1 ? 's' : ''}  ·  Enemy: ${enemyModelCount} model${enemyModelCount !== 1 ? 's' : ''}`, 'info');
   push(`══════════════════════════════════`, 'divider');
@@ -315,8 +302,6 @@ function runMultiBattle(friendly, enemy, friendlyFirst, count, friendlyModelCoun
 }
 
 export function simulateBattle(friendly, enemy, { count = 1, friendlyFirst = true, friendlyModelCount = 1, enemyModelCount = 1 } = {}) {
-  if (count === 1) {
-    return runSingleBattle(friendly, enemy, friendlyFirst, friendlyModelCount, enemyModelCount);
-  }
+  if (count === 1) return runSingleBattle(friendly, enemy, friendlyFirst, friendlyModelCount, enemyModelCount);
   return runMultiBattle(friendly, enemy, friendlyFirst, count, friendlyModelCount, enemyModelCount);
 }

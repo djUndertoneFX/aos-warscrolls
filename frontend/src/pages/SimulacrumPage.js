@@ -235,6 +235,7 @@ const TYPE_CLASS = {
   hit: 'log-hit', miss: 'log-miss', crit: 'log-crit',
   wound: 'log-wound', saved: 'log-saved', damage: 'log-damage',
   hp: 'log-hp', status: 'log-status', victory: 'log-victory', draw: 'log-draw',
+  'roll-summary': 'log-roll-summary', 'roll-result': 'log-roll-result',
   spacer: 'log-spacer', normal: '',
 };
 
@@ -349,6 +350,20 @@ export default function SimulacrumPage({ headerCollapsed }) {
   const [simSpeed, setSimSpeed] = useState('hasted'); // 'hasted' | 'slog'
   const [friendlyModelCount, setFriendlyModelCount] = useState(1);
   const [enemyModelCount, setEnemyModelCount]       = useState(1);
+
+  // Auto-populate model counts from unit_size when selections change
+  useEffect(() => {
+    if (selectedFriendly) {
+      const n = parseInt(selectedFriendly.unit_size);
+      if (n > 0) setFriendlyModelCount(n);
+    }
+  }, [selectedFriendly?.id]);
+  useEffect(() => {
+    if (selectedEnemy) {
+      const n = parseInt(selectedEnemy.unit_size);
+      if (n > 0) setEnemyModelCount(n);
+    }
+  }, [selectedEnemy?.id]);
 
   // Battle results: { left: SimResult, right: SimResult }
   const [battleResults, setBattleResults] = useState(null);

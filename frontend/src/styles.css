@@ -631,7 +631,9 @@ input, select {
 .log-status  { color: var(--text-dim); }
 .log-victory { color: var(--gold); font-weight: bold; }
 .log-draw    { color: var(--text-dim); font-style: italic; }
-.log-dim     { color: #4a3820; font-style: italic; }
+.log-dim          { color: #4a3820; font-style: italic; }
+.log-roll-summary { color: #9a8a6a; }
+.log-roll-result  { color: var(--parchment); font-weight: bold; }
 
 /* ── Step-through & Proceed button ── */
 .sim-fight-actions {
