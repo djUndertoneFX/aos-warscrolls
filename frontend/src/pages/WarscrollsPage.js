@@ -40,6 +40,7 @@ const SORTABLE_COLS = [
   { key: 'control',       label: 'Control',   abbr: 'Ctrl' },
   { key: 'save',          label: 'Save',      abbr: 'Sv' },
   { key: 'points',        label: 'Points',    abbr: 'Pts' },
+  { key: 'unit_size',     label: 'Models',    abbr: 'Mdl' },
 ];
 
 function AllianceBadge({ alliance }) {
@@ -310,7 +311,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
   // ── Column resizing ──────────────────────────────────────────────────────
   const DEFAULT_COL_WIDTHS = {
     rownum: 36, friendly: 38, enemy: 38, expand: 30, thumb: 44,
-    name: 240, faction: 150, alliance: 82,
+    name: 240, faction: 150, alliance: 82, models: 46,
     move: 46, health: 46, control: 46, save: 46, points: 52,
     types: 100, keywords: 200,
   };
@@ -504,7 +505,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
                   <th style={{...thStyle('enemy'), color:'var(--enemy-color)'}} title="Enemy"><span className="th-abbr" style={{color:'var(--enemy-color)'}}>E</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'enemy')} /></th>
                   <th style={thStyle('expand')}><span className="col-resize-handle" onMouseDown={e => startResize(e,'expand')} /></th>
                   {SORTABLE_COLS.map(col => {
-                    const keyMap = { name:'name', faction:'faction', grand_alliance:'alliance', move:'move', health:'health', control:'control', save:'save', points:'points' };
+                    const keyMap = { name:'name', faction:'faction', grand_alliance:'alliance', move:'move', health:'health', control:'control', save:'save', points:'points', unit_size:'models' };
                     const wKey = keyMap[col.key] || col.key;
                     return (
                       <React.Fragment key={col.key}>
@@ -538,7 +539,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
                   const prev = data.data[idx - 1];
                   const factionChanged = !prev || prev.faction !== row.faction;
                   const typeChanged    = !prev || prev.faction !== row.faction || unitTypeLabel(prev) !== unitTypeLabel(row);
-                  const colSpan = 14;
+                  const colSpan = 15;
                   return (
                     <React.Fragment key={row.id}>
                       {factionChanged && sortBy === 'faction' && (
@@ -588,6 +589,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
                         <td className="col-stat">{row.control || '—'}</td>
                         <td className="col-stat">{row.save || '—'}</td>
                         <td className="col-stat">{row.points || '—'}</td>
+                        <td className="col-stat">{row.unit_size || '—'}</td>
                         <td><TypeTags row={row} /></td>
                         <td className="col-keywords">
                           {row.keywords ? row.keywords.split(',').slice(0, 6).join(', ') : '—'}
@@ -595,7 +597,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
                       </tr>
                       {isExpanded && (
                         <tr className="weapons-expand-row">
-                          <td colSpan={15}>
+                          <td colSpan={16}>
                             <div className="weapons-expand-inner" onClick={e => e.stopPropagation()}>
                               {weapons.length === 0 && <span style={{color:'var(--text-dim)', fontStyle:'italic'}}>No weapon data available.</span>}
                               {ranged.length > 0 && (

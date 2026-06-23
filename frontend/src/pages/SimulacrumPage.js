@@ -39,6 +39,7 @@ const SORTABLE_COLS = [
   { key: 'control',       label: 'Control',   abbr: 'Ctrl' },
   { key: 'save',          label: 'Save',      abbr: 'Sv' },
   { key: 'points',        label: 'Points',    abbr: 'Pts' },
+  { key: 'unit_size',     label: 'Models',    abbr: 'Mdl' },
 ];
 
 function AllianceBadge({ alliance }) {
@@ -124,7 +125,7 @@ const STAGES = [
   { id: 2, label: 'SimulacEm!' },
 ];
 
-function SimulacrumBattle({ friendly, enemy, colWidths, thStyle }) {
+function SimulacrumBattle({ friendly, enemy, colWidths, thStyle, onUnitClick }) {
   const renderRow = (row, label) => {
     const weapons = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
     const ranged = weapons.filter(w => w.type === 'ranged');
@@ -138,7 +139,9 @@ function SimulacrumBattle({ friendly, enemy, colWidths, thStyle }) {
           <td style={{color: label==='friendly'?'var(--friendly-color)':'var(--enemy-color)', fontWeight:700, textAlign:'center'}}></td>
           <td style={{color: label==='friendly'?'var(--friendly-color)':'var(--enemy-color)', fontWeight:700, textAlign:'center'}}></td>
           <td></td>
-          <td className="col-name"><span className="unit-name-link">{row.name}</span></td>
+          <td className="col-name" onClick={() => onUnitClick && onUnitClick(row)} style={{cursor:'pointer'}}>
+            <span className="unit-name-link">{row.name}</span>
+          </td>
           <td className="col-thumb">
             <img src={`${axios.defaults.baseURL || ''}/api/unit-image/${row.id}`} alt="" className="thumb-img"
               onError={e => { e.target.style.display='none'; }} />
@@ -150,11 +153,12 @@ function SimulacrumBattle({ friendly, enemy, colWidths, thStyle }) {
           <td className="col-stat">{row.control || '—'}</td>
           <td className="col-stat">{row.save || '—'}</td>
           <td className="col-stat">{row.points || '—'}</td>
+          <td className="col-stat">{row.unit_size || '—'}</td>
           <td><TypeTags row={row} /></td>
           <td className="col-keywords">{row.keywords ? row.keywords.split(',').slice(0,6).join(', ') : '—'}</td>
         </tr>
         <tr className="weapons-expand-row">
-          <td colSpan={15}>
+          <td colSpan={16}>
             <div className="weapons-expand-inner" onClick={e => e.stopPropagation()}>
               {weapons.length === 0 && <span style={{color:'var(--text-dim)',fontStyle:'italic'}}>No weapon data available.</span>}
               {ranged.length > 0 && (
@@ -194,7 +198,7 @@ function SimulacrumBattle({ friendly, enemy, colWidths, thStyle }) {
             <th style={thStyle('enemy')}><span className="th-abbr" style={{color:'var(--enemy-color)'}}>E</span></th>
             <th style={thStyle('expand')}></th>
             {SORTABLE_COLS.map(col => {
-              const keyMap = {name:'name',faction:'faction',grand_alliance:'alliance',move:'move',health:'health',control:'control',save:'save',points:'points'};
+              const keyMap = {name:'name',faction:'faction',grand_alliance:'alliance',move:'move',health:'health',control:'control',save:'save',points:'points',unit_size:'models'};
               const wKey = keyMap[col.key] || col.key;
               return (
                 <React.Fragment key={col.key}>
@@ -499,7 +503,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
   const DEFAULT_COL_WIDTHS = {
     rownum: 36, friendly: 38, enemy: 38, expand: 30, thumb: 44,
     name: 240, faction: 150, alliance: 82,
-    move: 46, health: 46, control: 46, save: 46, points: 52,
+    move: 46, health: 46, control: 46, save: 46, points: 52, models: 46,
     types: 100, keywords: 200,
   };
   const STORAGE_KEY = 'aos-col-widths-v2';
@@ -703,7 +707,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
       {/* ── Stage 2: battle view ── */}
       {stage === 2 && (
         <>
-          <SimulacrumBattle friendly={selectedFriendly} enemy={selectedEnemy} colWidths={colWidths} startResize={startResize} thStyle={thStyle} />
+          <SimulacrumBattle friendly={selectedFriendly} enemy={selectedEnemy} colWidths={colWidths} startResize={startResize} thStyle={thStyle} onUnitClick={setDetailUnit} />
           <div className="sim-model-counts">
             <label className="sim-model-label">
               <span style={{color:'var(--friendly-color)'}}>Friendly models:</span>
@@ -756,7 +760,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
                 <th style={{...thStyle('enemy'), color:'var(--enemy-color)'}} title="Enemy"><span className="th-abbr" style={{color:'var(--enemy-color)'}}>E</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'enemy')} /></th>
                 <th style={thStyle('expand')}><span className="col-resize-handle" onMouseDown={e => startResize(e,'expand')} /></th>
                 {SORTABLE_COLS.map(col => {
-                  const keyMap = { name:'name', faction:'faction', grand_alliance:'alliance', move:'move', health:'health', control:'control', save:'save', points:'points' };
+                  const keyMap = { name:'name', faction:'faction', grand_alliance:'alliance', move:'move', health:'health', control:'control', save:'save', points:'points', unit_size:'models' };
                   const wKey = keyMap[col.key] || col.key;
                   return (
                     <React.Fragment key={col.key}>
@@ -784,7 +788,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
                 const prev = data.data[idx - 1];
                 const factionChanged = !prev || prev.faction !== row.faction;
                 const typeChanged    = !prev || prev.faction !== row.faction || unitTypeLabel(prev) !== unitTypeLabel(row);
-                const colSpan = 16;
+                const colSpan = 17;
                 return (
                   <React.Fragment key={row.id}>
                     {factionChanged && sortBy === 'faction' && <tr className="separator-faction"><td colSpan={colSpan}>{row.faction}</td></tr>}
@@ -813,6 +817,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
                       <td className="col-stat">{row.control || '—'}</td>
                       <td className="col-stat">{row.save || '—'}</td>
                       <td className="col-stat">{row.points || '—'}</td>
+                      <td className="col-stat">{row.unit_size || '—'}</td>
                       <td><TypeTags row={row} /></td>
                       <td className="col-keywords">{row.keywords ? row.keywords.split(',').slice(0,6).join(', ') : '—'}</td>
                       <td className="col-reinforce" onClick={e => e.stopPropagation()}>
@@ -832,7 +837,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
                     </tr>
                     {isExpanded && (
                       <tr className="weapons-expand-row">
-                        <td colSpan={16}>
+                        <td colSpan={17}>
                           <div className="weapons-expand-inner" onClick={e => e.stopPropagation()}>
                             {weapons.length === 0 && <span style={{color:'var(--text-dim)',fontStyle:'italic'}}>No weapon data available.</span>}
                             {ranged.length > 0 && (
