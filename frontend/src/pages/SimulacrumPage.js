@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import axios from 'axios';
-import WarscrollDetail from '../components/WarscrollDetail';
+import WarscrollGW from '../components/WarscrollGW';
 import { simulateBattle } from '../simulation/engine';
 
 function nextTriState(cur, isRight) {
@@ -125,19 +125,22 @@ const STAGES = [
   { id: 2, label: 'SimulacEm!' },
 ];
 
-function SimulacrumBattle({ friendly, enemy, colWidths, thStyle, onUnitClick }) {
+function SimulacrumBattle({ friendly, enemy, colWidths, thStyle, onUnitClick, friendlyReinforced, enemyReinforced, onFriendlyReinforceChange, onEnemyReinforceChange }) {
   const renderRow = (row, label) => {
     const weapons = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
     const ranged = weapons.filter(w => w.type === 'ranged');
     const melee  = weapons.filter(w => w.type === 'melee');
+    const isReinforced = label === 'friendly' ? friendlyReinforced : enemyReinforced;
+    const onReinforceChange = label === 'friendly' ? onFriendlyReinforceChange : onEnemyReinforceChange;
+    const color = label === 'friendly' ? 'var(--friendly-color)' : 'var(--enemy-color)';
     return (
       <React.Fragment key={label}>
         <tr className={`unit-row expanded sim-battle-row sim-battle-${label}`}>
-          <td className="col-rownum" style={{color: label==='friendly'?'var(--friendly-color)':'var(--enemy-color)', fontWeight:700, textAlign:'center'}}>
+          <td className="col-rownum" style={{color, fontWeight:700, textAlign:'center'}}>
             {label === 'friendly' ? 'F' : 'E'}
           </td>
-          <td style={{color: label==='friendly'?'var(--friendly-color)':'var(--enemy-color)', fontWeight:700, textAlign:'center'}}></td>
-          <td style={{color: label==='friendly'?'var(--friendly-color)':'var(--enemy-color)', fontWeight:700, textAlign:'center'}}></td>
+          <td style={{color, fontWeight:700, textAlign:'center'}}></td>
+          <td style={{color, fontWeight:700, textAlign:'center'}}></td>
           <td></td>
           <td className="col-name" onClick={() => onUnitClick && onUnitClick(row)} style={{cursor:'pointer'}}>
             <span className="unit-name-link">{row.name}</span>
@@ -156,9 +159,15 @@ function SimulacrumBattle({ friendly, enemy, colWidths, thStyle, onUnitClick }) 
           <td className="col-stat">{row.unit_size || '—'}</td>
           <td><TypeTags row={row} /></td>
           <td className="col-keywords">{row.keywords ? row.keywords.split(',').slice(0,6).join(', ') : '—'}</td>
+          <td className="col-reinforce" onClick={e => e.stopPropagation()}>
+            <label className="reinforce-label" style={{color}}>
+              <input type="checkbox" checked={!!isReinforced} onChange={e => { onReinforceChange && onReinforceChange(e.target.checked); }} />
+              ×2
+            </label>
+          </td>
         </tr>
         <tr className="weapons-expand-row">
-          <td colSpan={16}>
+          <td colSpan={17}>
             <div className="weapons-expand-inner" onClick={e => e.stopPropagation()}>
               {weapons.length === 0 && <span style={{color:'var(--text-dim)',fontStyle:'italic'}}>No weapon data available.</span>}
               {ranged.length > 0 && (
@@ -209,6 +218,7 @@ function SimulacrumBattle({ friendly, enemy, colWidths, thStyle, onUnitClick }) 
             })}
             <th style={thStyle('types')}>Types</th>
             <th style={thStyle('keywords')}>Keywords</th>
+            <th className="col-reinforce">Reinforce</th>
           </tr>
         </thead>
         <tbody>
@@ -452,12 +462,12 @@ export default function SimulacrumPage({ headerCollapsed }) {
   const fetchData = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const friendlyByFaction = showFriendly && !hasFriendlyMarks;
-      const enemyByFaction    = showEnemy    && !hasEnemyMarks;
+      // F/E filter buttons on SimulacrumPage are purely faction-based:
+      // "Friendly" hides the enemy faction; "Enemy" hides the friendly faction.
       let qFaction      = faction;
       let qEnemyFaction = enemyFaction;
-      if (friendlyByFaction && !enemyByFaction && !showEnemy) qEnemyFaction = '';
-      if (enemyByFaction    && !friendlyByFaction && !showFriendly) qFaction = '';
+      if (showFriendly && !showEnemy) qEnemyFaction = '';
+      if (showEnemy    && !showFriendly) qFaction    = '';
 
       const params = {
         search, faction: qFaction, enemyFaction: qEnemyFaction, alliance,
@@ -473,8 +483,6 @@ export default function SimulacrumPage({ headerCollapsed }) {
         ...(hideLegends          ? { isLegends: '0' }             : {}),
         ...(hideOtherFactions    ? { hideOtherFactions: '1' }    : {}),
         ...(hideScourgeOfGhyran  ? { hideScourgeOfGhyran: '1' }  : {}),
-        ...(showFriendly && hasFriendlyMarks ? { showFriendly: '1' } : {}),
-        ...(showEnemy    && hasEnemyMarks    ? { showEnemy: '1' }    : {}),
       };
       const res = await axios.get('/api/warscrolls', { params });
       setData(res.data);
@@ -482,7 +490,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
       if (err.response?.status === 401) setError('Session expired. Please sign out and log back in.');
       else setError('Failed to load warscrolls. Is the backend running?');
     } finally { setLoading(false); }
-  }, [search, faction, enemyFaction, alliance, sortBy, sortDir, page, isHero, isMonster, isInfantry, isCavalry, isBeast, isWarMachine, isTerrain, isManifestation, hideLegends, hideOtherFactions, hideScourgeOfGhyran, showFriendly, showEnemy, hasFriendlyMarks, hasEnemyMarks]);
+  }, [search, faction, enemyFaction, alliance, sortBy, sortDir, page, isHero, isMonster, isInfantry, isCavalry, isBeast, isWarMachine, isTerrain, isManifestation, hideLegends, hideOtherFactions, hideScourgeOfGhyran, showFriendly, showEnemy]);
 
   useEffect(() => { axios.get('/api/user-units').then(res => { const map = {}; res.data.forEach(r => { map[r.warscroll_id] = { is_friendly: r.is_friendly, is_enemy: r.is_enemy }; }); setUserUnits(map); }).catch(() => {}); }, []);
   useEffect(() => { fetchFactions(); }, [fetchFactions]);
@@ -707,7 +715,11 @@ export default function SimulacrumPage({ headerCollapsed }) {
       {/* ── Stage 2: battle view ── */}
       {stage === 2 && (
         <>
-          <SimulacrumBattle friendly={selectedFriendly} enemy={selectedEnemy} colWidths={colWidths} startResize={startResize} thStyle={thStyle} onUnitClick={setDetailUnit} />
+          <SimulacrumBattle friendly={selectedFriendly} enemy={selectedEnemy} colWidths={colWidths} startResize={startResize} thStyle={thStyle} onUnitClick={setDetailUnit}
+            friendlyReinforced={friendlyReinforced} enemyReinforced={enemyReinforced}
+            onFriendlyReinforceChange={v => { setFriendlyReinforced(v); setBattleResults(null); }}
+            onEnemyReinforceChange={v => { setEnemyReinforced(v); setBattleResults(null); }}
+          />
           <div className="sim-model-counts">
             <label className="sim-model-label">
               <span style={{color:'var(--friendly-color)'}}>Friendly models:</span>
@@ -868,7 +880,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
     </div>
 
     {showRitualError && <RitualErrorModal onClose={() => { setShowRitualError(false); setStage(1); }} />}
-    {detailUnit && <WarscrollDetail unit={detailUnit} onClose={() => setDetailUnit(null)} />}
+    {detailUnit && <WarscrollGW unit={detailUnit} onClose={() => setDetailUnit(null)} />}
     </>
   );
 }

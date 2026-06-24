@@ -1550,6 +1550,311 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
   color: var(--text-dim);
 }
 
+/* ═══════════════════════════════════════════════════════════════════
+   GW Style Warscroll Modal  (WarscrollGW.js)
+   ═══════════════════════════════════════════════════════════════════ */
+
+.gw-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.82);
+  z-index: 1200;
+}
+
+.gw-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1201;
+  width: min(900px, 96vw);
+  max-height: 92vh;
+  overflow-y: auto;
+  background: #1a1614;
+  /* Double-border scroll frame effect */
+  border: 2px solid #c8a840;
+  outline: 5px solid #0c0a08;
+  outline-offset: -7px;
+  box-shadow: 0 0 0 7px #0c0a08, 0 12px 50px rgba(0,0,0,0.85);
+  font-family: 'Palatino Linotype', Palatino, Georgia, serif;
+  color: #d8cca8;
+  scrollbar-width: thin;
+  scrollbar-color: #c8a840 #0c0a08;
+}
+.gw-modal::-webkit-scrollbar { width: 6px; }
+.gw-modal::-webkit-scrollbar-track { background: #0c0a08; }
+.gw-modal::-webkit-scrollbar-thumb { background: #c8a840; border-radius: 3px; }
+
+.gw-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  z-index: 10;
+  background: transparent;
+  border: 1px solid rgba(200,168,64,0.4);
+  color: #c8a840;
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 3px 8px;
+  border-radius: 2px;
+  line-height: 1;
+  transition: background 0.12s, border-color 0.12s;
+}
+.gw-close:hover { background: rgba(200,168,64,0.18); border-color: #c8a840; }
+
+/* ── Header band ── */
+.gw-header {
+  background: #0c0a08;
+  border-bottom: 2px solid #c8a840;
+  padding: 10px 44px 10px 16px;
+  text-align: center;
+}
+.gw-header-type {
+  font-size: 0.58rem;
+  letter-spacing: 0.35em;
+  color: #c8a840;
+  text-transform: uppercase;
+  font-family: Arial, sans-serif;
+  margin-bottom: 3px;
+}
+.gw-header-name {
+  font-size: 1.65rem;
+  font-weight: 700;
+  color: #f2e8c0;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-shadow: 0 0 24px rgba(200,168,64,0.25);
+  line-height: 1.1;
+}
+.gw-header-faction {
+  font-size: 0.6rem;
+  letter-spacing: 0.22em;
+  color: #a08848;
+  margin-top: 3px;
+  font-family: Arial, sans-serif;
+}
+
+/* ── Body row: left (stats) + right (weapons) ── */
+.gw-body-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+}
+
+.gw-left-col {
+  flex: 0 0 158px;
+  padding: 14px 10px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  border-right: 1px solid rgba(200,168,64,0.22);
+  background: rgba(0,0,0,0.18);
+}
+
+.gw-stats-wheel { width: 130px; height: 130px; flex-shrink: 0; }
+
+.gw-badges-row { display: flex; gap: 6px; justify-content: center; }
+.gw-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #0c0a08;
+  border: 1px solid #c8a840;
+  border-radius: 2px;
+  padding: 3px 10px;
+  min-width: 50px;
+}
+.gw-badge-val { font-size: 1rem; font-weight: 700; color: #f2e8c0; line-height: 1.2; }
+.gw-badge-lbl { font-size: 0.5rem; letter-spacing: 0.15em; color: #c8a840; font-family: Arial, sans-serif; text-transform: uppercase; }
+
+.gw-unit-meta { font-size: 0.6rem; color: #a08848; text-align: center; font-family: Arial, sans-serif; }
+
+.gw-img-wrap { margin-top: 6px; width: 128px; }
+.gw-unit-img { width: 100%; max-height: 160px; object-fit: contain; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.7)); }
+
+.gw-right-col {
+  flex: 1;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.gw-no-weapons { font-size: 0.75rem; color: #686050; font-style: italic; }
+
+/* ── Weapon tables ── */
+.gw-weapon-section { }
+
+.gw-weapon-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: #0c0a08;
+  border: 1px solid rgba(200,168,64,0.6);
+  padding: 4px 10px;
+  font-size: 0.62rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #f2e8c0;
+  font-family: Arial, sans-serif;
+  font-weight: 700;
+  border-radius: 1px;
+  margin-bottom: 0;
+}
+.gw-weapon-icon { color: #c8a840; font-size: 0.9rem; }
+
+.gw-weapon-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.72rem;
+  font-family: Arial, sans-serif;
+  border: 1px solid rgba(200,168,64,0.2);
+}
+.gw-weapon-table thead tr { background: #201c18; }
+.gw-weapon-table th {
+  padding: 4px 6px;
+  color: #c8a840;
+  font-weight: 600;
+  text-align: center;
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid rgba(200,168,64,0.35);
+  white-space: nowrap;
+}
+.gw-th-name   { text-align: left !important; min-width: 110px; }
+.gw-th-ability{ text-align: left !important; }
+
+.gw-weapon-table td {
+  padding: 4px 6px;
+  color: #d4c8a0;
+  text-align: center;
+  border-bottom: 1px solid rgba(200,168,64,0.08);
+}
+.gw-row-a { background: rgba(255,255,255,0.02); }
+.gw-row-b { background: rgba(0,0,0,0.22); }
+.gw-td-name   { text-align: left !important; font-weight: 500; color: #e0d4a8; }
+.gw-td-stat   { font-family: 'Cinzel', 'Palatino Linotype', serif; font-size: 0.72rem; white-space: nowrap; }
+.gw-td-ability{ text-align: left !important; font-size: 0.62rem; color: #a09070; font-style: italic; }
+
+/* ── Abilities section ── */
+.gw-abilities-section {
+  border-top: 1px solid rgba(200,168,64,0.22);
+}
+.gw-section-rule {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px 4px;
+  font-size: 0.6rem;
+  letter-spacing: 0.28em;
+  color: #c8a840;
+  font-family: Arial, sans-serif;
+  font-weight: 700;
+}
+.gw-section-rule::before,
+.gw-section-rule::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(200,168,64,0.35);
+}
+
+.gw-abilities-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 8px;
+  padding: 6px 14px 14px;
+}
+
+.gw-ability-card {
+  border: 1px solid;
+  border-radius: 2px;
+  overflow: hidden;
+  background: rgba(0,0,0,0.25);
+  display: flex;
+  flex-direction: column;
+}
+.gw-ability-hdr {
+  padding: 5px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.gw-ability-timing {
+  font-size: 0.53rem;
+  letter-spacing: 0.14em;
+  opacity: 0.85;
+  font-family: Arial, sans-serif;
+  font-weight: 700;
+}
+.gw-ability-name {
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-family: 'Palatino Linotype', Palatino, Georgia, serif;
+  line-height: 1.2;
+}
+.gw-ability-body {
+  padding: 6px 10px 8px;
+  font-size: 0.7rem;
+  color: #c8bc98;
+  line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+.gw-ability-para { margin: 0; }
+.gw-ability-lbl {
+  font-weight: 700;
+  color: #d8c870;
+  font-family: Arial, sans-serif;
+  font-size: 0.62rem;
+}
+.gw-ability-bullets {
+  margin: 2px 0 0 14px;
+  padding: 0;
+  font-size: 0.67rem;
+}
+.gw-ability-bullets li { margin: 2px 0; }
+
+/* ── Keywords footer bar ── */
+.gw-keywords-bar {
+  background: #0a0808;
+  border-top: 2px solid #c8a840;
+  padding: 8px 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 5px;
+  font-family: Arial, sans-serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.13em;
+}
+.gw-kw-label { color: #c8a840; font-weight: 700; font-size: 0.58rem; margin-right: 6px; }
+.gw-kw       { color: #d8cca8; }
+.gw-kw-sep   { color: #c8a840; margin: 0 1px; }
+
+/* ── Source link ── */
+.gw-source {
+  padding: 6px 16px 8px;
+  text-align: right;
+  font-size: 0.65rem;
+  font-family: Arial, sans-serif;
+  border-top: 1px solid rgba(200,168,64,0.12);
+}
+.gw-source a { color: #a08848; text-decoration: none; }
+.gw-source a:hover { color: #c8a840; }
+
+/* ── Responsive: narrow screens ── */
+@media (max-width: 600px) {
+  .gw-body-row { flex-direction: column; }
+  .gw-left-col { flex: unset; width: 100%; flex-direction: row; flex-wrap: wrap; border-right: none; border-bottom: 1px solid rgba(200,168,64,0.22); padding: 12px; justify-content: center; }
+  .gw-stats-wheel { width: 110px; height: 110px; }
+  .gw-header-name { font-size: 1.25rem; }
+  .gw-abilities-grid { grid-template-columns: 1fr; }
+}
+
 /* ── Responsive ── */
 @media (max-width: 900px) {
   .filters { grid-template-columns: 1fr 1fr; }

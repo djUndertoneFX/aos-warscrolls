@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import axios from 'axios';
-import WarscrollDetail from '../components/WarscrollDetail';
+import WarscrollGW from '../components/WarscrollGW';
 
 // Tri-state cycle: false → true → false (left-click), false → 'exclude' → false (right-click)
 function nextTriState(cur, isRight) {
@@ -651,7 +651,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
       )}
     </div>
 
-    {detailUnit && <WarscrollDetail unit={detailUnit} onClose={() => setDetailUnit(null)} />}
+    {detailUnit && <WarscrollGW unit={detailUnit} onClose={() => setDetailUnit(null)} />}
     </>
   );
 }
