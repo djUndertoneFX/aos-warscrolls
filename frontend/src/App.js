@@ -20,8 +20,11 @@ const NAV_PAGES = [
   { label: 'Comparitator',       path: '/comparitator',    soon: true },
 ];
 
+const SAVE_OPTIONS  = ['-', 2, 3, 4, 5, 6];
+const WARD_OPTIONS  = ['-', 4, 5, 6];
+
 function SettingsPanel({ onClose }) {
-  const { showFlavorText, setSetting } = useSettings();
+  const { showFlavorText, calculateDynamicAWO, presumedSave, presumedWard, setSetting } = useSettings();
   const ref = useRef(null);
 
   useEffect(() => {
@@ -36,13 +39,31 @@ function SettingsPanel({ onClose }) {
     <div className="settings-panel" ref={ref}>
       <div className="settings-panel-title">Display Settings</div>
       <label className="settings-cb-row">
-        <input
-          type="checkbox"
-          checked={showFlavorText}
-          onChange={e => setSetting('showFlavorText', e.target.checked)}
-        />
+        <input type="checkbox" checked={showFlavorText}
+          onChange={e => setSetting('showFlavorText', e.target.checked)} />
         <span>Flavor Text</span>
       </label>
+      <label className="settings-cb-row">
+        <input type="checkbox" checked={calculateDynamicAWO}
+          onChange={e => setSetting('calculateDynamicAWO', e.target.checked)} />
+        <span>Calculate Dynamic AWO</span>
+      </label>
+      <div className="settings-field-row">
+        <span className="settings-field-lbl">Presumed Save</span>
+        <select className="settings-select"
+          value={presumedSave ?? '-'}
+          onChange={e => setSetting('presumedSave', e.target.value === '-' ? null : parseInt(e.target.value, 10))}>
+          {SAVE_OPTIONS.map(v => <option key={v} value={v}>{v === '-' ? '—' : `${v}+`}</option>)}
+        </select>
+      </div>
+      <div className="settings-field-row">
+        <span className="settings-field-lbl">Presumed Ward</span>
+        <select className="settings-select"
+          value={presumedWard ?? '-'}
+          onChange={e => setSetting('presumedWard', e.target.value === '-' ? null : parseInt(e.target.value, 10))}>
+          {WARD_OPTIONS.map(v => <option key={v} value={v}>{v === '-' ? '—' : `${v}+`}</option>)}
+        </select>
+      </div>
     </div>
   );
 }

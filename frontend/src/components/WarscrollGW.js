@@ -1,6 +1,7 @@
 ﻿import React, { useEffect, useState, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { useSettings } from '../SettingsContext';
+import { calcWeaponAWO } from '../awoCalc';
 
 // ── White-removal canvas image ───────────────────────────────────────────────
 function TransparentImage({ src, alt, className, onError }) {
@@ -176,10 +177,14 @@ function StatsWheel({ move, health, save, control }) {
 }
 
 // ── Weapon table section ─────────────────────────────────────────────────────
-function WeaponSection({ weapons, type }) {
+function WeaponSection({ weapons, type, unitSize }) {
+  const { calculateDynamicAWO, presumedSave, presumedWard } = useSettings();
   const rows = weapons.filter(w => w.type === type);
   if (!rows.length) return null;
   const isRanged = type === 'ranged';
+
+  const save = presumedSave ?? 5;
+  const ward = presumedWard ?? null;
 
   return (
     <div className="gw-weapon-section">
@@ -198,21 +203,26 @@ function WeaponSection({ weapons, type }) {
             <th className="gw-th-stat">Rnd</th>
             <th className="gw-th-stat">Dmg</th>
             <th className="gw-th-ability">Ability</th>
+            <th className="gw-th-awo">AWO</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((w, i) => (
-            <tr key={i} className={i % 2 === 0 ? 'gw-row-a' : 'gw-row-b'}>
-              <td className="gw-td-name">{w.name}</td>
-              {isRanged && <td className="gw-td-stat">{w.range}</td>}
-              <td className="gw-td-stat">{w.attacks}</td>
-              <td className="gw-td-stat">{w.hit}</td>
-              <td className="gw-td-stat">{w.wound}</td>
-              <td className="gw-td-stat">{w.rend  || '—'}</td>
-              <td className="gw-td-stat">{w.damage}</td>
-              <td className="gw-td-ability">{w.ability || '-'}</td>
-            </tr>
-          ))}
+          {rows.map((w, i) => {
+            const awo = calcWeaponAWO(w, unitSize || 1, save, ward);
+            return (
+              <tr key={i} className={i % 2 === 0 ? 'gw-row-a' : 'gw-row-b'}>
+                <td className="gw-td-name">{w.name}</td>
+                {isRanged && <td className="gw-td-stat">{w.range}</td>}
+                <td className="gw-td-stat">{w.attacks}</td>
+                <td className="gw-td-stat">{w.hit}</td>
+                <td className="gw-td-stat">{w.wound}</td>
+                <td className="gw-td-stat">{w.rend || '—'}</td>
+                <td className="gw-td-stat">{w.damage}</td>
+                <td className="gw-td-ability">{w.ability || '-'}</td>
+                <td className="gw-td-awo">{awo !== null ? awo : '—'}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -397,8 +407,8 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext }) {
         <div className="gw-weapons-row">
           {hasWeapons ? (
             <>
-              {hasRanged && <WeaponSection weapons={weapons} type="ranged" />}
-              {hasMelee  && <WeaponSection weapons={weapons} type="melee" />}
+              {hasRanged && <WeaponSection weapons={weapons} type="ranged" unitSize={unit.unit_size} />}
+              {hasMelee  && <WeaponSection weapons={weapons} type="melee"  unitSize={unit.unit_size} />}
             </>
           ) : (
             <div className="gw-no-weapons">No weapon data available.</div>

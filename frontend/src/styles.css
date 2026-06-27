@@ -275,6 +275,33 @@ input, select {
   cursor: pointer;
 }
 
+.settings-field-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+}
+.settings-field-lbl {
+  font-family: 'Cinzel', serif;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+.settings-select {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--parchment);
+  font-family: 'Cinzel', serif;
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  min-width: 60px;
+}
+.settings-select:focus { outline: none; border-color: var(--gold); }
+
 .navbar-username {
   color: var(--gold-light);
   font-family: 'Cinzel', serif;
@@ -1816,10 +1843,11 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
   overflow: hidden;
 }
 /* Three-section layout: name (left third) | stats (center third, auto-split) | ability (right third) */
-.gw-th-name    { text-align: center !important; width: 33%; }
+.gw-th-name    { text-align: center !important; width: 28%; }
 .gw-th-range   { text-align: center !important; }
 .gw-th-stat    { text-align: center !important; }
-.gw-th-ability { text-align: center !important; width: 33%; }
+.gw-th-ability { text-align: center !important; width: 28%; }
+.gw-th-awo     { text-align: center !important; width: 44px; white-space: nowrap; font-size: 0.62rem; }
 
 .gw-weapon-table td {
   padding: 3px 4px;
@@ -1834,6 +1862,7 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
 .gw-td-name   { text-align: center !important; font-size: 0.88rem; font-weight: 600; color: #e0d4a8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .gw-td-stat   { text-align: center !important; font-family: 'Cinzel', 'Palatino Linotype', serif; font-size: 1.0rem; font-weight: 700; white-space: nowrap; }
 .gw-td-ability{ text-align: center !important; font-size: 0.65rem; color: #c0b890; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gw-td-awo    { text-align: center !important; font-family: 'Cinzel', 'Palatino Linotype', serif; font-size: 0.9rem; font-weight: 700; color: #a8d870; white-space: nowrap; }
 
 /* ── Abilities section ── */
 .gw-abilities-section {
