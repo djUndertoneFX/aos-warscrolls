@@ -1905,6 +1905,11 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
   margin: 0;
   padding: 0;
 }
+.gw-ability-effect-first {
+  display: inline;
+  margin: 0;
+  padding: 0;
+}
 .gw-ability-bullet {
   margin: 5px 0 0 0;
   padding: 0;
@@ -1956,18 +1961,19 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
 }
 
 .gw-abilities-grid {
-  flex: 1;
+  flex: 0 0 50%;
   min-width: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  grid-template-columns: 1fr;
   gap: 8px;
   padding: 6px 14px 14px;
 }
 
 .gw-abilities-img-col {
-  flex: 0 0 auto;
+  flex: 0 0 50%;
   display: flex;
   align-items: flex-start;
+  justify-content: center;
   justify-content: center;
   padding: 10px 14px 10px 6px;
 }

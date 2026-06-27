@@ -74,6 +74,16 @@ function BoldTerm({ text }) {
   return <>{text}</>;
 }
 
+// Split an effect string into paragraphs at each "Term:" boundary
+// e.g. "Intro text. Grimnir's Grit: blah. Grimnir's Resolve: blah"
+// → ["Intro text.", "Grimnir's Grit: blah.", "Grimnir's Resolve: blah"]
+function splitEffectParts(text) {
+  if (!text) return [];
+  // Split just before any capitalized phrase ending in colon (e.g. "Grimnir's Grit:")
+  const parts = text.split(/ (?=[A-Z][A-Za-z'\-]{1,20}(?:\s[A-Za-z'\-]{1,20}){0,3}:)/);
+  return parts.map(p => p.trim()).filter(Boolean);
+}
+
 // ── Stats Wheel (SVG) — diagonal quadrant dividers ───────────────────────────
 function StatsWheel({ move, health, save, control }) {
   const S = 140, cx = 70, cy = 70, r = 62;
@@ -185,19 +195,27 @@ function AbilityCard({ ab }) {
             <span className="gw-ability-lbl">Declare: </span>{ab.declare}
           </p>
         )}
-        {(ab.effect || bullets.length > 0) && (
-          <div className="gw-ability-para">
-            <span className="gw-ability-lbl">Effect: </span>
-            {ab.effect && <span>{ab.effect}</span>}
-            {bullets.length > 0 && (
-              <div className="gw-ability-bullets">
-                {bullets.map((b, i) => (
-                  <p key={i} className="gw-ability-bullet"><BoldTerm text={b} /></p>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+        {(ab.effect || bullets.length > 0) && (() => {
+          const effectParts = splitEffectParts(ab.effect);
+          const allParts = effectParts.length > 1 ? effectParts : (ab.effect ? [ab.effect] : []);
+          return (
+            <div className="gw-ability-para">
+              <span className="gw-ability-lbl">Effect: </span>
+              {allParts.map((part, i) => (
+                <p key={i} className={i === 0 ? 'gw-ability-effect-first' : 'gw-ability-bullet'}>
+                  <BoldTerm text={part} />
+                </p>
+              ))}
+              {bullets.length > 0 && (
+                <div className="gw-ability-bullets">
+                  {bullets.map((b, i) => (
+                    <p key={i} className="gw-ability-bullet"><BoldTerm text={b} /></p>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
