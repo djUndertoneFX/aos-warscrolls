@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+﻿import React, { useEffect, useState, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { useSettings } from '../SettingsContext';
 
@@ -111,14 +111,14 @@ function BoldTerm({ text, keywords }) {
 // → ["Intro text.", "Grimnir's Grit: blah.", "Grimnir's Resolve: blah"]
 function splitEffectParts(text) {
   if (!text) return [];
-  const parts = text.split(/ (?=[A-Z][A-Za-z’’\-]{1,20}(?:\s[A-Za-z’’\-]{1,20}){0,3}:)/)
+  const parts = text.split(/ (?=[A-Z][^\s:]{1,20}(?:\s[^\s:]{1,20}){0,3}:)/)
     .map(p => p.trim()).filter(Boolean);
-  // The regex can split "Grimnir’s" and "Grit:" as separate parts because both
+  // The regex can split "Grimnir's" and "Grit:" as separate parts because both
   // satisfy the lookahead independently. Merge any fragment lacking a colon with the next part.
   const merged = [];
   for (let i = 0; i < parts.length; i++) {
-    if (i < parts.length - 1 && !parts[i].includes(‘:’)) {
-      merged.push(parts[i] + ‘ ‘ + parts[i + 1]);
+    if (i < parts.length - 1 && !parts[i].includes(':')) {
+      merged.push(parts[i] + ' ' + parts[i + 1]);
       i++;
     } else {
       merged.push(parts[i]);
