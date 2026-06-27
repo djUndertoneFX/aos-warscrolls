@@ -881,7 +881,18 @@ export default function SimulacrumPage({ headerCollapsed }) {
     </div>
 
     {showRitualError && <RitualErrorModal onClose={() => { setShowRitualError(false); setStage(1); }} />}
-    {detailUnit && <WarscrollGW unit={detailUnit} onClose={() => setDetailUnit(null)} />}
+    {detailUnit && (() => {
+      const rows = data?.data ?? [];
+      const idx = rows.findIndex(u => u.id === detailUnit.id);
+      return (
+        <WarscrollGW
+          unit={detailUnit}
+          onClose={() => setDetailUnit(null)}
+          onPrev={() => { if (idx > 0) setDetailUnit(rows[idx - 1]); }}
+          onNext={() => { if (idx < rows.length - 1) setDetailUnit(rows[idx + 1]); }}
+        />
+      );
+    })()}
     </>
   );
 }

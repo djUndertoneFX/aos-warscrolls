@@ -654,7 +654,20 @@ export default function WarscrollsPage({ headerCollapsed }) {
       )}
     </div>
 
-    {detailUnit && <WarscrollGW unit={detailUnit} onClose={() => setDetailUnit(null)} />}
+    {detailUnit && (
+      <WarscrollGW
+        unit={detailUnit}
+        onClose={() => setDetailUnit(null)}
+        onPrev={() => {
+          const idx = units.findIndex(u => u.id === detailUnit.id);
+          if (idx > 0) setDetailUnit(units[idx - 1]);
+        }}
+        onNext={() => {
+          const idx = units.findIndex(u => u.id === detailUnit.id);
+          if (idx < units.length - 1) setDetailUnit(units[idx + 1]);
+        }}
+      />
+    )}
     </>
   );
 }

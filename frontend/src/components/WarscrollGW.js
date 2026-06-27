@@ -222,10 +222,11 @@ function AbilityCard({ ab }) {
 }
 
 // ── Main component ───────────────────────────────────────────────────────────
-export default function WarscrollGW({ unit, onClose }) {
+export default function WarscrollGW({ unit, onClose, onPrev, onNext }) {
   const weapons   = React.useMemo(() => { try { return JSON.parse(unit.weapons   || '[]'); } catch { return []; } }, [unit]);
   const abilities = React.useMemo(() => { try { return JSON.parse(unit.abilities || '[]'); } catch { return []; } }, [unit]);
   const [imageUrl, setImageUrl] = useState(null);
+  const modalRef = useRef(null);
 
   useEffect(() => {
     if (!unit?.id) return;
@@ -233,10 +234,26 @@ export default function WarscrollGW({ unit, onClose }) {
     setImageUrl(`${base}/api/unit-image/${unit.id}`);
   }, [unit?.id]);
 
+  // Keyboard: Escape=close, ←=prev, →=next
   useEffect(() => {
-    const h = e => { if (e.key === 'Escape') onClose(); };
+    const h = e => {
+      if (e.key === 'Escape')      onClose();
+      if (e.key === 'ArrowLeft')  { e.preventDefault(); onPrev?.(); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); onNext?.(); }
+    };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
+  }, [onClose, onPrev, onNext]);
+
+  // Click outside: close unless the click landed on a unit-name-link (switching units)
+  useEffect(() => {
+    const h = e => {
+      if (modalRef.current?.contains(e.target)) return;
+      if (e.target.closest('.unit-name-link')) return;
+      onClose();
+    };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
   }, [onClose]);
 
   const allKeywords = unit.keywords ? unit.keywords.split(',').map(k => k.trim()).filter(Boolean) : [];
@@ -266,8 +283,8 @@ export default function WarscrollGW({ unit, onClose }) {
 
   return (
     <>
-      <div className="gw-overlay" onClick={onClose} />
-      <div className="gw-modal" role="dialog" aria-modal="true" aria-label={unit.name}>
+      <div className="gw-overlay" />
+      <div className="gw-modal" ref={modalRef} role="dialog" aria-modal="true" aria-label={unit.name}>
 
         <button className="gw-close" onClick={onClose} title="Close (Esc)">✕</button>
 
