@@ -157,7 +157,7 @@ function StatsWheel({ move, health, save, control }) {
       <circle cx={cx} cy={cy} r="3" fill="#0c0a08" />
 
       {/* MOVE — top-anchored so larger text grows downward (away from label) */}
-      <text x={cx} y={cy - 54} textAnchor="middle" dominantBaseline="middle" {...lblTxt}>MOVE</text>
+      <text x={cx} y={cy - 49} textAnchor="middle" dominantBaseline="middle" {...lblTxt}>MOVE</text>
       <text x={cx} y={cy - 42} textAnchor="middle" {...statTxtTop}>{move || '—'}</text>
 
       {/* HEALTH — bottom-anchored so larger text grows upward (away from label) */}
