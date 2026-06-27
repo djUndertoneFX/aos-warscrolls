@@ -215,8 +215,8 @@ function AbilityCard({ ab, keywords }) {
   return (
     <div className="gw-ability-card" style={{ borderColor: ps.border }}>
       <div className="gw-ability-hdr" style={{ background: ps.hdrBg, color: ps.hdrTxt }}>
-        {ab.timing && <span className="gw-ability-timing">{ab.timing.toUpperCase()}</span>}
-        <span className="gw-ability-name">{ab.name}</span>
+        {ab.timing && <div className="gw-ability-timing">{ab.timing.toUpperCase()}</div>}
+        <div className="gw-ability-name">{ab.name}</div>
       </div>
       <div className="gw-ability-body">
         {showFlavorText && ab.flavor && (
