@@ -1662,7 +1662,7 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
 }
 .gw-close:hover { background: rgba(200,168,64,0.18); border-color: #c8a840; }
 
-/* ── Top band: wheel + header (same row) ── */
+/* ── Top band: 3-column (wheel | centered name | right meta) ── */
 .gw-top-band {
   display: flex;
   align-items: stretch;
@@ -1670,13 +1670,14 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
   border-bottom: 2px solid #c8a840;
 }
 
-/* Wheel column — relative so Ward pip can float upper-right */
+/* Left: wheel column — relative so Ward pip floats upper-right */
 .gw-wheel-col {
   position: relative;
-  flex: 0 0 auto;
+  flex: 0 0 160px;
   padding: 12px 8px 12px 14px;
   display: flex;
   align-items: center;
+  justify-content: center;
   border-right: 1px solid rgba(200,168,64,0.3);
 }
 
@@ -1696,14 +1697,15 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
 .gw-ward-pip-val { display: block; font-size: 0.88rem; font-weight: 700; color: #f2e8c0; font-family: 'Palatino Linotype', Georgia, serif; }
 .gw-ward-pip-lbl { display: block; font-size: 0.44rem; letter-spacing: 0.15em; color: #c8a840; font-family: Arial, sans-serif; text-transform: uppercase; }
 
-/* Header text column */
-.gw-header-col {
+/* Center: faction subtitle + unit name, centered over full popup width */
+.gw-header-center {
   flex: 1;
-  padding: 12px 44px 12px 18px;
   display: flex;
   flex-direction: column;
+  align-items: center;
   justify-content: center;
-  gap: 6px;
+  padding: 12px 8px;
+  text-align: center;
 }
 
 .gw-header-type {
@@ -1712,13 +1714,7 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
   color: #c8a840;
   text-transform: uppercase;
   font-family: Arial, sans-serif;
-}
-
-.gw-header-name-row {
-  display: flex;
-  align-items: baseline;
-  gap: 1rem;
-  flex-wrap: wrap;
+  margin-bottom: 4px;
 }
 
 .gw-header-name {
@@ -1731,10 +1727,16 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
   line-height: 1.1;
 }
 
-.gw-header-meta {
+/* Right: points + size, right-justified, same width as wheel col for symmetry */
+.gw-header-right {
+  flex: 0 0 160px;
   display: flex;
-  gap: 6px;
+  flex-direction: column;
   align-items: flex-end;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 14px;
+  border-left: 1px solid rgba(200,168,64,0.3);
 }
 
 .gw-meta-pip {
@@ -1746,9 +1748,13 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
   border-radius: 2px;
   padding: 2px 8px;
   line-height: 1.15;
+  min-width: 52px;
 }
 .gw-meta-pip-val { font-size: 0.85rem; font-weight: 700; color: #f2e8c0; font-family: 'Palatino Linotype', Georgia, serif; }
 .gw-meta-pip-lbl { font-size: 0.44rem; letter-spacing: 0.12em; color: #c8a840; font-family: Arial, sans-serif; text-transform: uppercase; }
+
+/* Points pip is ~2× the size of the Size pip */
+.gw-meta-pip-pts .gw-meta-pip-val { font-size: 1.7rem; line-height: 1; }
 
 /* ── Weapons block (full width, below top band) ── */
 .gw-weapons-row {
@@ -1894,7 +1900,7 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
   border-top: 2px solid #c8a840;
   padding: 7px 16px;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 8px;
   font-family: Arial, sans-serif;
   font-size: 0.6rem;
@@ -1905,9 +1911,10 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
   font-weight: 700;
   font-size: 0.58rem;
   white-space: nowrap;
-  padding-top: 1px;
+  flex-shrink: 0;
 }
 .gw-kw-lines {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 3px;
@@ -1916,6 +1923,7 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: 2px 4px;
 }
 .gw-kw-line2 { opacity: 0.75; }
@@ -1984,9 +1992,10 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
 /* ── Responsive: narrow screens ── */
 @media (max-width: 600px) {
   .gw-top-band { flex-direction: column; }
-  .gw-wheel-col { border-right: none; border-bottom: 1px solid rgba(200,168,64,0.22); justify-content: center; padding: 12px; }
+  .gw-wheel-col { flex: unset; border-right: none; border-bottom: 1px solid rgba(200,168,64,0.22); padding: 12px; }
   .gw-stats-wheel { width: 110px; height: 110px; }
-  .gw-header-col { padding: 10px 16px; }
+  .gw-header-center { padding: 10px 16px; }
+  .gw-header-right { flex: unset; border-left: none; border-top: 1px solid rgba(200,168,64,0.22); flex-direction: row; align-items: center; justify-content: flex-end; padding: 8px 14px; }
   .gw-header-name { font-size: 1.25rem; }
   .gw-abilities-row { flex-direction: column; }
   .gw-abilities-img-col { padding: 0 14px 12px; }
