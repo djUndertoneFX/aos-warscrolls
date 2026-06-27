@@ -496,8 +496,9 @@ export default function SimulacrumPage({ headerCollapsed }) {
   useEffect(() => { fetchFactions(); }, [fetchFactions]);
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const handleSort = (col) => {
-    if (sortBy === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+  const handleSort = (col, e) => {
+    if (e && e.ctrlKey) { setSortBy('faction'); setSortDir('asc'); }
+    else if (sortBy === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
     else { setSortBy(col); setSortDir('asc'); }
     setPage(1);
   };
@@ -776,7 +777,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
                   const wKey = keyMap[col.key] || col.key;
                   return (
                     <React.Fragment key={col.key}>
-                      <th style={thStyle(wKey)} className={`sortable ${sortBy === col.key ? 'sort-active' : ''}`} title={col.abbr ? col.label : undefined} onClick={() => handleSort(col.key)}>
+                      <th style={thStyle(wKey)} className={`sortable ${sortBy === col.key ? 'sort-active' : ''}`} title={col.abbr ? col.label : undefined} onClick={e => handleSort(col.key, e)}>
                         {col.abbr ? <span className="th-abbr">{col.abbr}</span> : col.label}
                         <SortIcon col={col.key} sortBy={sortBy} sortDir={sortDir} />
                         <span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e, wKey); }} />

@@ -284,8 +284,11 @@ export default function WarscrollsPage({ headerCollapsed }) {
   useEffect(() => { fetchFactions(); }, [fetchFactions]);
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const handleSort = (col) => {
-    if (sortBy === col) {
+  const handleSort = (col, e) => {
+    if (e && e.ctrlKey) {
+      setSortBy('faction');
+      setSortDir('asc');
+    } else if (sortBy === col) {
       setSortDir(d => d === 'asc' ? 'desc' : 'asc');
     } else {
       setSortBy(col);
@@ -513,7 +516,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
                           style={thStyle(wKey)}
                           className={`sortable ${sortBy === col.key ? 'sort-active' : ''}`}
                           title={col.abbr ? col.label : undefined}
-                          onClick={() => handleSort(col.key)}
+                          onClick={e => handleSort(col.key, e)}
                         >
                           {col.abbr ? <span className="th-abbr">{col.abbr}</span> : col.label}
                           <SortIcon col={col.key} sortBy={sortBy} sortDir={sortDir} />

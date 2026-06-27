@@ -1816,9 +1816,9 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
 }
 /* Name col: medium fixed width; stat cols: narrow; ability col: fills rest */
 .gw-th-name    { text-align: left !important; width: 120px; }
-.gw-th-range   { width: 40px; }
-.gw-th-stat    { width: 30px; }
-.gw-th-ability { text-align: left !important; }  /* takes remaining space */
+.gw-th-range   { text-align: center !important; width: 60px; }
+.gw-th-stat    { text-align: center !important; width: 45px; }
+.gw-th-ability { text-align: right !important; }  /* takes remaining space */
 
 .gw-weapon-table td {
   padding: 3px 4px;
@@ -1830,9 +1830,9 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
 }
 .gw-row-a { background: rgba(255,255,255,0.02); }
 .gw-row-b { background: rgba(0,0,0,0.22); }
-.gw-td-name   { text-align: left !important; font-weight: 500; color: #e0d4a8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.gw-td-stat   { font-family: 'Cinzel', 'Palatino Linotype', serif; font-size: 0.72rem; white-space: nowrap; }
-.gw-td-ability{ text-align: left !important; font-size: 0.65rem; color: #c0b890; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gw-td-name   { text-align: left !important; font-size: 1.32rem; font-weight: 600; color: #e0d4a8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gw-td-stat   { text-align: center !important; font-family: 'Cinzel', 'Palatino Linotype', serif; font-size: 1.5rem; font-weight: 700; white-space: nowrap; }
+.gw-td-ability{ text-align: right !important; font-size: 0.65rem; color: #c0b890; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ── Abilities section ── */
 .gw-abilities-section {
@@ -1902,11 +1902,15 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
   font-size: 0.62rem;
 }
 .gw-ability-bullets {
-  margin: 2px 0 0 14px;
+  margin: 0;
+  padding: 0;
+}
+.gw-ability-bullet {
+  margin: 5px 0 0 0;
   padding: 0;
   font-size: 0.67rem;
+  line-height: 1.4;
 }
-.gw-ability-bullets li { margin: 2px 0; }
 
 /* ── Keywords footer bar ── */
 .gw-keywords-bar {
@@ -1969,8 +1973,8 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
 }
 
 .gw-unit-img {
-  width: 170px;
-  max-height: 240px;
+  width: 340px;
+  max-height: 480px;
   object-fit: contain;
   filter: drop-shadow(0 2px 10px rgba(0,0,0,0.7));
 }
@@ -2013,7 +2017,7 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
   .gw-header-name { font-size: 1.25rem; }
   .gw-abilities-row { flex-direction: column; }
   .gw-abilities-img-col { padding: 0 14px 12px; }
-  .gw-unit-img { width: 140px; }
+  .gw-unit-img { width: 260px; }
   .gw-abilities-grid { grid-template-columns: 1fr; }
 }
 

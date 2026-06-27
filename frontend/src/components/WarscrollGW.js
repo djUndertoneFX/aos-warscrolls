@@ -151,9 +151,11 @@ function AbilityCard({ ab }) {
             <span className="gw-ability-lbl">Effect: </span>
             {ab.effect && <span>{ab.effect}</span>}
             {bullets.length > 0 && (
-              <ul className="gw-ability-bullets">
-                {bullets.map((b, i) => <li key={i}><BoldTerm text={b} /></li>)}
-              </ul>
+              <div className="gw-ability-bullets">
+                {bullets.map((b, i) => (
+                  <p key={i} className="gw-ability-bullet"><BoldTerm text={b} /></p>
+                ))}
+              </div>
             )}
           </div>
         )}
