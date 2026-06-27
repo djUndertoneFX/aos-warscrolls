@@ -111,7 +111,7 @@ function BoldTerm({ text, keywords }) {
 // → ["Intro text.", "Grimnir's Grit: blah.", "Grimnir's Resolve: blah"]
 function splitEffectParts(text) {
   if (!text) return [];
-  const parts = text.split(/ (?=[A-Z][^\s:]{1,20}(?:\s[^\s:]{1,20}){0,3}:)/)
+  const parts = text.split(/ (?=[A-Z][A-Za-z0-9'’-]{1,20}(?:\s[A-Za-z0-9'’-]{1,20}){0,3}:)/)
     .map(p => p.trim()).filter(Boolean);
   // The regex can split "Grimnir's" and "Grit:" as separate parts because both
   // satisfy the lookahead independently. Merge any fragment lacking a colon with the next part.
