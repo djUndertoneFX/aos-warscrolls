@@ -1814,11 +1814,11 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
   white-space: nowrap;
   overflow: hidden;
 }
-/* Name col: medium fixed width; stat cols: narrow; ability col: fills rest */
-.gw-th-name    { text-align: left !important; width: 120px; }
-.gw-th-range   { text-align: center !important; width: 60px; }
-.gw-th-stat    { text-align: center !important; width: 45px; }
-.gw-th-ability { text-align: right !important; }  /* takes remaining space */
+/* Three-section layout: name (left third) | stats (center third, auto-split) | ability (right third) */
+.gw-th-name    { text-align: left !important; width: 33%; }
+.gw-th-range   { text-align: center !important; }
+.gw-th-stat    { text-align: center !important; }
+.gw-th-ability { text-align: center !important; width: 33%; }
 
 .gw-weapon-table td {
   padding: 3px 4px;
@@ -1830,9 +1830,9 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
 }
 .gw-row-a { background: rgba(255,255,255,0.02); }
 .gw-row-b { background: rgba(0,0,0,0.22); }
-.gw-td-name   { text-align: left !important; font-size: 1.32rem; font-weight: 600; color: #e0d4a8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.gw-td-stat   { text-align: center !important; font-family: 'Cinzel', 'Palatino Linotype', serif; font-size: 1.5rem; font-weight: 700; white-space: nowrap; }
-.gw-td-ability{ text-align: right !important; font-size: 0.65rem; color: #c0b890; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gw-td-name   { text-align: left !important; font-size: 0.88rem; font-weight: 600; color: #e0d4a8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gw-td-stat   { text-align: center !important; font-family: 'Cinzel', 'Palatino Linotype', serif; font-size: 1.0rem; font-weight: 700; white-space: nowrap; }
+.gw-td-ability{ text-align: center !important; font-size: 0.65rem; color: #c0b890; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ── Abilities section ── */
 .gw-abilities-section {
