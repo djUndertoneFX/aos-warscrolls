@@ -40,6 +40,9 @@ export default function LoginPage() {
               placeholder="Your commander's name"
               value={form.login}
               onChange={e => setForm(f => ({ ...f, login: e.target.value }))}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck="false"
               required
             />
           </div>
