@@ -293,6 +293,23 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext }) {
     return () => window.removeEventListener('keydown', h);
   }, [onClose, onPrev, onNext]);
 
+  // Touch swipe: left=next, right=prev
+  useEffect(() => {
+    const el = modalRef.current;
+    if (!el) return;
+    let startX = null;
+    const onStart = e => { startX = e.touches[0].clientX; };
+    const onEnd = e => {
+      if (startX === null) return;
+      const dx = e.changedTouches[0].clientX - startX;
+      if (Math.abs(dx) > 50) { dx < 0 ? onNext?.() : onPrev?.(); }
+      startX = null;
+    };
+    el.addEventListener('touchstart', onStart, { passive: true });
+    el.addEventListener('touchend', onEnd, { passive: true });
+    return () => { el.removeEventListener('touchstart', onStart); el.removeEventListener('touchend', onEnd); };
+  }, [onPrev, onNext]);
+
   // Click outside: close unless the click landed on a unit-name-link (switching units)
   useEffect(() => {
     const h = e => {
