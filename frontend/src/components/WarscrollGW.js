@@ -155,12 +155,12 @@ function StatsWheel({ move, health, save, control }) {
       <circle cx={cx} cy={cy} r="3" fill="#0c0a08" />
 
       {/* MOVE — toward rim */}
-      <text x={cx} y={cy - 48} textAnchor="middle" dominantBaseline="middle" {...lblTxt}>MOVE</text>
+      <text x={cx} y={cy - 50} textAnchor="middle" dominantBaseline="middle" {...lblTxt}>MOVE</text>
       <text x={cx} y={cy - 35} textAnchor="middle" dominantBaseline="middle" {...statTxt}>{move || '—'}</text>
 
-      {/* HEALTH — number on centerline, label below */}
-      <text x={cx - 40} y={cy}      textAnchor="middle" dominantBaseline="middle" {...statTxt}>{health || '—'}</text>
-      <text x={cx - 40} y={cy + 14} textAnchor="middle" dominantBaseline="middle" {...lblTxt}>HEALTH</text>
+      {/* HEALTH — number on centerline, label below; shifted right to clear the ring */}
+      <text x={cx - 38} y={cy}      textAnchor="middle" dominantBaseline="middle" {...statTxt}>{health || '—'}</text>
+      <text x={cx - 35} y={cy + 14} textAnchor="middle" dominantBaseline="middle" {...lblTxt}>HEALTH</text>
 
       {/* SAVE — number on centerline, label below */}
       <text x={cx + 40} y={cy}      textAnchor="middle" dominantBaseline="middle" {...statTxt}>{save || '—'}</text>
