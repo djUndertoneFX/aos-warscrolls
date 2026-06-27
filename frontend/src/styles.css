@@ -2076,6 +2076,21 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
 .gw-source a { color: #a08848; text-decoration: none; }
 .gw-source a:hover { color: #c8a840; }
 
+/* ── Responsive: portrait mobile — pin modal to top so close button is always reachable ── */
+@media (max-width: 600px) and (orientation: portrait) {
+  .gw-modal {
+    top: 0;
+    left: 0;
+    transform: none;
+    width: 100vw;
+    max-height: 100dvh;
+    border-left: none;
+    border-right: none;
+    border-top: none;
+    border-radius: 0;
+  }
+}
+
 /* ── Responsive: narrow screens ── */
 @media (max-width: 600px) {
   .gw-top-band { flex-direction: column; }
