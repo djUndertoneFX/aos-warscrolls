@@ -154,21 +154,21 @@ function StatsWheel({ move, health, save, control }) {
       <circle cx={cx} cy={cy} r="5" fill={gold} />
       <circle cx={cx} cy={cy} r="3" fill="#0c0a08" />
 
-      {/* MOVE — label above number (outside toward rim) */}
-      <text x={cx} y={cy - 54} textAnchor="middle" dominantBaseline="middle" {...lblTxt}>MOVE</text>
-      <text x={cx} y={cy - 40} textAnchor="middle" dominantBaseline="middle" {...statTxt}>{move || '—'}</text>
+      {/* MOVE — pushed high toward rim */}
+      <text x={cx} y={cy - 57} textAnchor="middle" dominantBaseline="middle" {...lblTxt}>MOVE</text>
+      <text x={cx} y={cy - 44} textAnchor="middle" dominantBaseline="middle" {...statTxt}>{move || '—'}</text>
 
-      {/* HEALTH — left (number left, label further left/below) */}
-      <text x={cx - 48} y={cy - 8} textAnchor="middle" dominantBaseline="middle" {...statTxt}>{health || '—'}</text>
-      <text x={cx - 48} y={cy +  9} textAnchor="middle" dominantBaseline="middle" {...lblTxt}>HEALTH</text>
+      {/* HEALTH — number on horizontal midline, label below */}
+      <text x={cx - 50} y={cy + 2}  textAnchor="middle" dominantBaseline="middle" {...statTxt}>{health || '—'}</text>
+      <text x={cx - 50} y={cy + 16} textAnchor="middle" dominantBaseline="middle" {...lblTxt}>HEALTH</text>
 
-      {/* SAVE — right */}
-      <text x={cx + 48} y={cy - 8} textAnchor="middle" dominantBaseline="middle" {...statTxt}>{save || '—'}</text>
-      <text x={cx + 48} y={cy +  9} textAnchor="middle" dominantBaseline="middle" {...lblTxt}>SAVE</text>
+      {/* SAVE — number on horizontal midline, label below */}
+      <text x={cx + 50} y={cy + 2}  textAnchor="middle" dominantBaseline="middle" {...statTxt}>{save || '—'}</text>
+      <text x={cx + 50} y={cy + 16} textAnchor="middle" dominantBaseline="middle" {...lblTxt}>SAVE</text>
 
-      {/* CONTROL — number above label (label outside toward rim) */}
-      <text x={cx} y={cy + 40} textAnchor="middle" dominantBaseline="middle" {...statTxt}>{control || '—'}</text>
-      <text x={cx} y={cy + 54} textAnchor="middle" dominantBaseline="middle" {...lblTxt}>CONTROL</text>
+      {/* CONTROL — pushed low toward rim */}
+      <text x={cx} y={cy + 44} textAnchor="middle" dominantBaseline="middle" {...statTxt}>{control || '—'}</text>
+      <text x={cx} y={cy + 57} textAnchor="middle" dominantBaseline="middle" {...lblTxt}>CONTROL</text>
     </svg>
   );
 }
