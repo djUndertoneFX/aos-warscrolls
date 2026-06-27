@@ -132,7 +132,9 @@ function StatsWheel({ move, health, save, control }) {
   const S = 140, cx = 70, cy = 70, r = 62;
   const gold = '#c8a840';
   const d45 = Math.round(r * 0.7071); // 44
-  const statTxt = { fill: '#f0ead8', fontSize: 21, fontWeight: 700, fontFamily: "'Palatino Linotype', Georgia, serif" };
+  const statTxt    = { fill: '#f0ead8', fontSize: 26, fontWeight: 700, fontFamily: "'Palatino Linotype', Georgia, serif" };
+  const statTxtTop = { ...statTxt, dominantBaseline: 'hanging' };   // MOVE: top-anchored, grows down
+  const statTxtBot = { ...statTxt, dominantBaseline: 'auto' };      // others: bottom-anchored, grows up
   const lblTxt  = { fill: gold,     fontSize: 9,   letterSpacing: 0.8, fontFamily: 'Arial, sans-serif' };
 
   const quadrants = [
@@ -154,20 +156,20 @@ function StatsWheel({ move, health, save, control }) {
       <circle cx={cx} cy={cy} r="5" fill={gold} />
       <circle cx={cx} cy={cy} r="3" fill="#0c0a08" />
 
-      {/* MOVE — toward rim */}
+      {/* MOVE — top-anchored so larger text grows downward (away from label) */}
       <text x={cx} y={cy - 54} textAnchor="middle" dominantBaseline="middle" {...lblTxt}>MOVE</text>
-      <text x={cx} y={cy - 35} textAnchor="middle" dominantBaseline="middle" {...statTxt}>{move || '—'}</text>
+      <text x={cx} y={cy - 35} textAnchor="middle" {...statTxtTop}>{move || '—'}</text>
 
-      {/* HEALTH — number on centerline, label below; shifted right to clear the ring */}
-      <text x={cx - 39} y={cy}      textAnchor="middle" dominantBaseline="middle" {...statTxt}>{health || '—'}</text>
+      {/* HEALTH — bottom-anchored so larger text grows upward (away from label) */}
+      <text x={cx - 39} y={cy}      textAnchor="middle" {...statTxtBot}>{health || '—'}</text>
       <text x={cx - 37} y={cy + 14} textAnchor="middle" dominantBaseline="middle" {...lblTxt}>HEALTH</text>
 
-      {/* SAVE — number on centerline, label below */}
-      <text x={cx + 40} y={cy}      textAnchor="middle" dominantBaseline="middle" {...statTxt}>{save || '—'}</text>
+      {/* SAVE — bottom-anchored so larger text grows upward (away from label) */}
+      <text x={cx + 40} y={cy}      textAnchor="middle" {...statTxtBot}>{save || '—'}</text>
       <text x={cx + 40} y={cy + 14} textAnchor="middle" dominantBaseline="middle" {...lblTxt}>SAVE</text>
 
-      {/* CONTROL — toward rim */}
-      <text x={cx} y={cy + 35} textAnchor="middle" dominantBaseline="middle" {...statTxt}>{control || '—'}</text>
+      {/* CONTROL — bottom-anchored so larger text grows upward (away from label) */}
+      <text x={cx} y={cy + 35} textAnchor="middle" {...statTxtBot}>{control || '—'}</text>
       <text x={cx} y={cy + 48} textAnchor="middle" dominantBaseline="middle" {...lblTxt}>CONTROL</text>
     </svg>
   );
