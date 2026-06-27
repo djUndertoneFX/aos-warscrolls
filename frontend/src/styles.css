@@ -1895,7 +1895,7 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
   gap: 3px;
   flex: 1;
 }
-.gw-ability-para { margin: 0; }
+.gw-ability-para { margin: 7px 0 0 0; }
 .gw-ability-lbl {
   font-weight: 700;
   color: #d8c870;
@@ -1912,7 +1912,7 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
   padding: 0;
 }
 .gw-ability-bullet {
-  margin: 5px 0 0 0;
+  margin: 8px 0 0 0;
   padding: 0;
   font-size: 0.67rem;
   line-height: 1.4;
