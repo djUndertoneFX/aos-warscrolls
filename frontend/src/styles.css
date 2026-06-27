@@ -1225,6 +1225,23 @@ td.col-stat {
   font-size: 0.8rem;
   font-weight: 600;
 }
+th.col-awo-hdr {
+  font-family: 'Cinzel', serif;
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  color: #a8d870;
+  text-align: center;
+  white-space: nowrap;
+}
+td.col-awo {
+  text-align: center;
+  font-family: 'Cinzel', 'Palatino Linotype', serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #a8d870;
+  white-space: nowrap;
+}
+
 td.col-keywords {
   font-size: 0.78rem;
   color: var(--text-dim);

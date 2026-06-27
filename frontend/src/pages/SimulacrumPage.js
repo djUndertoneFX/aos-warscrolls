@@ -3,6 +3,17 @@ import ReactDOM from 'react-dom';
 import axios from 'axios';
 import WarscrollGW from '../components/WarscrollGW';
 import { simulateBattle } from '../simulation/engine';
+import { useSettings } from '../SettingsContext';
+import { calcWeaponAWO } from '../awoCalc';
+
+function sumAWO(weapons, unitSize, save, ward) {
+  let total = 0, any = false;
+  for (const w of weapons) {
+    const v = calcWeaponAWO(w, unitSize || 1, save, ward);
+    if (v !== null) { total += v; any = true; }
+  }
+  return any ? total : null;
+}
 
 function nextTriState(cur, isRight) {
   if (isRight) return cur === 'exclude' ? false : 'exclude';
@@ -126,10 +137,15 @@ const STAGES = [
 ];
 
 function SimulacrumBattle({ friendly, enemy, colWidths, thStyle, onUnitClick, friendlyReinforced, enemyReinforced, onFriendlyReinforceChange, onEnemyReinforceChange }) {
+  const { presumedSave, presumedWard } = useSettings();
   const renderRow = (row, label) => {
     const weapons = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
     const ranged = weapons.filter(w => w.type === 'ranged');
     const melee  = weapons.filter(w => w.type === 'melee');
+    const save = presumedSave ?? 5;
+    const ward = presumedWard ?? null;
+    const awoRanged = sumAWO(ranged, row.unit_size, save, ward);
+    const awoMelee  = sumAWO(melee,  row.unit_size, save, ward);
     const isReinforced = label === 'friendly' ? friendlyReinforced : enemyReinforced;
     const onReinforceChange = label === 'friendly' ? onFriendlyReinforceChange : onEnemyReinforceChange;
     const color = label === 'friendly' ? 'var(--friendly-color)' : 'var(--enemy-color)';
@@ -159,6 +175,8 @@ function SimulacrumBattle({ friendly, enemy, colWidths, thStyle, onUnitClick, fr
           <td className="col-stat">{row.unit_size || '—'}</td>
           <td><TypeTags row={row} /></td>
           <td className="col-keywords">{row.keywords ? row.keywords.split(',').slice(0,6).join(', ') : '—'}</td>
+          <td className="col-awo">{awoRanged !== null ? awoRanged : '—'}</td>
+          <td className="col-awo">{awoMelee  !== null ? awoMelee  : '—'}</td>
           <td className="col-reinforce" onClick={e => e.stopPropagation()}>
             <label className="reinforce-label" style={{color}}>
               <input type="checkbox" checked={!!isReinforced} onChange={e => { onReinforceChange && onReinforceChange(e.target.checked); }} />
@@ -355,7 +373,10 @@ const BATTLE_COUNT_OPTS = [
   { val: 'forever', label: 'Till the Next Version of Age of Sigmar!' },
 ];
 
+const AWO_TOOLTIP = 'Average Wound Output\n\nTotal damage a full unit outputs on average with this weapon type, vs the presumed save/ward in Settings.';
+
 export default function SimulacrumPage({ headerCollapsed }) {
+  const { presumedSave, presumedWard } = useSettings();
   const [stage, setStage]           = useState(1);
   const [selectedFriendly, setSelectedFriendly] = useState(null);
   const [selectedEnemy, setSelectedEnemy]       = useState(null);
@@ -512,6 +533,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
   const DEFAULT_COL_WIDTHS = {
     rownum: 36, friendly: 38, enemy: 38, expand: 30, thumb: 44,
     name: 240, faction: 150, alliance: 82,
+    awo_ranged: 52, awo_melee: 52,
     move: 46, health: 46, control: 46, save: 46, points: 52, models: 46,
     types: 100, keywords: 200,
   };
@@ -788,6 +810,8 @@ export default function SimulacrumPage({ headerCollapsed }) {
                 })}
                 <th style={thStyle('types')}>Types<span className="col-resize-handle" onMouseDown={e => startResize(e,'types')} /></th>
                 <th style={thStyle('keywords')}>Keywords<span className="col-resize-handle" onMouseDown={e => startResize(e,'keywords')} /></th>
+                <th style={{...thStyle('awo_ranged'), textAlign:'center'}} title={AWO_TOOLTIP} className="col-awo-hdr">AWO ⊕<span className="col-resize-handle" onMouseDown={e => startResize(e,'awo_ranged')} /></th>
+                <th style={{...thStyle('awo_melee'),  textAlign:'center'}} title={AWO_TOOLTIP} className="col-awo-hdr">AWO ✕<span className="col-resize-handle" onMouseDown={e => startResize(e,'awo_melee')} /></th>
                 <th className="col-reinforce">Reinforce</th>
               </tr>
             </thead>
@@ -798,10 +822,14 @@ export default function SimulacrumPage({ headerCollapsed }) {
                 const weapons = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
                 const ranged = weapons.filter(w => w.type === 'ranged');
                 const melee  = weapons.filter(w => w.type === 'melee');
+                const save = presumedSave ?? 5;
+                const ward = presumedWard ?? null;
+                const awoRanged = sumAWO(ranged, row.unit_size, save, ward);
+                const awoMelee  = sumAWO(melee,  row.unit_size, save, ward);
                 const prev = data.data[idx - 1];
                 const factionChanged = !prev || prev.faction !== row.faction;
                 const typeChanged    = !prev || prev.faction !== row.faction || unitTypeLabel(prev) !== unitTypeLabel(row);
-                const colSpan = 17;
+                const colSpan = 19;
                 return (
                   <React.Fragment key={row.id}>
                     {factionChanged && sortBy === 'faction' && <tr className="separator-faction"><td colSpan={colSpan}>{row.faction}</td></tr>}
@@ -833,6 +861,8 @@ export default function SimulacrumPage({ headerCollapsed }) {
                       <td className="col-stat">{row.unit_size || '—'}</td>
                       <td><TypeTags row={row} /></td>
                       <td className="col-keywords">{row.keywords ? row.keywords.split(',').slice(0,6).join(', ') : '—'}</td>
+                      <td className="col-awo">{awoRanged !== null ? awoRanged : '—'}</td>
+                      <td className="col-awo">{awoMelee  !== null ? awoMelee  : '—'}</td>
                       <td className="col-reinforce" onClick={e => e.stopPropagation()}>
                         {selectedFriendly?.id === row.id && (
                           <label className="reinforce-label" style={{color:'var(--friendly-color)'}}>

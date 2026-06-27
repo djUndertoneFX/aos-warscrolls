@@ -2,6 +2,17 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import axios from 'axios';
 import WarscrollGW from '../components/WarscrollGW';
+import { useSettings } from '../SettingsContext';
+import { calcWeaponAWO } from '../awoCalc';
+
+function sumAWO(weapons, unitSize, save, ward) {
+  let total = 0, any = false;
+  for (const w of weapons) {
+    const v = calcWeaponAWO(w, unitSize || 1, save, ward);
+    if (v !== null) { total += v; any = true; }
+  }
+  return any ? total : null;
+}
 
 // Tri-state cycle: false → true → false (left-click), false → 'exclude' → false (right-click)
 function nextTriState(cur, isRight) {
@@ -127,7 +138,10 @@ function SortIcon({ col, sortBy, sortDir }) {
   return <span className="sort-icon">{sortDir === 'asc' ? '↑' : '↓'}</span>;
 }
 
+const AWO_TOOLTIP = 'Average Wound Output\n\nTotal damage a full unit outputs on average with this weapon type, vs the presumed save/ward in Settings.';
+
 export default function WarscrollsPage({ headerCollapsed }) {
+  const { presumedSave, presumedWard } = useSettings();
   const [data, setData]           = useState(null);
   const [factions, setFactions]   = useState([]);
   const [loading, setLoading]     = useState(true);
@@ -317,6 +331,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
     name: 240, faction: 150, alliance: 82, models: 46,
     move: 46, health: 46, control: 46, save: 46, points: 52,
     types: 100, keywords: 200,
+    awo_ranged: 52, awo_melee: 52,
   };
   const STORAGE_KEY = 'aos-col-widths-v2';
   const [colWidths, setColWidths] = useState(() => {
@@ -530,6 +545,8 @@ export default function WarscrollsPage({ headerCollapsed }) {
                   })}
                   <th style={thStyle('types')}>Types<span className="col-resize-handle" onMouseDown={e => startResize(e,'types')} /></th>
                   <th style={thStyle('keywords')}>Keywords<span className="col-resize-handle" onMouseDown={e => startResize(e,'keywords')} /></th>
+                  <th style={{...thStyle('awo_ranged'), textAlign:'center'}} title={AWO_TOOLTIP} className="col-awo-hdr">AWO ⊕<span className="col-resize-handle" onMouseDown={e => startResize(e,'awo_ranged')} /></th>
+                  <th style={{...thStyle('awo_melee'),  textAlign:'center'}} title={AWO_TOOLTIP} className="col-awo-hdr">AWO ✕<span className="col-resize-handle" onMouseDown={e => startResize(e,'awo_melee')} /></th>
                 </tr>
               </thead>
               <tbody>
@@ -539,10 +556,14 @@ export default function WarscrollsPage({ headerCollapsed }) {
                   const weapons = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
                   const ranged = weapons.filter(w => w.type === 'ranged');
                   const melee  = weapons.filter(w => w.type === 'melee');
+                  const save = presumedSave ?? 5;
+                  const ward = presumedWard ?? null;
+                  const awoRanged = sumAWO(ranged, row.unit_size, save, ward);
+                  const awoMelee  = sumAWO(melee,  row.unit_size, save, ward);
                   const prev = data.data[idx - 1];
                   const factionChanged = !prev || prev.faction !== row.faction;
                   const typeChanged    = !prev || prev.faction !== row.faction || unitTypeLabel(prev) !== unitTypeLabel(row);
-                  const colSpan = 15;
+                  const colSpan = 17;
                   return (
                     <React.Fragment key={row.id}>
                       {factionChanged && sortBy === 'faction' && (
@@ -597,6 +618,8 @@ export default function WarscrollsPage({ headerCollapsed }) {
                         <td className="col-keywords">
                           {row.keywords ? row.keywords.split(',').slice(0, 6).join(', ') : '—'}
                         </td>
+                        <td className="col-awo">{awoRanged !== null ? awoRanged : '—'}</td>
+                        <td className="col-awo">{awoMelee  !== null ? awoMelee  : '—'}</td>
                       </tr>
                       {isExpanded && (
                         <tr className="weapons-expand-row">
