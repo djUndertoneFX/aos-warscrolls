@@ -203,7 +203,7 @@ function WeaponSection({ weapons, type, unitSize }) {
             <th className="gw-th-stat">Rnd</th>
             <th className="gw-th-stat">Dmg</th>
             <th className="gw-th-ability">Ability</th>
-            <th className="gw-th-awo" title="Average Wound Output&#10;&#10;This shows how much damage a full sized unit will output on average with this weapon. This includes number of attacks × models, the hit roll, wound roll, saves assuming a typical 5+ save with no ward. Change these defaults in the settings to tune to specific conditions.">AWO</th>
+            <th className="gw-th-awo" title="Average Wound Output&#10;&#10;This shows how much damage a full sized unit will output on average with this weapon. This includes number of attacks x models, the hit roll, wound roll, saves assuming a typical 5+ save with no ward. Change these defaults in the settings to tune to specific conditions.&#10;&#10;Some abilities like Crit (Mortal), Crit (Auto-Wound), etc. are considered, but not others that are conditional (like Anti-X).">AWO</th>
           </tr>
         </thead>
         <tbody>
