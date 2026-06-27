@@ -1,6 +1,45 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { useSettings } from '../SettingsContext';
+
+// ── White-removal canvas image ───────────────────────────────────────────────
+function TransparentImage({ src, alt, className, onError }) {
+  const canvasRef = useRef(null);
+  const [failed, setFailed] = useState(false);
+
+  const process = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      canvas.width  = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const d = data.data;
+      for (let i = 0; i < d.length; i += 4) {
+        const r = d[i], g = d[i+1], b = d[i+2];
+        // treat near-white as transparent
+        if (r > 220 && g > 220 && b > 220) {
+          const whiteness = Math.min(r, g, b);
+          // smooth edge: full alpha fade from 220→255
+          d[i+3] = Math.round((1 - (whiteness - 220) / 35) * 255 * (1 - (whiteness - 220) / 35));
+          if (whiteness > 240) d[i+3] = 0;
+        }
+      }
+      ctx.putImageData(data, 0, 0);
+    };
+    img.onerror = () => setFailed(true);
+    img.src = src;
+  }, [src]);
+
+  useEffect(() => { process(); }, [process]);
+
+  if (failed) return null;
+  return <canvas ref={canvasRef} className={className} aria-label={alt} />;
+}
 
 // ── Phase colour mapping ─────────────────────────────────────────────────────
 const PHASE_PRESETS = [
@@ -276,11 +315,10 @@ export default function WarscrollGW({ unit, onClose }) {
               </div>
               {imageUrl && (
                 <div className="gw-abilities-img-col">
-                  <img
+                  <TransparentImage
                     src={imageUrl}
                     alt={unit.name}
                     className="gw-unit-img"
-                    onError={e => { e.target.style.display = 'none'; }}
                   />
                 </div>
               )}

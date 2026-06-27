@@ -1973,7 +1973,9 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
 }
 
 .gw-unit-img {
+  display: block;
   width: 340px;
+  max-width: 100%;
   max-height: 480px;
   object-fit: contain;
   filter: drop-shadow(0 2px 10px rgba(0,0,0,0.7));
