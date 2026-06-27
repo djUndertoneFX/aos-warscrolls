@@ -82,7 +82,8 @@ export function calcWeaponAWO(weapon, unitSize, presumedSave, presumedWard) {
   if (hasCritMortal(ability)) {
     // Crit (Mortal): 6 to hit → mortal wounds = Damage, bypasses saves & ward
     // Non-crit hits still resolve through wound/save/ward normally
-    const mortalDmg  = totalAttacks * critHitProb * damage;
+    // Mortal wounds skip wound roll and save, but ward still applies
+    const mortalDmg  = totalAttacks * critHitProb * damage * (1 - wardProb);
     const normalWounds   = totalAttacks * normalHitProb * woundProb;
     const normalUnsaved  = normalWounds * (1 - saveProb) * (1 - wardProb) * damage;
     awo = mortalDmg + normalUnsaved;
