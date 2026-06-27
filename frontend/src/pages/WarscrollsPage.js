@@ -659,12 +659,14 @@ export default function WarscrollsPage({ headerCollapsed }) {
         unit={detailUnit}
         onClose={() => setDetailUnit(null)}
         onPrev={() => {
-          const idx = units.findIndex(u => u.id === detailUnit.id);
-          if (idx > 0) setDetailUnit(units[idx - 1]);
+          const rows = data?.data ?? [];
+          const idx = rows.findIndex(u => u.id === detailUnit.id);
+          if (idx > 0) setDetailUnit(rows[idx - 1]);
         }}
         onNext={() => {
-          const idx = units.findIndex(u => u.id === detailUnit.id);
-          if (idx < units.length - 1) setDetailUnit(units[idx + 1]);
+          const rows = data?.data ?? [];
+          const idx = rows.findIndex(u => u.id === detailUnit.id);
+          if (idx < rows.length - 1) setDetailUnit(rows[idx + 1]);
         }}
       />
     )}
