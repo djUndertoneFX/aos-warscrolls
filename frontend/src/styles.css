@@ -1412,6 +1412,7 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
 .inline-weapon-table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
   font-size: 0.82rem;
 }
 .inline-weapon-table th {
@@ -1423,7 +1424,6 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
   text-align: center;
   font-weight: 600;
 }
-.inline-weapon-table th:first-child { text-align: left; }
 .inline-weapon-table td {
   padding: 0.25rem 0.5rem;
   text-align: center;
@@ -1431,7 +1431,15 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
   border-top: 1px solid rgba(74,56,32,0.3);
   font-size: 0.82rem;
 }
-.inline-weapon-table td:first-child { text-align: left; color: var(--gold-light); font-size: 0.8rem; }
+/* Three-section layout: name(28%) | stats(auto) | ability(28%) | awo(50px) */
+.inline-weapon-table .iwt-th-name    { width: 28%; text-align: center; }
+.inline-weapon-table .iwt-th-stat    { text-align: center; }
+.inline-weapon-table .iwt-th-ability { width: 28%; text-align: center; }
+.inline-weapon-table .iwt-th-awo     { width: 50px; text-align: center; color: #a8d870; white-space: nowrap; }
+.inline-weapon-table .iwt-td-name    { text-align: center; color: var(--gold-light); font-size: 0.8rem; font-weight: 600; }
+.inline-weapon-table .iwt-td-stat    { text-align: center; font-family: 'Cinzel', 'Palatino Linotype', serif; font-weight: 700; }
+.inline-weapon-table .iwt-td-ability { text-align: center; font-size: 0.68rem; color: #c0b890; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inline-weapon-table .iwt-td-awo     { text-align: center; font-family: 'Cinzel', 'Palatino Linotype', serif; font-weight: 700; color: #a8d870; }
 
 /* ── Detail panel ── */
 .detail-overlay {

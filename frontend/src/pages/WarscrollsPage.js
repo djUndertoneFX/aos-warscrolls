@@ -628,16 +628,23 @@ export default function WarscrollsPage({ headerCollapsed }) {
                               {weapons.length === 0 && <span style={{color:'var(--text-dim)', fontStyle:'italic'}}>No weapon data available.</span>}
                               {ranged.length > 0 && (
                                 <div className="inline-weapon-block">
-                                  <div className="inline-weapon-section-header">Ranged Weapons</div>
+                                  <div className="inline-weapon-section-header">⊕ Ranged Weapons</div>
                                   <table className="inline-weapon-table">
                                     <thead><tr>
-                                      <th>Weapon</th><th>Range</th><th>Atk</th><th>Hit</th><th>Wnd</th><th>Rnd</th><th>Dmg</th>
+                                      <th className="iwt-th-name">Weapon</th>
+                                      <th className="iwt-th-stat">Rng</th><th className="iwt-th-stat">Atk</th><th className="iwt-th-stat">Hit</th><th className="iwt-th-stat">Wnd</th><th className="iwt-th-stat">Rnd</th><th className="iwt-th-stat">Dmg</th>
+                                      <th className="iwt-th-ability">Ability</th>
+                                      <th className="iwt-th-awo">AWO</th>
                                     </tr></thead>
                                     <tbody>
                                       {ranged.map((w, i) => (
                                         <tr key={i}>
-                                          <td>{w.name}</td><td>{w.range}</td><td>{w.attacks}</td>
-                                          <td>{w.hit}</td><td>{w.wound}</td><td>{w.rend}</td><td>{w.damage}</td>
+                                          <td className="iwt-td-name">{w.name}</td>
+                                          <td className="iwt-td-stat">{w.range}</td><td className="iwt-td-stat">{w.attacks}</td>
+                                          <td className="iwt-td-stat">{w.hit}</td><td className="iwt-td-stat">{w.wound}</td>
+                                          <td className="iwt-td-stat">{w.rend || '—'}</td><td className="iwt-td-stat">{w.damage}</td>
+                                          <td className="iwt-td-ability">{w.ability || '—'}</td>
+                                          <td className="iwt-td-awo">{(() => { const v = calcWeaponAWO(w, row.unit_size || 1, save, ward); return v !== null ? v : '—'; })()}</td>
                                         </tr>
                                       ))}
                                     </tbody>
@@ -646,16 +653,23 @@ export default function WarscrollsPage({ headerCollapsed }) {
                               )}
                               {melee.length > 0 && (
                                 <div className="inline-weapon-block">
-                                  <div className="inline-weapon-section-header">Melee Weapons</div>
+                                  <div className="inline-weapon-section-header">✕ Melee Weapons</div>
                                   <table className="inline-weapon-table">
                                     <thead><tr>
-                                      <th>Weapon</th><th>Atk</th><th>Hit</th><th>Wnd</th><th>Rnd</th><th>Dmg</th>
+                                      <th className="iwt-th-name">Weapon</th>
+                                      <th className="iwt-th-stat">Atk</th><th className="iwt-th-stat">Hit</th><th className="iwt-th-stat">Wnd</th><th className="iwt-th-stat">Rnd</th><th className="iwt-th-stat">Dmg</th>
+                                      <th className="iwt-th-ability">Ability</th>
+                                      <th className="iwt-th-awo">AWO</th>
                                     </tr></thead>
                                     <tbody>
                                       {melee.map((w, i) => (
                                         <tr key={i}>
-                                          <td>{w.name}</td><td>{w.attacks}</td>
-                                          <td>{w.hit}</td><td>{w.wound}</td><td>{w.rend}</td><td>{w.damage}</td>
+                                          <td className="iwt-td-name">{w.name}</td>
+                                          <td className="iwt-td-stat">{w.attacks}</td>
+                                          <td className="iwt-td-stat">{w.hit}</td><td className="iwt-td-stat">{w.wound}</td>
+                                          <td className="iwt-td-stat">{w.rend || '—'}</td><td className="iwt-td-stat">{w.damage}</td>
+                                          <td className="iwt-td-ability">{w.ability || '—'}</td>
+                                          <td className="iwt-td-awo">{(() => { const v = calcWeaponAWO(w, row.unit_size || 1, save, ward); return v !== null ? v : '—'; })()}</td>
                                         </tr>
                                       ))}
                                     </tbody>
