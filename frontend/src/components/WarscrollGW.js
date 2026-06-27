@@ -45,7 +45,7 @@ function TransparentImage({ src, alt, className, onError }) {
 const PHASE_PRESETS = [
   { keys: ['passive'],              style: { hdrBg: '#3d2a0e', hdrTxt: '#f0dc88', border: '#8a6428' } },
   { keys: ['any combat', 'combat'], style: { hdrBg: '#6a0c0c', hdrTxt: '#fde8e0', border: '#c03030' } },
-  { keys: ['hero phase'],           style: { hdrBg: '#4e3800', hdrTxt: '#f8f0c0', border: '#b07c18' } },
+  { keys: ['hero phase'],           style: { hdrBg: '#9a802e', hdrTxt: '#1a1200', border: '#c8a840' } },
   { keys: ['movement', 'move phase'],style:{ hdrBg: '#0a3e28', hdrTxt: '#b8f0d8', border: '#1a7850' } },
   { keys: ['shooting'],             style: { hdrBg: '#0a2850', hdrTxt: '#c0d8f8', border: '#2858b8' } },
   { keys: ['once per battle'],      style: { hdrBg: '#480838', hdrTxt: '#f0c8e8', border: '#901870' } },
@@ -148,7 +148,7 @@ function StatsWheel({ move, health, save, control }) {
     <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`} className="gw-stats-wheel" aria-label="Unit stats">
       <circle cx={cx} cy={cy} r={r + 5} fill="#0c0a08" />
       {quadrants.map((d, i) => (
-        <path key={i} d={d} fill={i % 2 === 0 ? '#1e1a14' : '#181410'} />
+        <path key={i} d={d} fill={i === 1 ? '#2b5d00' : i % 2 === 0 ? '#1e1a14' : '#181410'} />
       ))}
       <line x1={cx-d45} y1={cy-d45} x2={cx+d45} y2={cy+d45} stroke={gold} strokeWidth="1.5" />
       <line x1={cx+d45} y1={cy-d45} x2={cx-d45} y2={cy+d45} stroke={gold} strokeWidth="1.5" />
