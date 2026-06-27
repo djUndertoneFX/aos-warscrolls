@@ -97,8 +97,12 @@ function WeaponSection({ weapons, type }) {
         <thead>
           <tr>
             <th className="gw-th-name">Weapon</th>
-            {isRanged && <th>Range</th>}
-            <th>Atk</th><th>Hit</th><th>Wnd</th><th>Rnd</th><th>Dmg</th>
+            {isRanged && <th className="gw-th-range">Rng</th>}
+            <th className="gw-th-stat">Atk</th>
+            <th className="gw-th-stat">Hit</th>
+            <th className="gw-th-stat">Wnd</th>
+            <th className="gw-th-stat">Rnd</th>
+            <th className="gw-th-stat">Dmg</th>
             <th className="gw-th-ability">Ability</th>
           </tr>
         </thead>

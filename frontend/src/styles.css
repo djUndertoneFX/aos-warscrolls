@@ -1053,25 +1053,27 @@ th.sort-active { color: var(--gold); }
 table[data-sort] th.sort-active {
   background: rgba(201,168,76,0.12);
 }
-table[data-sort="name"]          td:nth-child(5),
-table[data-sort="faction"]       td:nth-child(6),
-table[data-sort="grand_alliance"] td:nth-child(7),
-table[data-sort="move"]          td:nth-child(8),
-table[data-sort="health"]        td:nth-child(9),
-table[data-sort="control"]       td:nth-child(10),
-table[data-sort="save"]          td:nth-child(11),
-table[data-sort="points"]        td:nth-child(12) {
+/* Column positions: 1=# 2=F 3=E 4=▼ 5=name 6=thumb 7=faction 8=points 9=alliance
+                     10=move 11=health 12=control 13=save 14=models */
+table[data-sort="name"]           td:nth-child(5),
+table[data-sort="faction"]        td:nth-child(7),
+table[data-sort="points"]         td:nth-child(8),
+table[data-sort="grand_alliance"] td:nth-child(9),
+table[data-sort="move"]           td:nth-child(10),
+table[data-sort="health"]         td:nth-child(11),
+table[data-sort="control"]        td:nth-child(12),
+table[data-sort="save"]           td:nth-child(13) {
   background: rgba(201,168,76,0.06);
 }
 /* Stronger tint on the active header cell itself */
-table[data-sort="name"]          th:nth-child(5),
-table[data-sort="faction"]       th:nth-child(6),
-table[data-sort="grand_alliance"] th:nth-child(7),
-table[data-sort="move"]          th:nth-child(8),
-table[data-sort="health"]        th:nth-child(9),
-table[data-sort="control"]       th:nth-child(10),
-table[data-sort="save"]          th:nth-child(11),
-table[data-sort="points"]        th:nth-child(12) {
+table[data-sort="name"]           th:nth-child(5),
+table[data-sort="faction"]        th:nth-child(7),
+table[data-sort="points"]         th:nth-child(8),
+table[data-sort="grand_alliance"] th:nth-child(9),
+table[data-sort="move"]           th:nth-child(10),
+table[data-sort="health"]         th:nth-child(11),
+table[data-sort="control"]        th:nth-child(12),
+table[data-sort="save"]           th:nth-child(13) {
   background: rgba(201,168,76,0.14);
 }
 
@@ -1689,10 +1691,15 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
   right: 0px;
   background: #0c0a08;
   border: 1px solid #c8a840;
-  border-radius: 2px;
-  padding: 2px 7px;
+  border-radius: 50%;
+  width: 42px;
+  height: 42px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
-  line-height: 1.15;
+  line-height: 1.1;
 }
 .gw-ward-pip-val { display: block; font-size: 0.88rem; font-weight: 700; color: #f2e8c0; font-family: 'Palatino Linotype', Georgia, serif; }
 .gw-ward-pip-lbl { display: block; font-size: 0.44rem; letter-spacing: 0.15em; color: #c8a840; font-family: Arial, sans-serif; text-transform: uppercase; }
@@ -1790,13 +1797,14 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
 .gw-weapon-table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
   font-size: 0.72rem;
   font-family: Arial, sans-serif;
   border: 1px solid rgba(200,168,64,0.2);
 }
 .gw-weapon-table thead tr { background: #201c18; }
 .gw-weapon-table th {
-  padding: 4px 6px;
+  padding: 3px 4px;
   color: #c8a840;
   font-weight: 600;
   text-align: center;
@@ -1804,21 +1812,27 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
   letter-spacing: 0.06em;
   border-bottom: 1px solid rgba(200,168,64,0.35);
   white-space: nowrap;
+  overflow: hidden;
 }
-.gw-th-name   { text-align: left !important; min-width: 110px; }
-.gw-th-ability{ text-align: left !important; }
+/* Name col: medium fixed width; stat cols: narrow; ability col: fills rest */
+.gw-th-name    { text-align: left !important; width: 120px; }
+.gw-th-range   { width: 40px; }
+.gw-th-stat    { width: 30px; }
+.gw-th-ability { text-align: left !important; }  /* takes remaining space */
 
 .gw-weapon-table td {
-  padding: 4px 6px;
+  padding: 3px 4px;
   color: #d4c8a0;
   text-align: center;
   border-bottom: 1px solid rgba(200,168,64,0.08);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .gw-row-a { background: rgba(255,255,255,0.02); }
 .gw-row-b { background: rgba(0,0,0,0.22); }
-.gw-td-name   { text-align: left !important; font-weight: 500; color: #e0d4a8; }
+.gw-td-name   { text-align: left !important; font-weight: 500; color: #e0d4a8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .gw-td-stat   { font-family: 'Cinzel', 'Palatino Linotype', serif; font-size: 0.72rem; white-space: nowrap; }
-.gw-td-ability{ text-align: left !important; font-size: 0.62rem; color: #a09070; font-style: italic; }
+.gw-td-ability{ text-align: left !important; font-size: 0.65rem; color: #c0b890; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ── Abilities section ── */
 .gw-abilities-section {
