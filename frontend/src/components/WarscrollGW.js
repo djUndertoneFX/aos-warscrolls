@@ -64,14 +64,46 @@ function getPhaseStyle(timing) {
   return PHASE_DEFAULT;
 }
 
-// ── Render text with "Term:" bolded at the start of a segment ────────────────
-function BoldTerm({ text }) {
+// ── Known AoS keywords that appear in ability text ───────────────────────────
+const UNIVERSAL_KW = new Set([
+  'HERO','MONSTER','CAVALRY','INFANTRY','BEAST','WAR MACHINE','FLY',
+  'WIZARD','PRIEST','UNIQUE','CHAMPION','MUSICIAN','STANDARD BEARER',
+  'FACTION TERRAIN','MANIFESTATION','REINFORCED',
+  'ORDER','CHAOS','DEATH','DESTRUCTION',
+  'FRIENDLY','ENEMY',
+]);
+
+// Highlight AoS keywords in a string: bold + uppercase
+function FormatText({ text, keywords = [] }) {
+  if (!text) return null;
+  const kwSet = new Set([...UNIVERSAL_KW, ...keywords.map(k => k.trim().toUpperCase())]);
+  // Sort longest first so multi-word keywords match before single words
+  const kwList = [...kwSet].sort((a, b) => b.length - a.length);
+  const escaped = kwList.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const regex = new RegExp(`(${escaped.join('|')})`, 'gi');
+  const tokens = text.split(regex);
+  return (
+    <>{tokens.map((tok, i) =>
+      kwSet.has(tok.toUpperCase())
+        ? <strong key={i} className="gw-kw-inline">{tok.toUpperCase()}</strong>
+        : tok
+    )}</>
+  );
+}
+
+// ── Render text with "Term:" bolded at the start + keyword highlighting ───────
+function BoldTerm({ text, keywords }) {
   if (!text) return null;
   const m = text.match(/^([^:]+:)\s*([\s\S]+)$/);
   if (m) {
-    return <><strong className="gw-effect-term">{m[1]}</strong>{' '}{m[2]}</>;
+    return (
+      <>
+        <strong className="gw-effect-term">{m[1]}</strong>{' '}
+        <FormatText text={m[2]} keywords={keywords} />
+      </>
+    );
   }
-  return <>{text}</>;
+  return <FormatText text={text} keywords={keywords} />;
 }
 
 // Split an effect string into paragraphs at each "Term:" boundary
@@ -175,7 +207,7 @@ function WeaponSection({ weapons, type }) {
 }
 
 // ── Ability card ─────────────────────────────────────────────────────────────
-function AbilityCard({ ab }) {
+function AbilityCard({ ab, keywords }) {
   const { showFlavorText } = useSettings();
   const ps      = getPhaseStyle(ab.timing);
   const bullets = Array.isArray(ab.bullets) ? ab.bullets : [];
@@ -192,7 +224,8 @@ function AbilityCard({ ab }) {
         )}
         {ab.declare && (
           <p className="gw-ability-para">
-            <span className="gw-ability-lbl">Declare: </span>{ab.declare}
+            <span className="gw-ability-lbl">Declare: </span>
+            <FormatText text={ab.declare} keywords={keywords} />
           </p>
         )}
         {(ab.effect || bullets.length > 0) && (() => {
@@ -203,13 +236,15 @@ function AbilityCard({ ab }) {
               <span className="gw-ability-lbl">Effect: </span>
               {allParts.map((part, i) => (
                 <p key={i} className={i === 0 ? 'gw-ability-effect-first' : 'gw-ability-bullet'}>
-                  {i === 0 && allParts.length > 1 ? part : <BoldTerm text={part} />}
+                  {i === 0 && allParts.length > 1
+                    ? <FormatText text={part} keywords={keywords} />
+                    : <BoldTerm text={part} keywords={keywords} />}
                 </p>
               ))}
               {bullets.length > 0 && (
                 <div className="gw-ability-bullets">
                   {bullets.map((b, i) => (
-                    <p key={i} className="gw-ability-bullet"><BoldTerm text={b} /></p>
+                    <p key={i} className="gw-ability-bullet"><BoldTerm text={b} keywords={keywords} /></p>
                   ))}
                 </div>
               )}
@@ -346,7 +381,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext }) {
             <div className="gw-section-rule"><span>ABILITIES</span></div>
             <div className="gw-abilities-row">
               <div className="gw-abilities-grid">
-                {abilities.map((ab, i) => <AbilityCard key={i} ab={ab} />)}
+                {abilities.map((ab, i) => <AbilityCard key={i} ab={ab} keywords={allKeywords} />)}
               </div>
               {imageUrl && (
                 <div className="gw-abilities-img-col">

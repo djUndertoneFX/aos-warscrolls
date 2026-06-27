@@ -2005,6 +2005,12 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
   font-family: Arial, sans-serif;
 }
 
+/* ── Inline keyword highlight (INFANTRY, FYRESLAYERS, etc.) ── */
+.gw-kw-inline {
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
 /* ── Source link ── */
 .gw-source {
   padding: 6px 16px 8px;
