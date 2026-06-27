@@ -67,7 +67,7 @@ function getPhaseStyle(timing) {
 // ── Render text with "Term:" bolded at the start of a segment ────────────────
 function BoldTerm({ text }) {
   if (!text) return null;
-  const m = text.match(/^([^:]+:)\s([\s\S]+)$/);
+  const m = text.match(/^([^:]+:)\s*([\s\S]+)$/);
   if (m) {
     return <><strong className="gw-effect-term">{m[1]}</strong>{' '}{m[2]}</>;
   }
@@ -79,8 +79,8 @@ function BoldTerm({ text }) {
 // → ["Intro text.", "Grimnir's Grit: blah.", "Grimnir's Resolve: blah"]
 function splitEffectParts(text) {
   if (!text) return [];
-  // Split just before any capitalized phrase ending in colon (e.g. "Grimnir's Grit:")
-  const parts = text.split(/ (?=[A-Z][A-Za-z'\-]{1,20}(?:\s[A-Za-z'\-]{1,20}){0,3}:)/);
+  // Include curly apostrophe ’ (used by Wahapedia) alongside straight apostrophe
+  const parts = text.split(/ (?=[A-Z][A-Za-z'’\-]{1,20}(?:\s[A-Za-z'’\-]{1,20}){0,3}:)/);
   return parts.map(p => p.trim()).filter(Boolean);
 }
 
@@ -203,7 +203,7 @@ function AbilityCard({ ab }) {
               <span className="gw-ability-lbl">Effect: </span>
               {allParts.map((part, i) => (
                 <p key={i} className={i === 0 ? 'gw-ability-effect-first' : 'gw-ability-bullet'}>
-                  <BoldTerm text={part} />
+                  {i === 0 && allParts.length > 1 ? part : <BoldTerm text={part} />}
                 </p>
               ))}
               {bullets.length > 0 && (
