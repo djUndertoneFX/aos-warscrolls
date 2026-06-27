@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import { useSettings } from '../SettingsContext';
 
 // ── Phase colour mapping ─────────────────────────────────────────────────────
 const PHASE_PRESETS = [
@@ -16,7 +17,7 @@ const PHASE_PRESETS = [
 const PHASE_DEFAULT = { hdrBg: '#242018', hdrTxt: '#d0d0b8', border: '#585838' };
 
 function getPhaseStyle(timing) {
-  if (!timing) return PHASE_PRESETS[0].style; // passive
+  if (!timing) return PHASE_PRESETS[0].style;
   const t = timing.toLowerCase();
   for (const { keys, style } of PHASE_PRESETS) {
     if (keys.some(k => t.includes(k))) return style;
@@ -24,29 +25,47 @@ function getPhaseStyle(timing) {
   return PHASE_DEFAULT;
 }
 
-// ── Stats Wheel (SVG) ────────────────────────────────────────────────────────
+// ── Render text with "Term:" bolded at the start of a segment ────────────────
+function BoldTerm({ text }) {
+  if (!text) return null;
+  const m = text.match(/^([^:]+:)\s([\s\S]+)$/);
+  if (m) {
+    return <><strong className="gw-effect-term">{m[1]}</strong>{' '}{m[2]}</>;
+  }
+  return <>{text}</>;
+}
+
+// ── Stats Wheel (SVG) — diagonal quadrant dividers ───────────────────────────
 function StatsWheel({ move, health, save, control }) {
   const S = 140, cx = 70, cy = 70, r = 62;
   const gold = '#c8a840';
+  const d45 = Math.round(r * 0.7071); // 44
   const statTxt = { fill: '#f0ead8', fontSize: 18, fontWeight: 700, fontFamily: "'Palatino Linotype', Georgia, serif" };
   const lblTxt  = { fill: gold,     fontSize: 7.5, letterSpacing: 1, fontFamily: 'Arial, sans-serif' };
+
+  // Diagonal quadrant wedge paths (NW/NE/SE/SW corners of the circle)
+  const quadrants = [
+    // top (MOVE): NW corner → arc to NE corner
+    `M${cx},${cy} L${cx-d45},${cy-d45} A${r},${r} 0 0,1 ${cx+d45},${cy-d45} Z`,
+    // right (SAVE): NE → arc to SE
+    `M${cx},${cy} L${cx+d45},${cy-d45} A${r},${r} 0 0,1 ${cx+d45},${cy+d45} Z`,
+    // bottom (CONTROL): SE → arc to SW
+    `M${cx},${cy} L${cx+d45},${cy+d45} A${r},${r} 0 0,1 ${cx-d45},${cy+d45} Z`,
+    // left (HEALTH): SW → arc to NW
+    `M${cx},${cy} L${cx-d45},${cy+d45} A${r},${r} 0 0,1 ${cx-d45},${cy-d45} Z`,
+  ];
 
   return (
     <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`} className="gw-stats-wheel" aria-label="Unit stats">
       {/* rim */}
       <circle cx={cx} cy={cy} r={r + 5} fill="#0c0a08" />
-      {/* quadrant backgrounds */}
-      {[
-        `M${cx},${cy} L${cx},${cy-r} A${r},${r} 0 0,1 ${cx+r},${cy} Z`,
-        `M${cx},${cy} L${cx+r},${cy} A${r},${r} 0 0,1 ${cx},${cy+r} Z`,
-        `M${cx},${cy} L${cx},${cy+r} A${r},${r} 0 0,1 ${cx-r},${cy} Z`,
-        `M${cx},${cy} L${cx-r},${cy} A${r},${r} 0 0,1 ${cx},${cy-r} Z`,
-      ].map((d, i) => (
+      {/* diagonal quadrant backgrounds */}
+      {quadrants.map((d, i) => (
         <path key={i} d={d} fill={i % 2 === 0 ? '#1e1a14' : '#181410'} />
       ))}
-      {/* dividing cross */}
-      <line x1={cx} y1={cy - r} x2={cx} y2={cy + r} stroke={gold} strokeWidth="1.5" />
-      <line x1={cx - r} y1={cy} x2={cx + r} y2={cy} stroke={gold} strokeWidth="1.5" />
+      {/* diagonal dividing lines */}
+      <line x1={cx-d45} y1={cy-d45} x2={cx+d45} y2={cy+d45} stroke={gold} strokeWidth="1.5" />
+      <line x1={cx+d45} y1={cy-d45} x2={cx-d45} y2={cy+d45} stroke={gold} strokeWidth="1.5" />
       {/* outer ring */}
       <circle cx={cx} cy={cy} r={r} fill="none" stroke={gold} strokeWidth="2.2" />
       {/* centre jewel */}
@@ -77,7 +96,6 @@ function WeaponSection({ weapons, type }) {
   const rows = weapons.filter(w => w.type === type);
   if (!rows.length) return null;
   const isRanged = type === 'ranged';
-  const hasAbility = rows.some(w => w.ability);
 
   return (
     <div className="gw-weapon-section">
@@ -91,7 +109,7 @@ function WeaponSection({ weapons, type }) {
             <th className="gw-th-name">Weapon</th>
             {isRanged && <th>Range</th>}
             <th>Atk</th><th>Hit</th><th>Wnd</th><th>Rnd</th><th>Dmg</th>
-            {hasAbility && <th className="gw-th-ability">Ability</th>}
+            <th className="gw-th-ability">Ability</th>
           </tr>
         </thead>
         <tbody>
@@ -104,7 +122,7 @@ function WeaponSection({ weapons, type }) {
               <td className="gw-td-stat">{w.wound}</td>
               <td className="gw-td-stat">{w.rend  || '—'}</td>
               <td className="gw-td-stat">{w.damage}</td>
-              {hasAbility && <td className="gw-td-ability">{w.ability || '—'}</td>}
+              <td className="gw-td-ability">{w.ability || '-'}</td>
             </tr>
           ))}
         </tbody>
@@ -115,8 +133,10 @@ function WeaponSection({ weapons, type }) {
 
 // ── Ability card ─────────────────────────────────────────────────────────────
 function AbilityCard({ ab }) {
-  const ps     = getPhaseStyle(ab.timing);
+  const { showFlavorText } = useSettings();
+  const ps      = getPhaseStyle(ab.timing);
   const bullets = Array.isArray(ab.bullets) ? ab.bullets : [];
+
   return (
     <div className="gw-ability-card" style={{ borderColor: ps.border }}>
       <div className="gw-ability-hdr" style={{ background: ps.hdrBg, color: ps.hdrTxt }}>
@@ -124,6 +144,9 @@ function AbilityCard({ ab }) {
         <span className="gw-ability-name">{ab.name}</span>
       </div>
       <div className="gw-ability-body">
+        {showFlavorText && ab.flavor && (
+          <p className="gw-ability-flavor">{ab.flavor}</p>
+        )}
         {ab.declare && (
           <p className="gw-ability-para">
             <span className="gw-ability-lbl">Declare: </span>{ab.declare}
@@ -135,7 +158,7 @@ function AbilityCard({ ab }) {
             {ab.effect && <span>{ab.effect}</span>}
             {bullets.length > 0 && (
               <ul className="gw-ability-bullets">
-                {bullets.map((b, i) => <li key={i}>{b}</li>)}
+                {bullets.map((b, i) => <li key={i}><BoldTerm text={b} /></li>)}
               </ul>
             )}
           </div>
@@ -163,7 +186,27 @@ export default function WarscrollGW({ unit, onClose }) {
     return () => window.removeEventListener('keydown', h);
   }, [onClose]);
 
-  const keywords   = unit.keywords ? unit.keywords.split(',').map(k => k.trim()).filter(Boolean) : [];
+  const allKeywords = unit.keywords ? unit.keywords.split(',').map(k => k.trim()).filter(Boolean) : [];
+
+  // Split into two lines matching the official warscroll layout:
+  // Line 1 — unit-role keywords (Hero, Infantry, Monster, Wizard, Ward, etc.)
+  // Line 2 — affiliation keywords (Grand Alliance, faction, race)
+  const ROLE_KW = new Set([
+    'HERO','MONSTER','CAVALRY','INFANTRY','BEAST','UNIQUE','WAR MACHINE',
+    'FACTION TERRAIN','MANIFESTATION','CHAMPION','MUSICIAN','STANDARD BEARER',
+    'FLY','FLAMMABLE','UNDERDOG',
+  ]);
+  const kwLine1 = [];
+  const kwLine2 = [];
+  for (const kw of allKeywords) {
+    const up = kw.toUpperCase();
+    if (ROLE_KW.has(up) || /^WIZARD(\s*\(\d+\))?$/i.test(kw) || /^PRIEST(\s*\(\d+\))?$/i.test(kw) || /^WARD\s*\(\d+\+?\)$/i.test(kw)) {
+      kwLine1.push(kw);
+    } else {
+      kwLine2.push(kw);
+    }
+  }
+
   const hasRanged  = weapons.some(w => w.type === 'ranged');
   const hasMelee   = weapons.some(w => w.type === 'melee');
   const hasWeapons = hasRanged || hasMelee;
@@ -175,82 +218,106 @@ export default function WarscrollGW({ unit, onClose }) {
 
         <button className="gw-close" onClick={onClose} title="Close (Esc)">✕</button>
 
-        {/* ── Header band ── */}
-        <div className="gw-header">
-          <div className="gw-header-type">· WARSCROLL ·</div>
-          <div className="gw-header-name">{unit.name}</div>
-          {unit.faction && <div className="gw-header-faction">{unit.faction.toUpperCase()}</div>}
-        </div>
-
-        {/* ── Body: left col (stats + image) / right col (weapons) ── */}
-        <div className="gw-body-row">
-          <div className="gw-left-col">
+        {/* ── Top band: wheel + header info ── */}
+        <div className="gw-top-band">
+          {/* Stat wheel with Ward badge floating upper-right */}
+          <div className="gw-wheel-col">
             <StatsWheel move={unit.move} health={unit.health} save={unit.save} control={unit.control} />
-
-            {/* Ward + Points badges */}
-            {(unit.ward || unit.points) && (
-              <div className="gw-badges-row">
-                {unit.ward && (
-                  <div className="gw-badge">
-                    <span className="gw-badge-val">{unit.ward}</span>
-                    <span className="gw-badge-lbl">WARD</span>
-                  </div>
-                )}
-                {unit.points && (
-                  <div className="gw-badge">
-                    <span className="gw-badge-val">{unit.points}</span>
-                    <span className="gw-badge-lbl">PTS</span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Unit size */}
-            {unit.unit_size && (
-              <div className="gw-unit-meta">Size: {unit.unit_size}</div>
-            )}
-
-            {/* Miniature image */}
-            {imageUrl && (
-              <div className="gw-img-wrap">
-                <img src={imageUrl} alt={unit.name} className="gw-unit-img"
-                  onError={e => { e.target.style.display = 'none'; }} />
+            {unit.ward && (
+              <div className="gw-ward-pip">
+                <span className="gw-ward-pip-val">{unit.ward}</span>
+                <span className="gw-ward-pip-lbl">WARD</span>
               </div>
             )}
           </div>
 
-          <div className="gw-right-col">
-            {hasWeapons ? (
-              <>
-                {hasRanged && <WeaponSection weapons={weapons} type="ranged" />}
-                {hasMelee  && <WeaponSection weapons={weapons} type="melee" />}
-              </>
-            ) : (
-              <div className="gw-no-weapons">No weapon data available.</div>
-            )}
+          {/* Header text column */}
+          <div className="gw-header-col">
+            <div className="gw-header-type">
+              · {unit.faction ? unit.faction.toUpperCase() + ' ' : ''}WARSCROLL ·
+            </div>
+            <div className="gw-header-name-row">
+              <div className="gw-header-name">{unit.name}</div>
+              {(unit.points || unit.unit_size) && (
+                <div className="gw-header-meta">
+                  {unit.points && (
+                    <div className="gw-meta-pip">
+                      <span className="gw-meta-pip-val">{unit.points}</span>
+                      <span className="gw-meta-pip-lbl">PTS</span>
+                    </div>
+                  )}
+                  {unit.unit_size && (
+                    <div className="gw-meta-pip">
+                      <span className="gw-meta-pip-val">{unit.unit_size}</span>
+                      <span className="gw-meta-pip-lbl">SIZE</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* ── Abilities ── */}
+        {/* ── Weapons ── */}
+        <div className="gw-weapons-row">
+          {hasWeapons ? (
+            <>
+              {hasRanged && <WeaponSection weapons={weapons} type="ranged" />}
+              {hasMelee  && <WeaponSection weapons={weapons} type="melee" />}
+            </>
+          ) : (
+            <div className="gw-no-weapons">No weapon data available.</div>
+          )}
+        </div>
+
+        {/* ── Abilities + image ── */}
         {abilities.length > 0 && (
           <div className="gw-abilities-section">
             <div className="gw-section-rule"><span>ABILITIES</span></div>
-            <div className="gw-abilities-grid">
-              {abilities.map((ab, i) => <AbilityCard key={i} ab={ab} />)}
+            <div className="gw-abilities-row">
+              <div className="gw-abilities-grid">
+                {abilities.map((ab, i) => <AbilityCard key={i} ab={ab} />)}
+              </div>
+              {imageUrl && (
+                <div className="gw-abilities-img-col">
+                  <img
+                    src={imageUrl}
+                    alt={unit.name}
+                    className="gw-unit-img"
+                    onError={e => { e.target.style.display = 'none'; }}
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {/* ── Keywords footer ── */}
-        {keywords.length > 0 && (
+        {/* Keywords footer — two lines */}
+        {allKeywords.length > 0 && (
           <div className="gw-keywords-bar">
             <span className="gw-kw-label">KEYWORDS</span>
-            {keywords.map((k, i) => (
-              <React.Fragment key={k}>
-                {i > 0 && <span className="gw-kw-sep">·</span>}
-                <span className="gw-kw">{k.toUpperCase()}</span>
-              </React.Fragment>
-            ))}
+            <div className="gw-kw-lines">
+              {kwLine1.length > 0 && (
+                <div className="gw-kw-line">
+                  {kwLine1.map((k, i) => (
+                    <React.Fragment key={k}>
+                      {i > 0 && <span className="gw-kw-sep">·</span>}
+                      <span className="gw-kw">{k.toUpperCase()}</span>
+                    </React.Fragment>
+                  ))}
+                </div>
+              )}
+              {kwLine2.length > 0 && (
+                <div className="gw-kw-line gw-kw-line2">
+                  {kwLine2.map((k, i) => (
+                    <React.Fragment key={k}>
+                      {i > 0 && <span className="gw-kw-sep">·</span>}
+                      <span className="gw-kw">{k.toUpperCase()}</span>
+                    </React.Fragment>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, NavLink, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './AuthContext';
+import { SettingsProvider, useSettings } from './SettingsContext';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
@@ -16,12 +17,41 @@ const NAV_PAGES = [
   { label: 'Spearhead',          path: '/spearhead',       soon: true },
   { label: 'Path to Glory',      path: '/path-to-glory',   soon: true },
   { label: 'Consult the Oracle', path: '/consult-oracle',  soon: true },
+  { label: 'Comparitator',       path: '/comparitator',    soon: true },
 ];
+
+function SettingsPanel({ onClose }) {
+  const { showFlavorText, setSetting } = useSettings();
+  const ref = useRef(null);
+
+  useEffect(() => {
+    function handler(e) {
+      if (ref.current && !ref.current.contains(e.target)) onClose();
+    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [onClose]);
+
+  return (
+    <div className="settings-panel" ref={ref}>
+      <div className="settings-panel-title">Display Settings</div>
+      <label className="settings-cb-row">
+        <input
+          type="checkbox"
+          checked={showFlavorText}
+          onChange={e => setSetting('showFlavorText', e.target.checked)}
+        />
+        <span>Flavor Text</span>
+      </label>
+    </div>
+  );
+}
 
 function Navbar({ headerCollapsed, onToggleCollapse }) {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const isWarscrolls = location.pathname === '/warscrolls' || location.pathname === '/simulacrum';
   if (!user) return null;
   return (
@@ -44,6 +74,16 @@ function Navbar({ headerCollapsed, onToggleCollapse }) {
           ))}
         </div>
         <div className="navbar-right">
+          <div className="settings-gear-wrap">
+            <button
+              className="btn-settings-gear"
+              onClick={() => setSettingsOpen(o => !o)}
+              title="Display Settings"
+            >
+              ⚙
+            </button>
+            {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
+          </div>
           <button className="hamburger" onClick={() => setMenuOpen(o => !o)} aria-label="Menu">
             <span /><span /><span />
           </button>
@@ -112,6 +152,7 @@ function AppRoutes() {
         <Route path="/spearhead"     element={<ProtectedRoute><ComingSoon title="Spearhead" /></ProtectedRoute>} />
         <Route path="/path-to-glory"  element={<ProtectedRoute><ComingSoon title="Path to Glory" /></ProtectedRoute>} />
         <Route path="/consult-oracle" element={<ProtectedRoute><ComingSoon title="Consult the Oracle" /></ProtectedRoute>} />
+        <Route path="/comparitator"   element={<ProtectedRoute><ComingSoon title="Comparitator" /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to={user ? "/warscrolls" : "/login"} />} />
       </Routes>
     </div>
@@ -121,9 +162,11 @@ function AppRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
+      <SettingsProvider>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </SettingsProvider>
     </BrowserRouter>
   );
 }
