@@ -155,20 +155,20 @@ function StatsWheel({ move, health, save, control }) {
       <circle cx={cx} cy={cy} r="3" fill="#0c0a08" />
 
       {/* MOVE — label above number (outside toward rim) */}
-      <text x={cx} y={cy - 40} textAnchor="middle" dominantBaseline="middle" {...lblTxt}>MOVE</text>
-      <text x={cx} y={cy - 24} textAnchor="middle" dominantBaseline="middle" {...statTxt}>{move || '—'}</text>
+      <text x={cx} y={cy - 54} textAnchor="middle" dominantBaseline="middle" {...lblTxt}>MOVE</text>
+      <text x={cx} y={cy - 40} textAnchor="middle" dominantBaseline="middle" {...statTxt}>{move || '—'}</text>
 
       {/* HEALTH — left (number left, label further left/below) */}
-      <text x={cx - 33} y={cy - 8} textAnchor="middle" dominantBaseline="middle" {...statTxt}>{health || '—'}</text>
-      <text x={cx - 33} y={cy +  9} textAnchor="middle" dominantBaseline="middle" {...lblTxt}>HEALTH</text>
+      <text x={cx - 48} y={cy - 8} textAnchor="middle" dominantBaseline="middle" {...statTxt}>{health || '—'}</text>
+      <text x={cx - 48} y={cy +  9} textAnchor="middle" dominantBaseline="middle" {...lblTxt}>HEALTH</text>
 
       {/* SAVE — right */}
-      <text x={cx + 33} y={cy - 8} textAnchor="middle" dominantBaseline="middle" {...statTxt}>{save || '—'}</text>
-      <text x={cx + 33} y={cy +  9} textAnchor="middle" dominantBaseline="middle" {...lblTxt}>SAVE</text>
+      <text x={cx + 48} y={cy - 8} textAnchor="middle" dominantBaseline="middle" {...statTxt}>{save || '—'}</text>
+      <text x={cx + 48} y={cy +  9} textAnchor="middle" dominantBaseline="middle" {...lblTxt}>SAVE</text>
 
       {/* CONTROL — number above label (label outside toward rim) */}
-      <text x={cx} y={cy + 26} textAnchor="middle" dominantBaseline="middle" {...statTxt}>{control || '—'}</text>
-      <text x={cx} y={cy + 43} textAnchor="middle" dominantBaseline="middle" {...lblTxt}>CONTROL</text>
+      <text x={cx} y={cy + 40} textAnchor="middle" dominantBaseline="middle" {...statTxt}>{control || '—'}</text>
+      <text x={cx} y={cy + 54} textAnchor="middle" dominantBaseline="middle" {...lblTxt}>CONTROL</text>
     </svg>
   );
 }
