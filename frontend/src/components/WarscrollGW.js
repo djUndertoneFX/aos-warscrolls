@@ -278,7 +278,7 @@ function AbilityCard({ ab, keywords }) {
 }
 
 // ── Main component ───────────────────────────────────────────────────────────
-export default function WarscrollGW({ unit, onClose, onPrev, onNext }) {
+export default function WarscrollGW({ unit, onClose, onPrev, onNext, onFilterApply, factions = [] }) {
   const { showFlavorText } = useSettings();
   const weapons   = React.useMemo(() => { try { return JSON.parse(unit.weapons   || '[]'); } catch { return []; } }, [unit]);
   const abilities = React.useMemo(() => { try { return JSON.parse(unit.abilities || '[]'); } catch { return []; } }, [unit]);
@@ -355,6 +355,31 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext }) {
   const hasMelee   = weapons.some(w => w.type === 'melee');
   const hasWeapons = hasRanged || hasMelee;
 
+  // Map a keyword string to a filter type for onFilterApply
+  const KW_TYPE_MAP = {
+    'HERO': 'hero', 'MONSTER': 'monster', 'INFANTRY': 'infantry',
+    'CAVALRY': 'cavalry', 'BEAST': 'beast', 'WAR MACHINE': 'warmachine',
+    'MANIFESTATION': 'manifestation',
+  };
+  const ALLIANCES = new Set(['Order', 'Chaos', 'Death', 'Destruction']);
+
+  const handleKwClick = (kw, exclude, e) => {
+    if (!onFilterApply) return;
+    e.preventDefault();
+    const up = kw.replace(/\s*\(.*\)$/, '').trim().toUpperCase();
+    if (KW_TYPE_MAP[up]) {
+      onFilterApply(KW_TYPE_MAP[up], true, exclude);
+    } else {
+      // Check if kw matches a faction name
+      const matchedFaction = factions.find(f => f.faction.toUpperCase() === up);
+      if (matchedFaction) {
+        onFilterApply('faction', matchedFaction.faction_slug, exclude);
+      } else {
+        onFilterApply('search', kw, exclude);
+      }
+    }
+  };
+
   return (
     <>
       <div className="gw-overlay" />
@@ -379,7 +404,25 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext }) {
           {/* Center: faction subtitle + unit name */}
           <div className="gw-header-center">
             <div className="gw-header-type">
-              · {unit.faction ? unit.faction.toUpperCase() + ' ' : ''}WARSCROLL ·
+              {unit.grand_alliance && onFilterApply ? (
+                <span
+                  className="gw-filter-chip gw-filter-chip-alliance"
+                  title="Left-click to filter by alliance · Right-click to exclude"
+                  onClick={e => { onFilterApply('alliance', unit.grand_alliance, false); e.stopPropagation(); }}
+                  onContextMenu={e => { e.preventDefault(); onFilterApply('alliance', unit.grand_alliance, true); }}
+                >{unit.grand_alliance.toUpperCase()}</span>
+              ) : (unit.grand_alliance ? <span>{unit.grand_alliance.toUpperCase()}</span> : null)}
+              {' '}·{unit.faction && onFilterApply ? (
+                <>
+                  {' '}
+                  <span
+                    className="gw-filter-chip"
+                    title="Left-click to filter by faction · Right-click to exclude"
+                    onClick={e => { const f = factions.find(fc => fc.faction === unit.faction); f && onFilterApply('faction', f.faction_slug, false); e.stopPropagation(); }}
+                    onContextMenu={e => { e.preventDefault(); const f = factions.find(fc => fc.faction === unit.faction); f && onFilterApply('faction', f.faction_slug, true); }}
+                  >{unit.faction.toUpperCase()}</span>{' '}
+                </>
+              ) : (unit.faction ? ' ' + unit.faction.toUpperCase() + ' ' : ' ')}WARSCROLL ·
             </div>
             <div className="gw-header-name">{unit.name}</div>
           </div>
@@ -461,7 +504,12 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext }) {
                   {kwLine1.map((k, i) => (
                     <React.Fragment key={k}>
                       {i > 0 && <span className="gw-kw-sep">·</span>}
-                      <span className="gw-kw">{k.toUpperCase()}</span>
+                      <span
+                        className={`gw-kw${onFilterApply ? ' gw-kw-clickable' : ''}`}
+                        title={onFilterApply ? 'Left-click to filter · Right-click to exclude' : undefined}
+                        onClick={onFilterApply ? e => handleKwClick(k, false, e) : undefined}
+                        onContextMenu={onFilterApply ? e => handleKwClick(k, true, e) : undefined}
+                      >{k.toUpperCase()}</span>
                     </React.Fragment>
                   ))}
                 </div>
@@ -471,7 +519,12 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext }) {
                   {kwLine2.map((k, i) => (
                     <React.Fragment key={k}>
                       {i > 0 && <span className="gw-kw-sep">·</span>}
-                      <span className="gw-kw">{k.toUpperCase()}</span>
+                      <span
+                        className={`gw-kw${onFilterApply ? ' gw-kw-clickable' : ''}`}
+                        title={onFilterApply ? 'Left-click to filter · Right-click to exclude' : undefined}
+                        onClick={onFilterApply ? e => handleKwClick(k, false, e) : undefined}
+                        onContextMenu={onFilterApply ? e => handleKwClick(k, true, e) : undefined}
+                      >{k.toUpperCase()}</span>
                     </React.Fragment>
                   ))}
                 </div>

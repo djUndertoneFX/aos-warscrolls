@@ -714,6 +714,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
     {detailUnit && (
       <WarscrollGW
         unit={detailUnit}
+        factions={factions}
         onClose={() => setDetailUnit(null)}
         onPrev={() => {
           const rows = data?.data ?? [];
@@ -724,6 +725,25 @@ export default function WarscrollsPage({ headerCollapsed }) {
           const rows = data?.data ?? [];
           const idx = rows.findIndex(u => u.id === detailUnit.id);
           if (idx < rows.length - 1) setDetailUnit(rows[idx + 1]);
+        }}
+        onFilterApply={(type, value, exclude) => {
+          setDetailUnit(null);
+          setPage(1);
+          const triVal = exclude ? 'exclude' : true;
+          if (type === 'alliance') { handleAllianceChange(exclude ? '' : value); if (exclude) setSearch(s => { const term = `-alliance:${value}`; return s.includes(term) ? s : (s + ' ' + term).trim(); }); }
+          else if (type === 'faction') { setFaction(exclude ? '' : value); if (exclude) setSearch(s => { const f = factions.find(fc => fc.faction_slug === value); const term = f ? `-"${f.faction}"` : ''; return term && !s.includes(term) ? (s + ' ' + term).trim() : s; }); }
+          else if (type === 'hero')          setIsHero(triVal);
+          else if (type === 'monster')       setIsMonster(triVal);
+          else if (type === 'infantry')      setIsInfantry(triVal);
+          else if (type === 'cavalry')       setIsCavalry(triVal);
+          else if (type === 'beast')         setIsBeast(triVal);
+          else if (type === 'warmachine')    setIsWarMachine(triVal);
+          else if (type === 'manifestation') setIsManifestation(triVal);
+          else if (type === 'search') {
+            const term = exclude ? `-"${value}"` : `"${value}"`;
+            setSearch(s => s.includes(term) ? s : (s + ' ' + term).trim());
+            setSearchInput(s => s.includes(term) ? s : (s + ' ' + term).trim());
+          }
         }}
       />
     )}
