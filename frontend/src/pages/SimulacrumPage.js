@@ -44,13 +44,13 @@ function TriCheckbox({ value, onChange, label }) {
 const SORTABLE_COLS = [
   { key: 'name',          label: 'Unit Name', abbr: null },
   { key: 'faction',       label: 'Faction',   abbr: null },
-  { key: 'points',        label: 'Points',    abbr: 'Pts' },
   { key: 'grand_alliance',label: 'Alliance',  abbr: null },
-  { key: 'move',          label: 'Move',      abbr: 'Mv' },
-  { key: 'health',        label: 'Health',    abbr: 'HP' },
-  { key: 'control',       label: 'Control',   abbr: 'Ctrl' },
-  { key: 'save',          label: 'Save',      abbr: 'Sv' },
+  { key: 'points',        label: 'Points',    abbr: 'Pts' },
   { key: 'unit_size',     label: 'Models',    abbr: 'Mdl' },
+  { key: 'move',          label: 'Move',      abbr: 'Mv',   statGroup: 'start' },
+  { key: 'health',        label: 'Health',    abbr: 'HP',   statGroup: true },
+  { key: 'control',       label: 'Control',   abbr: 'Ctrl', statGroup: true },
+  { key: 'save',          label: 'Save',      abbr: 'Sv',   statGroup: 'end' },
 ];
 
 function AllianceBadge({ alliance, onClick, onContextMenu }) {
@@ -199,7 +199,6 @@ function SimulacrumBattle({ friendly, enemy, colWidths, thStyle, onUnitClick, on
               onError={e => { e.target.style.display='none'; }} />
           </td>
           <td className="col-faction">{row.faction}</td>
-          <td className="col-stat">{row.points || '—'}</td>
           <td onClick={e => e.stopPropagation()} onContextMenu={e => e.stopPropagation()}>
             {row.grand_alliance && (
               <AllianceBadge
@@ -209,11 +208,12 @@ function SimulacrumBattle({ friendly, enemy, colWidths, thStyle, onUnitClick, on
               />
             )}
           </td>
-          <td className="col-stat">{row.move || '—'}</td>
-          <td className="col-stat">{row.health || '—'}</td>
-          <td className="col-stat">{row.control || '—'}</td>
-          <td className="col-stat">{row.save || '—'}</td>
+          <td className="col-stat">{row.points || '—'}</td>
           <td className="col-stat">{row.unit_size || '—'}</td>
+          <td className="col-stat stat-group stat-group-start">{row.move || '—'}</td>
+          <td className="col-stat stat-group">{row.health || '—'}</td>
+          <td className="col-stat stat-group">{row.control || '—'}</td>
+          <td className="col-stat stat-group stat-group-end">{row.save || '—'}</td>
           <td onClick={e => e.stopPropagation()} onContextMenu={e => e.stopPropagation()}>
             <TypeTags row={row} onFilter={onFilter ? (type, exclude) => onFilter(type, null, exclude) : undefined} />
           </td>
@@ -295,7 +295,7 @@ function SimulacrumBattle({ friendly, enemy, colWidths, thStyle, onUnitClick, on
               const wKey = keyMap[col.key] || col.key;
               return (
                 <React.Fragment key={col.key}>
-                  <th style={thStyle(wKey)}>{col.abbr ? <span className="th-abbr">{col.abbr}</span> : col.label}</th>
+                  <th style={thStyle(wKey)} className={col.statGroup === 'start' ? 'stat-group stat-group-start' : col.statGroup === 'end' ? 'stat-group stat-group-end' : col.statGroup ? 'stat-group' : undefined}>{col.abbr ? <span className="th-abbr">{col.abbr}</span> : col.label}</th>
                   {col.key === 'name' && <th style={thStyle('thumb')}></th>}
                 </React.Fragment>
               );
@@ -886,7 +886,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
                   const wKey = keyMap[col.key] || col.key;
                   return (
                     <React.Fragment key={col.key}>
-                      <th style={thStyle(wKey)} className={`sortable ${sortBy === col.key ? 'sort-active' : ''}`} title={col.abbr ? col.label : undefined} onClick={e => handleSort(col.key, e)}>
+                      <th style={thStyle(wKey)} className={`sortable${col.statGroup === 'start' ? ' stat-group stat-group-start' : col.statGroup === 'end' ? ' stat-group stat-group-end' : col.statGroup ? ' stat-group' : ''} ${sortBy === col.key ? 'sort-active' : ''}`} title={col.abbr ? col.label : undefined} onClick={e => handleSort(col.key, e)}>
                         {col.abbr ? <span className="th-abbr">{col.abbr}</span> : col.label}
                         <SortIcon col={col.key} sortBy={sortBy} sortDir={sortDir} />
                         <span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e, wKey); }} />
@@ -966,12 +966,12 @@ export default function SimulacrumPage({ headerCollapsed }) {
                           />
                         )}
                       </td>
-                      <td className="col-stat">{row.move || '—'}</td>
-                      <td className="col-stat">{row.health || '—'}</td>
-                      <td className="col-stat">{row.control || '—'}</td>
-                      <td className="col-stat">{row.save || '—'}</td>
                       <td className="col-stat">{row.points || '—'}</td>
                       <td className="col-stat">{row.unit_size || '—'}</td>
+                      <td className="col-stat stat-group stat-group-start">{row.move || '—'}</td>
+                      <td className="col-stat stat-group">{row.health || '—'}</td>
+                      <td className="col-stat stat-group">{row.control || '—'}</td>
+                      <td className="col-stat stat-group stat-group-end">{row.save || '—'}</td>
                       <td onClick={e => e.stopPropagation()} onContextMenu={e => e.stopPropagation()}>
                         <TypeTags row={row} onFilter={(type, exclude) => handleFilterFromRow(type, null, exclude)} />
                       </td>

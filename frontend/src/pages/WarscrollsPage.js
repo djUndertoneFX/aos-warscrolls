@@ -45,13 +45,13 @@ function TriCheckbox({ value, onChange, label }) {
 const SORTABLE_COLS = [
   { key: 'name',          label: 'Unit Name', abbr: null },
   { key: 'faction',       label: 'Faction',   abbr: null },
-  { key: 'points',        label: 'Points',    abbr: 'Pts' },
   { key: 'grand_alliance',label: 'Alliance',  abbr: null },
-  { key: 'move',          label: 'Move',      abbr: 'Mv' },
-  { key: 'health',        label: 'Health',    abbr: 'HP' },
-  { key: 'control',       label: 'Control',   abbr: 'Ctrl' },
-  { key: 'save',          label: 'Save',      abbr: 'Sv' },
+  { key: 'points',        label: 'Points',    abbr: 'Pts' },
   { key: 'unit_size',     label: 'Models',    abbr: 'Mdl' },
+  { key: 'move',          label: 'Move',      abbr: 'Mv',   statGroup: 'start' },
+  { key: 'health',        label: 'Health',    abbr: 'HP',   statGroup: true },
+  { key: 'control',       label: 'Control',   abbr: 'Ctrl', statGroup: true },
+  { key: 'save',          label: 'Save',      abbr: 'Sv',   statGroup: 'end' },
 ];
 
 function AllianceBadge({ alliance, onClick, onContextMenu }) {
@@ -592,7 +592,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
                       <React.Fragment key={col.key}>
                         <th
                           style={thStyle(wKey)}
-                          className={`sortable ${sortBy === col.key ? 'sort-active' : ''}`}
+                          className={`sortable${col.statGroup === 'start' ? ' stat-group stat-group-start' : col.statGroup === 'end' ? ' stat-group stat-group-end' : col.statGroup ? ' stat-group' : ''} ${sortBy === col.key ? 'sort-active' : ''}`}
                           title={col.abbr ? col.label : undefined}
                           onClick={e => handleSort(col.key, e)}
                         >
@@ -685,7 +685,6 @@ export default function WarscrollsPage({ headerCollapsed }) {
                           />
                         </td>
                         <td className="col-faction">{row.faction}</td>
-                        <td className="col-stat">{row.points || '—'}</td>
                         <td onClick={e => e.stopPropagation()} onContextMenu={e => e.stopPropagation()}>
                           {row.grand_alliance && (
                             <AllianceBadge
@@ -695,11 +694,12 @@ export default function WarscrollsPage({ headerCollapsed }) {
                             />
                           )}
                         </td>
-                        <td className="col-stat">{row.move || '—'}</td>
-                        <td className="col-stat">{row.health || '—'}</td>
-                        <td className="col-stat">{row.control || '—'}</td>
-                        <td className="col-stat">{row.save || '—'}</td>
+                        <td className="col-stat">{row.points || '—'}</td>
                         <td className="col-stat">{row.unit_size || '—'}</td>
+                        <td className="col-stat stat-group stat-group-start">{row.move || '—'}</td>
+                        <td className="col-stat stat-group">{row.health || '—'}</td>
+                        <td className="col-stat stat-group">{row.control || '—'}</td>
+                        <td className="col-stat stat-group stat-group-end">{row.save || '—'}</td>
                         <td onClick={e => e.stopPropagation()} onContextMenu={e => e.stopPropagation()}>
                           <TypeTags row={row} onFilter={(type, exclude) => handleFilterFromRow(type, null, exclude)} />
                         </td>

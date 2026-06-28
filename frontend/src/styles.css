@@ -1243,6 +1243,18 @@ td.col-stat {
   font-size: 0.8rem;
   font-weight: 600;
 }
+
+.stat-group {
+  background: rgba(255, 255, 255, 0.035);
+}
+.stat-group-start {
+  background: rgba(255, 255, 255, 0.035);
+  border-left: 1px solid rgba(255, 255, 255, 0.09) !important;
+}
+.stat-group-end {
+  background: rgba(255, 255, 255, 0.035);
+  border-right: 1px solid rgba(255, 255, 255, 0.09) !important;
+}
 th.col-ado-hdr {
   font-family: 'Cinzel', serif;
   font-size: 0.68rem;
