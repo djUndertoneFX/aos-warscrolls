@@ -82,6 +82,12 @@ const TYPE_TAG_FILTER_KEY = {
   'Manifestation': 'manifestation',
 };
 
+const KEYWORD_TYPE_MAP = {
+  'HERO': 'hero', 'INFANTRY': 'infantry', 'CAVALRY': 'cavalry', 'BEAST': 'beast',
+  'MONSTER': 'monster', 'WAR MACHINE': 'warmachine', 'FACTION TERRAIN': 'terrain',
+  'MANIFESTATION': 'manifestation',
+};
+
 function TypeTags({ row, onFilter }) {
   const tags = [];
   if (row.is_hero)          tags.push('Hero');
@@ -215,8 +221,8 @@ function SimulacrumBattle({ friendly, enemy, colWidths, thStyle, onUnitClick, on
             {row.keywords ? row.keywords.split(',').slice(0,6).map((kw, i, arr) => (
               <span key={kw} className="kw-chip filter-clickable"
                 title="Left-click to filter · Right-click to exclude"
-                onClick={e => { e.stopPropagation(); onFilter && onFilter('search', kw.trim(), false); }}
-                onContextMenu={e => { e.stopPropagation(); e.preventDefault(); onFilter && onFilter('search', kw.trim(), true); }}
+                onClick={e => { e.stopPropagation(); const tk = KEYWORD_TYPE_MAP[kw.trim().toUpperCase()]; onFilter && (tk ? onFilter(tk, null, false) : onFilter('search', kw.trim(), false)); }}
+                onContextMenu={e => { e.stopPropagation(); e.preventDefault(); const tk = KEYWORD_TYPE_MAP[kw.trim().toUpperCase()]; onFilter && (tk ? onFilter(tk, null, true) : onFilter('search', kw.trim(), true)); }}
               >{kw.trim()}{i < arr.length - 1 ? ', ' : ''}</span>
             )) : '—'}
           </td>
@@ -973,8 +979,8 @@ export default function SimulacrumPage({ headerCollapsed }) {
                         {row.keywords ? row.keywords.split(',').slice(0,6).map((kw, i, arr) => (
                           <span key={kw} className="kw-chip filter-clickable"
                             title="Left-click to filter · Right-click to exclude"
-                            onClick={e => { e.stopPropagation(); handleFilterFromRow('search', kw.trim(), false); }}
-                            onContextMenu={e => { e.stopPropagation(); e.preventDefault(); handleFilterFromRow('search', kw.trim(), true); }}
+                            onClick={e => { e.stopPropagation(); const tk = KEYWORD_TYPE_MAP[kw.trim().toUpperCase()]; tk ? handleFilterFromRow(tk, null, false) : handleFilterFromRow('search', kw.trim(), false); }}
+                            onContextMenu={e => { e.stopPropagation(); e.preventDefault(); const tk = KEYWORD_TYPE_MAP[kw.trim().toUpperCase()]; tk ? handleFilterFromRow(tk, null, true) : handleFilterFromRow('search', kw.trim(), true); }}
                           >{kw.trim()}{i < arr.length - 1 ? ', ' : ''}</span>
                         )) : '—'}
                       </td>
