@@ -376,7 +376,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
     types: 100, keywords: 200,
     ado_ranged: 52, ado_melee: 52, ado_pct: 56,
   };
-  const STORAGE_KEY = 'aos-col-widths-v2';
+  const STORAGE_KEY = 'aos-col-widths-v3';
   const [colWidths, setColWidths] = useState(() => {
     try { return { ...DEFAULT_COL_WIDTHS, ...JSON.parse(localStorage.getItem(STORAGE_KEY)) }; }
     catch { return DEFAULT_COL_WIDTHS; }
@@ -626,7 +626,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
                   const prev = data.data[idx - 1];
                   const factionChanged = !prev || prev.faction !== row.faction;
                   const typeChanged    = !prev || prev.faction !== row.faction || unitTypeLabel(prev) !== unitTypeLabel(row);
-                  const colSpan = 18;
+                  const colSpan = 19;
                   return (
                     <React.Fragment key={row.id}>
                       {factionChanged && sortBy === 'faction' && (
