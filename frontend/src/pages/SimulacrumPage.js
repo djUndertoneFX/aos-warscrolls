@@ -617,7 +617,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
     move: 46, health: 46, control: 46, save: 46, points: 52, models: 46,
     types: 100, keywords: 200,
   };
-  const STORAGE_KEY = 'aos-col-widths-v2';
+  const STORAGE_KEY = 'aos-col-widths-v3';
   const [colWidths, setColWidths] = useState(() => {
     try { return { ...DEFAULT_COL_WIDTHS, ...JSON.parse(localStorage.getItem(STORAGE_KEY)) }; }
     catch { return DEFAULT_COL_WIDTHS; }
