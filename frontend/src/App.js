@@ -24,7 +24,7 @@ const SAVE_OPTIONS  = ['-', 2, 3, 4, 5, 6];
 const WARD_OPTIONS  = ['-', 4, 5, 6];
 
 function SettingsPanel({ onClose }) {
-  const { showFlavorText, calculateDynamicADO, presumedSave, presumedWard, setSetting } = useSettings();
+  const { showFlavorText, calculateDynamicADO, presumedSave, presumedWard, roundingMode, setSetting } = useSettings();
   const ref = useRef(null);
 
   useEffect(() => {
@@ -63,6 +63,21 @@ function SettingsPanel({ onClose }) {
           onChange={e => setSetting('presumedWard', e.target.value === '-' ? null : parseInt(e.target.value, 10))}>
           {WARD_OPTIONS.map(v => <option key={v} value={v}>{v === '-' ? '—' : `${v}+`}</option>)}
         </select>
+      </div>
+      <div className="settings-field-row settings-field-row--col">
+        <span className="settings-field-lbl">ADO Rounding</span>
+        <label className="settings-radio-row" title="Each phase (hits, wounds, saves) rounds to a whole number before feeding the next. Mirrors how dice actually work at the table — discrete results, not fractions.">
+          <input type="radio" name="roundingMode" value="discrete"
+            checked={roundingMode === 'discrete'}
+            onChange={() => setSetting('roundingMode', 'discrete')} />
+          <span>Discrete <span className="settings-radio-sub">(per-step)</span></span>
+        </label>
+        <label className="settings-radio-row" title="Full calculation runs in floating-point, rounding only at the final result. Closest to the true statistical expected value — minimises rounding error.">
+          <input type="radio" name="roundingMode" value="overall"
+            checked={roundingMode === 'overall'}
+            onChange={() => setSetting('roundingMode', 'overall')} />
+          <span>Overall <span className="settings-radio-sub">(end only)</span></span>
+        </label>
       </div>
     </div>
   );

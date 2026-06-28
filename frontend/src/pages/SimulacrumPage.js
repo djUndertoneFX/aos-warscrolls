@@ -6,10 +6,10 @@ import { simulateBattle } from '../simulation/engine';
 import { useSettings } from '../SettingsContext';
 import { calcWeaponADO } from '../awoCalc';
 
-function sumADO(weapons, unitSize, save, ward) {
+function sumADO(weapons, unitSize, save, ward, rounding) {
   let total = 0, any = false;
   for (const w of weapons) {
-    const v = calcWeaponADO(w, unitSize || 1, save, ward);
+    const v = calcWeaponADO(w, unitSize || 1, save, ward, rounding);
     if (v !== null) { total += v; any = true; }
   }
   return any ? total : null;
@@ -137,15 +137,15 @@ const STAGES = [
 ];
 
 function SimulacrumBattle({ friendly, enemy, colWidths, thStyle, onUnitClick, friendlyReinforced, enemyReinforced, onFriendlyReinforceChange, onEnemyReinforceChange }) {
-  const { presumedSave, presumedWard } = useSettings();
+  const { presumedSave, presumedWard, roundingMode } = useSettings();
   const renderRow = (row, label) => {
     const weapons = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
     const ranged = weapons.filter(w => w.type === 'ranged');
     const melee  = weapons.filter(w => w.type === 'melee');
     const save = presumedSave ?? 5;
     const ward = presumedWard ?? null;
-    const adoRanged = sumADO(ranged, row.unit_size, save, ward);
-    const adoMelee  = sumADO(melee,  row.unit_size, save, ward);
+    const adoRanged = sumADO(ranged, row.unit_size, save, ward, roundingMode);
+    const adoMelee  = sumADO(melee,  row.unit_size, save, ward, roundingMode);
     const adoTotal  = (adoRanged ?? 0) + (adoMelee ?? 0);
     const adoPct    = (adoRanged !== null || adoMelee !== null) && row.points
       ? (adoTotal / row.points).toFixed(2) : null;
@@ -204,7 +204,7 @@ function SimulacrumBattle({ friendly, enemy, colWidths, thStyle, onUnitClick, fr
                       <td className="iwt-td-name">{w.name}</td>
                       <td className="iwt-td-stat">{w.range}</td><td className="iwt-td-stat">{w.attacks}</td><td className="iwt-td-stat">{w.hit}</td><td className="iwt-td-stat">{w.wound}</td><td className="iwt-td-stat">{w.rend||'—'}</td><td className="iwt-td-stat">{w.damage}</td>
                       <td className="iwt-td-ability">{w.ability||'—'}</td>
-                      <td className="iwt-td-ado">{(()=>{const v=calcWeaponADO(w,row.unit_size||1,save,ward);return v!==null?v:'—';})()}</td>
+                      <td className="iwt-td-ado">{(()=>{const v=calcWeaponADO(w,row.unit_size||1,save,ward,roundingMode);return v!==null?v:'—';})()}</td>
                     </tr>)}
                   </tbody></table>
                 </div>
@@ -221,7 +221,7 @@ function SimulacrumBattle({ friendly, enemy, colWidths, thStyle, onUnitClick, fr
                       <td className="iwt-td-name">{w.name}</td>
                       <td className="iwt-td-stat">{w.attacks}</td><td className="iwt-td-stat">{w.hit}</td><td className="iwt-td-stat">{w.wound}</td><td className="iwt-td-stat">{w.rend||'—'}</td><td className="iwt-td-stat">{w.damage}</td>
                       <td className="iwt-td-ability">{w.ability||'—'}</td>
-                      <td className="iwt-td-ado">{(()=>{const v=calcWeaponADO(w,row.unit_size||1,save,ward);return v!==null?v:'—';})()}</td>
+                      <td className="iwt-td-ado">{(()=>{const v=calcWeaponADO(w,row.unit_size||1,save,ward,roundingMode);return v!==null?v:'—';})()}</td>
                     </tr>)}
                   </tbody></table>
                 </div>
@@ -394,7 +394,7 @@ const BATTLE_COUNT_OPTS = [
 const ADO_TOOLTIP = 'Average Damage Output. Total damage a full unit outputs on average vs the presumed save/ward in Settings. Crit abilities are factored in; conditional abilities (Anti-X) are not.';
 
 export default function SimulacrumPage({ headerCollapsed }) {
-  const { presumedSave, presumedWard } = useSettings();
+  const { presumedSave, presumedWard, roundingMode } = useSettings();
   const [stage, setStage]           = useState(1);
   const [selectedFriendly, setSelectedFriendly] = useState(null);
   const [selectedEnemy, setSelectedEnemy]       = useState(null);
@@ -510,7 +510,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
 
       const params = {
         search, faction: qFaction, enemyFaction: qEnemyFaction, alliance,
-        sortBy, sortDir, page, pageSize: PAGE_SIZE,
+        sortBy: ['ado_ranged','ado_melee','ado_pct'].includes(sortBy) ? 'faction' : sortBy, sortDir, page, pageSize: PAGE_SIZE,
         ...(triParam(isHero)          ? { isHero:          triParam(isHero)          } : {}),
         ...(triParam(isMonster)       ? { isMonster:       triParam(isMonster)       } : {}),
         ...(triParam(isInfantry)      ? { isInfantry:      triParam(isInfantry)      } : {}),
@@ -840,8 +840,8 @@ export default function SimulacrumPage({ headerCollapsed }) {
                 const getVals = row => {
                   const ws = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
                   const sv = presumedSave ?? 5; const wd = presumedWard ?? null;
-                  const aR = sumADO(ws.filter(w => w.type === 'ranged'), row.unit_size, sv, wd) ?? 0;
-                  const aM = sumADO(ws.filter(w => w.type === 'melee'),  row.unit_size, sv, wd) ?? 0;
+                  const aR = sumADO(ws.filter(w => w.type === 'ranged'), row.unit_size, sv, wd, roundingMode) ?? 0;
+                  const aM = sumADO(ws.filter(w => w.type === 'melee'),  row.unit_size, sv, wd, roundingMode) ?? 0;
                   if (sortBy === 'ado_ranged') return aR;
                   if (sortBy === 'ado_melee')  return aM;
                   return row.points ? (aR + aM) / row.points : -1;
@@ -857,8 +857,11 @@ export default function SimulacrumPage({ headerCollapsed }) {
                 const melee  = weapons.filter(w => w.type === 'melee');
                 const save = presumedSave ?? 5;
                 const ward = presumedWard ?? null;
-                const awoRanged = sumAWO(ranged, row.unit_size, save, ward);
-                const awoMelee  = sumAWO(melee,  row.unit_size, save, ward);
+                const adoRanged = sumADO(ranged, row.unit_size, save, ward, roundingMode);
+                const adoMelee  = sumADO(melee,  row.unit_size, save, ward, roundingMode);
+                const adoTotal  = (adoRanged ?? 0) + (adoMelee ?? 0);
+                const adoPct    = (adoRanged !== null || adoMelee !== null) && row.points
+                  ? (adoTotal / row.points).toFixed(2) : null;
                 const prev = data.data[idx - 1];
                 const factionChanged = !prev || prev.faction !== row.faction;
                 const typeChanged    = !prev || prev.faction !== row.faction || unitTypeLabel(prev) !== unitTypeLabel(row);
@@ -929,7 +932,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
                                   <td className="iwt-td-name">{w.name}</td>
                                   <td className="iwt-td-stat">{w.range}</td><td className="iwt-td-stat">{w.attacks}</td><td className="iwt-td-stat">{w.hit}</td><td className="iwt-td-stat">{w.wound}</td><td className="iwt-td-stat">{w.rend||'—'}</td><td className="iwt-td-stat">{w.damage}</td>
                                   <td className="iwt-td-ability">{w.ability||'—'}</td>
-                                  <td className="iwt-td-ado">{(()=>{const v=calcWeaponADO(w,row.unit_size||1,save,ward);return v!==null?v:'—';})()}</td>
+                                  <td className="iwt-td-ado">{(()=>{const v=calcWeaponADO(w,row.unit_size||1,save,ward,roundingMode);return v!==null?v:'—';})()}</td>
                                 </tr>)}</tbody></table>
                               </div>
                             )}
@@ -945,7 +948,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
                                   <td className="iwt-td-name">{w.name}</td>
                                   <td className="iwt-td-stat">{w.attacks}</td><td className="iwt-td-stat">{w.hit}</td><td className="iwt-td-stat">{w.wound}</td><td className="iwt-td-stat">{w.rend||'—'}</td><td className="iwt-td-stat">{w.damage}</td>
                                   <td className="iwt-td-ability">{w.ability||'—'}</td>
-                                  <td className="iwt-td-ado">{(()=>{const v=calcWeaponADO(w,row.unit_size||1,save,ward);return v!==null?v:'—';})()}</td>
+                                  <td className="iwt-td-ado">{(()=>{const v=calcWeaponADO(w,row.unit_size||1,save,ward,roundingMode);return v!==null?v:'—';})()}</td>
                                 </tr>)}</tbody></table>
                               </div>
                             )}

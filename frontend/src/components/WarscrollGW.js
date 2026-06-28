@@ -178,7 +178,7 @@ function StatsWheel({ move, health, save, control }) {
 
 // ── Weapon table section ─────────────────────────────────────────────────────
 function WeaponSection({ weapons, type, unitSize }) {
-  const { calculateDynamicAWO, presumedSave, presumedWard } = useSettings();
+  const { calculateDynamicAWO, presumedSave, presumedWard, roundingMode } = useSettings();
   const rows = weapons.filter(w => w.type === type);
   if (!rows.length) return null;
   const isRanged = type === 'ranged';
@@ -210,7 +210,7 @@ function WeaponSection({ weapons, type, unitSize }) {
         </thead>
         <tbody>
           {rows.map((w, i) => {
-            const awo = calcWeaponADO(w, unitSize || 1, save, ward);
+            const awo = calcWeaponADO(w, unitSize || 1, save, ward, roundingMode);
             return (
               <tr key={i} className={i % 2 === 0 ? 'gw-row-a' : 'gw-row-b'}>
                 <td className="gw-td-name">{w.name}</td>

@@ -51,7 +51,8 @@ function hasCritMortal(ability) {
  * @returns {number} AWO rounded integer, or null if data is insufficient
  */
 export { calcWeaponADO as calcWeaponAWO }; // backwards-compat alias
-export function calcWeaponADO(weapon, unitSize, presumedSave, presumedWard) {
+export function calcWeaponADO(weapon, unitSize, presumedSave, presumedWard, roundingMode = 'overall') {
+  const r = roundingMode === 'discrete' ? roundHalfUp : x => x;
   const attacks  = meanDice(weapon.attacks);
   const hit      = parseRoll(weapon.hit);
   const wound    = parseRoll(weapon.wound);
@@ -84,23 +85,28 @@ export function calcWeaponADO(weapon, unitSize, presumedSave, presumedWard) {
     // Crit (Mortal): 6 to hit → mortal wounds = Damage, bypasses saves & ward
     // Non-crit hits still resolve through wound/save/ward normally
     // Mortal wounds skip wound roll and save, but ward still applies
-    const mortalDmg  = totalAttacks * critHitProb * damage * (1 - wardProb);
-    const normalWounds   = totalAttacks * normalHitProb * woundProb;
-    const normalUnsaved  = normalWounds * (1 - saveProb) * (1 - wardProb) * damage;
-    awo = mortalDmg + normalUnsaved;
+    const critHits       = r(totalAttacks * critHitProb);
+    const mortalDmg      = r(critHits * damage * (1 - wardProb));
+    const normalHits     = r(totalAttacks * normalHitProb);
+    const normalWounds   = r(normalHits * woundProb);
+    const normalUnsaved  = r(r(normalWounds * (1 - saveProb)) * (1 - wardProb));
+    const normalDmg      = r(normalUnsaved * damage);
+    awo = mortalDmg + normalDmg;
 
   } else if (hasCritAutoWound(ability)) {
     // Crit (Auto-Wound): 6 to hit → auto-wound (skips wound roll), still saves/ward normally
-    const wounds = totalAttacks * (critHitProb + normalHitProb * woundProb);
-    const unsaved = wounds * (1 - saveProb) * (1 - wardProb);
-    awo = unsaved * damage;
+    const critHits   = r(totalAttacks * critHitProb);
+    const normalHits = r(totalAttacks * normalHitProb);
+    const wounds     = r(critHits + r(normalHits * woundProb));
+    const unsaved    = r(r(wounds * (1 - saveProb)) * (1 - wardProb));
+    awo = r(unsaved * damage);
 
   } else {
     // Standard: hit → wound → save → ward → damage
-    const hits    = totalAttacks * rollProb(hit);
-    const wounds  = hits * woundProb;
-    const unsaved = wounds * (1 - saveProb) * (1 - wardProb);
-    awo = unsaved * damage;
+    const hits    = r(totalAttacks * rollProb(hit));
+    const wounds  = r(hits * woundProb);
+    const unsaved = r(r(wounds * (1 - saveProb)) * (1 - wardProb));
+    awo = r(unsaved * damage);
   }
 
   return roundHalfUp(awo);

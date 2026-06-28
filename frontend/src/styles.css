@@ -302,6 +302,24 @@ input, select {
 }
 .settings-select:focus { outline: none; border-color: var(--gold); }
 
+.settings-field-row--col {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+.settings-radio-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--parchment);
+  cursor: pointer;
+  padding: 0.1rem 0;
+}
+.settings-radio-row:hover { color: var(--gold-light); }
+.settings-radio-row input[type=radio] { accent-color: var(--gold); cursor: pointer; }
+.settings-radio-sub { font-size: 0.7rem; color: var(--text-dim); }
+
 .navbar-username {
   color: var(--gold-light);
   font-family: 'Cinzel', serif;
@@ -1232,6 +1250,7 @@ th.col-ado-hdr {
   color: #a8d870;
   text-align: center;
   white-space: nowrap;
+  overflow: visible;
 }
 td.col-ado {
   text-align: center;
@@ -1254,7 +1273,8 @@ td.col-ado-pct {
 .ado-tip::after {
   content: attr(data-tip);
   position: absolute;
-  bottom: calc(100% + 8px);
+  top: calc(100% + 6px);
+  bottom: auto;
   left: 50%;
   transform: translateX(-50%);
   background: #1e1a10;

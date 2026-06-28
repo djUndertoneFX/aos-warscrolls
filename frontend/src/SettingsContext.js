@@ -12,6 +12,7 @@ export function SettingsProvider({ children }) {
   const [calculateDynamicADO, setCalculateDynamicAWO] = useState(() => loadSetting('aos-setting-dynamic-ado', false));
   const [presumedSave,        setPresumedSave]        = useState(() => loadSetting('aos-setting-presumed-save', 5));
   const [presumedWard,        setPresumedWard]        = useState(() => loadSetting('aos-setting-presumed-ward', null));
+  const [roundingMode,        setRoundingMode]        = useState(() => loadSetting('aos-setting-rounding-mode', 'discrete'));
 
   const setSetting = (key, value) => {
     switch (key) {
@@ -31,12 +32,16 @@ export function SettingsProvider({ children }) {
         setPresumedWard(value);
         localStorage.setItem('aos-setting-presumed-ward', JSON.stringify(value));
         break;
+      case 'roundingMode':
+        setRoundingMode(value);
+        localStorage.setItem('aos-setting-rounding-mode', JSON.stringify(value));
+        break;
       default: break;
     }
   };
 
   return (
-    <SettingsContext.Provider value={{ showFlavorText, calculateDynamicADO, presumedSave, presumedWard, setSetting }}>
+    <SettingsContext.Provider value={{ showFlavorText, calculateDynamicADO, presumedSave, presumedWard, roundingMode, setSetting }}>
       {children}
     </SettingsContext.Provider>
   );

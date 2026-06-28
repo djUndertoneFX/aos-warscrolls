@@ -5,10 +5,10 @@ import WarscrollGW from '../components/WarscrollGW';
 import { useSettings } from '../SettingsContext';
 import { calcWeaponADO } from '../awoCalc';
 
-function sumADO(weapons, unitSize, save, ward) {
+function sumADO(weapons, unitSize, save, ward, rounding) {
   let total = 0, any = false;
   for (const w of weapons) {
-    const v = calcWeaponADO(w, unitSize || 1, save, ward);
+    const v = calcWeaponADO(w, unitSize || 1, save, ward, rounding);
     if (v !== null) { total += v; any = true; }
   }
   return any ? total : null;
@@ -141,7 +141,7 @@ function SortIcon({ col, sortBy, sortDir }) {
 const ADO_TOOLTIP = 'Average Damage Output. Total damage a full unit outputs on average vs the presumed save/ward in Settings. Crit abilities are factored in; conditional abilities (Anti-X) are not.';
 
 export default function WarscrollsPage({ headerCollapsed }) {
-  const { presumedSave, presumedWard } = useSettings();
+  const { presumedSave, presumedWard, roundingMode } = useSettings();
   const [data, setData]           = useState(null);
   const [factions, setFactions]   = useState([]);
   const [loading, setLoading]     = useState(true);
@@ -245,7 +245,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
         faction: qFaction,
         enemyFaction: qEnemyFaction,
         alliance,
-        sortBy, sortDir, page,
+        sortBy: ['ado_ranged','ado_melee','ado_pct'].includes(sortBy) ? 'faction' : sortBy, sortDir, page,
         pageSize: PAGE_SIZE,
         ...(triParam(isHero)          ? { isHero:          triParam(isHero)          } : {}),
         ...(triParam(isMonster)       ? { isMonster:       triParam(isMonster)       } : {}),
@@ -521,8 +521,8 @@ export default function WarscrollsPage({ headerCollapsed }) {
                 const getVals = row => {
                   const ws = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
                   const sv = presumedSave ?? 5; const wd = presumedWard ?? null;
-                  const aR = sumADO(ws.filter(w => w.type === 'ranged'), row.unit_size, sv, wd) ?? 0;
-                  const aM = sumADO(ws.filter(w => w.type === 'melee'),  row.unit_size, sv, wd) ?? 0;
+                  const aR = sumADO(ws.filter(w => w.type === 'ranged'), row.unit_size, sv, wd, roundingMode) ?? 0;
+                  const aM = sumADO(ws.filter(w => w.type === 'melee'),  row.unit_size, sv, wd, roundingMode) ?? 0;
                   if (sortBy === 'ado_ranged') return aR;
                   if (sortBy === 'ado_melee')  return aM;
                   return row.points ? (aR + aM) / row.points : -1;
@@ -573,8 +573,8 @@ export default function WarscrollsPage({ headerCollapsed }) {
                   const melee  = weapons.filter(w => w.type === 'melee');
                   const save = presumedSave ?? 5;
                   const ward = presumedWard ?? null;
-                  const adoRanged = sumADO(ranged, row.unit_size, save, ward);
-                  const adoMelee  = sumADO(melee,  row.unit_size, save, ward);
+                  const adoRanged = sumADO(ranged, row.unit_size, save, ward, roundingMode);
+                  const adoMelee  = sumADO(melee,  row.unit_size, save, ward, roundingMode);
                   const adoTotal  = (adoRanged ?? 0) + (adoMelee ?? 0);
                   const adoPct    = (adoRanged !== null || adoMelee !== null) && row.points
                     ? (adoTotal / row.points).toFixed(2)
@@ -664,7 +664,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
                                           <td className="iwt-td-stat">{w.hit}</td><td className="iwt-td-stat">{w.wound}</td>
                                           <td className="iwt-td-stat">{w.rend || '—'}</td><td className="iwt-td-stat">{w.damage}</td>
                                           <td className="iwt-td-ability">{w.ability || '—'}</td>
-                                          <td className="iwt-td-ado">{(() => { const v = calcWeaponADO(w, row.unit_size || 1, save, ward); return v !== null ? v : '—'; })()}</td>
+                                          <td className="iwt-td-ado">{(() => { const v = calcWeaponADO(w, row.unit_size || 1, save, ward, roundingMode); return v !== null ? v : '—'; })()}</td>
                                         </tr>
                                       ))}
                                     </tbody>
@@ -689,7 +689,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
                                           <td className="iwt-td-stat">{w.hit}</td><td className="iwt-td-stat">{w.wound}</td>
                                           <td className="iwt-td-stat">{w.rend || '—'}</td><td className="iwt-td-stat">{w.damage}</td>
                                           <td className="iwt-td-ability">{w.ability || '—'}</td>
-                                          <td className="iwt-td-ado">{(() => { const v = calcWeaponADO(w, row.unit_size || 1, save, ward); return v !== null ? v : '—'; })()}</td>
+                                          <td className="iwt-td-ado">{(() => { const v = calcWeaponADO(w, row.unit_size || 1, save, ward, roundingMode); return v !== null ? v : '—'; })()}</td>
                                         </tr>
                                       ))}
                                     </tbody>
