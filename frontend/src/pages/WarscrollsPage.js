@@ -54,9 +54,14 @@ const SORTABLE_COLS = [
   { key: 'unit_size',     label: 'Models',    abbr: 'Mdl' },
 ];
 
-function AllianceBadge({ alliance }) {
+function AllianceBadge({ alliance, onClick, onContextMenu }) {
   return (
-    <span className={`alliance-badge alliance-${alliance}`}>{alliance}</span>
+    <span
+      className={`alliance-badge alliance-${alliance}${onClick ? ' filter-clickable' : ''}`}
+      onClick={onClick}
+      onContextMenu={onContextMenu}
+      title={onClick ? 'Left-click to filter · Right-click to exclude' : undefined}
+    >{alliance}</span>
   );
 }
 
@@ -72,7 +77,13 @@ function unitTypeLabel(row) {
   return 'Other';
 }
 
-function TypeTags({ row }) {
+const TYPE_TAG_FILTER_KEY = {
+  'Hero': 'hero', 'Infantry': 'infantry', 'Cavalry': 'cavalry', 'Beast': 'beast',
+  'Monster': 'monster', 'War Machine': 'warmachine', 'Faction Terrain': 'terrain',
+  'Manifestation': 'manifestation',
+};
+
+function TypeTags({ row, onFilter }) {
   const tags = [];
   if (row.is_hero)          tags.push('Hero');
   if (row.is_infantry)      tags.push('Infantry');
@@ -85,7 +96,18 @@ function TypeTags({ row }) {
   if (row.is_unique)        tags.push('Unique');
   return (
     <div className="type-tags">
-      {tags.map(t => <span key={t} className="type-tag">{t}</span>)}
+      {tags.map(t => {
+        const filterKey = TYPE_TAG_FILTER_KEY[t];
+        return (
+          <span
+            key={t}
+            className={`type-tag${onFilter && filterKey ? ' filter-clickable' : ''}`}
+            title={onFilter && filterKey ? 'Left-click to filter · Right-click to exclude' : undefined}
+            onClick={onFilter && filterKey ? e => { e.stopPropagation(); onFilter(filterKey, false); } : undefined}
+            onContextMenu={onFilter && filterKey ? e => { e.stopPropagation(); e.preventDefault(); onFilter(filterKey, true); } : undefined}
+          >{t}</span>
+        );
+      })}
       {row.is_legends ? <span className="type-tag legends">Legends</span> : null}
     </div>
   );
@@ -317,6 +339,26 @@ export default function WarscrollsPage({ headerCollapsed }) {
     setFaction('');
     setEnemyFaction('');
     setPage(1);
+  };
+
+  const handleFilterFromRow = (type, value, exclude) => {
+    setPage(1);
+    const triVal = exclude ? 'exclude' : true;
+    if (type === 'alliance')      { handleAllianceChange(exclude ? '' : value); }
+    else if (type === 'faction')  { setFaction(exclude ? '' : value); }
+    else if (type === 'hero')          setIsHero(triVal);
+    else if (type === 'monster')       setIsMonster(triVal);
+    else if (type === 'infantry')      setIsInfantry(triVal);
+    else if (type === 'cavalry')       setIsCavalry(triVal);
+    else if (type === 'beast')         setIsBeast(triVal);
+    else if (type === 'warmachine')    setIsWarMachine(triVal);
+    else if (type === 'terrain')       setIsTerrain(triVal);
+    else if (type === 'manifestation') setIsManifestation(triVal);
+    else if (type === 'search') {
+      const term = exclude ? `-"${value}"` : value;
+      setSearch(s => s.includes(term) ? s : (s + ' ' + term).trim());
+      setSearchInput(s => s.includes(term) ? s : (s + ' ' + term).trim());
+    }
   };
 
   const filteredFactions = (alliance
@@ -638,15 +680,33 @@ export default function WarscrollsPage({ headerCollapsed }) {
                         </td>
                         <td className="col-faction">{row.faction}</td>
                         <td className="col-stat">{row.points || '—'}</td>
-                        <td>{row.grand_alliance && <AllianceBadge alliance={row.grand_alliance} />}</td>
+                        <td onClick={e => e.stopPropagation()} onContextMenu={e => e.stopPropagation()}>
+                          {row.grand_alliance && (
+                            <AllianceBadge
+                              alliance={row.grand_alliance}
+                              onClick={e => { e.stopPropagation(); handleFilterFromRow('alliance', row.grand_alliance, false); }}
+                              onContextMenu={e => { e.stopPropagation(); e.preventDefault(); handleFilterFromRow('alliance', row.grand_alliance, true); }}
+                            />
+                          )}
+                        </td>
                         <td className="col-stat">{row.move || '—'}</td>
                         <td className="col-stat">{row.health || '—'}</td>
                         <td className="col-stat">{row.control || '—'}</td>
                         <td className="col-stat">{row.save || '—'}</td>
                         <td className="col-stat">{row.unit_size || '—'}</td>
-                        <td><TypeTags row={row} /></td>
-                        <td className="col-keywords">
-                          {row.keywords ? row.keywords.split(',').slice(0, 6).join(', ') : '—'}
+                        <td onClick={e => e.stopPropagation()} onContextMenu={e => e.stopPropagation()}>
+                          <TypeTags row={row} onFilter={(type, exclude) => handleFilterFromRow(type, null, exclude)} />
+                        </td>
+                        <td className="col-keywords" onClick={e => e.stopPropagation()} onContextMenu={e => e.stopPropagation()}>
+                          {row.keywords ? row.keywords.split(',').slice(0, 6).map((kw, i, arr) => (
+                            <span
+                              key={kw}
+                              className="kw-chip filter-clickable"
+                              title="Left-click to filter · Right-click to exclude"
+                              onClick={e => { e.stopPropagation(); handleFilterFromRow('search', kw.trim(), false); }}
+                              onContextMenu={e => { e.stopPropagation(); e.preventDefault(); handleFilterFromRow('search', kw.trim(), true); }}
+                            >{kw.trim()}{i < arr.length - 1 ? ', ' : ''}</span>
+                          )) : '—'}
                         </td>
                         <td className="col-ado">{adoRanged !== null ? adoRanged : '—'}</td>
                         <td className="col-ado">{adoMelee  !== null ? adoMelee  : '—'}</td>

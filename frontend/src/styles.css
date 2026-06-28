@@ -1333,6 +1333,13 @@ td.col-keywords {
 }
 .type-tag.legends { background: rgba(100,100,100,0.15); color: #888; border-color: #555; }
 
+/* Clickable filter chips in table rows */
+.filter-clickable { cursor: pointer; transition: filter 0.12s, opacity 0.12s; }
+.filter-clickable:hover { filter: brightness(1.4); opacity: 1; }
+.filter-clickable:active { filter: brightness(1.8); }
+.kw-chip { cursor: pointer; transition: color 0.12s; }
+.kw-chip:hover { color: #f0dc88; text-decoration: underline; text-underline-offset: 2px; }
+
 /* ── Pagination ── */
 .pagination {
   display: flex;
