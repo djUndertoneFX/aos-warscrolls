@@ -53,8 +53,15 @@ const SORTABLE_COLS = [
   { key: 'unit_size',     label: 'Models',    abbr: 'Mdl' },
 ];
 
-function AllianceBadge({ alliance }) {
-  return <span className={`alliance-badge alliance-${alliance}`}>{alliance}</span>;
+function AllianceBadge({ alliance, onClick, onContextMenu }) {
+  return (
+    <span
+      className={`alliance-badge alliance-${alliance}${onClick ? ' filter-clickable' : ''}`}
+      onClick={onClick}
+      onContextMenu={onContextMenu}
+      title={onClick ? 'Left-click to filter · Right-click to exclude' : undefined}
+    >{alliance}</span>
+  );
 }
 
 function unitTypeLabel(row) {
@@ -69,7 +76,13 @@ function unitTypeLabel(row) {
   return 'Other';
 }
 
-function TypeTags({ row }) {
+const TYPE_TAG_FILTER_KEY = {
+  'Hero': 'hero', 'Infantry': 'infantry', 'Cavalry': 'cavalry', 'Beast': 'beast',
+  'Monster': 'monster', 'War Machine': 'warmachine', 'Faction Terrain': 'terrain',
+  'Manifestation': 'manifestation',
+};
+
+function TypeTags({ row, onFilter }) {
   const tags = [];
   if (row.is_hero)          tags.push('Hero');
   if (row.is_infantry)      tags.push('Infantry');
@@ -82,7 +95,18 @@ function TypeTags({ row }) {
   if (row.is_unique)        tags.push('Unique');
   return (
     <div className="type-tags">
-      {tags.map(t => <span key={t} className="type-tag">{t}</span>)}
+      {tags.map(t => {
+        const filterKey = TYPE_TAG_FILTER_KEY[t];
+        return (
+          <span
+            key={t}
+            className={`type-tag${onFilter && filterKey ? ' filter-clickable' : ''}`}
+            title={onFilter && filterKey ? 'Left-click to filter · Right-click to exclude' : undefined}
+            onClick={onFilter && filterKey ? e => { e.stopPropagation(); onFilter(filterKey, false); } : undefined}
+            onContextMenu={onFilter && filterKey ? e => { e.stopPropagation(); e.preventDefault(); onFilter(filterKey, true); } : undefined}
+          >{t}</span>
+        );
+      })}
       {row.is_legends ? <span className="type-tag legends">Legends</span> : null}
     </div>
   );
@@ -136,7 +160,7 @@ const STAGES = [
   { id: 2, label: 'SimulacEm!' },
 ];
 
-function SimulacrumBattle({ friendly, enemy, colWidths, thStyle, onUnitClick, friendlyReinforced, enemyReinforced, onFriendlyReinforceChange, onEnemyReinforceChange }) {
+function SimulacrumBattle({ friendly, enemy, colWidths, thStyle, onUnitClick, onFilter, friendlyReinforced, enemyReinforced, onFriendlyReinforceChange, onEnemyReinforceChange }) {
   const { presumedSave, presumedWard, roundingMode } = useSettings();
   const renderRow = (row, label) => {
     const weapons = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
@@ -170,14 +194,32 @@ function SimulacrumBattle({ friendly, enemy, colWidths, thStyle, onUnitClick, fr
           </td>
           <td className="col-faction">{row.faction}</td>
           <td className="col-stat">{row.points || '—'}</td>
-          <td>{row.grand_alliance && <AllianceBadge alliance={row.grand_alliance} />}</td>
+          <td onClick={e => e.stopPropagation()} onContextMenu={e => e.stopPropagation()}>
+            {row.grand_alliance && (
+              <AllianceBadge
+                alliance={row.grand_alliance}
+                onClick={onFilter ? e => { e.stopPropagation(); onFilter('alliance', row.grand_alliance, false); } : undefined}
+                onContextMenu={onFilter ? e => { e.stopPropagation(); e.preventDefault(); onFilter('alliance', row.grand_alliance, true); } : undefined}
+              />
+            )}
+          </td>
           <td className="col-stat">{row.move || '—'}</td>
           <td className="col-stat">{row.health || '—'}</td>
           <td className="col-stat">{row.control || '—'}</td>
           <td className="col-stat">{row.save || '—'}</td>
           <td className="col-stat">{row.unit_size || '—'}</td>
-          <td><TypeTags row={row} /></td>
-          <td className="col-keywords">{row.keywords ? row.keywords.split(',').slice(0,6).join(', ') : '—'}</td>
+          <td onClick={e => e.stopPropagation()} onContextMenu={e => e.stopPropagation()}>
+            <TypeTags row={row} onFilter={onFilter ? (type, exclude) => onFilter(type, null, exclude) : undefined} />
+          </td>
+          <td className="col-keywords" onClick={e => e.stopPropagation()} onContextMenu={e => e.stopPropagation()}>
+            {row.keywords ? row.keywords.split(',').slice(0,6).map((kw, i, arr) => (
+              <span key={kw} className="kw-chip filter-clickable"
+                title="Left-click to filter · Right-click to exclude"
+                onClick={e => { e.stopPropagation(); onFilter && onFilter('search', kw.trim(), false); }}
+                onContextMenu={e => { e.stopPropagation(); e.preventDefault(); onFilter && onFilter('search', kw.trim(), true); }}
+              >{kw.trim()}{i < arr.length - 1 ? ', ' : ''}</span>
+            )) : '—'}
+          </td>
           <td className="col-ado">{adoRanged !== null ? adoRanged : '—'}</td>
           <td className="col-ado">{adoMelee  !== null ? adoMelee  : '—'}</td>
           <td className="col-ado col-ado-pct">{adoPct !== null ? adoPct : '—'}</td>
@@ -544,6 +586,26 @@ export default function SimulacrumPage({ headerCollapsed }) {
 
   const handleAllianceChange = (val) => { setAlliance(val); setFaction(''); setEnemyFaction(''); setPage(1); };
 
+  const handleFilterFromRow = (type, value, exclude) => {
+    setPage(1);
+    const triVal = exclude ? 'exclude' : true;
+    if (type === 'alliance')      { handleAllianceChange(exclude ? '' : value); }
+    else if (type === 'faction')  { setFaction(exclude ? '' : value); }
+    else if (type === 'hero')          setIsHero(triVal);
+    else if (type === 'monster')       setIsMonster(triVal);
+    else if (type === 'infantry')      setIsInfantry(triVal);
+    else if (type === 'cavalry')       setIsCavalry(triVal);
+    else if (type === 'beast')         setIsBeast(triVal);
+    else if (type === 'warmachine')    setIsWarMachine(triVal);
+    else if (type === 'terrain')       setIsTerrain(triVal);
+    else if (type === 'manifestation') setIsManifestation(triVal);
+    else if (type === 'search') {
+      const term = exclude ? `-"${value}"` : value;
+      setSearch(s => s.includes(term) ? s : (s + ' ' + term).trim());
+      setSearchInput(s => s.includes(term) ? s : (s + ' ' + term).trim());
+    }
+  };
+
   const filteredFactions = (alliance ? factions.filter(f => f.grand_alliance === alliance) : factions)
     .slice().sort((a, b) => a.faction.localeCompare(b.faction));
   const alliances = ['Order', 'Chaos', 'Death', 'Destruction'];
@@ -757,6 +819,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
       {stage === 2 && (
         <>
           <SimulacrumBattle friendly={selectedFriendly} enemy={selectedEnemy} colWidths={colWidths} startResize={startResize} thStyle={thStyle} onUnitClick={setDetailUnit}
+            onFilter={handleFilterFromRow}
             friendlyReinforced={friendlyReinforced} enemyReinforced={enemyReinforced}
             onFriendlyReinforceChange={v => { setFriendlyReinforced(v); setBattleResults(null); }}
             onEnemyReinforceChange={v => { setEnemyReinforced(v); setBattleResults(null); }}
@@ -888,15 +951,33 @@ export default function SimulacrumPage({ headerCollapsed }) {
                           onError={e => { e.target.style.display='none'; }} />
                       </td>
                       <td className="col-faction">{row.faction}</td>
-                      <td>{row.grand_alliance && <AllianceBadge alliance={row.grand_alliance} />}</td>
+                      <td onClick={e => e.stopPropagation()} onContextMenu={e => e.stopPropagation()}>
+                        {row.grand_alliance && (
+                          <AllianceBadge
+                            alliance={row.grand_alliance}
+                            onClick={e => { e.stopPropagation(); handleFilterFromRow('alliance', row.grand_alliance, false); }}
+                            onContextMenu={e => { e.stopPropagation(); e.preventDefault(); handleFilterFromRow('alliance', row.grand_alliance, true); }}
+                          />
+                        )}
+                      </td>
                       <td className="col-stat">{row.move || '—'}</td>
                       <td className="col-stat">{row.health || '—'}</td>
                       <td className="col-stat">{row.control || '—'}</td>
                       <td className="col-stat">{row.save || '—'}</td>
                       <td className="col-stat">{row.points || '—'}</td>
                       <td className="col-stat">{row.unit_size || '—'}</td>
-                      <td><TypeTags row={row} /></td>
-                      <td className="col-keywords">{row.keywords ? row.keywords.split(',').slice(0,6).join(', ') : '—'}</td>
+                      <td onClick={e => e.stopPropagation()} onContextMenu={e => e.stopPropagation()}>
+                        <TypeTags row={row} onFilter={(type, exclude) => handleFilterFromRow(type, null, exclude)} />
+                      </td>
+                      <td className="col-keywords" onClick={e => e.stopPropagation()} onContextMenu={e => e.stopPropagation()}>
+                        {row.keywords ? row.keywords.split(',').slice(0,6).map((kw, i, arr) => (
+                          <span key={kw} className="kw-chip filter-clickable"
+                            title="Left-click to filter · Right-click to exclude"
+                            onClick={e => { e.stopPropagation(); handleFilterFromRow('search', kw.trim(), false); }}
+                            onContextMenu={e => { e.stopPropagation(); e.preventDefault(); handleFilterFromRow('search', kw.trim(), true); }}
+                          >{kw.trim()}{i < arr.length - 1 ? ', ' : ''}</span>
+                        )) : '—'}
+                      </td>
                       <td className="col-ado">{adoRanged !== null ? adoRanged : '—'}</td>
                       <td className="col-ado">{adoMelee  !== null ? adoMelee  : '—'}</td>
                       <td className="col-ado col-ado-pct">{adoPct !== null ? adoPct : '—'}</td>
