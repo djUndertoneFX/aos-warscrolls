@@ -53,12 +53,13 @@ const SORTABLE_COLS = [
   { key: 'unit_size',     label: 'Models',    abbr: 'Mdl' },
 ];
 
-function AllianceBadge({ alliance, onClick }) {
+function AllianceBadge({ alliance, onClick, onContextMenu }) {
   return (
     <span
       className={`alliance-badge alliance-${alliance}${onClick ? ' filter-clickable' : ''}`}
       onClick={onClick}
-      title={onClick ? 'Click to filter · Ctrl+click to clear' : undefined}
+      onContextMenu={onContextMenu}
+      title={onClick ? 'Left-click to filter · Right-click to exclude' : undefined}
     >{alliance}</span>
   );
 }
@@ -196,7 +197,8 @@ function SimulacrumBattle({ friendly, enemy, colWidths, thStyle, onUnitClick, on
             {row.grand_alliance && (
               <AllianceBadge
                 alliance={row.grand_alliance}
-                onClick={onFilter ? e => { e.stopPropagation(); onFilter('alliance', row.grand_alliance, e.ctrlKey); } : undefined}
+                onClick={onFilter ? e => { e.stopPropagation(); onFilter('alliance', row.grand_alliance, false); } : undefined}
+                onContextMenu={onFilter ? e => { e.stopPropagation(); e.preventDefault(); onFilter('alliance', row.grand_alliance, true); } : undefined}
               />
             )}
           </td>
@@ -952,7 +954,8 @@ export default function SimulacrumPage({ headerCollapsed }) {
                         {row.grand_alliance && (
                           <AllianceBadge
                             alliance={row.grand_alliance}
-                            onClick={e => { e.stopPropagation(); handleFilterFromRow('alliance', row.grand_alliance, e.ctrlKey); }}
+                            onClick={e => { e.stopPropagation(); handleFilterFromRow('alliance', row.grand_alliance, false); }}
+                            onContextMenu={e => { e.stopPropagation(); e.preventDefault(); handleFilterFromRow('alliance', row.grand_alliance, true); }}
                           />
                         )}
                       </td>
