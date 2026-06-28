@@ -230,6 +230,19 @@ async function scrapeFaction(faction) {
       });
     });
 
+    // Flavor text: Wahapedia stores lore prose in .ShowFluff / .wsLegend
+    const flavorEl = $(el).find('.ShowFluff').first();
+    const flavorText = flavorEl.length
+      ? flavorEl.text().replace(/\s+/g, ' ').trim()
+      : '';
+
+    // Options text: weapon choices / unit composition are in .wsDescription
+    // (a block that sits between the weapon tables and ability blocks)
+    const descEl = $(el).find('.wsDescription').first();
+    const optionsText = descEl.length
+      ? descEl.text().replace(/\s+/g, ' ').trim()
+      : '';
+
     // Stats from the AoS profile block
     const move    = $(el).find('.wsMove').first().text().trim();
     const health  = $(el).find('.wsWounds').first().text().trim();
@@ -292,8 +305,10 @@ async function scrapeFaction(faction) {
       unit_size: sizeNum ? sizeNum[1] : '',
       base_size: baseMatch ? baseMatch[1].trim() : '',
       keywords,
-      abilities: JSON.stringify(abilities),
-      weapons:   JSON.stringify(weapons),
+      abilities:    JSON.stringify(abilities),
+      weapons:      JSON.stringify(weapons),
+      flavor_text:  flavorText,
+      options_text: optionsText,
       is_hero:          isHero          ? 1 : 0,
       is_monster:       isMonster       ? 1 : 0,
       is_cavalry:       isCavalry       ? 1 : 0,
@@ -312,12 +327,20 @@ async function scrapeFaction(faction) {
   return units;
 }
 
-async function scrapeAll() {
+async function scrapeAll(targetSlug = null) {
   initDb();
   const db = getDb();
 
-  db.prepare('DELETE FROM warscrolls').run();
-  console.log('Cleared existing warscroll data.\n');
+  if (targetSlug) {
+    // Patch mode: delete only the target faction and re-insert it
+    const faction = FACTIONS.find(f => f.slug === targetSlug);
+    if (!faction) { console.error(`Unknown faction slug: ${targetSlug}`); db.close(); return; }
+    db.prepare('DELETE FROM warscrolls WHERE faction_slug = ?').run(targetSlug);
+    console.log(`Patching faction: ${faction.name}\n`);
+  } else {
+    db.prepare('DELETE FROM warscrolls').run();
+    console.log('Cleared existing warscroll data.\n');
+  }
 
   const insert = db.prepare(`
     INSERT INTO warscrolls (
@@ -325,6 +348,7 @@ async function scrapeAll() {
       move, health, control, save, ward,
       points, unit_size, base_size,
       keywords, abilities, weapons,
+      flavor_text, options_text,
       is_hero, is_monster, is_cavalry, is_infantry, is_beast,
       is_unique, is_war_machine, is_terrain, is_manifestation, is_legends, url
     ) VALUES (
@@ -332,14 +356,16 @@ async function scrapeAll() {
       @move, @health, @control, @save, @ward,
       @points, @unit_size, @base_size,
       @keywords, @abilities, @weapons,
+      @flavor_text, @options_text,
       @is_hero, @is_monster, @is_cavalry, @is_infantry, @is_beast,
       @is_unique, @is_war_machine, @is_terrain, @is_manifestation, @is_legends, @url
     )
   `);
 
   let totalUnits = 0;
+  const factionsToScrape = targetSlug ? FACTIONS.filter(f => f.slug === targetSlug) : FACTIONS;
 
-  for (const faction of FACTIONS) {
+  for (const faction of factionsToScrape) {
     console.log(`\nScraping ${faction.name}...`);
     const units = await scrapeFaction(faction);
 
@@ -510,7 +536,10 @@ async function scrapeImages() {
 // ── Entry points ──────────────────────────────────────────────────────────────
 
 if (require.main === module) {
-  scrapeAll().catch(err => {
+  const factionArg = process.argv.includes('--faction')
+    ? process.argv[process.argv.indexOf('--faction') + 1]
+    : null;
+  scrapeAll(factionArg).catch(err => {
     console.error('Scraper failed:', err);
     process.exit(1);
   });

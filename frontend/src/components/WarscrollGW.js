@@ -233,7 +233,6 @@ function WeaponSection({ weapons, type, unitSize }) {
 
 // ── Ability card ─────────────────────────────────────────────────────────────
 function AbilityCard({ ab, keywords }) {
-  const { showFlavorText } = useSettings();
   const ps      = getPhaseStyle(ab.timing);
   const bullets = Array.isArray(ab.bullets) ? ab.bullets : [];
 
@@ -244,9 +243,6 @@ function AbilityCard({ ab, keywords }) {
       </div>
       <div className="gw-ability-body">
         <div className="gw-ability-name">{ab.name}</div>
-        {showFlavorText && ab.flavor && (
-          <p className="gw-ability-flavor">{ab.flavor}</p>
-        )}
         {ab.declare && (
           <p className="gw-ability-para">
             <span className="gw-ability-lbl">Declare: </span>
@@ -283,6 +279,7 @@ function AbilityCard({ ab, keywords }) {
 
 // ── Main component ───────────────────────────────────────────────────────────
 export default function WarscrollGW({ unit, onClose, onPrev, onNext }) {
+  const { showFlavorText } = useSettings();
   const weapons   = React.useMemo(() => { try { return JSON.parse(unit.weapons   || '[]'); } catch { return []; } }, [unit]);
   const abilities = React.useMemo(() => { try { return JSON.parse(unit.abilities || '[]'); } catch { return []; } }, [unit]);
   const [imageUrl, setImageUrl] = useState(null);
@@ -405,6 +402,13 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext }) {
 
         </div>
 
+        {/* ── Flavor text (toggleable) ── */}
+        {showFlavorText && unit.flavor_text && (
+          <div className="gw-flavor-text">
+            <p>{unit.flavor_text}</p>
+          </div>
+        )}
+
         {/* ── Weapons ── */}
         <div className="gw-weapons-row">
           {hasWeapons ? (
@@ -416,6 +420,15 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext }) {
             <div className="gw-no-weapons">No weapon data available.</div>
           )}
         </div>
+
+        {/* ── Options text (always shown) ── */}
+        {unit.options_text && (
+          <div className="gw-options-text">
+            {unit.options_text.split(/(?<=\.)\s+/).map((sentence, i) => (
+              <p key={i}>{sentence}</p>
+            ))}
+          </div>
+        )}
 
         {/* ── Abilities + image ── */}
         {abilities.length > 0 && (

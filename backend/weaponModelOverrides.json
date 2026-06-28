@@ -1,9 +1,11 @@
 {
   "_comment": "Per-weapon model count overrides. Key = unit name (exact match), value = { weaponName: modelCount }. Use when a weapon belongs to only a subset of a unit's models (champion, companion creature, optional upgrade). The full unit size is used for all other weapons.",
   "Vulkyn Flameseekers": {
-    "Emberteeth": 1
+    "Emberteeth": 1,
+    "Vulkyn Weapons": 8
   },
   "Liberators": {
-    "Grandwarhammer": 1
+    "Grandhammer": 1,
+    "Warhammer": 4
   }
 }

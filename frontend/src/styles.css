@@ -2097,7 +2097,35 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
   filter: drop-shadow(0 2px 10px rgba(0,0,0,0.7));
 }
 
-/* ── Flavor text ── */
+/* ── Unit-level flavor text (lore, shown when toggle is on) ── */
+.gw-flavor-text {
+  padding: 6px 16px 4px;
+  border-bottom: 1px solid rgba(200,168,64,0.15);
+}
+.gw-flavor-text p {
+  font-style: italic;
+  color: #9a9080;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ── Options text (weapon/unit rules, always shown) ── */
+.gw-options-text {
+  padding: 5px 16px 4px;
+  border-top: 1px solid rgba(200,168,64,0.12);
+  border-bottom: 1px solid rgba(200,168,64,0.12);
+  margin-bottom: 2px;
+}
+.gw-options-text p {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  line-height: 1.45;
+  margin: 0 0 2px;
+}
+.gw-options-text p:last-child { margin-bottom: 0; }
+
+/* ── Per-ability flavor text (kept for backwards compat) ── */
 .gw-ability-flavor {
   font-style: italic;
   color: #9a9080;
