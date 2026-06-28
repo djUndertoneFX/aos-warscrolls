@@ -54,13 +54,12 @@ const SORTABLE_COLS = [
   { key: 'unit_size',     label: 'Models',    abbr: 'Mdl' },
 ];
 
-function AllianceBadge({ alliance, onClick, onContextMenu }) {
+function AllianceBadge({ alliance, onClick }) {
   return (
     <span
       className={`alliance-badge alliance-${alliance}${onClick ? ' filter-clickable' : ''}`}
       onClick={onClick}
-      onContextMenu={onContextMenu}
-      title={onClick ? 'Left-click to filter · Right-click to exclude' : undefined}
+      title={onClick ? 'Click to filter · Ctrl+click to clear' : undefined}
     >{alliance}</span>
   );
 }
@@ -683,8 +682,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
                           {row.grand_alliance && (
                             <AllianceBadge
                               alliance={row.grand_alliance}
-                              onClick={e => { e.stopPropagation(); handleFilterFromRow('alliance', row.grand_alliance, false); }}
-                              onContextMenu={e => { e.stopPropagation(); e.preventDefault(); handleFilterFromRow('alliance', row.grand_alliance, true); }}
+                              onClick={e => { e.stopPropagation(); handleFilterFromRow('alliance', row.grand_alliance, e.ctrlKey); }}
                             />
                           )}
                         </td>
