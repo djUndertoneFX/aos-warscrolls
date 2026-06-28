@@ -828,13 +828,27 @@ export default function SimulacrumPage({ headerCollapsed }) {
                 })}
                 <th style={thStyle('types')}>Types<span className="col-resize-handle" onMouseDown={e => startResize(e,'types')} /></th>
                 <th style={thStyle('keywords')}>Keywords<span className="col-resize-handle" onMouseDown={e => startResize(e,'keywords')} /></th>
-                <th style={{...thStyle('ado_ranged'), textAlign:'center'}} className="col-ado-hdr"><span className="ado-tip" data-tip={ADO_TOOLTIP}>ADO-R</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'ado_ranged')} /></th>
-                <th style={{...thStyle('ado_melee'),  textAlign:'center'}} className="col-ado-hdr"><span className="ado-tip" data-tip={ADO_TOOLTIP}>ADO-M</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'ado_melee')} /></th>
+                <th style={{...thStyle('ado_ranged'), textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_ranged', e)}><span className="ado-tip" data-tip={ADO_TOOLTIP}>ADO-R</span><SortIcon col="ado_ranged" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_ranged'); }} /></th>
+                <th style={{...thStyle('ado_melee'),  textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_melee', e)}><span className="ado-tip" data-tip={ADO_TOOLTIP}>ADO-M</span><SortIcon col="ado_melee" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_melee'); }} /></th>
                 <th style={{...thStyle('ado_pct'),    textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_pct', e)}><span className="ado-tip" data-tip="ADO% — Average Damage Output per point spent. (ADO-R + ADO-M) ÷ Points.">ADO%</span><SortIcon col="ado_pct" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_pct'); }} /></th>
                 <th className="col-reinforce">Reinforce</th>
               </tr>
             </thead>
             <tbody>
+              {/* ADO-R, ADO-M, ADO% sorts are client-side */}
+              {['ado_ranged','ado_melee','ado_pct'].includes(sortBy) && data?.data.sort((a, b) => {
+                const getVals = row => {
+                  const ws = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
+                  const sv = presumedSave ?? 5; const wd = presumedWard ?? null;
+                  const aR = sumADO(ws.filter(w => w.type === 'ranged'), row.unit_size, sv, wd) ?? 0;
+                  const aM = sumADO(ws.filter(w => w.type === 'melee'),  row.unit_size, sv, wd) ?? 0;
+                  if (sortBy === 'ado_ranged') return aR;
+                  if (sortBy === 'ado_melee')  return aM;
+                  return row.points ? (aR + aM) / row.points : -1;
+                };
+                const vA = getVals(a), vB = getVals(b);
+                return sortDir === 'asc' ? vA - vB : vB - vA;
+              })}
               {data?.data.map((row, idx) => {
                 const rowNum = (page - 1) * PAGE_SIZE + idx + 1;
                 const isExpanded = expandedIds.has(row.id);
