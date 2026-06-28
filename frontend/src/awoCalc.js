@@ -61,7 +61,10 @@ export function calcWeaponADO(weapon, unitSize, presumedSave, presumedWard, roun
 
   if (!attacks || !hit || !wound || !damage) return null;
 
-  const totalAttacks = unitSize * attacks;
+  // model_count overrides unit size when only a subset of models carries this weapon
+  const modelCount = (weapon.model_count != null && weapon.model_count < unitSize)
+    ? weapon.model_count : unitSize;
+  const totalAttacks = modelCount * attacks;
 
   // Hit probabilities
   const critHitProb    = 1 / 6;

@@ -9,6 +9,32 @@ const fs = require('fs');
 const path = require('path');
 const { getDb, initDb } = require('./db');
 
+// Weapon model-count overrides: some units have weapons that only a subset of
+// models carry (champion weapons, companion creatures, upgrade options).
+// Override file maps unitName → { weaponName: modelCount }.
+const WEAPON_OVERRIDES_PATH = path.join(__dirname, 'weaponModelOverrides.json');
+let weaponModelOverrides = {};
+try {
+  const raw = JSON.parse(fs.readFileSync(WEAPON_OVERRIDES_PATH, 'utf8'));
+  for (const [unit, weapons] of Object.entries(raw)) {
+    if (unit !== '_comment') weaponModelOverrides[unit] = weapons;
+  }
+} catch { /* file missing or malformed — overrides silently skipped */ }
+
+function applyWeaponOverrides(unitName, weaponsJson) {
+  if (!weaponsJson) return weaponsJson;
+  const overrides = weaponModelOverrides[unitName];
+  if (!overrides) return weaponsJson;
+  try {
+    const weapons = JSON.parse(weaponsJson);
+    const patched = weapons.map(w => {
+      const mc = overrides[w.name];
+      return mc != null ? { ...w, model_count: mc } : w;
+    });
+    return JSON.stringify(patched);
+  } catch { return weaponsJson; }
+}
+
 const IMAGE_DIR = process.env.IMAGE_DIR ||
   (process.env.DB_PATH
     ? path.join(path.dirname(process.env.DB_PATH), 'unit-images')
@@ -386,7 +412,7 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
     res.json({
       total, page: parseInt(page), pageSize: parseInt(pageSize),
       totalPages: Math.ceil(total / pageSize),
-      data: rows,
+      data: rows.map(r => ({ ...r, weapons: applyWeaponOverrides(r.name, r.weapons) })),
     });
   } finally {
     db.close();
@@ -543,7 +569,7 @@ app.get('/api/warscrolls/:id', requireAuth, (req, res) => {
   try {
     const row = db.prepare('SELECT * FROM warscrolls WHERE id = ?').get(req.params.id);
     if (!row) return res.status(404).json({ error: 'Not found' });
-    res.json(row);
+    res.json({ ...row, weapons: applyWeaponOverrides(row.name, row.weapons) });
   } finally {
     db.close();
   }
