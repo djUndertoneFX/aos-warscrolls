@@ -1225,7 +1225,7 @@ td.col-stat {
   font-size: 0.8rem;
   font-weight: 600;
 }
-th.col-awo-hdr {
+th.col-ado-hdr {
   font-family: 'Cinzel', serif;
   font-size: 0.68rem;
   letter-spacing: 0.04em;
@@ -1233,7 +1233,7 @@ th.col-awo-hdr {
   text-align: center;
   white-space: nowrap;
 }
-td.col-awo {
+td.col-ado {
   text-align: center;
   font-family: 'Cinzel', 'Palatino Linotype', serif;
   font-size: 0.9rem;
@@ -1241,6 +1241,41 @@ td.col-awo {
   color: #a8d870;
   white-space: nowrap;
 }
+td.col-ado-pct {
+  color: #d4c060;
+  font-size: 0.8rem;
+}
+
+/* ── ADO CSS tooltip (more reliable than title= on small th cells) ── */
+.ado-tip {
+  position: relative;
+  cursor: help;
+}
+.ado-tip::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1e1a10;
+  border: 1px solid #c8a840;
+  color: #d8cca8;
+  font-family: 'Palatino Linotype', Palatino, Georgia, serif;
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.5;
+  padding: 8px 12px;
+  border-radius: 4px;
+  width: 280px;
+  white-space: normal;
+  text-align: left;
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s 0.3s;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.7);
+}
+.ado-tip:hover::after { opacity: 1; }
 
 td.col-keywords {
   font-size: 0.78rem;
@@ -1435,11 +1470,11 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
 .inline-weapon-table .iwt-th-name    { width: 28%; text-align: center; }
 .inline-weapon-table .iwt-th-stat    { text-align: center; }
 .inline-weapon-table .iwt-th-ability { width: 28%; text-align: center; }
-.inline-weapon-table .iwt-th-awo     { width: 50px; text-align: center; color: #a8d870; white-space: nowrap; }
+.inline-weapon-table .iwt-th-ado     { width: 50px; text-align: center; color: #a8d870; white-space: nowrap; }
 .inline-weapon-table .iwt-td-name    { text-align: center; color: var(--gold-light); font-size: 0.8rem; font-weight: 600; }
 .inline-weapon-table .iwt-td-stat    { text-align: center; font-family: 'Cinzel', 'Palatino Linotype', serif; font-weight: 700; }
 .inline-weapon-table .iwt-td-ability { text-align: center; font-size: 0.68rem; color: #c0b890; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.inline-weapon-table .iwt-td-awo     { text-align: center; font-family: 'Cinzel', 'Palatino Linotype', serif; font-weight: 700; color: #a8d870; }
+.inline-weapon-table .iwt-td-ado     { text-align: center; font-family: 'Cinzel', 'Palatino Linotype', serif; font-weight: 700; color: #a8d870; }
 
 /* ── Detail panel ── */
 .detail-overlay {
@@ -1872,7 +1907,7 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
 .gw-th-range   { text-align: center !important; }
 .gw-th-stat    { text-align: center !important; }
 .gw-th-ability { text-align: center !important; width: 28%; }
-.gw-th-awo     { text-align: center !important; width: 44px; white-space: nowrap; font-size: 0.62rem; }
+.gw-th-ado     { text-align: center !important; width: 44px; white-space: nowrap; font-size: 0.62rem; }
 
 .gw-weapon-table td {
   padding: 3px 4px;
@@ -1887,7 +1922,7 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
 .gw-td-name   { text-align: center !important; font-size: 0.88rem; font-weight: 600; color: #e0d4a8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .gw-td-stat   { text-align: center !important; font-family: 'Cinzel', 'Palatino Linotype', serif; font-size: 1.0rem; font-weight: 700; white-space: nowrap; }
 .gw-td-ability{ text-align: center !important; font-size: 0.65rem; color: #c0b890; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.gw-td-awo    { text-align: center !important; font-family: 'Cinzel', 'Palatino Linotype', serif; font-size: 0.9rem; font-weight: 700; color: #a8d870; white-space: nowrap; }
+.gw-td-ado    { text-align: center !important; font-family: 'Cinzel', 'Palatino Linotype', serif; font-size: 0.9rem; font-weight: 700; color: #a8d870; white-space: nowrap; }
 
 /* ── Abilities section ── */
 .gw-abilities-section {

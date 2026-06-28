@@ -4,12 +4,12 @@ import axios from 'axios';
 import WarscrollGW from '../components/WarscrollGW';
 import { simulateBattle } from '../simulation/engine';
 import { useSettings } from '../SettingsContext';
-import { calcWeaponAWO } from '../awoCalc';
+import { calcWeaponADO } from '../awoCalc';
 
-function sumAWO(weapons, unitSize, save, ward) {
+function sumADO(weapons, unitSize, save, ward) {
   let total = 0, any = false;
   for (const w of weapons) {
-    const v = calcWeaponAWO(w, unitSize || 1, save, ward);
+    const v = calcWeaponADO(w, unitSize || 1, save, ward);
     if (v !== null) { total += v; any = true; }
   }
   return any ? total : null;
@@ -144,8 +144,11 @@ function SimulacrumBattle({ friendly, enemy, colWidths, thStyle, onUnitClick, fr
     const melee  = weapons.filter(w => w.type === 'melee');
     const save = presumedSave ?? 5;
     const ward = presumedWard ?? null;
-    const awoRanged = sumAWO(ranged, row.unit_size, save, ward);
-    const awoMelee  = sumAWO(melee,  row.unit_size, save, ward);
+    const adoRanged = sumADO(ranged, row.unit_size, save, ward);
+    const adoMelee  = sumADO(melee,  row.unit_size, save, ward);
+    const adoTotal  = (adoRanged ?? 0) + (adoMelee ?? 0);
+    const adoPct    = (adoRanged !== null || adoMelee !== null) && row.points
+      ? (adoTotal / row.points).toFixed(2) : null;
     const isReinforced = label === 'friendly' ? friendlyReinforced : enemyReinforced;
     const onReinforceChange = label === 'friendly' ? onFriendlyReinforceChange : onEnemyReinforceChange;
     const color = label === 'friendly' ? 'var(--friendly-color)' : 'var(--enemy-color)';
@@ -175,8 +178,9 @@ function SimulacrumBattle({ friendly, enemy, colWidths, thStyle, onUnitClick, fr
           <td className="col-stat">{row.unit_size || '—'}</td>
           <td><TypeTags row={row} /></td>
           <td className="col-keywords">{row.keywords ? row.keywords.split(',').slice(0,6).join(', ') : '—'}</td>
-          <td className="col-awo">{awoRanged !== null ? awoRanged : '—'}</td>
-          <td className="col-awo">{awoMelee  !== null ? awoMelee  : '—'}</td>
+          <td className="col-ado">{adoRanged !== null ? adoRanged : '—'}</td>
+          <td className="col-ado">{adoMelee  !== null ? adoMelee  : '—'}</td>
+          <td className="col-ado col-ado-pct">{adoPct !== null ? adoPct : '—'}</td>
           <td className="col-reinforce" onClick={e => e.stopPropagation()}>
             <label className="reinforce-label" style={{color}}>
               <input type="checkbox" checked={!!isReinforced} onChange={e => { onReinforceChange && onReinforceChange(e.target.checked); }} />
@@ -185,7 +189,7 @@ function SimulacrumBattle({ friendly, enemy, colWidths, thStyle, onUnitClick, fr
           </td>
         </tr>
         <tr className="weapons-expand-row">
-          <td colSpan={19}>
+          <td colSpan={20}>
             <div className="weapons-expand-inner" onClick={e => e.stopPropagation()}>
               {weapons.length === 0 && <span style={{color:'var(--text-dim)',fontStyle:'italic'}}>No weapon data available.</span>}
               {ranged.length > 0 && (
@@ -194,13 +198,13 @@ function SimulacrumBattle({ friendly, enemy, colWidths, thStyle, onUnitClick, fr
                   <table className="inline-weapon-table"><thead><tr>
                     <th className="iwt-th-name">Weapon</th>
                     <th className="iwt-th-stat">Rng</th><th className="iwt-th-stat">Atk</th><th className="iwt-th-stat">Hit</th><th className="iwt-th-stat">Wnd</th><th className="iwt-th-stat">Rnd</th><th className="iwt-th-stat">Dmg</th>
-                    <th className="iwt-th-ability">Ability</th><th className="iwt-th-awo">AWO</th>
+                    <th className="iwt-th-ability">Ability</th><th className="iwt-th-ado">AWO</th>
                   </tr></thead><tbody>
                     {ranged.map((w,i) => <tr key={i}>
                       <td className="iwt-td-name">{w.name}</td>
                       <td className="iwt-td-stat">{w.range}</td><td className="iwt-td-stat">{w.attacks}</td><td className="iwt-td-stat">{w.hit}</td><td className="iwt-td-stat">{w.wound}</td><td className="iwt-td-stat">{w.rend||'—'}</td><td className="iwt-td-stat">{w.damage}</td>
                       <td className="iwt-td-ability">{w.ability||'—'}</td>
-                      <td className="iwt-td-awo">{(()=>{const v=calcWeaponAWO(w,row.unit_size||1,save,ward);return v!==null?v:'—';})()}</td>
+                      <td className="iwt-td-ado">{(()=>{const v=calcWeaponADO(w,row.unit_size||1,save,ward);return v!==null?v:'—';})()}</td>
                     </tr>)}
                   </tbody></table>
                 </div>
@@ -211,13 +215,13 @@ function SimulacrumBattle({ friendly, enemy, colWidths, thStyle, onUnitClick, fr
                   <table className="inline-weapon-table"><thead><tr>
                     <th className="iwt-th-name">Weapon</th>
                     <th className="iwt-th-stat">Atk</th><th className="iwt-th-stat">Hit</th><th className="iwt-th-stat">Wnd</th><th className="iwt-th-stat">Rnd</th><th className="iwt-th-stat">Dmg</th>
-                    <th className="iwt-th-ability">Ability</th><th className="iwt-th-awo">AWO</th>
+                    <th className="iwt-th-ability">Ability</th><th className="iwt-th-ado">AWO</th>
                   </tr></thead><tbody>
                     {melee.map((w,i) => <tr key={i}>
                       <td className="iwt-td-name">{w.name}</td>
                       <td className="iwt-td-stat">{w.attacks}</td><td className="iwt-td-stat">{w.hit}</td><td className="iwt-td-stat">{w.wound}</td><td className="iwt-td-stat">{w.rend||'—'}</td><td className="iwt-td-stat">{w.damage}</td>
                       <td className="iwt-td-ability">{w.ability||'—'}</td>
-                      <td className="iwt-td-awo">{(()=>{const v=calcWeaponAWO(w,row.unit_size||1,save,ward);return v!==null?v:'—';})()}</td>
+                      <td className="iwt-td-ado">{(()=>{const v=calcWeaponADO(w,row.unit_size||1,save,ward);return v!==null?v:'—';})()}</td>
                     </tr>)}
                   </tbody></table>
                 </div>
@@ -387,7 +391,7 @@ const BATTLE_COUNT_OPTS = [
   { val: 'forever', label: 'Till the Next Version of Age of Sigmar!' },
 ];
 
-const AWO_TOOLTIP = 'Average Wound Output\n\nTotal damage a full unit outputs on average with this weapon type, vs the presumed save/ward in Settings.';
+const ADO_TOOLTIP = 'Average Damage Output. Total damage a full unit outputs on average vs the presumed save/ward in Settings. Crit abilities are factored in; conditional abilities (Anti-X) are not.';
 
 export default function SimulacrumPage({ headerCollapsed }) {
   const { presumedSave, presumedWard } = useSettings();
@@ -547,7 +551,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
   const DEFAULT_COL_WIDTHS = {
     rownum: 36, friendly: 38, enemy: 38, expand: 30, thumb: 44,
     name: 240, faction: 150, alliance: 82,
-    awo_ranged: 52, awo_melee: 52,
+    ado_ranged: 52, ado_melee: 52, ado_pct: 56,
     move: 46, health: 46, control: 46, save: 46, points: 52, models: 46,
     types: 100, keywords: 200,
   };
@@ -824,8 +828,9 @@ export default function SimulacrumPage({ headerCollapsed }) {
                 })}
                 <th style={thStyle('types')}>Types<span className="col-resize-handle" onMouseDown={e => startResize(e,'types')} /></th>
                 <th style={thStyle('keywords')}>Keywords<span className="col-resize-handle" onMouseDown={e => startResize(e,'keywords')} /></th>
-                <th style={{...thStyle('awo_ranged'), textAlign:'center'}} title={AWO_TOOLTIP} className="col-awo-hdr">AWO ⊕<span className="col-resize-handle" onMouseDown={e => startResize(e,'awo_ranged')} /></th>
-                <th style={{...thStyle('awo_melee'),  textAlign:'center'}} title={AWO_TOOLTIP} className="col-awo-hdr">AWO ✕<span className="col-resize-handle" onMouseDown={e => startResize(e,'awo_melee')} /></th>
+                <th style={{...thStyle('ado_ranged'), textAlign:'center'}} className="col-ado-hdr"><span className="ado-tip" data-tip={ADO_TOOLTIP}>ADO-R</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'ado_ranged')} /></th>
+                <th style={{...thStyle('ado_melee'),  textAlign:'center'}} className="col-ado-hdr"><span className="ado-tip" data-tip={ADO_TOOLTIP}>ADO-M</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'ado_melee')} /></th>
+                <th style={{...thStyle('ado_pct'),    textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_pct', e)}><span className="ado-tip" data-tip="ADO% — Average Damage Output per point spent. (ADO-R + ADO-M) ÷ Points.">ADO%</span><SortIcon col="ado_pct" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_pct'); }} /></th>
                 <th className="col-reinforce">Reinforce</th>
               </tr>
             </thead>
@@ -843,7 +848,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
                 const prev = data.data[idx - 1];
                 const factionChanged = !prev || prev.faction !== row.faction;
                 const typeChanged    = !prev || prev.faction !== row.faction || unitTypeLabel(prev) !== unitTypeLabel(row);
-                const colSpan = 19;
+                const colSpan = 20;
                 return (
                   <React.Fragment key={row.id}>
                     {factionChanged && sortBy === 'faction' && <tr className="separator-faction"><td colSpan={colSpan}>{row.faction}</td></tr>}
@@ -875,8 +880,9 @@ export default function SimulacrumPage({ headerCollapsed }) {
                       <td className="col-stat">{row.unit_size || '—'}</td>
                       <td><TypeTags row={row} /></td>
                       <td className="col-keywords">{row.keywords ? row.keywords.split(',').slice(0,6).join(', ') : '—'}</td>
-                      <td className="col-awo">{awoRanged !== null ? awoRanged : '—'}</td>
-                      <td className="col-awo">{awoMelee  !== null ? awoMelee  : '—'}</td>
+                      <td className="col-ado">{adoRanged !== null ? adoRanged : '—'}</td>
+                      <td className="col-ado">{adoMelee  !== null ? adoMelee  : '—'}</td>
+                      <td className="col-ado col-ado-pct">{adoPct !== null ? adoPct : '—'}</td>
                       <td className="col-reinforce" onClick={e => e.stopPropagation()}>
                         {selectedFriendly?.id === row.id && (
                           <label className="reinforce-label" style={{color:'var(--friendly-color)'}}>
@@ -894,7 +900,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
                     </tr>
                     {isExpanded && (
                       <tr className="weapons-expand-row">
-                        <td colSpan={19}>
+                        <td colSpan={20}>
                           <div className="weapons-expand-inner" onClick={e => e.stopPropagation()}>
                             {weapons.length === 0 && <span style={{color:'var(--text-dim)',fontStyle:'italic'}}>No weapon data available.</span>}
                             {ranged.length > 0 && (
@@ -903,13 +909,13 @@ export default function SimulacrumPage({ headerCollapsed }) {
                                 <table className="inline-weapon-table"><thead><tr>
                                   <th className="iwt-th-name">Weapon</th>
                                   <th className="iwt-th-stat">Rng</th><th className="iwt-th-stat">Atk</th><th className="iwt-th-stat">Hit</th><th className="iwt-th-stat">Wnd</th><th className="iwt-th-stat">Rnd</th><th className="iwt-th-stat">Dmg</th>
-                                  <th className="iwt-th-ability">Ability</th><th className="iwt-th-awo">AWO</th>
+                                  <th className="iwt-th-ability">Ability</th><th className="iwt-th-ado">AWO</th>
                                 </tr></thead>
                                 <tbody>{ranged.map((w,i) => <tr key={i}>
                                   <td className="iwt-td-name">{w.name}</td>
                                   <td className="iwt-td-stat">{w.range}</td><td className="iwt-td-stat">{w.attacks}</td><td className="iwt-td-stat">{w.hit}</td><td className="iwt-td-stat">{w.wound}</td><td className="iwt-td-stat">{w.rend||'—'}</td><td className="iwt-td-stat">{w.damage}</td>
                                   <td className="iwt-td-ability">{w.ability||'—'}</td>
-                                  <td className="iwt-td-awo">{(()=>{const v=calcWeaponAWO(w,row.unit_size||1,save,ward);return v!==null?v:'—';})()}</td>
+                                  <td className="iwt-td-ado">{(()=>{const v=calcWeaponADO(w,row.unit_size||1,save,ward);return v!==null?v:'—';})()}</td>
                                 </tr>)}</tbody></table>
                               </div>
                             )}
@@ -919,13 +925,13 @@ export default function SimulacrumPage({ headerCollapsed }) {
                                 <table className="inline-weapon-table"><thead><tr>
                                   <th className="iwt-th-name">Weapon</th>
                                   <th className="iwt-th-stat">Atk</th><th className="iwt-th-stat">Hit</th><th className="iwt-th-stat">Wnd</th><th className="iwt-th-stat">Rnd</th><th className="iwt-th-stat">Dmg</th>
-                                  <th className="iwt-th-ability">Ability</th><th className="iwt-th-awo">AWO</th>
+                                  <th className="iwt-th-ability">Ability</th><th className="iwt-th-ado">AWO</th>
                                 </tr></thead>
                                 <tbody>{melee.map((w,i) => <tr key={i}>
                                   <td className="iwt-td-name">{w.name}</td>
                                   <td className="iwt-td-stat">{w.attacks}</td><td className="iwt-td-stat">{w.hit}</td><td className="iwt-td-stat">{w.wound}</td><td className="iwt-td-stat">{w.rend||'—'}</td><td className="iwt-td-stat">{w.damage}</td>
                                   <td className="iwt-td-ability">{w.ability||'—'}</td>
-                                  <td className="iwt-td-awo">{(()=>{const v=calcWeaponAWO(w,row.unit_size||1,save,ward);return v!==null?v:'—';})()}</td>
+                                  <td className="iwt-td-ado">{(()=>{const v=calcWeaponADO(w,row.unit_size||1,save,ward);return v!==null?v:'—';})()}</td>
                                 </tr>)}</tbody></table>
                               </div>
                             )}

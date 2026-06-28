@@ -24,7 +24,7 @@ const SAVE_OPTIONS  = ['-', 2, 3, 4, 5, 6];
 const WARD_OPTIONS  = ['-', 4, 5, 6];
 
 function SettingsPanel({ onClose }) {
-  const { showFlavorText, calculateDynamicAWO, presumedSave, presumedWard, setSetting } = useSettings();
+  const { showFlavorText, calculateDynamicADO, presumedSave, presumedWard, setSetting } = useSettings();
   const ref = useRef(null);
 
   useEffect(() => {
@@ -44,9 +44,9 @@ function SettingsPanel({ onClose }) {
         <span>Flavor Text</span>
       </label>
       <label className="settings-cb-row">
-        <input type="checkbox" checked={calculateDynamicAWO}
-          onChange={e => setSetting('calculateDynamicAWO', e.target.checked)} />
-        <span>Calculate Dynamic AWO</span>
+        <input type="checkbox" checked={calculateDynamicADO}
+          onChange={e => setSetting('calculateDynamicADO', e.target.checked)} />
+        <span>Calculate Dynamic ADO</span>
       </label>
       <div className="settings-field-row">
         <span className="settings-field-lbl">Presumed Save</span>

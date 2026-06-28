@@ -1,7 +1,7 @@
 ﻿import React, { useEffect, useState, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { useSettings } from '../SettingsContext';
-import { calcWeaponAWO } from '../awoCalc';
+import { calcWeaponADO } from '../awoCalc';
 
 // ── White-removal canvas image ───────────────────────────────────────────────
 function TransparentImage({ src, alt, className, onError }) {
@@ -203,12 +203,14 @@ function WeaponSection({ weapons, type, unitSize }) {
             <th className="gw-th-stat">Rnd</th>
             <th className="gw-th-stat">Dmg</th>
             <th className="gw-th-ability">Ability</th>
-            <th className="gw-th-awo" title="Average Wound Output&#10;&#10;This shows how much damage a full sized unit will output on average with this weapon. This includes number of attacks x models, the hit roll, wound roll, saves assuming a typical 5+ save with no ward. Change these defaults in the settings to tune to specific conditions.&#10;&#10;Some abilities like Crit (Mortal), Crit (Auto-Wound), etc. are considered, but not others that are conditional (like Anti-X).">AWO</th>
+            <th className="gw-th-ado">
+              <span className="ado-tip" data-tip="Average Damage Output. Full unit damage on average with this weapon, including attacks × models, hit/wound/save rolls (default 5+ save, no ward — change in Settings). Crit (Mortal) and Crit (Auto-Wound) are factored in; conditional abilities like Anti-X are not.">ADO</span>
+            </th>
           </tr>
         </thead>
         <tbody>
           {rows.map((w, i) => {
-            const awo = calcWeaponAWO(w, unitSize || 1, save, ward);
+            const awo = calcWeaponADO(w, unitSize || 1, save, ward);
             return (
               <tr key={i} className={i % 2 === 0 ? 'gw-row-a' : 'gw-row-b'}>
                 <td className="gw-td-name">{w.name}</td>
@@ -219,7 +221,7 @@ function WeaponSection({ weapons, type, unitSize }) {
                 <td className="gw-td-stat">{w.rend || '—'}</td>
                 <td className="gw-td-stat">{w.damage}</td>
                 <td className="gw-td-ability">{w.ability || '-'}</td>
-                <td className="gw-td-awo">{awo !== null ? awo : '—'}</td>
+                <td className="gw-td-ado">{awo !== null ? awo : '—'}</td>
               </tr>
             );
           })}

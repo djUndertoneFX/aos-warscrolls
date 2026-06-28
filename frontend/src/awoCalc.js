@@ -50,7 +50,8 @@ function hasCritMortal(ability) {
  * @param {number|null} presumedWard - enemy ward value, or null for none
  * @returns {number} AWO rounded integer, or null if data is insufficient
  */
-export function calcWeaponAWO(weapon, unitSize, presumedSave, presumedWard) {
+export { calcWeaponADO as calcWeaponAWO }; // backwards-compat alias
+export function calcWeaponADO(weapon, unitSize, presumedSave, presumedWard) {
   const attacks  = meanDice(weapon.attacks);
   const hit      = parseRoll(weapon.hit);
   const wound    = parseRoll(weapon.wound);

@@ -9,7 +9,7 @@ function loadSetting(key, fallback) {
 
 export function SettingsProvider({ children }) {
   const [showFlavorText,      setShowFlavorText]      = useState(() => loadSetting('aos-setting-flavor-text', false));
-  const [calculateDynamicAWO, setCalculateDynamicAWO] = useState(() => loadSetting('aos-setting-dynamic-awo', false));
+  const [calculateDynamicADO, setCalculateDynamicAWO] = useState(() => loadSetting('aos-setting-dynamic-ado', false));
   const [presumedSave,        setPresumedSave]        = useState(() => loadSetting('aos-setting-presumed-save', 5));
   const [presumedWard,        setPresumedWard]        = useState(() => loadSetting('aos-setting-presumed-ward', null));
 
@@ -19,9 +19,9 @@ export function SettingsProvider({ children }) {
         setShowFlavorText(value);
         localStorage.setItem('aos-setting-flavor-text', JSON.stringify(value));
         break;
-      case 'calculateDynamicAWO':
+      case 'calculateDynamicADO':
         setCalculateDynamicAWO(value);
-        localStorage.setItem('aos-setting-dynamic-awo', JSON.stringify(value));
+        localStorage.setItem('aos-setting-dynamic-ado', JSON.stringify(value));
         break;
       case 'presumedSave':
         setPresumedSave(value);
@@ -36,7 +36,7 @@ export function SettingsProvider({ children }) {
   };
 
   return (
-    <SettingsContext.Provider value={{ showFlavorText, calculateDynamicAWO, presumedSave, presumedWard, setSetting }}>
+    <SettingsContext.Provider value={{ showFlavorText, calculateDynamicADO, presumedSave, presumedWard, setSetting }}>
       {children}
     </SettingsContext.Provider>
   );
