@@ -101,9 +101,8 @@ function TypeTags({ row, onFilter }) {
           <span
             key={t}
             className={`type-tag${onFilter && filterKey ? ' filter-clickable' : ''}`}
-            title={onFilter && filterKey ? 'Left-click to filter · Right-click to exclude' : undefined}
-            onClick={onFilter && filterKey ? e => { e.stopPropagation(); onFilter(filterKey, false); } : undefined}
-            onContextMenu={onFilter && filterKey ? e => { e.stopPropagation(); e.preventDefault(); onFilter(filterKey, true); } : undefined}
+            title={onFilter && filterKey ? 'Click to filter · Ctrl+click to exclude' : undefined}
+            onClick={onFilter && filterKey ? e => { e.stopPropagation(); onFilter(filterKey, e.ctrlKey); } : undefined}
           >{t}</span>
         );
       })}
