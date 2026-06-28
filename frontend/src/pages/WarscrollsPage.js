@@ -561,7 +561,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
                   <th style={thStyle('keywords')}>Keywords<span className="col-resize-handle" onMouseDown={e => startResize(e,'keywords')} /></th>
                   <th style={{...thStyle('ado_ranged'), textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_ranged', e)}><span className="ado-tip" data-tip={ADO_TOOLTIP}>ADO-R</span><SortIcon col="ado_ranged" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_ranged'); }} /></th>
                   <th style={{...thStyle('ado_melee'),  textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_melee', e)}><span className="ado-tip" data-tip={ADO_TOOLTIP}>ADO-M</span><SortIcon col="ado_melee" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_melee'); }} /></th>
-                  <th style={{...thStyle('ado_pct'),    textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_pct', e)}><span className="ado-tip" data-tip="ADO% — Average Damage Output per point spent. (ADO-R + ADO-M) ÷ Points. Higher is more damage-efficient.">ADO%</span><SortIcon col="ado_pct" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_pct'); }} /></th>
+                  <th style={{...thStyle('ado_pct'),    textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_pct', e)}><span className="ado-tip" data-tip="ADO/k — Damage efficiency score: (ADO-R + ADO-M) ÷ Points × 1000. Higher = more damage per point spent. Sort descending to find your best-value units.">ADO/k</span><SortIcon col="ado_pct" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_pct'); }} /></th>
                 </tr>
               </thead>
               <tbody>
@@ -577,7 +577,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
                   const adoMelee  = sumADO(melee,  row.unit_size, save, ward, roundingMode);
                   const adoTotal  = (adoRanged ?? 0) + (adoMelee ?? 0);
                   const adoPct    = (adoRanged !== null || adoMelee !== null) && row.points
-                    ? (adoTotal / row.points).toFixed(2)
+                    ? Math.round(adoTotal / row.points * 1000)
                     : null;
                   const prev = data.data[idx - 1];
                   const factionChanged = !prev || prev.faction !== row.faction;
