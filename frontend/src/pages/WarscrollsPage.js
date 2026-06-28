@@ -200,6 +200,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
   const [userUnits, setUserUnits] = useState({});
 
   const [expandedIds, setExpandedIds] = useState(new Set());
+  const [fullExpandedIds, setFullExpandedIds] = useState(new Set());
   const [detailUnit, setDetailUnit] = useState(null);
   const [thumbHover, setThumbHover] = useState(null); // { id, x, y }
 
@@ -568,6 +569,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
                 {data?.data.map((row, idx) => {
                   const rowNum = (page - 1) * PAGE_SIZE + idx + 1;
                   const isExpanded = expandedIds.has(row.id);
+                  const isFullExpanded = fullExpandedIds.has(row.id);
                   const weapons = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
                   const ranged = weapons.filter(w => w.type === 'ranged');
                   const melee  = weapons.filter(w => w.type === 'melee');
@@ -596,8 +598,17 @@ export default function WarscrollsPage({ headerCollapsed }) {
                         </tr>
                       )}
                       <tr
-                        className={`unit-row${isExpanded ? ' expanded' : ''}`}
-                        onClick={() => setExpandedIds(prev => { const s = new Set(prev); isExpanded ? s.delete(row.id) : s.add(row.id); return s; })}
+                        className={`unit-row${(isExpanded || isFullExpanded) ? ' expanded' : ''}${isFullExpanded ? ' full-expanded' : ''}`}
+                        onClick={() => {
+                          if (isFullExpanded) { setFullExpandedIds(prev => { const s = new Set(prev); s.delete(row.id); return s; }); return; }
+                          setExpandedIds(prev => { const s = new Set(prev); isExpanded ? s.delete(row.id) : s.add(row.id); return s; });
+                        }}
+                        onContextMenu={e => {
+                          e.preventDefault();
+                          if (isFullExpanded) { setFullExpandedIds(prev => { const s = new Set(prev); s.delete(row.id); return s; }); return; }
+                          setExpandedIds(prev => { const s = new Set(prev); s.delete(row.id); return s; });
+                          setFullExpandedIds(prev => { const s = new Set(prev); s.add(row.id); return s; });
+                        }}
                         style={{cursor:'pointer'}}
                       >
                         <td className="col-rownum">{rowNum}</td>
@@ -608,7 +619,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
                           <span className={`flag-check enemy${(userUnits[row.id]?.is_enemy) ? ' active' : ''}`}>✓</span>
                         </td>
                         <td>
-                          <span className="row-expand-hint">{isExpanded ? '▲' : '▼'}</span>
+                          <span className="row-expand-hint">{isFullExpanded ? '◆' : isExpanded ? '▲' : '▼'}</span>
                         </td>
                         <td className="col-name" onClick={e => { e.stopPropagation(); setDetailUnit(row); }}>
                           <span className="unit-name-link">{row.name}</span>
@@ -641,7 +652,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
                         <td className="col-ado">{adoMelee  !== null ? adoMelee  : '—'}</td>
                         <td className="col-ado col-ado-pct">{adoPct !== null ? adoPct : '—'}</td>
                       </tr>
-                      {isExpanded && (
+                      {(isExpanded || isFullExpanded) && (
                         <tr className="weapons-expand-row">
                           <td colSpan={16}>
                             <div className="weapons-expand-inner" onClick={e => e.stopPropagation()}>
@@ -696,6 +707,26 @@ export default function WarscrollsPage({ headerCollapsed }) {
                                   </table>
                                 </div>
                               )}
+                              {isFullExpanded && (() => {
+                                const abilities = (() => { try { return JSON.parse(row.abilities || '[]'); } catch { return []; } })();
+                                if (!abilities.length) return null;
+                                return (
+                                  <div className="inline-abilities-block">
+                                    <div className="inline-weapon-section-header">◆ Abilities</div>
+                                    {abilities.map((ab, i) => (
+                                      <div key={i} className="inline-ability-card">
+                                        <div className="inline-ability-header">
+                                          <span className="inline-ability-name">{ab.name}</span>
+                                          {ab.timing && <span className="inline-ability-timing">{ab.timing}</span>}
+                                        </div>
+                                        {ab.declare && <div className="inline-ability-section"><span className="inline-ability-label">Declare:</span> {ab.declare}</div>}
+                                        {ab.effect && <div className="inline-ability-section"><span className="inline-ability-label">Effect:</span> {ab.effect}</div>}
+                                        {ab.bullets?.map((b, j) => <div key={j} className="inline-ability-bullet">• {b}</div>)}
+                                      </div>
+                                    ))}
+                                  </div>
+                                );
+                              })()}
                             </div>
                           </td>
                         </tr>
