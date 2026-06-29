@@ -1046,6 +1046,7 @@ input, select {
   flex: 1;
   min-height: 0;          /* critical: allows flex child to scroll rather than overflow */
   overflow: auto;
+  scrollbar-gutter: stable; /* reserves scrollbar space so vertical scrollbar never causes horizontal overflow */
   border: 1px solid var(--border);
   border-radius: 4px;
   box-shadow: 0 4px 24px rgba(0,0,0,0.4);
