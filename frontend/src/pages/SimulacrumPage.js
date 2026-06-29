@@ -617,13 +617,13 @@ export default function SimulacrumPage({ headerCollapsed }) {
   const alliances = ['Order', 'Chaos', 'Death', 'Destruction'];
 
   const DEFAULT_COL_WIDTHS = {
-    rownum: 36, friendly: 38, enemy: 38, expand: 30, thumb: 44,
+    rownum: 28, friendly: 30, enemy: 30, expand: 30, thumb: 44,
     name: 240, faction: 150, alliance: 82,
-    ado_ranged: 52, ado_melee: 52, ado_pct: 56,
+    ado_ranged: 44, ado_melee: 44, ado_pct: 46,
     move: 46, health: 46, control: 46, save: 46, points: 52, models: 46,
-    types: 100, keywords: 200,
+    types: 72, keywords: 200,
   };
-  const STORAGE_KEY = 'aos-col-widths-v3';
+  const STORAGE_KEY = 'aos-col-widths-v4';
   const [colWidths, setColWidths] = useState(() => {
     try { return { ...DEFAULT_COL_WIDTHS, ...JSON.parse(localStorage.getItem(STORAGE_KEY)) }; }
     catch { return DEFAULT_COL_WIDTHS; }
