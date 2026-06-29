@@ -377,12 +377,12 @@ export default function WarscrollsPage({ headerCollapsed }) {
   // ── Column resizing ──────────────────────────────────────────────────────
   const DEFAULT_COL_WIDTHS = {
     rownum: 28, friendly: 30, enemy: 30, expand: 30, thumb: 44,
-    name: 240, faction: 150, alliance: 82, models: 46,
-    move: 46, health: 46, control: 46, save: 46, points: 52,
-    types: 72, keywords: 200,
+    name: 210, faction: 125, alliance: 68, models: 44,
+    move: 44, health: 44, control: 44, save: 44, points: 50,
+    types: 72, keywords: 160,
     ado_ranged: 44, ado_melee: 44, ado_pct: 46,
   };
-  const STORAGE_KEY = 'aos-col-widths-v4';
+  const STORAGE_KEY = 'aos-col-widths-v5';
   const [colWidths, setColWidths] = useState(() => {
     try { return { ...DEFAULT_COL_WIDTHS, ...JSON.parse(localStorage.getItem(STORAGE_KEY)) }; }
     catch { return DEFAULT_COL_WIDTHS; }
