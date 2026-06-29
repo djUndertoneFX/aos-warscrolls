@@ -413,7 +413,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
     window.addEventListener('mouseup', onUp);
   }, [colWidths]);
 
-  const thStyle = (key) => ({ width: colWidths[key], minWidth: colWidths[key], position: 'relative' });
+  const thStyle = (key) => ({ width: colWidths[key], position: 'relative' });
 
   const toggleBothBtn = (
     <button

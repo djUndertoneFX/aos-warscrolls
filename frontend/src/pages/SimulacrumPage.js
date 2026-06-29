@@ -644,7 +644,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
     window.addEventListener('mouseup', onUp);
   }, [colWidths]);
 
-  const thStyle = (key) => ({ width: colWidths[key], minWidth: colWidths[key], position: 'relative' });
+  const thStyle = (key) => ({ width: colWidths[key], position: 'relative' });
 
   const [navbarExtrasEl, setNavbarExtrasEl] = useState(null);
   useEffect(() => { setNavbarExtrasEl(headerCollapsed ? document.getElementById('navbar-extras') : null); }, [headerCollapsed]);
