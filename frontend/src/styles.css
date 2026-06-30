@@ -1814,9 +1814,12 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
   justify-content: center;
   align-items: center;
   gap: 6px;
-  padding: 6px 0 4px;
+  padding: 8px 0 6px;
   background: #0c0a08;
-  border-bottom: 1px solid rgba(200,168,64,0.15);
+  border-bottom: 1px solid rgba(200,168,64,0.25);
+  position: sticky;
+  top: 0;
+  z-index: 5;
 }
 .gw-nav-dot {
   width: 7px;
@@ -2252,6 +2255,16 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
 }
 .gw-source a { color: #a08848; text-decoration: none; }
 .gw-source a:hover { color: #c8a840; }
+
+/* ── Responsive: landscape — pin modal to top so dots/close never scroll off-screen ── */
+@media (orientation: landscape) and (max-height: 900px) {
+  .gw-modal {
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    max-height: 100dvh;
+  }
+}
 
 /* ── Responsive: portrait mobile — pin modal to top so close button is always reachable ── */
 @media (max-width: 600px) and (orientation: portrait) {
