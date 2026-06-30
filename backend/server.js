@@ -131,6 +131,18 @@ app.use(express.json());
 // Initialize DB on startup
 initDb();
 
+// Auto-scrape faction rules if the table is empty (e.g. fresh Railway deploy)
+{
+  const { scrapeAllRules } = require('./scrapeRules');
+  const _db = getDb();
+  const rulesCount = _db.prepare('SELECT COUNT(*) as n FROM faction_battle_traits').get().n;
+  _db.close();
+  if (rulesCount === 0) {
+    console.log('faction_battle_traits is empty — running scrapeAllRules in background...');
+    scrapeAllRules().catch(err => console.error('scrapeAllRules failed:', err));
+  }
+}
+
 // ─── Auth Middleware ─────────────────────────────────────────────────────────
 
 function requireAuth(req, res, next) {
