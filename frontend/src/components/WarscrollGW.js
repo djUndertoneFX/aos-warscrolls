@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { useSettings } from '../SettingsContext';
 import { calcWeaponADO } from '../awoCalc';
@@ -22,10 +22,8 @@ function TransparentImage({ src, alt, className, onError }) {
       const d = data.data;
       for (let i = 0; i < d.length; i += 4) {
         const r = d[i], g = d[i+1], b = d[i+2];
-        // treat near-white as transparent
         if (r > 220 && g > 220 && b > 220) {
           const whiteness = Math.min(r, g, b);
-          // smooth edge: full alpha fade from 220→255
           d[i+3] = Math.round((1 - (whiteness - 220) / 35) * 255 * (1 - (whiteness - 220) / 35));
           if (whiteness > 240) d[i+3] = 0;
         }
@@ -74,11 +72,9 @@ const UNIVERSAL_KW = new Set([
   'FRIENDLY','ENEMY',
 ]);
 
-// Highlight AoS keywords in a string: bold + uppercase
 function FormatText({ text, keywords = [] }) {
   if (!text) return null;
   const kwSet = new Set([...UNIVERSAL_KW, ...keywords.map(k => k.trim().toUpperCase())]);
-  // Sort longest first so multi-word keywords match before single words
   const kwList = [...kwSet].sort((a, b) => b.length - a.length);
   const escaped = kwList.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
   const regex = new RegExp(`(${escaped.join('|')})`, 'gi');
@@ -92,7 +88,6 @@ function FormatText({ text, keywords = [] }) {
   );
 }
 
-// ── Render text with "Term:" bolded at the start + keyword highlighting ───────
 function BoldTerm({ text, keywords }) {
   if (!text) return null;
   const m = text.match(/^([^:]+:)\s*([\s\S]+)$/);
@@ -107,15 +102,10 @@ function BoldTerm({ text, keywords }) {
   return <FormatText text={text} keywords={keywords} />;
 }
 
-// Split an effect string into paragraphs at each "Term:" boundary
-// e.g. "Intro text. Grimnir's Grit: blah. Grimnir's Resolve: blah"
-// → ["Intro text.", "Grimnir's Grit: blah.", "Grimnir's Resolve: blah"]
 function splitEffectParts(text) {
   if (!text) return [];
-  const parts = text.split(/ (?=[A-Z][A-Za-z0-9'’-]{1,20}(?:\s[A-Za-z0-9'’-]{1,20}){0,3}:)/)
+  const parts = text.split(/ (?=[A-Z][A-Za-z0-9''-]{1,20}(?:\s[A-Za-z0-9''-]{1,20}){0,3}:)/)
     .map(p => p.trim()).filter(Boolean);
-  // The regex can split "Grimnir's" and "Grit:" as separate parts because both
-  // satisfy the lookahead independently. Merge any fragment lacking a colon with the next part.
   const merged = [];
   for (let i = 0; i < parts.length; i++) {
     if (i < parts.length - 1 && !parts[i].includes(':')) {
@@ -128,15 +118,15 @@ function splitEffectParts(text) {
   return merged;
 }
 
-// ── Stats Wheel (SVG) — diagonal quadrant dividers ───────────────────────────
+// ── Stats Wheel (SVG) ────────────────────────────────────────────────────────
 function StatsWheel({ move, health, save, control }) {
   const S = 140, cx = 70, cy = 70, r = 62;
   const gold = '#c8a840';
-  const d45 = Math.round(r * 0.7071); // 44
+  const d45 = Math.round(r * 0.7071);
   const statTxt    = { fill: '#f0ead8', fontSize: 26, fontWeight: 700, fontFamily: "'Palatino Linotype', Georgia, serif" };
-  const statTxtTop = { ...statTxt, dominantBaseline: 'hanging' };   // MOVE: top-anchored, grows down
-  const statTxtBot = { ...statTxt, dominantBaseline: 'auto' };      // others: bottom-anchored, grows up
-  const lblTxt  = { fill: gold,     fontSize: 9,   letterSpacing: 0.8, fontFamily: 'Arial, sans-serif' };
+  const statTxtTop = { ...statTxt, dominantBaseline: 'hanging' };
+  const statTxtBot = { ...statTxt, dominantBaseline: 'auto' };
+  const lblTxt  = { fill: gold, fontSize: 9, letterSpacing: 0.8, fontFamily: 'Arial, sans-serif' };
 
   const quadrants = [
     `M${cx},${cy} L${cx-d45},${cy-d45} A${r},${r} 0 0,1 ${cx+d45},${cy-d45} Z`,
@@ -156,20 +146,12 @@ function StatsWheel({ move, health, save, control }) {
       <circle cx={cx} cy={cy} r={r} fill="none" stroke={gold} strokeWidth="2.2" />
       <circle cx={cx} cy={cy} r="5" fill={gold} />
       <circle cx={cx} cy={cy} r="3" fill="#0c0a08" />
-
-      {/* MOVE — top-anchored so larger text grows downward (away from label) */}
       <text x={cx} y={cy - 49} textAnchor="middle" dominantBaseline="middle" {...lblTxt}>MOVE</text>
       <text x={cx} y={cy - 42} textAnchor="middle" {...statTxtTop}>{move || '—'}</text>
-
-      {/* HEALTH — bottom-anchored so larger text grows upward (away from label) */}
       <text x={cx - 39} y={cy}      textAnchor="middle" {...statTxtBot}>{health || '—'}</text>
       <text x={cx - 37} y={cy + 14} textAnchor="middle" dominantBaseline="middle" {...lblTxt}>HEALTH</text>
-
-      {/* SAVE — bottom-anchored so larger text grows upward (away from label) */}
       <text x={cx + 40} y={cy}      textAnchor="middle" {...statTxtBot}>{save || '—'}</text>
       <text x={cx + 40} y={cy + 14} textAnchor="middle" dominantBaseline="middle" {...lblTxt}>SAVE</text>
-
-      {/* CONTROL — bottom-anchored so larger text grows upward (away from label) */}
       <text x={cx} y={cy + 35} textAnchor="middle" {...statTxtBot}>{control || '—'}</text>
       <text x={cx} y={cy + 48} textAnchor="middle" dominantBaseline="middle" {...lblTxt}>CONTROL</text>
     </svg>
@@ -182,7 +164,6 @@ function WeaponSection({ weapons, type, unitSize }) {
   const rows = weapons.filter(w => w.type === type);
   if (!rows.length) return null;
   const isRanged = type === 'ranged';
-
   const save = presumedSave ?? 5;
   const ward = presumedWard ?? null;
 
@@ -277,6 +258,70 @@ function AbilityCard({ ab, keywords }) {
   );
 }
 
+// ── Faction slide (Battle Traits or Battle Formations) ───────────────────────
+function parseBullets(raw) {
+  try { return JSON.parse(raw || '[]'); } catch { return []; }
+}
+
+function FactionTraitsSlide({ faction, grandAlliance, traits }) {
+  return (
+    <div className="gw-faction-slide">
+      <div className="gw-faction-slide-header">
+        <div className="gw-header-type">
+          {grandAlliance?.toUpperCase()}{grandAlliance && faction ? ' · ' : ''}{faction?.toUpperCase()}
+        </div>
+        <div className="gw-faction-slide-title">BATTLE TRAITS</div>
+      </div>
+      <div className="gw-faction-slide-body">
+        <div className="gw-abilities-grid">
+          {traits.map((ab, i) => (
+            <AbilityCard key={i} ab={{ ...ab, bullets: parseBullets(ab.bullets) }} keywords={[]} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FactionFormationsSlide({ faction, grandAlliance, formations }) {
+  // Group by formation_name, preserving insertion order
+  const groups = [];
+  const nameToGroup = {};
+  for (const item of formations) {
+    const gName = item.formation_name || 'General';
+    if (!nameToGroup[gName]) {
+      nameToGroup[gName] = { name: gName, items: [] };
+      groups.push(nameToGroup[gName]);
+    }
+    nameToGroup[gName].items.push(item);
+  }
+
+  return (
+    <div className="gw-faction-slide">
+      <div className="gw-faction-slide-header">
+        <div className="gw-header-type">
+          {grandAlliance?.toUpperCase()}{grandAlliance && faction ? ' · ' : ''}{faction?.toUpperCase()}
+        </div>
+        <div className="gw-faction-slide-title">BATTLE FORMATIONS</div>
+      </div>
+      <div className="gw-faction-slide-body">
+        {groups.map((group, gi) => (
+          <div key={gi} className="gw-formation-group">
+            {group.name !== 'General' && (
+              <div className="gw-formation-group-header">{group.name}</div>
+            )}
+            <div className="gw-abilities-grid">
+              {group.items.map((ab, i) => (
+                <AbilityCard key={i} ab={{ ...ab, bullets: parseBullets(ab.bullets) }} keywords={[]} />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Main component ───────────────────────────────────────────────────────────
 function getPrimaryType(u) {
   if (u.is_hero)          return 'Hero';
@@ -298,22 +343,66 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onFilterApp
   const [imageUrl, setImageUrl] = useState(null);
   const modalRef = useRef(null);
 
+  // Faction slides
+  const [factionSlide, setFactionSlide] = useState(null); // null | 'traits' | 'formations'
+  const [factionRules, setFactionRules] = useState(null);
+
+  // Reset faction slide when the displayed unit changes
+  useEffect(() => { setFactionSlide(null); }, [unit?.id]);
+
+  // Fetch faction rules once per faction slug
+  useEffect(() => {
+    if (!unit?.faction_slug) return;
+    let cancelled = false;
+    setFactionRules(null);
+    axios.get(`/api/faction-rules/${unit.faction_slug}`)
+      .then(r => { if (!cancelled) setFactionRules(r.data); })
+      .catch(() => { if (!cancelled) setFactionRules({ traits: [], formations: [] }); });
+    return () => { cancelled = true; };
+  }, [unit?.faction_slug]);
+
+  const hasTraits     = (factionRules?.traits?.length ?? 0) > 0;
+  const hasFormations = (factionRules?.formations?.length ?? 0) > 0;
+
+  // Scroll to top when switching slides
+  useEffect(() => {
+    if (modalRef.current) modalRef.current.scrollTop = 0;
+  }, [factionSlide, unit?.id]);
+
   useEffect(() => {
     if (!unit?.id) return;
     const base = axios.defaults.baseURL || '';
     setImageUrl(`${base}/api/unit-image/${unit.id}`);
   }, [unit?.id]);
 
+  // Internal prev/next: intercept at navIndex 0 to enter faction slides
+  const handlePrev = useCallback(() => {
+    if (factionSlide === null) {
+      if (navIndex === 0 && hasTraits) { setFactionSlide('traits'); return; }
+      if (navIndex === 0 && hasFormations) { setFactionSlide('formations'); return; }
+      onPrev?.();
+    } else if (factionSlide === 'traits') {
+      if (hasFormations) setFactionSlide('formations');
+    }
+    // factionSlide === 'formations': already leftmost, do nothing
+  }, [factionSlide, navIndex, hasTraits, hasFormations, onPrev]);
+
+  const handleNext = useCallback(() => {
+    if (factionSlide === 'formations') { setFactionSlide('traits'); return; }
+    if (factionSlide === 'traits') { setFactionSlide(null); return; }
+    onNext?.();
+  }, [factionSlide, onNext]);
+
   // Keyboard: Escape=close, ←=prev, →=next
   useEffect(() => {
     const h = e => {
       if (e.key === 'Escape')      onClose();
-      if (e.key === 'ArrowLeft')  { e.preventDefault(); onPrev?.(); }
-      if (e.key === 'ArrowRight') { e.preventDefault(); onNext?.(); }
+      if (e.key === 'ArrowLeft')  { e.preventDefault(); handlePrev(); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); handleNext(); }
     };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
-  }, [onClose, onPrev, onNext]);
+  }, [onClose, handlePrev, handleNext]);
 
   // Touch swipe: left=next, right=prev
   useEffect(() => {
@@ -324,16 +413,15 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onFilterApp
     const onEnd = e => {
       if (startX === null) return;
       const dx = e.changedTouches[0].clientX - startX;
-      if (Math.abs(dx) > 50) { dx < 0 ? onNext?.() : onPrev?.(); }
+      if (Math.abs(dx) > 50) { dx < 0 ? handleNext() : handlePrev(); }
       startX = null;
     };
     el.addEventListener('touchstart', onStart, { passive: true });
     el.addEventListener('touchend', onEnd, { passive: true });
     return () => { el.removeEventListener('touchstart', onStart); el.removeEventListener('touchend', onEnd); };
-  }, [onPrev, onNext]);
+  }, [handlePrev, handleNext]);
 
-  // While modal is open: lock viewport zoom so iOS never zooms on orientation change.
-  // Scroll to top after rotation so nav dots are always visible.
+  // Lock viewport zoom while modal is open; scroll to top on orientation change
   useEffect(() => {
     const meta = document.querySelector('meta[name=viewport]');
     const orig = meta?.content;
@@ -346,7 +434,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onFilterApp
     };
   }, []);
 
-  // Click outside: close unless the click landed on a unit-name-link (switching units)
+  // Click outside: close
   useEffect(() => {
     const h = e => {
       if (modalRef.current?.contains(e.target)) return;
@@ -359,9 +447,6 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onFilterApp
 
   const allKeywords = unit.keywords ? unit.keywords.split(',').map(k => k.trim()).filter(Boolean) : [];
 
-  // Split into two lines matching the official warscroll layout:
-  // Line 1 — unit-role keywords (Hero, Infantry, Monster, Wizard, Ward, etc.)
-  // Line 2 — affiliation keywords (Grand Alliance, faction, race)
   const ROLE_KW = new Set([
     'HERO','MONSTER','CAVALRY','INFANTRY','BEAST','UNIQUE','WAR MACHINE',
     'FACTION TERRAIN','MANIFESTATION','CHAMPION','MUSICIAN','STANDARD BEARER',
@@ -382,13 +467,11 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onFilterApp
   const hasMelee   = weapons.some(w => w.type === 'melee');
   const hasWeapons = hasRanged || hasMelee;
 
-  // Map a keyword string to a filter type for onFilterApply
   const KW_TYPE_MAP = {
     'HERO': 'hero', 'MONSTER': 'monster', 'INFANTRY': 'infantry',
     'CAVALRY': 'cavalry', 'BEAST': 'beast', 'WAR MACHINE': 'warmachine',
     'MANIFESTATION': 'manifestation',
   };
-  const ALLIANCES = new Set(['Order', 'Chaos', 'Death', 'Destruction']);
 
   const handleKwClick = (kw, exclude, e) => {
     if (!onFilterApply) return;
@@ -397,7 +480,6 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onFilterApp
     if (KW_TYPE_MAP[up]) {
       onFilterApply(KW_TYPE_MAP[up], true, exclude);
     } else {
-      // Check if kw matches a faction name
       const matchedFaction = factions.find(f => f.faction.toUpperCase() === up);
       if (matchedFaction) {
         onFilterApply('faction', matchedFaction.faction_slug, exclude);
@@ -407,6 +489,12 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onFilterApp
     }
   };
 
+  // Determine dot states for nav bar
+  // Faction dots: formations dot leftmost, then traits dot, then separator, then unit dots
+  const showFormationsDot = hasFormations;
+  const showTraitsDot     = hasTraits;
+  const showFactionDots   = showFormationsDot || showTraitsDot;
+
   return (
     <>
       <div className="gw-overlay" />
@@ -414,173 +502,195 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onFilterApp
 
         <button className="gw-close" onClick={onClose} title="Close (Esc)">✕</button>
 
-        {/* ── Nav dots with type-group separators ── */}
-        {navList && navTotal > 1 && (
+        {/* ── Nav dots: faction squares + unit circles ── */}
+        {navTotal > 0 && (showFactionDots || navTotal > 1) && (
           <div className="gw-nav-dots">
-            {navList.map((u, i) => {
+            {/* Faction slides dots (square, purple) */}
+            {showFormationsDot && (
+              <span
+                className={`gw-nav-dot-faction${factionSlide === 'formations' ? ' gw-nav-dot-faction-active' : ''}`}
+                title="Battle Formations"
+              />
+            )}
+            {showTraitsDot && (
+              <span
+                className={`gw-nav-dot-faction${factionSlide === 'traits' ? ' gw-nav-dot-faction-active' : ''}`}
+                title="Battle Traits"
+              />
+            )}
+            {showFactionDots && navTotal > 0 && <span className="gw-nav-sep" />}
+            {/* Unit dots (round, gold) */}
+            {navList && navList.map((u, i) => {
               const type = getPrimaryType(u);
               const prevType = i > 0 ? getPrimaryType(navList[i - 1]) : null;
               return (
                 <React.Fragment key={u.id ?? i}>
                   {i > 0 && prevType !== type && <span className="gw-nav-sep" title={type} />}
-                  <span className={`gw-nav-dot${i === navIndex ? ' gw-nav-dot-active' : ''}`} title={u.name} />
+                  <span
+                    className={`gw-nav-dot${factionSlide === null && i === navIndex ? ' gw-nav-dot-active' : ''}`}
+                    title={u.name}
+                  />
                 </React.Fragment>
               );
             })}
           </div>
         )}
 
-        {/* ── Top band: wheel | centered name | right meta ── */}
-        <div className="gw-top-band">
+        {/* ── Faction slide content (replaces warscroll when active) ── */}
+        {factionSlide === 'traits' && factionRules && (
+          <FactionTraitsSlide
+            faction={unit.faction}
+            grandAlliance={unit.grand_alliance}
+            traits={factionRules.traits}
+          />
+        )}
+        {factionSlide === 'formations' && factionRules && (
+          <FactionFormationsSlide
+            faction={unit.faction}
+            grandAlliance={unit.grand_alliance}
+            formations={factionRules.formations}
+          />
+        )}
 
-          {/* Left: stat wheel + Ward pip */}
-          <div className="gw-wheel-col">
-            <StatsWheel move={unit.move} health={unit.health} save={unit.save} control={unit.control} />
-            {unit.ward && (
-              <div className="gw-ward-pip">
-                <span className="gw-ward-pip-val">{unit.ward}</span>
-                <span className="gw-ward-pip-lbl">WARD</span>
+        {/* ── Warscroll content (hidden when on a faction slide) ── */}
+        {factionSlide === null && (
+          <>
+            {/* Top band: wheel | centered name | right meta */}
+            <div className="gw-top-band">
+              <div className="gw-wheel-col">
+                <StatsWheel move={unit.move} health={unit.health} save={unit.save} control={unit.control} />
+                {unit.ward && (
+                  <div className="gw-ward-pip">
+                    <span className="gw-ward-pip-val">{unit.ward}</span>
+                    <span className="gw-ward-pip-lbl">WARD</span>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
-          {/* Center: faction subtitle + unit name */}
-          <div className="gw-header-center">
-            <div className="gw-header-type">
-              {unit.grand_alliance && onFilterApply ? (
-                <span
-                  className="gw-filter-chip gw-filter-chip-alliance"
-                  title="Left-click to filter by alliance · Right-click to exclude"
-                  onClick={e => { onFilterApply('alliance', unit.grand_alliance, false); e.stopPropagation(); }}
-                  onContextMenu={e => { e.preventDefault(); onFilterApply('alliance', unit.grand_alliance, true); }}
-                >{unit.grand_alliance.toUpperCase()}</span>
-              ) : (unit.grand_alliance ? <span>{unit.grand_alliance.toUpperCase()}</span> : null)}
-              {' '}·{unit.faction && onFilterApply ? (
+              <div className="gw-header-center">
+                <div className="gw-header-type">
+                  {unit.grand_alliance && onFilterApply ? (
+                    <span
+                      className="gw-filter-chip gw-filter-chip-alliance"
+                      title="Left-click to filter by alliance · Right-click to exclude"
+                      onClick={e => { onFilterApply('alliance', unit.grand_alliance, false); e.stopPropagation(); }}
+                      onContextMenu={e => { e.preventDefault(); onFilterApply('alliance', unit.grand_alliance, true); }}
+                    >{unit.grand_alliance.toUpperCase()}</span>
+                  ) : (unit.grand_alliance ? <span>{unit.grand_alliance.toUpperCase()}</span> : null)}
+                  {' '}·{unit.faction && onFilterApply ? (
+                    <>
+                      {' '}
+                      <span
+                        className="gw-filter-chip"
+                        title="Left-click to filter by faction · Right-click to exclude"
+                        onClick={e => { const f = factions.find(fc => fc.faction === unit.faction); f && onFilterApply('faction', f.faction_slug, false); e.stopPropagation(); }}
+                        onContextMenu={e => { e.preventDefault(); const f = factions.find(fc => fc.faction === unit.faction); f && onFilterApply('faction', f.faction_slug, true); }}
+                      >{unit.faction.toUpperCase()}</span>{' '}
+                    </>
+                  ) : (unit.faction ? ' ' + unit.faction.toUpperCase() + ' ' : ' ')}WARSCROLL ·
+                </div>
+                <div className="gw-header-name">{unit.name}</div>
+              </div>
+
+              <div className="gw-header-right">
+                {unit.points && (
+                  <div className="gw-meta-pip gw-meta-pip-pts">
+                    <span className="gw-meta-pip-val">{unit.points}</span>
+                    <span className="gw-meta-pip-lbl">PTS</span>
+                  </div>
+                )}
+                {unit.unit_size && (
+                  <div className="gw-meta-pip">
+                    <span className="gw-meta-pip-val">{unit.unit_size}</span>
+                    <span className="gw-meta-pip-lbl">SIZE</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {showFlavorText && unit.flavor_text && (
+              <div className="gw-flavor-text"><p>{unit.flavor_text}</p></div>
+            )}
+
+            <div className="gw-weapons-row">
+              {hasWeapons ? (
                 <>
-                  {' '}
-                  <span
-                    className="gw-filter-chip"
-                    title="Left-click to filter by faction · Right-click to exclude"
-                    onClick={e => { const f = factions.find(fc => fc.faction === unit.faction); f && onFilterApply('faction', f.faction_slug, false); e.stopPropagation(); }}
-                    onContextMenu={e => { e.preventDefault(); const f = factions.find(fc => fc.faction === unit.faction); f && onFilterApply('faction', f.faction_slug, true); }}
-                  >{unit.faction.toUpperCase()}</span>{' '}
+                  {hasRanged && <WeaponSection weapons={weapons} type="ranged" unitSize={unit.unit_size} />}
+                  {hasMelee  && <WeaponSection weapons={weapons} type="melee"  unitSize={unit.unit_size} />}
                 </>
-              ) : (unit.faction ? ' ' + unit.faction.toUpperCase() + ' ' : ' ')}WARSCROLL ·
+              ) : (
+                <div className="gw-no-weapons">No weapon data available.</div>
+              )}
             </div>
-            <div className="gw-header-name">{unit.name}</div>
-          </div>
 
-          {/* Right: points + size, right-justified */}
-          <div className="gw-header-right">
-            {unit.points && (
-              <div className="gw-meta-pip gw-meta-pip-pts">
-                <span className="gw-meta-pip-val">{unit.points}</span>
-                <span className="gw-meta-pip-lbl">PTS</span>
+            {unit.options_text && (
+              <div className="gw-options-text">
+                {unit.options_text.split(/(?<=\.)\s+/).map((sentence, i) => (
+                  <p key={i}>{sentence}</p>
+                ))}
               </div>
             )}
-            {unit.unit_size && (
-              <div className="gw-meta-pip">
-                <span className="gw-meta-pip-val">{unit.unit_size}</span>
-                <span className="gw-meta-pip-lbl">SIZE</span>
+
+            {abilities.length > 0 && (
+              <div className="gw-abilities-section">
+                <div className="gw-section-rule"><span>ABILITIES</span></div>
+                <div className="gw-abilities-row">
+                  <div className="gw-abilities-grid">
+                    {abilities.map((ab, i) => <AbilityCard key={i} ab={ab} keywords={allKeywords} />)}
+                  </div>
+                  {imageUrl && (
+                    <div className="gw-abilities-img-col">
+                      <TransparentImage src={imageUrl} alt={unit.name} className="gw-unit-img" />
+                    </div>
+                  )}
+                </div>
               </div>
             )}
-          </div>
 
-        </div>
-
-        {/* ── Flavor text (toggleable) ── */}
-        {showFlavorText && unit.flavor_text && (
-          <div className="gw-flavor-text">
-            <p>{unit.flavor_text}</p>
-          </div>
-        )}
-
-        {/* ── Weapons ── */}
-        <div className="gw-weapons-row">
-          {hasWeapons ? (
-            <>
-              {hasRanged && <WeaponSection weapons={weapons} type="ranged" unitSize={unit.unit_size} />}
-              {hasMelee  && <WeaponSection weapons={weapons} type="melee"  unitSize={unit.unit_size} />}
-            </>
-          ) : (
-            <div className="gw-no-weapons">No weapon data available.</div>
-          )}
-        </div>
-
-        {/* ── Options text (always shown) ── */}
-        {unit.options_text && (
-          <div className="gw-options-text">
-            {unit.options_text.split(/(?<=\.)\s+/).map((sentence, i) => (
-              <p key={i}>{sentence}</p>
-            ))}
-          </div>
-        )}
-
-        {/* ── Abilities + image ── */}
-        {abilities.length > 0 && (
-          <div className="gw-abilities-section">
-            <div className="gw-section-rule"><span>ABILITIES</span></div>
-            <div className="gw-abilities-row">
-              <div className="gw-abilities-grid">
-                {abilities.map((ab, i) => <AbilityCard key={i} ab={ab} keywords={allKeywords} />)}
+            {allKeywords.length > 0 && (
+              <div className="gw-keywords-bar">
+                <span className="gw-kw-label">KEYWORDS</span>
+                <div className="gw-kw-lines">
+                  {kwLine1.length > 0 && (
+                    <div className="gw-kw-line">
+                      {kwLine1.map((k, i) => (
+                        <React.Fragment key={k}>
+                          {i > 0 && <span className="gw-kw-sep">·</span>}
+                          <span
+                            className={`gw-kw${onFilterApply ? ' gw-kw-clickable' : ''}`}
+                            title={onFilterApply ? 'Left-click to filter · Right-click to exclude' : undefined}
+                            onClick={onFilterApply ? e => handleKwClick(k, false, e) : undefined}
+                            onContextMenu={onFilterApply ? e => handleKwClick(k, true, e) : undefined}
+                          >{k.toUpperCase()}</span>
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  )}
+                  {kwLine2.length > 0 && (
+                    <div className="gw-kw-line gw-kw-line2">
+                      {kwLine2.map((k, i) => (
+                        <React.Fragment key={k}>
+                          {i > 0 && <span className="gw-kw-sep">·</span>}
+                          <span
+                            className={`gw-kw${onFilterApply ? ' gw-kw-clickable' : ''}`}
+                            title={onFilterApply ? 'Left-click to filter · Right-click to exclude' : undefined}
+                            onClick={onFilterApply ? e => handleKwClick(k, false, e) : undefined}
+                            onContextMenu={onFilterApply ? e => handleKwClick(k, true, e) : undefined}
+                          >{k.toUpperCase()}</span>
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-              {imageUrl && (
-                <div className="gw-abilities-img-col">
-                  <TransparentImage
-                    src={imageUrl}
-                    alt={unit.name}
-                    className="gw-unit-img"
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+            )}
 
-        {/* Keywords footer — two lines */}
-        {allKeywords.length > 0 && (
-          <div className="gw-keywords-bar">
-            <span className="gw-kw-label">KEYWORDS</span>
-            <div className="gw-kw-lines">
-              {kwLine1.length > 0 && (
-                <div className="gw-kw-line">
-                  {kwLine1.map((k, i) => (
-                    <React.Fragment key={k}>
-                      {i > 0 && <span className="gw-kw-sep">·</span>}
-                      <span
-                        className={`gw-kw${onFilterApply ? ' gw-kw-clickable' : ''}`}
-                        title={onFilterApply ? 'Left-click to filter · Right-click to exclude' : undefined}
-                        onClick={onFilterApply ? e => handleKwClick(k, false, e) : undefined}
-                        onContextMenu={onFilterApply ? e => handleKwClick(k, true, e) : undefined}
-                      >{k.toUpperCase()}</span>
-                    </React.Fragment>
-                  ))}
-                </div>
-              )}
-              {kwLine2.length > 0 && (
-                <div className="gw-kw-line gw-kw-line2">
-                  {kwLine2.map((k, i) => (
-                    <React.Fragment key={k}>
-                      {i > 0 && <span className="gw-kw-sep">·</span>}
-                      <span
-                        className={`gw-kw${onFilterApply ? ' gw-kw-clickable' : ''}`}
-                        title={onFilterApply ? 'Left-click to filter · Right-click to exclude' : undefined}
-                        onClick={onFilterApply ? e => handleKwClick(k, false, e) : undefined}
-                        onContextMenu={onFilterApply ? e => handleKwClick(k, true, e) : undefined}
-                      >{k.toUpperCase()}</span>
-                    </React.Fragment>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Source */}
-        {unit.url && (
-          <div className="gw-source">
-            <a href={unit.url} target="_blank" rel="noopener noreferrer">View on Wahapedia ↗</a>
-          </div>
+            {unit.url && (
+              <div className="gw-source">
+                <a href={unit.url} target="_blank" rel="noopener noreferrer">View on Wahapedia ↗</a>
+              </div>
+            )}
+          </>
         )}
       </div>
     </>

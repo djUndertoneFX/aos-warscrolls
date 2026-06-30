@@ -1845,6 +1845,56 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
   margin: 0 3px;
   border-radius: 1px;
 }
+/* Faction slide dots — square, purple, appear before unit dots */
+.gw-nav-dot-faction {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  background: rgba(160,100,220,0.22);
+  border: 1px solid rgba(160,100,220,0.45);
+  flex-shrink: 0;
+  transition: background 0.2s, border-color 0.2s, transform 0.2s;
+}
+.gw-nav-dot-faction-active {
+  background: #a064dc;
+  border-color: #c090f0;
+  transform: scale(1.35);
+}
+
+/* ── Faction slide (Battle Traits / Battle Formations) ── */
+.gw-faction-slide-header {
+  background: #0c0a08;
+  border-bottom: 2px solid #c8a840;
+  padding: 18px 20px 14px;
+  text-align: center;
+}
+.gw-faction-slide-title {
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: #f2e8c0;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-family: 'Palatino Linotype', Georgia, serif;
+  margin-top: 6px;
+  text-shadow: 0 0 24px rgba(200,168,64,0.2);
+}
+.gw-faction-slide-body {
+  padding: 14px 16px;
+}
+.gw-formation-group {
+  margin-bottom: 18px;
+}
+.gw-formation-group-header {
+  font-size: 0.62rem;
+  letter-spacing: 0.28em;
+  color: #c8a840;
+  text-transform: uppercase;
+  font-family: Arial, sans-serif;
+  font-weight: 700;
+  border-bottom: 1px solid rgba(200,168,64,0.35);
+  padding-bottom: 5px;
+  margin-bottom: 10px;
+}
 
 /* ── Top band: 3-column (wheel | centered name | right meta) ── */
 .gw-top-band {
