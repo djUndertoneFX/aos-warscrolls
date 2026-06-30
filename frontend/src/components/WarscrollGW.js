@@ -278,7 +278,7 @@ function AbilityCard({ ab, keywords }) {
 }
 
 // ── Main component ───────────────────────────────────────────────────────────
-export default function WarscrollGW({ unit, onClose, onPrev, onNext, onFilterApply, factions = [] }) {
+export default function WarscrollGW({ unit, onClose, onPrev, onNext, onFilterApply, factions = [], navIndex, navTotal }) {
   const { showFlavorText } = useSettings();
   const weapons   = React.useMemo(() => { try { return JSON.parse(unit.weapons   || '[]'); } catch { return []; } }, [unit]);
   const abilities = React.useMemo(() => { try { return JSON.parse(unit.abilities || '[]'); } catch { return []; } }, [unit]);
@@ -386,6 +386,15 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onFilterApp
       <div className="gw-modal" ref={modalRef} role="dialog" aria-modal="true" aria-label={unit.name}>
 
         <button className="gw-close" onClick={onClose} title="Close (Esc)">✕</button>
+
+        {/* ── Nav dots ── */}
+        {navTotal > 1 && (
+          <div className="gw-nav-dots">
+            {Array.from({ length: navTotal }, (_, i) => (
+              <span key={i} className={`gw-nav-dot${i === navIndex ? ' gw-nav-dot-active' : ''}`} />
+            ))}
+          </div>
+        )}
 
         {/* ── Top band: wheel | centered name | right meta ── */}
         <div className="gw-top-band">

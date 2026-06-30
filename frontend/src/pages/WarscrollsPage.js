@@ -808,21 +808,18 @@ export default function WarscrollsPage({ headerCollapsed }) {
       )}
     </div>
 
-    {detailUnit && (
+    {detailUnit && (() => {
+      const rows = data?.data ?? [];
+      const idx = rows.findIndex(u => u.id === detailUnit.id);
+      return (
       <WarscrollGW
         unit={detailUnit}
         factions={factions}
+        navIndex={idx}
+        navTotal={rows.length}
         onClose={() => setDetailUnit(null)}
-        onPrev={() => {
-          const rows = data?.data ?? [];
-          const idx = rows.findIndex(u => u.id === detailUnit.id);
-          if (idx > 0) setDetailUnit(rows[idx - 1]);
-        }}
-        onNext={() => {
-          const rows = data?.data ?? [];
-          const idx = rows.findIndex(u => u.id === detailUnit.id);
-          if (idx < rows.length - 1) setDetailUnit(rows[idx + 1]);
-        }}
+        onPrev={() => { if (idx > 0) setDetailUnit(rows[idx - 1]); }}
+        onNext={() => { if (idx < rows.length - 1) setDetailUnit(rows[idx + 1]); }}
         onFilterApply={(type, value, exclude) => {
           setDetailUnit(null);
           setPage(1);
@@ -843,7 +840,8 @@ export default function WarscrollsPage({ headerCollapsed }) {
           }
         }}
       />
-    )}
+      );
+    })()}
     </>
   );
 }

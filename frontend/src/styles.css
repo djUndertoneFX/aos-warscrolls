@@ -1808,6 +1808,31 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
 }
 .gw-close:hover { background: rgba(200,168,64,0.18); border-color: #c8a840; }
 
+/* ── Nav dots (page indicator) ── */
+.gw-nav-dots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0 4px;
+  background: #0c0a08;
+  border-bottom: 1px solid rgba(200,168,64,0.15);
+}
+.gw-nav-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(200,168,64,0.22);
+  border: 1px solid rgba(200,168,64,0.35);
+  flex-shrink: 0;
+  transition: background 0.2s, border-color 0.2s, transform 0.2s;
+}
+.gw-nav-dot-active {
+  background: #c8a840;
+  border-color: #c8a840;
+  transform: scale(1.35);
+}
+
 /* ── Top band: 3-column (wheel | centered name | right meta) ── */
 .gw-top-band {
   display: flex;

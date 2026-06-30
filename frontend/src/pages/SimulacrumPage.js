@@ -1059,6 +1059,8 @@ export default function SimulacrumPage({ headerCollapsed }) {
       return (
         <WarscrollGW
           unit={detailUnit}
+          navIndex={idx}
+          navTotal={rows.length}
           onClose={() => setDetailUnit(null)}
           onPrev={() => { if (idx > 0) setDetailUnit(rows[idx - 1]); }}
           onNext={() => { if (idx < rows.length - 1) setDetailUnit(rows[idx + 1]); }}
