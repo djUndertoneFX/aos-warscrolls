@@ -263,14 +263,14 @@ function parseBullets(raw) {
   try { return JSON.parse(raw || '[]'); } catch { return []; }
 }
 
-function FactionTraitsSlide({ faction, grandAlliance, traits }) {
+function FactionTraitsSlide({ faction, grandAlliance, title, traits }) {
   return (
     <div className="gw-faction-slide">
       <div className="gw-faction-slide-header">
         <div className="gw-header-type">
           {grandAlliance?.toUpperCase()}{grandAlliance && faction ? ' · ' : ''}{faction?.toUpperCase()}
         </div>
-        <div className="gw-faction-slide-title">BATTLE TRAITS</div>
+        <div className="gw-faction-slide-title">{(title ?? 'Battle Traits').toUpperCase()}</div>
       </div>
       <div className="gw-faction-slide-body">
         <div className="gw-abilities-grid">
@@ -337,7 +337,7 @@ function getPrimaryType(u) {
 
 export default function WarscrollGW({ unit, onClose, onPrev, onNext, onFilterApply, factions = [], navIndex, navList }) {
   const navTotal = navList ? navList.length : 0;
-  const { showFlavorText } = useSettings();
+  const { showFlavorText, showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore } = useSettings();
   const weapons   = React.useMemo(() => { try { return JSON.parse(unit.weapons   || '[]'); } catch { return []; } }, [unit]);
   const abilities = React.useMemo(() => { try { return JSON.parse(unit.abilities || '[]'); } catch { return []; } }, [unit]);
   const [imageUrl, setImageUrl] = useState(null);
@@ -361,8 +361,20 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onFilterApp
     return () => { cancelled = true; };
   }, [unit?.faction_slug]);
 
-  const hasTraits     = (factionRules?.traits?.length ?? 0) > 0;
-  const hasFormations = (factionRules?.formations?.length ?? 0) > 0;
+  // Build ordered list of enabled faction slides (left-to-right, so prev navigates rightward through them)
+  // Each entry: { key, has, data }
+  const factionSlides = React.useMemo(() => {
+    if (!factionRules) return [];
+    const spellPrayerData = [...(factionRules.spell_lore ?? []), ...(factionRules.prayer_lore ?? [])];
+    return [
+      { key: 'manifestation_lore', enabled: showManifestationLore, data: factionRules.manifestation_lore ?? [] },
+      { key: 'spell_lore',         enabled: showSpellLore,         data: spellPrayerData },
+      { key: 'artefacts',          enabled: showArtefacts,         data: factionRules.artefacts ?? [] },
+      { key: 'heroic_traits',      enabled: showHeroicTraits,      data: factionRules.heroic_traits ?? [] },
+      { key: 'formations',         enabled: showBattleFormations,  data: factionRules.formations ?? [] },
+      { key: 'traits',             enabled: showBattleTraits,      data: factionRules.traits ?? [] },
+    ].filter(s => s.enabled && s.data.length > 0);
+  }, [factionRules, showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore]);
 
   // Scroll to top when switching slides
   useEffect(() => {
@@ -375,23 +387,35 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onFilterApp
     setImageUrl(`${base}/api/unit-image/${unit.id}`);
   }, [unit?.id]);
 
-  // Internal prev/next: intercept at navIndex 0 to enter faction slides
+  // Internal prev/next: intercept at navIndex 0 to enter faction slides (right = closer to unit 0)
   const handlePrev = useCallback(() => {
     if (factionSlide === null) {
-      if (navIndex === 0 && hasTraits) { setFactionSlide('traits'); return; }
-      if (navIndex === 0 && hasFormations) { setFactionSlide('formations'); return; }
+      // Enter the rightmost faction slide (closest to unit 0)
+      if (navIndex === 0 && factionSlides.length > 0) {
+        setFactionSlide(factionSlides[factionSlides.length - 1].key);
+        return;
+      }
       onPrev?.();
-    } else if (factionSlide === 'traits') {
-      if (hasFormations) setFactionSlide('formations');
+    } else {
+      // Move further left through faction slides
+      const idx = factionSlides.findIndex(s => s.key === factionSlide);
+      if (idx > 0) setFactionSlide(factionSlides[idx - 1].key);
+      // idx === 0: already leftmost, do nothing
     }
-    // factionSlide === 'formations': already leftmost, do nothing
-  }, [factionSlide, navIndex, hasTraits, hasFormations, onPrev]);
+  }, [factionSlide, navIndex, factionSlides, onPrev]);
 
   const handleNext = useCallback(() => {
-    if (factionSlide === 'formations') { setFactionSlide('traits'); return; }
-    if (factionSlide === 'traits') { setFactionSlide(null); return; }
+    if (factionSlide !== null) {
+      const idx = factionSlides.findIndex(s => s.key === factionSlide);
+      if (idx < factionSlides.length - 1) {
+        setFactionSlide(factionSlides[idx + 1].key);
+      } else {
+        setFactionSlide(null); // return to unit 0
+      }
+      return;
+    }
     onNext?.();
-  }, [factionSlide, onNext]);
+  }, [factionSlide, factionSlides, onNext]);
 
   // Keyboard: Escape=close, ←=prev, →=next
   useEffect(() => {
@@ -512,11 +536,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onFilterApp
     }
   };
 
-  // Determine dot states for nav bar
-  // Faction dots: formations dot leftmost, then traits dot, then separator, then unit dots
-  const showFormationsDot = hasFormations;
-  const showTraitsDot     = hasTraits;
-  const showFactionDots   = showFormationsDot || showTraitsDot;
+  const showFactionDots = factionSlides.length > 0;
 
   return (
     <>
@@ -528,19 +548,14 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onFilterApp
         {/* ── Nav dots: faction squares + unit circles ── */}
         {navTotal > 0 && (showFactionDots || navTotal > 1) && (
           <div className="gw-nav-dots">
-            {/* Faction slides dots (square, purple) */}
-            {showFormationsDot && (
+            {/* Faction slide dots (square, purple) — leftmost = furthest from units */}
+            {factionSlides.map(s => (
               <span
-                className={`gw-nav-dot-faction${factionSlide === 'formations' ? ' gw-nav-dot-faction-active' : ''}`}
-                title="Battle Formations"
+                key={s.key}
+                className={`gw-nav-dot-faction${factionSlide === s.key ? ' gw-nav-dot-faction-active' : ''}`}
+                title={s.key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
               />
-            )}
-            {showTraitsDot && (
-              <span
-                className={`gw-nav-dot-faction${factionSlide === 'traits' ? ' gw-nav-dot-faction-active' : ''}`}
-                title="Battle Traits"
-              />
-            )}
+            ))}
             {showFactionDots && navTotal > 0 && <span className="gw-nav-sep" />}
             {/* Unit dots (round, gold) */}
             {navList && navList.map((u, i) => {
@@ -560,20 +575,38 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onFilterApp
         )}
 
         {/* ── Faction slide content (replaces warscroll when active) ── */}
-        {factionSlide === 'traits' && factionRules && (
-          <FactionTraitsSlide
-            faction={unit.faction}
-            grandAlliance={unit.grand_alliance}
-            traits={factionRules.traits}
-          />
-        )}
-        {factionSlide === 'formations' && factionRules && (
-          <FactionFormationsSlide
-            faction={unit.faction}
-            grandAlliance={unit.grand_alliance}
-            formations={factionRules.formations}
-          />
-        )}
+        {factionSlide !== null && factionRules && (() => {
+          const slide = factionSlides.find(s => s.key === factionSlide);
+          if (!slide) return null;
+
+          const SLIDE_TITLES = {
+            traits:             'Battle Traits',
+            formations:         'Battle Formations',
+            heroic_traits:      'Heroic Traits',
+            artefacts:          'Artefacts of Power',
+            spell_lore:         'Spell / Prayer Lore',
+            manifestation_lore: 'Manifestation Lore',
+          };
+
+          if (factionSlide === 'formations') {
+            return (
+              <FactionFormationsSlide
+                faction={unit.faction}
+                grandAlliance={unit.grand_alliance}
+                formations={slide.data}
+              />
+            );
+          }
+
+          return (
+            <FactionTraitsSlide
+              faction={unit.faction}
+              grandAlliance={unit.grand_alliance}
+              title={SLIDE_TITLES[factionSlide] ?? factionSlide}
+              traits={slide.data}
+            />
+          );
+        })()}
 
         {/* ── Warscroll content (hidden when on a faction slide) ── */}
         {factionSlide === null && (

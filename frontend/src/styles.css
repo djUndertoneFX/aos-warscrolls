@@ -257,6 +257,12 @@ input, select {
   padding-bottom: 0.4rem;
   border-bottom: 1px solid var(--border);
 }
+.settings-panel-title--sub {
+  margin-top: 0.8rem;
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  border-bottom-color: rgba(74,56,32,0.4);
+}
 
 .settings-cb-row {
   display: flex;

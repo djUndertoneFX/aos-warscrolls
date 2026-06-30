@@ -24,7 +24,11 @@ const SAVE_OPTIONS  = ['-', 2, 3, 4, 5, 6];
 const WARD_OPTIONS  = ['-', 4, 5, 6];
 
 function SettingsPanel({ onClose }) {
-  const { showFlavorText, calculateDynamicADO, presumedSave, presumedWard, roundingMode, setSetting } = useSettings();
+  const {
+    showFlavorText, calculateDynamicADO, presumedSave, presumedWard, roundingMode,
+    showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore,
+    setSetting,
+  } = useSettings();
   const ref = useRef(null);
 
   useEffect(() => {
@@ -64,6 +68,21 @@ function SettingsPanel({ onClose }) {
           {WARD_OPTIONS.map(v => <option key={v} value={v}>{v === '-' ? '—' : `${v}+`}</option>)}
         </select>
       </div>
+      <div className="settings-panel-title settings-panel-title--sub">Faction Info</div>
+      {[
+        ['showBattleTraits',      showBattleTraits,      'Battle Traits'],
+        ['showBattleFormations',  showBattleFormations,  'Battle Formations'],
+        ['showHeroicTraits',      showHeroicTraits,      'Heroic Traits'],
+        ['showArtefacts',         showArtefacts,         'Artefacts of Power'],
+        ['showSpellLore',         showSpellLore,         'Spell / Prayer Lore'],
+        ['showManifestationLore', showManifestationLore, 'Manifestation Lore'],
+      ].map(([key, val, label]) => (
+        <label key={key} className="settings-cb-row">
+          <input type="checkbox" checked={val} onChange={e => setSetting(key, e.target.checked)} />
+          <span>{label}</span>
+        </label>
+      ))}
+      <div className="settings-panel-title settings-panel-title--sub">ADO Settings</div>
       <div className="settings-field-row settings-field-row--col">
         <span className="settings-field-lbl">ADO Rounding</span>
         <label className="settings-radio-row" title="Each phase (hits, wounds, saves) rounds to a whole number before feeding the next. Mirrors how dice actually work at the table — discrete results, not fractions.">

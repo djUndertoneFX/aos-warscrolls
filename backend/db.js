@@ -99,6 +99,24 @@ function initDb() {
 
     CREATE INDEX IF NOT EXISTS idx_traits_faction ON faction_battle_traits(faction_slug);
     CREATE INDEX IF NOT EXISTS idx_formations_faction ON faction_battle_formations(faction_slug);
+
+    CREATE TABLE IF NOT EXISTS faction_extra_rules (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      faction_slug TEXT NOT NULL,
+      faction_name TEXT NOT NULL,
+      section TEXT NOT NULL,
+      group_name TEXT,
+      name TEXT NOT NULL,
+      timing TEXT,
+      declare TEXT,
+      effect TEXT,
+      bullets TEXT,
+      keywords TEXT,
+      scraped_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_extra_rules_faction ON faction_extra_rules(faction_slug);
+    CREATE INDEX IF NOT EXISTS idx_extra_rules_section ON faction_extra_rules(faction_slug, section);
   `);
 
   // Safe migrations — ALTER TABLE is a no-op if the column already exists

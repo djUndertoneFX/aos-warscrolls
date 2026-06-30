@@ -126,19 +126,24 @@ function collectSectionBlocks($, html, sectionTitle) {
   let inSection = false;
   let currentFormation = '';
 
-  // Walk every element in document order using a flat selector
-  $('h2.outline_header3, h3.h2_pge, div.BreakInsideAvoid').each((_, el) => {
+  // Walk every element in document order using a flat selector.
+  // Stop the current section when hitting a .datasheet block (warscroll unit entries
+  // appear after the rules sections on some factions and also use BreakInsideAvoid).
+  $('h2.outline_header3, h3.h2_pge, div.datasheet, div.BreakInsideAvoid').each((_, el) => {
     const tag = el.tagName ? el.tagName.toLowerCase() : '';
     const $el = $(el);
 
     if (tag === 'h2') {
       const text = $el.text().trim();
       inSection = text === sectionTitle;
-      currentFormation = ''; // reset sub-section on any h2
+      currentFormation = '';
       return;
     }
 
     if (!inSection) return;
+
+    // A datasheet block means we've entered the warscroll units section — stop.
+    if ($el.hasClass('datasheet')) { inSection = false; return; }
 
     if (tag === 'h3') {
       currentFormation = normalizeText($el.text());
@@ -146,12 +151,22 @@ function collectSectionBlocks($, html, sectionTitle) {
     }
 
     if ($el.hasClass('BreakInsideAvoid')) {
-      // Skip nested blocks
       if ($el.parents('.BreakInsideAvoid').length > 0) return;
+      if ($el.parents('.datasheet').length > 0) return; // nested inside a warscroll
       results.push({ formationName: currentFormation, block: el });
     }
   });
 
+  return results;
+}
+
+// Scrape all BreakInsideAvoid blocks under a heading, grouped by h3 sub-headings
+function scrapeSection($, sectionTitle, factionSlug, factionName) {
+  const results = [];
+  for (const { formationName: groupName, block } of collectSectionBlocks($, null, sectionTitle)) {
+    const ability = parseAbilityBlock($, block);
+    if (ability) results.push({ ...ability, faction_slug: factionSlug, faction_name: factionName, group_name: groupName || null });
+  }
   return results;
 }
 
@@ -170,43 +185,38 @@ async function scrapeFactionRules(faction) {
     });
     if (!res.ok) {
       console.warn(`  HTTP ${res.status} for ${faction.name}, skipping.`);
-      return { traits: [], formations: [] };
+      return null;
     }
     html = await res.text();
   } catch (err) {
     console.warn(`  Error fetching ${faction.name}: ${err.message}`);
-    return { traits: [], formations: [] };
+    return null;
   }
 
   const $ = cheerio.load(html);
+  const s = faction.slug, n = faction.name;
 
-  // --- Battle Traits ---
-  const traits = [];
-  const traitBlocks = collectSectionBlocks($, html, 'Battle Traits');
-  for (const { block } of traitBlocks) {
-    const ability = parseAbilityBlock($, block);
-    if (ability) {
-      traits.push({ ...ability, faction_slug: faction.slug, faction_name: faction.name });
-    }
-  }
+  // Battle Traits — flatten group_name into formation-style (not used as sub-group visually)
+  const traits = scrapeSection($, 'Battle Traits', s, n).map(a => ({ ...a, group_name: undefined }));
 
-  // --- Battle Formations ---
-  const formations = [];
-  const formationBlocks = collectSectionBlocks($, html, 'Battle Formations');
-  for (const { formationName, block } of formationBlocks) {
-    const ability = parseAbilityBlock($, block);
-    if (ability) {
-      formations.push({
-        ...ability,
-        faction_slug: faction.slug,
-        faction_name: faction.name,
-        formation_name: formationName || 'General',
-      });
-    }
-  }
+  // Battle Formations — keep group_name as formation_name for the existing table shape
+  const formations = scrapeSection($, 'Battle Formations', s, n)
+    .map(a => ({ ...a, formation_name: a.group_name || 'General', group_name: undefined }));
 
-  console.log(`  ${faction.name}: ${traits.length} traits, ${formations.length} formations`);
-  return { traits, formations };
+  // Extra sections → faction_extra_rules table
+  const heroicTraits       = scrapeSection($, 'Heroic Traits',       s, n).map(a => ({ ...a, section: 'heroic_traits' }));
+  const artefacts          = scrapeSection($, 'Artefacts of Power',  s, n).map(a => ({ ...a, section: 'artefacts' }));
+  const spellLore          = scrapeSection($, 'Spell Lore',          s, n).map(a => ({ ...a, section: 'spell_lore' }));
+  const prayerLore         = scrapeSection($, 'Prayer Lore',         s, n).map(a => ({ ...a, section: 'prayer_lore' }));
+  const manifestationLore  = scrapeSection($, 'Manifestation Lore',  s, n).map(a => ({ ...a, section: 'manifestation_lore' }));
+  const extraRules = [...heroicTraits, ...artefacts, ...spellLore, ...prayerLore, ...manifestationLore];
+
+  console.log(
+    `  ${n}: ${traits.length} traits, ${formations.length} formations,` +
+    ` ${heroicTraits.length} heroic, ${artefacts.length} artefacts,` +
+    ` ${spellLore.length} spell, ${prayerLore.length} prayer, ${manifestationLore.length} manifestation`
+  );
+  return { traits, formations, extraRules };
 }
 
 async function scrapeAllRules(targetSlug = null) {
@@ -226,10 +236,12 @@ async function scrapeAllRules(targetSlug = null) {
   if (targetSlug) {
     db.prepare('DELETE FROM faction_battle_traits WHERE faction_slug = ?').run(targetSlug);
     db.prepare('DELETE FROM faction_battle_formations WHERE faction_slug = ?').run(targetSlug);
+    db.prepare('DELETE FROM faction_extra_rules WHERE faction_slug = ?').run(targetSlug);
     console.log(`Patching rules for: ${factionsToScrape[0].name}\n`);
   } else {
     db.prepare('DELETE FROM faction_battle_traits').run();
     db.prepare('DELETE FROM faction_battle_formations').run();
+    db.prepare('DELETE FROM faction_extra_rules').run();
     console.log('Cleared existing rules data.\n');
   }
 
@@ -247,26 +259,36 @@ async function scrapeAllRules(targetSlug = null) {
       (@faction_slug, @faction_name, @formation_name, @name, @timing, @declare, @effect, @bullets, @keywords)
   `);
 
-  let totalTraits = 0;
-  let totalFormations = 0;
+  const insertExtra = db.prepare(`
+    INSERT INTO faction_extra_rules
+      (faction_slug, faction_name, section, group_name, name, timing, declare, effect, bullets, keywords)
+    VALUES
+      (@faction_slug, @faction_name, @section, @group_name, @name, @timing, @declare, @effect, @bullets, @keywords)
+  `);
+
+  let totals = { traits: 0, formations: 0, extra: 0 };
 
   for (const faction of factionsToScrape) {
     console.log(`\nScraping ${faction.name}...`);
-    const { traits, formations } = await scrapeFactionRules(faction);
+    const result = await scrapeFactionRules(faction);
+    if (!result) { await sleep(1500); continue; }
 
+    const { traits, formations, extraRules } = result;
     db.transaction(() => {
-      for (const t of traits) insertTrait.run(t);
-      for (const f of formations) insertFormation.run(f);
+      for (const t of traits)      insertTrait.run(t);
+      for (const f of formations)  insertFormation.run(f);
+      for (const e of extraRules)  insertExtra.run(e);
     })();
 
-    totalTraits += traits.length;
-    totalFormations += formations.length;
+    totals.traits     += traits.length;
+    totals.formations += formations.length;
+    totals.extra      += extraRules.length;
 
     await sleep(1500);
   }
 
   db.close();
-  console.log(`\n✅ Rules scraping complete! ${totalTraits} battle traits, ${totalFormations} battle formation abilities saved.`);
+  console.log(`\n✅ Rules scraping complete! ${totals.traits} traits, ${totals.formations} formations, ${totals.extra} extra rules saved.`);
 }
 
 if (require.main === module) {

@@ -131,14 +131,15 @@ app.use(express.json());
 // Initialize DB on startup
 initDb();
 
-// Auto-scrape faction rules if the table is empty (e.g. fresh Railway deploy)
+// Auto-scrape faction rules if either table is empty (e.g. fresh Railway deploy or new sections added)
 {
   const { scrapeAllRules } = require('./scrapeRules');
   const _db = getDb();
-  const rulesCount = _db.prepare('SELECT COUNT(*) as n FROM faction_battle_traits').get().n;
+  const traitsCount = _db.prepare('SELECT COUNT(*) as n FROM faction_battle_traits').get().n;
+  const extraCount  = _db.prepare('SELECT COUNT(*) as n FROM faction_extra_rules').get().n;
   _db.close();
-  if (rulesCount === 0) {
-    console.log('faction_battle_traits is empty — running scrapeAllRules in background...');
+  if (traitsCount === 0 || extraCount === 0) {
+    console.log('Faction rules tables incomplete — running scrapeAllRules in background...');
     scrapeAllRules().catch(err => console.error('scrapeAllRules failed:', err));
   }
 }
@@ -603,7 +604,7 @@ app.get('/api/factions', requireAuth, (req, res) => {
   }
 });
 
-// GET /api/faction-rules/:slug — battle traits + formations for one faction
+// GET /api/faction-rules/:slug — all faction info slides for one faction
 app.get('/api/faction-rules/:slug', requireAuth, (req, res) => {
   const db = getDb();
   try {
@@ -614,7 +615,21 @@ app.get('/api/faction-rules/:slug', requireAuth, (req, res) => {
     const formations = db.prepare(
       'SELECT id, formation_name, name, timing, declare, effect, bullets, keywords FROM faction_battle_formations WHERE faction_slug = ? ORDER BY id'
     ).all(slug);
-    res.json({ traits, formations });
+    const extra = db.prepare(
+      'SELECT id, section, group_name, name, timing, declare, effect, bullets, keywords FROM faction_extra_rules WHERE faction_slug = ? ORDER BY id'
+    ).all(slug);
+
+    // Partition extra rules by section
+    const bySection = s => extra.filter(r => r.section === s);
+    res.json({
+      traits,
+      formations,
+      heroic_traits:      bySection('heroic_traits'),
+      artefacts:          bySection('artefacts'),
+      spell_lore:         bySection('spell_lore'),
+      prayer_lore:        bySection('prayer_lore'),
+      manifestation_lore: bySection('manifestation_lore'),
+    });
   } finally {
     db.close();
   }
