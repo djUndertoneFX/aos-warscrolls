@@ -319,22 +319,17 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onFilterApp
     return () => { el.removeEventListener('touchstart', onStart); el.removeEventListener('touchend', onEnd); };
   }, [onPrev, onNext]);
 
-  // Orientation change: reset iOS zoom and scroll modal back to top so dots are visible
+  // While modal is open: lock viewport zoom so iOS never zooms on orientation change.
+  // Scroll to top after rotation so nav dots are always visible.
   useEffect(() => {
-    const resetZoom = () => {
-      const meta = document.querySelector('meta[name=viewport]');
-      if (meta) {
-        const orig = meta.content;
-        meta.content = 'width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1';
-        setTimeout(() => { meta.content = orig; }, 100);
-      }
-      setTimeout(() => { if (modalRef.current) modalRef.current.scrollTop = 0; }, 150);
-    };
-    window.addEventListener('orientationchange', resetZoom);
-    window.addEventListener('resize', resetZoom);
+    const meta = document.querySelector('meta[name=viewport]');
+    const orig = meta?.content;
+    if (meta) meta.content = 'width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1';
+    const scrollTop = () => setTimeout(() => { if (modalRef.current) modalRef.current.scrollTop = 0; }, 300);
+    window.addEventListener('orientationchange', scrollTop);
     return () => {
-      window.removeEventListener('orientationchange', resetZoom);
-      window.removeEventListener('resize', resetZoom);
+      if (meta && orig) meta.content = orig;
+      window.removeEventListener('orientationchange', scrollTop);
     };
   }, []);
 
