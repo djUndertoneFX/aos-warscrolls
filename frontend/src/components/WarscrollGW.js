@@ -319,6 +319,25 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onFilterApp
     return () => { el.removeEventListener('touchstart', onStart); el.removeEventListener('touchend', onEnd); };
   }, [onPrev, onNext]);
 
+  // Orientation change: reset iOS zoom and scroll modal back to top so dots are visible
+  useEffect(() => {
+    const resetZoom = () => {
+      const meta = document.querySelector('meta[name=viewport]');
+      if (meta) {
+        const orig = meta.content;
+        meta.content = 'width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1';
+        setTimeout(() => { meta.content = orig; }, 100);
+      }
+      setTimeout(() => { if (modalRef.current) modalRef.current.scrollTop = 0; }, 150);
+    };
+    window.addEventListener('orientationchange', resetZoom);
+    window.addEventListener('resize', resetZoom);
+    return () => {
+      window.removeEventListener('orientationchange', resetZoom);
+      window.removeEventListener('resize', resetZoom);
+    };
+  }, []);
+
   // Click outside: close unless the click landed on a unit-name-link (switching units)
   useEffect(() => {
     const h = e => {
