@@ -1837,6 +1837,14 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
   border-color: #c8a840;
   transform: scale(1.35);
 }
+.gw-nav-sep {
+  width: 1px;
+  height: 14px;
+  background: rgba(200,168,64,0.45);
+  flex-shrink: 0;
+  margin: 0 3px;
+  border-radius: 1px;
+}
 
 /* ── Top band: 3-column (wheel | centered name | right meta) ── */
 .gw-top-band {

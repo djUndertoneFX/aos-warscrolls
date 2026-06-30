@@ -278,7 +278,20 @@ function AbilityCard({ ab, keywords }) {
 }
 
 // ── Main component ───────────────────────────────────────────────────────────
-export default function WarscrollGW({ unit, onClose, onPrev, onNext, onFilterApply, factions = [], navIndex, navTotal }) {
+function getPrimaryType(u) {
+  if (u.is_hero)          return 'Hero';
+  if (u.is_monster)       return 'Monster';
+  if (u.is_infantry)      return 'Infantry';
+  if (u.is_cavalry)       return 'Cavalry';
+  if (u.is_beast)         return 'Beast';
+  if (u.is_war_machine)   return 'War Machine';
+  if (u.is_manifestation) return 'Manifestation';
+  if (u.is_terrain)       return 'Terrain';
+  return 'Other';
+}
+
+export default function WarscrollGW({ unit, onClose, onPrev, onNext, onFilterApply, factions = [], navIndex, navList }) {
+  const navTotal = navList ? navList.length : 0;
   const { showFlavorText } = useSettings();
   const weapons   = React.useMemo(() => { try { return JSON.parse(unit.weapons   || '[]'); } catch { return []; } }, [unit]);
   const abilities = React.useMemo(() => { try { return JSON.parse(unit.abilities || '[]'); } catch { return []; } }, [unit]);
@@ -401,12 +414,19 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onFilterApp
 
         <button className="gw-close" onClick={onClose} title="Close (Esc)">✕</button>
 
-        {/* ── Nav dots ── */}
-        {navTotal > 1 && (
+        {/* ── Nav dots with type-group separators ── */}
+        {navList && navTotal > 1 && (
           <div className="gw-nav-dots">
-            {Array.from({ length: navTotal }, (_, i) => (
-              <span key={i} className={`gw-nav-dot${i === navIndex ? ' gw-nav-dot-active' : ''}`} />
-            ))}
+            {navList.map((u, i) => {
+              const type = getPrimaryType(u);
+              const prevType = i > 0 ? getPrimaryType(navList[i - 1]) : null;
+              return (
+                <React.Fragment key={u.id ?? i}>
+                  {i > 0 && prevType !== type && <span className="gw-nav-sep" title={type} />}
+                  <span className={`gw-nav-dot${i === navIndex ? ' gw-nav-dot-active' : ''}`} title={u.name} />
+                </React.Fragment>
+              );
+            })}
           </div>
         )}
 
