@@ -404,21 +404,44 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onFilterApp
     return () => window.removeEventListener('keydown', h);
   }, [onClose, handlePrev, handleNext]);
 
-  // Touch swipe: left=next, right=prev
+  // Touch swipe: left=next, right=prev.
+  // Axis-locked: once the gesture direction is determined (H vs V), we commit.
+  // Horizontal swipes call preventDefault to prevent frame shift / scroll interference.
   useEffect(() => {
     const el = modalRef.current;
     if (!el) return;
-    let startX = null;
-    const onStart = e => { startX = e.touches[0].clientX; };
-    const onEnd = e => {
-      if (startX === null) return;
-      const dx = e.changedTouches[0].clientX - startX;
-      if (Math.abs(dx) > 50) { dx < 0 ? handleNext() : handlePrev(); }
-      startX = null;
+    let startX = null, startY = null, axis = null; // axis: null | 'h' | 'v'
+
+    const onStart = e => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      axis = null;
     };
+    const onMove = e => {
+      if (startX === null) return;
+      if (axis === null) {
+        const dx = Math.abs(e.touches[0].clientX - startX);
+        const dy = Math.abs(e.touches[0].clientY - startY);
+        if (dx > 8 || dy > 8) axis = dx >= dy ? 'h' : 'v';
+      }
+      if (axis === 'h') e.preventDefault(); // stop scroll/frame-shift on horizontal
+    };
+    const onEnd = e => {
+      if (startX !== null && axis === 'h') {
+        const dx = e.changedTouches[0].clientX - startX;
+        if (Math.abs(dx) > 50) { dx < 0 ? handleNext() : handlePrev(); }
+      }
+      startX = null; startY = null; axis = null;
+    };
+
     el.addEventListener('touchstart', onStart, { passive: true });
+    el.addEventListener('touchmove', onMove, { passive: false }); // non-passive so preventDefault works
     el.addEventListener('touchend', onEnd, { passive: true });
-    return () => { el.removeEventListener('touchstart', onStart); el.removeEventListener('touchend', onEnd); };
+    return () => {
+      el.removeEventListener('touchstart', onStart);
+      el.removeEventListener('touchmove', onMove);
+      el.removeEventListener('touchend', onEnd);
+    };
   }, [handlePrev, handleNext]);
 
   // Lock viewport zoom while modal is open; scroll to top on orientation change
