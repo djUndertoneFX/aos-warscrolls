@@ -69,6 +69,36 @@ function initDb() {
       expires_at INTEGER NOT NULL,
       used INTEGER DEFAULT 0
     );
+
+    CREATE TABLE IF NOT EXISTS faction_battle_traits (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      faction_slug TEXT NOT NULL,
+      faction_name TEXT NOT NULL,
+      name TEXT NOT NULL,
+      timing TEXT,
+      declare TEXT,
+      effect TEXT,
+      bullets TEXT,
+      keywords TEXT,
+      scraped_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS faction_battle_formations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      faction_slug TEXT NOT NULL,
+      faction_name TEXT NOT NULL,
+      formation_name TEXT NOT NULL,
+      name TEXT NOT NULL,
+      timing TEXT,
+      declare TEXT,
+      effect TEXT,
+      bullets TEXT,
+      keywords TEXT,
+      scraped_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_traits_faction ON faction_battle_traits(faction_slug);
+    CREATE INDEX IF NOT EXISTS idx_formations_faction ON faction_battle_formations(faction_slug);
   `);
 
   // Safe migrations — ALTER TABLE is a no-op if the column already exists

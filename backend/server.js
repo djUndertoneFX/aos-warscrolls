@@ -591,6 +591,23 @@ app.get('/api/factions', requireAuth, (req, res) => {
   }
 });
 
+// GET /api/faction-rules/:slug — battle traits + formations for one faction
+app.get('/api/faction-rules/:slug', requireAuth, (req, res) => {
+  const db = getDb();
+  try {
+    const slug = req.params.slug;
+    const traits = db.prepare(
+      'SELECT id, name, timing, declare, effect, bullets, keywords FROM faction_battle_traits WHERE faction_slug = ? ORDER BY id'
+    ).all(slug);
+    const formations = db.prepare(
+      'SELECT id, formation_name, name, timing, declare, effect, bullets, keywords FROM faction_battle_formations WHERE faction_slug = ? ORDER BY id'
+    ).all(slug);
+    res.json({ traits, formations });
+  } finally {
+    db.close();
+  }
+});
+
 // GET /api/stats
 app.get('/api/stats', requireAuth, (req, res) => {
   const db = getDb();
