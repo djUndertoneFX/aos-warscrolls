@@ -16,10 +16,10 @@ export function SettingsProvider({ children }) {
   // Faction Info slide toggles (all default on)
   const [showBattleTraits,      setShowBattleTraits]      = useState(() => loadSetting('aos-fi-battle-traits',      true));
   const [showBattleFormations,  setShowBattleFormations]  = useState(() => loadSetting('aos-fi-battle-formations',  true));
-  const [showHeroicTraits,      setShowHeroicTraits]      = useState(() => loadSetting('aos-fi-heroic-traits',      true));
-  const [showArtefacts,         setShowArtefacts]         = useState(() => loadSetting('aos-fi-artefacts',          true));
-  const [showSpellLore,         setShowSpellLore]         = useState(() => loadSetting('aos-fi-spell-lore',         true));
-  const [showManifestationLore, setShowManifestationLore] = useState(() => loadSetting('aos-fi-manifestation-lore', true));
+  const [showHeroicTraits,      setShowHeroicTraits]      = useState(() => loadSetting('aos-fi-heroic-traits',      false));
+  const [showArtefacts,         setShowArtefacts]         = useState(() => loadSetting('aos-fi-artefacts',          false));
+  const [showSpellLore,         setShowSpellLore]         = useState(() => loadSetting('aos-fi-spell-lore',         false));
+  const [showManifestationLore, setShowManifestationLore] = useState(() => loadSetting('aos-fi-manifestation-lore', false));
 
   const setSetting = (key, value) => {
     const persist = (k, v) => localStorage.setItem(k, JSON.stringify(v));
