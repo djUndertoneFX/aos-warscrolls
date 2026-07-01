@@ -131,25 +131,16 @@ app.use(express.json());
 // Initialize DB on startup
 initDb();
 
-// Direct DB fix: strip any keyword tokens containing bare digits (e.g. "CHAMPION 18")
-// Runs in-place — no network requests, completes in milliseconds.
+// Auto-scrape warscrolls if table is empty
 {
+  const { scrapeAll } = require('./scraper');
   const _db2 = getDb();
-  const rows = _db2.prepare(`SELECT id, keywords FROM warscrolls WHERE keywords GLOB '*[0-9]*'`).all();
-  if (rows.length > 0) {
-    const update = _db2.prepare('UPDATE warscrolls SET keywords = ? WHERE id = ?');
-    _db2.transaction(() => {
-      for (const row of rows) {
-        const fixed = row.keywords.split(',')
-          .map(k => k.trim())
-          .filter(k => k && !/\d/.test(k.replace(/\s*\(\d+\+?\)\s*$/, '')))
-          .join(', ');
-        update.run(fixed, row.id);
-      }
-    })();
-    console.log(`Keyword fix: cleaned ${rows.length} unit(s) with digit-containing keywords.`);
-  }
+  const wsCount = _db2.prepare('SELECT COUNT(*) as n FROM warscrolls').get().n;
   _db2.close();
+  if (wsCount === 0) {
+    console.log('Warscrolls table empty — running scrapeAll in background...');
+    scrapeAll().catch(err => console.error('scrapeAll failed:', err));
+  }
 }
 
 // Auto-scrape faction rules if either table is empty (e.g. fresh Railway deploy or new sections added)
