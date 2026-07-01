@@ -1304,6 +1304,7 @@ td.col-ado-pct {
   font-family: 'Palatino Linotype', Palatino, Georgia, serif;
   font-size: 0.75rem;
   font-weight: 400;
+  text-transform: none;
   line-height: 1.5;
   padding: 8px 12px;
   border-radius: 4px;
