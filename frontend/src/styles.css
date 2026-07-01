@@ -1830,8 +1830,8 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
   z-index: 5;
 }
 .gw-nav-dot {
-  width: 7px;
-  height: 7px;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
   background: rgba(200,168,64,0.22);
   border: 1px solid rgba(200,168,64,0.35);
@@ -1856,9 +1856,9 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
 }
 /* Faction slide dots — square, purple, appear before unit dots */
 .gw-nav-dot-faction {
-  width: 7px;
-  height: 7px;
-  border-radius: 2px;
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
   background: rgba(160,100,220,0.22);
   border: 1px solid rgba(160,100,220,0.45);
   flex-shrink: 0;
