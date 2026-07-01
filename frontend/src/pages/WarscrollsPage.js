@@ -566,19 +566,22 @@ export default function WarscrollsPage({ headerCollapsed }) {
           <div className="table-wrapper">
             <table data-sort={sortBy}>
               {/* ADO-R, ADO-M, ADO% sorts are client-side since they're computed values */}
-              {['ado_ranged','ado_melee','ado_pct'].includes(sortBy) && data?.data.sort((a, b) => {
-                const getVals = row => {
-                  const ws = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
-                  const sv = presumedSave ?? 5; const wd = presumedWard ?? null;
-                  const aR = sumADO(ws.filter(w => w.type === 'ranged'), row.unit_size, sv, wd, roundingMode) ?? 0;
-                  const aM = sumADO(ws.filter(w => w.type === 'melee'),  row.unit_size, sv, wd, roundingMode) ?? 0;
-                  if (sortBy === 'ado_ranged') return aR;
-                  if (sortBy === 'ado_melee')  return aM;
-                  return row.points ? (aR + aM) / row.points : -1;
-                };
-                const vA = getVals(a), vB = getVals(b);
-                return sortDir === 'asc' ? vA - vB : vB - vA;
-              })}
+              {['ado_ranged','ado_melee','ado_pct'].includes(sortBy) && data?.data && (() => {
+                data.data.sort((a, b) => {
+                  const getVal = row => {
+                    const ws = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
+                    const sv = presumedSave ?? 5; const wd = presumedWard ?? null;
+                    const aR = sumADO(ws.filter(w => w.type === 'ranged'), row.unit_size, sv, wd, roundingMode) ?? 0;
+                    const aM = sumADO(ws.filter(w => w.type === 'melee'),  row.unit_size, sv, wd, roundingMode) ?? 0;
+                    if (sortBy === 'ado_ranged') return aR;
+                    if (sortBy === 'ado_melee')  return aM;
+                    return row.points ? (aR + aM) / row.points : -1;
+                  };
+                  const vA = getVal(a), vB = getVal(b);
+                  return sortDir === 'asc' ? vA - vB : vB - vA;
+                });
+                return null;
+              })()}
               <thead>
                 <tr>
                   <th style={{...thStyle('rownum'), textAlign:'right'}} title="Row number"><span className="th-abbr" style={{color:'var(--text-dim)'}}>#</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'rownum')} /></th>
