@@ -645,7 +645,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
                         onContextMenu={e => { e.preventDefault(); const f = factions.find(fc => fc.faction === unit.faction); f && onFilterApply('faction', f.faction_slug, true); }}
                       >{unit.faction.toUpperCase()}</span>{' '}
                     </>
-                  ) : (unit.faction ? ' ' + unit.faction.toUpperCase() + ' ' : ' ')}WARSCROLL ·
+                  ) : (unit.faction ? ' ' + unit.faction.toUpperCase() + ' ' : ' ')}<span className="gw-header-warscroll-label">WARSCROLL ·</span>
                 </div>
                 <div className="gw-header-name">{unit.name}</div>
               </div>
