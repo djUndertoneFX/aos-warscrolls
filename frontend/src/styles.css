@@ -1270,7 +1270,7 @@ th.col-ado-hdr {
   color: #a8d870;
   text-align: center;
   white-space: nowrap;
-  overflow: hidden;
+  overflow: visible;
 }
 td.col-ado {
   text-align: center;
