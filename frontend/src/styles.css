@@ -1054,7 +1054,7 @@ input, select {
   flex: 1;
   min-height: 0;          /* critical: allows flex child to scroll rather than overflow */
   overflow-y: scroll;
-  overflow-x: hidden;     /* table is width:100% so no horizontal scroll needed; hidden prevents tooltip pseudo-elements from extending scroll area */
+  overflow-x: hidden;     /* no horizontal scroll on desktop; overridden to auto on narrow viewports below */
   border: 1px solid var(--border);
   border-radius: 4px;
   box-shadow: 0 4px 24px rgba(0,0,0,0.4);
@@ -2368,6 +2368,10 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
 }
 
 /* ── Responsive ── */
+@media (max-width: 1100px) {
+  .table-wrapper { overflow-x: auto; }
+}
+
 @media (max-width: 900px) {
   .filters { grid-template-columns: 1fr 1fr; }
   .filter-checkboxes { gap: 0.5rem 1rem; }
