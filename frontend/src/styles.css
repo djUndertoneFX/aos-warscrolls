@@ -2364,18 +2364,30 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
   }
 }
 
-/* ── Responsive: narrow screens ── */
+/* ── Responsive: narrow screens (phone) ── */
 @media (max-width: 600px) {
-  .gw-top-band { flex-direction: column; }
-  .gw-wheel-col { flex: unset; border-right: none; border-bottom: 1px solid rgba(200,168,64,0.22); padding: 12px; }
-  .gw-stats-wheel { width: 110px; height: 110px; }
-  .gw-header-center { padding: 10px 16px; }
-  .gw-header-right { flex: unset; border-left: none; border-top: 1px solid rgba(200,168,64,0.22); flex-direction: row; align-items: center; justify-content: flex-end; padding: 8px 14px; }
-  .gw-header-name { font-size: 1.25rem; }
+  /* Header: keep 3-column row but shrink everything */
+  .gw-top-band { flex-direction: row; align-items: center; }
+  .gw-wheel-col { flex: 0 0 auto; padding: 6px 6px 6px 8px; border-right: 1px solid rgba(200,168,64,0.22); border-bottom: none; }
+  .gw-stats-wheel { width: 80px; height: 80px; }
+  .gw-header-center { flex: 1; min-width: 0; padding: 6px 8px; }
+  .gw-header-type { font-size: 0.58rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gw-header-name { font-size: 1.05rem; }
+  .gw-header-right { flex: 0 0 auto; border-left: 1px solid rgba(200,168,64,0.22); border-top: none; flex-direction: column; align-items: center; justify-content: center; padding: 6px 10px; gap: 4px; }
+
+  /* Image: centered */
   .gw-abilities-row { flex-direction: column; }
-  .gw-abilities-img-col { padding: 0 14px 12px; }
-  .gw-unit-img { width: 260px; }
+  .gw-abilities-img-col { width: 100%; display: flex; justify-content: center; padding: 0 14px 12px; flex: unset; }
+  .gw-unit-img { width: 220px; }
   .gw-abilities-grid { grid-template-columns: 1fr; }
+
+  /* Weapons table: drop ADO col, let name expand, shrink ability */
+  .gw-weapon-table { table-layout: auto; }
+  .gw-th-ado, .gw-td-ado { display: none; }
+  .gw-th-name    { width: auto; }
+  .gw-th-stat    { width: 28px; min-width: 28px; }
+  .gw-th-ability { width: auto; max-width: 60px; }
+  .gw-td-stat    { font-size: 0.85rem; }
 }
 
 /* ── Responsive ── */
