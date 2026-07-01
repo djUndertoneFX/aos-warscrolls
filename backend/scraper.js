@@ -547,4 +547,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { scrapeImages };
+module.exports = { scrapeImages, scrapeAll };

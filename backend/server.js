@@ -517,6 +517,17 @@ app.get('/api/unit-image/:id', (req, res) => {
   }
 });
 
+// POST /api/admin/rescrape — trigger a full warscroll rescrape; protected by UPLOAD_SECRET
+app.post('/api/admin/rescrape', (req, res) => {
+  const secret = process.env.UPLOAD_SECRET;
+  if (!secret || req.headers['x-upload-secret'] !== secret) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  const { scrapeAll } = require('./scraper');
+  res.json({ message: 'Rescrape started' });
+  scrapeAll().catch(err => console.error('Rescrape failed:', err));
+});
+
 // PUT /api/unit-image/:id — upload image from local scraper script
 // Optional ?slot=N for multi-image units (slot 0 = primary, 1 = secondary, etc.)
 // Protected by UPLOAD_SECRET env var (not user JWT)
