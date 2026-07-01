@@ -1058,8 +1058,15 @@ input, select {
   border: 1px solid var(--border);
   border-radius: 4px;
   box-shadow: 0 4px 24px rgba(0,0,0,0.4);
-  /* Prevent iOS browser chrome from obscuring the last row */
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+/* iOS WebKit ignores padding-bottom on overflow:scroll containers.
+   A ::after block is the reliable way to extend the scroll height. */
+@media (max-width: 1100px) {
+  .table-wrapper::after {
+    content: '';
+    display: block;
+    height: calc(env(safe-area-inset-bottom, 0px) + 80px);
+  }
 }
 
 table {
