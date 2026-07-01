@@ -695,7 +695,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
       <div className="page-header">
         <div className="page-title">
           Simulacrum
-          <span>Age of Sigmar 4th Edition · Data from Wahapedia</span>
+          <span>Age of Sigmar 4th Edition</span>
         </div>
         <div className="sim-stages">
           <button className={`sim-stage-btn${stage === 1 ? ' sim-stage-active' : ''}`} onClick={() => { setStage(1); setBattleResults(null); }}>

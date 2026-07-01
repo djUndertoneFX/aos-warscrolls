@@ -447,7 +447,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
       <div className="page-header">
         <div className="page-title">
           Warscrolls
-          <span>Age of Sigmar 4th Edition · Data from Wahapedia</span>
+          <span>Age of Sigmar 4th Edition</span>
         </div>
         {data && (
           <div className="unit-count">
