@@ -276,7 +276,9 @@ async function scrapeFaction(faction) {
     }
     const kwLine1 = parseKwLine('.wsKeywordLine1');
     const kwLine2 = parseKwLine('.wsKeywordLine2');
-    const allKeywords = [...new Set([...kwLine1, ...kwLine2])].filter(Boolean);
+    // Real AoS keywords never contain bare digits — filter out composition notes like "CHAMPION 18"
+    // Strip trailing (N)/(N+) suffix before checking, so "WIZARD (2)" is preserved
+    const allKeywords = [...new Set([...kwLine1, ...kwLine2])].filter(k => k && !/\d/.test(k.replace(/\s*\(\d+\+?\)\s*$/, '')));
     const keywords = allKeywords.join(', ');
 
     const kwText = allKeywords.join(' ');
