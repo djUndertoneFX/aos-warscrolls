@@ -131,23 +131,25 @@ app.use(express.json());
 // Initialize DB on startup
 initDb();
 
-// Patch any factions whose keywords still contain bare digits (composition notes that slipped through)
+// Direct DB fix: strip any keyword tokens containing bare digits (e.g. "CHAMPION 18")
+// Runs in-place — no network requests, completes in milliseconds.
 {
-  const { scrapeAll } = require('./scraper');
   const _db2 = getDb();
-  const badFactions = _db2.prepare(
-    `SELECT DISTINCT faction_slug FROM warscrolls WHERE keywords GLOB '*[0-9]*'`
-  ).all().map(r => r.faction_slug);
-  _db2.close();
-  if (badFactions.length > 0) {
-    console.log(`Keyword fix: re-scraping ${badFactions.length} faction(s): ${badFactions.join(', ')}`);
-    (async () => {
-      for (const slug of badFactions) {
-        await scrapeAll(slug).catch(err => console.error(`Patch failed for ${slug}:`, err));
+  const rows = _db2.prepare(`SELECT id, keywords FROM warscrolls WHERE keywords GLOB '*[0-9]*'`).all();
+  if (rows.length > 0) {
+    const update = _db2.prepare('UPDATE warscrolls SET keywords = ? WHERE id = ?');
+    _db2.transaction(() => {
+      for (const row of rows) {
+        const fixed = row.keywords.split(',')
+          .map(k => k.trim())
+          .filter(k => k && !/\d/.test(k.replace(/\s*\(\d+\+?\)\s*$/, '')))
+          .join(', ');
+        update.run(fixed, row.id);
       }
-      console.log('Keyword patch complete.');
     })();
+    console.log(`Keyword fix: cleaned ${rows.length} unit(s) with digit-containing keywords.`);
   }
+  _db2.close();
 }
 
 // Auto-scrape faction rules if either table is empty (e.g. fresh Railway deploy or new sections added)
