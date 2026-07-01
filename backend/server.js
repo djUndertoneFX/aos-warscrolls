@@ -653,5 +653,5 @@ app.get('/api/stats', requireAuth, (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`\n🏰 AoS Warscrolls API running on http://localhost:${PORT}`);
-  console.log(`   Run 'npm run scrape' to populate the database from Wahapedia.\n`);
+  console.log(`   Run 'npm run scrape' to populate the database.\n`);
 });

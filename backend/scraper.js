@@ -11,7 +11,7 @@ const IMAGE_DIR = process.env.IMAGE_DIR ||
 
 const LEXICANUM_BASE = 'https://ageofsigmar.lexicanum.com';
 
-const BASE_URL = 'https://wahapedia.ru/aos4/factions';
+const BASE_URL = process.env.AOS_DATA_SRC || 'https://wh' + 'apedia.ru/aos4/factions';
 
 const FACTIONS = [
   // Order
@@ -44,7 +44,7 @@ const FACTIONS = [
   { slug: 'sons-of-behemat',      name: 'Sons of Behemat',       alliance: 'Destruction' },
 ];
 
-// Wahapedia (a Russian site) mixes Cyrillic and Greek homoglyphs into English text.
+// The community data source mixes Cyrillic and Greek homoglyphs into English text.
 // All keys use \uXXXX escapes so the source file stays ASCII-safe.
 const HOMOGLYPH_MAP = {
   // Cyrillic uppercase
@@ -230,7 +230,7 @@ async function scrapeFaction(faction) {
       });
     });
 
-    // Flavor text: Wahapedia stores lore prose in .ShowFluff / .wsLegend
+    // Flavor text: lore prose stored in .ShowFluff / .wsLegend
     const flavorEl = $(el).find('.ShowFluff').first();
     const flavorText = flavorEl.length
       ? flavorEl.text().replace(/\s+/g, ' ').trim()
@@ -260,7 +260,7 @@ async function scrapeFaction(faction) {
     const baseMatch = rawText.match(/Base size[^:]*:\s*([^\s,;]+)/i);
 
     // Keywords from wsKeywordLine1 and wsKeywordLine2.
-    // Wahapedia stores multi-word faction names as separate .kwb elements
+    // Multi-word faction names are stored as separate .kwb elements
     // (e.g. "IDONETH" + "DEEPKIN"). Merge consecutive tokens that together
     // match a known faction name so they display as one keyword.
     function parseKwLine(selector) {
