@@ -1266,11 +1266,11 @@ td.col-stat {
 th.col-ado-hdr {
   font-family: 'Cinzel', serif;
   font-size: 0.68rem;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
   color: #a8d870;
   text-align: center;
   white-space: nowrap;
-  overflow: visible;
+  overflow: hidden;
 }
 td.col-ado {
   text-align: center;
@@ -2370,6 +2370,8 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
 /* ── Responsive ── */
 @media (max-width: 1100px) {
   .table-wrapper { overflow-x: auto; }
+  /* Tooltip is hover-only; hiding it prevents its absolute positioning from extending scroll width */
+  .ado-tip::after { display: none; }
 }
 
 @media (max-width: 900px) {

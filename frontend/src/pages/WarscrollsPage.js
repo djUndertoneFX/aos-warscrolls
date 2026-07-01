@@ -380,9 +380,9 @@ export default function WarscrollsPage({ headerCollapsed }) {
     name: 190, faction: 110, alliance: 66, models: 42,
     move: 42, health: 42, control: 42, save: 42, points: 48,
     types: 68, keywords: 130,
-    ado_ranged: 42, ado_melee: 42, ado_pct: 44,
+    ado_ranged: 54, ado_melee: 54, ado_pct: 56,
   };
-  const STORAGE_KEY = 'aos-col-widths-v7';
+  const STORAGE_KEY = 'aos-col-widths-v8';
   const [colWidths, setColWidths] = useState(() => {
     try { return { ...DEFAULT_COL_WIDTHS, ...JSON.parse(localStorage.getItem(STORAGE_KEY)) }; }
     catch { return DEFAULT_COL_WIDTHS; }
