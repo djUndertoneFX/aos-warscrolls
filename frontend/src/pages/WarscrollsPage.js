@@ -820,6 +820,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
         onClose={() => setDetailUnit(null)}
         onPrev={() => { if (idx > 0) setDetailUnit(rows[idx - 1]); }}
         onNext={() => { if (idx < rows.length - 1) setDetailUnit(rows[idx + 1]); }}
+        onJump={i => setDetailUnit(rows[i])}
         onFilterApply={(type, value, exclude) => {
           setDetailUnit(null);
           setPage(1);

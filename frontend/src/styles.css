@@ -1836,8 +1836,11 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
   background: rgba(200,168,64,0.22);
   border: 1px solid rgba(200,168,64,0.35);
   flex-shrink: 0;
+  cursor: pointer;
+  touch-action: manipulation;
   transition: background 0.2s, border-color 0.2s, transform 0.2s;
 }
+.gw-nav-dot:hover { background: rgba(200,168,64,0.55); border-color: rgba(200,168,64,0.7); }
 .gw-nav-dot-active {
   background: #c8a840;
   border-color: #c8a840;
@@ -1859,8 +1862,11 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
   background: rgba(160,100,220,0.22);
   border: 1px solid rgba(160,100,220,0.45);
   flex-shrink: 0;
+  cursor: pointer;
+  touch-action: manipulation;
   transition: background 0.2s, border-color 0.2s, transform 0.2s;
 }
+.gw-nav-dot-faction:hover { background: rgba(160,100,220,0.55); border-color: rgba(160,100,220,0.7); }
 .gw-nav-dot-faction-active {
   background: #a064dc;
   border-color: #c090f0;

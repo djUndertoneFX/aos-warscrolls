@@ -335,7 +335,7 @@ function getPrimaryType(u) {
   return 'Other';
 }
 
-export default function WarscrollGW({ unit, onClose, onPrev, onNext, onFilterApply, factions = [], navIndex, navList }) {
+export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onFilterApply, factions = [], navIndex, navList }) {
   const navTotal = navList ? navList.length : 0;
   const { showFlavorText, showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore } = useSettings();
   const weapons   = React.useMemo(() => { try { return JSON.parse(unit.weapons   || '[]'); } catch { return []; } }, [unit]);
@@ -554,6 +554,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onFilterApp
                 key={s.key}
                 className={`gw-nav-dot-faction${factionSlide === s.key ? ' gw-nav-dot-faction-active' : ''}`}
                 title={s.key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                onClick={() => setFactionSlide(s.key)}
               />
             ))}
             {showFactionDots && navTotal > 0 && <span className="gw-nav-sep" />}
@@ -567,6 +568,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onFilterApp
                   <span
                     className={`gw-nav-dot${factionSlide === null && i === navIndex ? ' gw-nav-dot-active' : ''}`}
                     title={u.name}
+                    onClick={() => { setFactionSlide(null); onJump?.(i); }}
                   />
                 </React.Fragment>
               );
