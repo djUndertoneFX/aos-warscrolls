@@ -131,6 +131,25 @@ app.use(express.json());
 // Initialize DB on startup
 initDb();
 
+// Patch any factions whose keywords still contain bare digits (composition notes that slipped through)
+{
+  const { scrapeAll } = require('./scraper');
+  const _db2 = getDb();
+  const badFactions = _db2.prepare(
+    `SELECT DISTINCT faction_slug FROM warscrolls WHERE keywords GLOB '*[0-9]*'`
+  ).all().map(r => r.faction_slug);
+  _db2.close();
+  if (badFactions.length > 0) {
+    console.log(`Keyword fix: re-scraping ${badFactions.length} faction(s): ${badFactions.join(', ')}`);
+    (async () => {
+      for (const slug of badFactions) {
+        await scrapeAll(slug).catch(err => console.error(`Patch failed for ${slug}:`, err));
+      }
+      console.log('Keyword patch complete.');
+    })();
+  }
+}
+
 // Auto-scrape faction rules if either table is empty (e.g. fresh Railway deploy or new sections added)
 {
   const { scrapeAllRules } = require('./scrapeRules');
