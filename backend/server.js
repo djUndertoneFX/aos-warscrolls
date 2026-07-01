@@ -524,8 +524,9 @@ app.post('/api/admin/rescrape', (req, res) => {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   const { scrapeAll } = require('./scraper');
-  res.json({ message: 'Rescrape started' });
-  scrapeAll().catch(err => console.error('Rescrape failed:', err));
+  const faction = req.query.faction || null; // ?faction=slaves-to-darkness for patch mode
+  res.json({ message: `Rescrape started${faction ? ` for ${faction}` : ' (all factions)'}` });
+  scrapeAll(faction).catch(err => console.error('Rescrape failed:', err));
 });
 
 // PUT /api/unit-image/:id — upload image from local scraper script

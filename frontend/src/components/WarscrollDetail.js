@@ -180,7 +180,7 @@ export default function WarscrollDetail({ unit, onClose }) {
         {/* Source link */}
         {unit.url && (
           <div className="detail-source">
-            <a href={unit.url} target="_blank" rel="noopener noreferrer">View on Wahapedia ↗</a>
+            <a href={unit.url} target="_blank" rel="noopener noreferrer">Source ↗</a>
           </div>
         )}
       </div>

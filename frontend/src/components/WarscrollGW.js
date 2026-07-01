@@ -745,7 +745,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
 
             {unit.url && (
               <div className="gw-source">
-                <a href={unit.url} target="_blank" rel="noopener noreferrer">View on Wahapedia ↗</a>
+                <a href={unit.url} target="_blank" rel="noopener noreferrer">Source ↗</a>
               </div>
             )}
           </>
