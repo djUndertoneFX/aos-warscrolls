@@ -547,7 +547,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
         <button className="gw-close" onClick={onClose} title="Close (Esc)">✕</button>
 
         {/* ── Nav dots: faction squares + unit circles ── */}
-        {navTotal > 0 && (showFactionDots || (showUnitDots && navTotal > 1)) && (
+        {showUnitDots && navTotal > 0 && (showFactionDots || navTotal > 1) && (
           <div className="gw-nav-dots">
             {/* Faction slide dots (square, purple) — leftmost = furthest from units */}
             {factionSlides.map(s => (
@@ -558,7 +558,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
                 onClick={() => setFactionSlide(s.key)}
               />
             ))}
-            {showFactionDots && showUnitDots && navTotal > 0 && <span className="gw-nav-sep" />}
+            {showFactionDots && navTotal > 0 && <span className="gw-nav-sep" />}
             {/* Unit dots (round, gold) — hidden when list is too long */}
             {showUnitDots && navList && navList.map((u, i) => {
               const type = getPrimaryType(u);
