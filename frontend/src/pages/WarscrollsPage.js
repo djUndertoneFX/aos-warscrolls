@@ -643,7 +643,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
                           <td colSpan={colSpan}>{row.faction}</td>
                         </tr>
                       )}
-                      {typeChanged && sortBy === 'faction' && (
+                      {typeChanged && (sortBy === 'faction' || faction) && (
                         <tr className="separator-type">
                           <td colSpan={colSpan}>{unitTypeLabel(row)}</td>
                         </tr>
