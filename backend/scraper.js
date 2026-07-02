@@ -11,7 +11,7 @@ const IMAGE_DIR = process.env.IMAGE_DIR ||
 
 const LEXICANUM_BASE = 'https://ageofsigmar.lexicanum.com';
 
-const BASE_URL = process.env.AOS_DATA_SRC || 'https://wh' + 'apedia.ru/aos4/factions';
+const BASE_URL = process.env.AOS_DATA_SRC || 'https://waha' + 'pedia.ru/aos4/factions';
 
 const FACTIONS = [
   // Order

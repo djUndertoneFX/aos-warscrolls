@@ -2,7 +2,7 @@ const fetch = require('node-fetch');
 const cheerio = require('cheerio');
 const { getDb, initDb } = require('./db');
 
-const BASE_URL = process.env.AOS_DATA_SRC || 'https://wh' + 'apedia.ru/aos4/factions';
+const BASE_URL = process.env.AOS_DATA_SRC || 'https://waha' + 'pedia.ru/aos4/factions';
 
 const FACTIONS = [
   { slug: 'stormcast-eternals',    name: 'Stormcast Eternals',   alliance: 'Order' },
