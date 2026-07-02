@@ -345,25 +345,28 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
   const dotsRef  = useRef(null);
   const [dotsAtStart, setDotsAtStart] = useState(true);
   const [dotsAtEnd,   setDotsAtEnd]   = useState(false);
-  const [dotsOverflow, setDotsOverflow] = useState(false);
+  const [dotsHasOverflow, setDotsHasOverflow] = useState(false);
 
   useLayoutEffect(() => {
     const container = dotsRef.current;
     if (!container) return;
-    requestAnimationFrame(() => {
-      const maxScroll = container.scrollWidth - container.clientWidth;
-      if (maxScroll <= 4) { setDotsOverflow(false); setDotsAtStart(true); setDotsAtEnd(true); return; }
-      setDotsOverflow(true);
-      const activeDot = container.querySelector('.gw-nav-dot-active, .gw-nav-dot-faction-active');
-      if (!activeDot) return;
-      const target = Math.max(0, Math.min(
-        activeDot.offsetLeft - container.clientWidth / 2 + activeDot.offsetWidth / 2,
-        maxScroll
-      ));
-      setDotsAtStart(target <= 4);
-      setDotsAtEnd(target >= maxScroll - 4);
-      container.scrollTo({ left: target, behavior: 'smooth' });
-    });
+    const maxScroll = container.scrollWidth - container.clientWidth;
+    if (maxScroll <= 4) {
+      setDotsHasOverflow(false);
+      setDotsAtStart(true);
+      setDotsAtEnd(true);
+      return;
+    }
+    setDotsHasOverflow(true);
+    const activeDot = container.querySelector('.gw-nav-dot-active, .gw-nav-dot-faction-active');
+    if (!activeDot) return;
+    const target = Math.max(0, Math.min(
+      activeDot.offsetLeft - container.clientWidth / 2 + activeDot.offsetWidth / 2,
+      maxScroll
+    ));
+    setDotsAtStart(target <= 4);
+    setDotsAtEnd(target >= maxScroll - 4);
+    container.scrollTo({ left: target, behavior: 'smooth' });
   }, [navIndex, factionSlide, navTotal]);
 
   // Faction slides
@@ -571,9 +574,9 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
         {/* ── Nav dots: faction squares + unit circles ── */}
         {navTotal > 0 && (showFactionDots || navTotal > 1) && (
           <div
-            className={`gw-nav-dots${dotsOverflow ? ' gw-nav-dots--overflow' : ''}`}
+            className="gw-nav-dots"
             ref={dotsRef}
-            style={dotsOverflow ? {
+            style={dotsHasOverflow ? {
               WebkitMaskImage: `linear-gradient(to right, transparent ${dotsAtStart ? '0%' : '8%'}, black ${dotsAtStart ? '0%' : '28%'}, black ${dotsAtEnd ? '100%' : '72%'}, transparent ${dotsAtEnd ? '100%' : '92%'})`,
               maskImage:       `linear-gradient(to right, transparent ${dotsAtStart ? '0%' : '8%'}, black ${dotsAtStart ? '0%' : '28%'}, black ${dotsAtEnd ? '100%' : '72%'}, transparent ${dotsAtEnd ? '100%' : '92%'})`,
             } : undefined}
