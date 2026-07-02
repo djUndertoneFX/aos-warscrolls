@@ -25,7 +25,7 @@ const WARD_OPTIONS  = ['-', 4, 5, 6];
 
 function SettingsPanel({ onClose }) {
   const {
-    showFlavorText, calculateDynamicADO, presumedSave, presumedWard, roundingMode,
+    showFlavorText, calculateDynamicADO, presumedSave, presumedWard, roundingMode, includeSaveWardInADO,
     showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore,
     setSetting,
   } = useSettings();
@@ -52,22 +52,6 @@ function SettingsPanel({ onClose }) {
           onChange={e => setSetting('calculateDynamicADO', e.target.checked)} />
         <span>Calculate Dynamic ADO</span>
       </label>
-      <div className="settings-field-row">
-        <span className="settings-field-lbl">Presumed Save</span>
-        <select className="settings-select"
-          value={presumedSave ?? '-'}
-          onChange={e => setSetting('presumedSave', e.target.value === '-' ? null : parseInt(e.target.value, 10))}>
-          {SAVE_OPTIONS.map(v => <option key={v} value={v}>{v === '-' ? '—' : `${v}+`}</option>)}
-        </select>
-      </div>
-      <div className="settings-field-row">
-        <span className="settings-field-lbl">Presumed Ward</span>
-        <select className="settings-select"
-          value={presumedWard ?? '-'}
-          onChange={e => setSetting('presumedWard', e.target.value === '-' ? null : parseInt(e.target.value, 10))}>
-          {WARD_OPTIONS.map(v => <option key={v} value={v}>{v === '-' ? '—' : `${v}+`}</option>)}
-        </select>
-      </div>
       <div className="settings-panel-title settings-panel-title--sub">Faction Info</div>
       {[
         ['showBattleTraits',      showBattleTraits,      'Battle Traits'],
@@ -83,6 +67,27 @@ function SettingsPanel({ onClose }) {
         </label>
       ))}
       <div className="settings-panel-title settings-panel-title--sub">ADO Settings</div>
+      <label className="settings-cb-row">
+        <input type="checkbox" checked={includeSaveWardInADO}
+          onChange={e => setSetting('includeSaveWardInADO', e.target.checked)} />
+        <span>Include save/ward in ADO</span>
+      </label>
+      <div className="settings-field-row">
+        <span className="settings-field-lbl">ADO Save</span>
+        <select className="settings-select"
+          value={presumedSave ?? '-'}
+          onChange={e => setSetting('presumedSave', e.target.value === '-' ? null : parseInt(e.target.value, 10))}>
+          {SAVE_OPTIONS.map(v => <option key={v} value={v}>{v === '-' ? '—' : `${v}+`}</option>)}
+        </select>
+      </div>
+      <div className="settings-field-row">
+        <span className="settings-field-lbl">ADO Ward</span>
+        <select className="settings-select"
+          value={presumedWard ?? '-'}
+          onChange={e => setSetting('presumedWard', e.target.value === '-' ? null : parseInt(e.target.value, 10))}>
+          {WARD_OPTIONS.map(v => <option key={v} value={v}>{v === '-' ? '—' : `${v}+`}</option>)}
+        </select>
+      </div>
       <div className="settings-field-row settings-field-row--col">
         <span className="settings-field-lbl">ADO Rounding</span>
         <label className="settings-radio-row" title="Each phase (hits, wounds, saves) rounds to a whole number before feeding the next. Mirrors how dice actually work at the table — discrete results, not fractions.">

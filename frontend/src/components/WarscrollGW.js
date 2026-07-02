@@ -160,12 +160,12 @@ function StatsWheel({ move, health, save, control }) {
 
 // ── Weapon table section ─────────────────────────────────────────────────────
 function WeaponSection({ weapons, type, unitSize }) {
-  const { calculateDynamicAWO, presumedSave, presumedWard, roundingMode } = useSettings();
+  const { calculateDynamicAWO, presumedSave, presumedWard, roundingMode, includeSaveWardInADO } = useSettings();
   const rows = weapons.filter(w => w.type === type);
   if (!rows.length) return null;
   const isRanged = type === 'ranged';
-  const save = presumedSave ?? 5;
-  const ward = presumedWard ?? null;
+  const save = includeSaveWardInADO ? (presumedSave ?? 5) : 7;
+  const ward = includeSaveWardInADO ? (presumedWard ?? null) : null;
 
   return (
     <div className="gw-weapon-section">
@@ -185,7 +185,7 @@ function WeaponSection({ weapons, type, unitSize }) {
             <th className="gw-th-stat">Dmg</th>
             <th className="gw-th-ability">Ability</th>
             <th className="gw-th-ado">
-              <span className="ado-tip" data-tip="Average Damage Output. Full unit damage on average with this weapon, including attacks × models, hit/wound/save rolls (default 5+ save, no ward — change in Settings). Crit (Mortal) and Crit (Auto-Wound) are factored in; conditional abilities like Anti-X are not.">ADO</span>
+              <span className="ado-tip" data-tip={includeSaveWardInADO ? `Average Damage Output. Full unit damage on average with this weapon vs ${presumedSave ?? 5}+ save${presumedWard ? `, ${presumedWard}+ ward` : ', no ward'}. Crit (Mortal) and Crit (Auto-Wound) factored in; conditional (Anti-X) ignored.` : 'Average Damage Output — hit and wound rolls only (save/ward not applied). Shows raw per-weapon offensive potential. Crit (Mortal) and Crit (Auto-Wound) factored in; conditional (Anti-X) ignored.'}>ADO</span>
             </th>
           </tr>
         </thead>

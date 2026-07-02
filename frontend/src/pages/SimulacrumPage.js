@@ -167,13 +167,13 @@ const STAGES = [
 ];
 
 function SimulacrumBattle({ friendly, enemy, colWidths, thStyle, onUnitClick, onFilter, friendlyReinforced, enemyReinforced, onFriendlyReinforceChange, onEnemyReinforceChange }) {
-  const { presumedSave, presumedWard, roundingMode } = useSettings();
+  const { presumedSave, presumedWard, roundingMode, includeSaveWardInADO } = useSettings();
   const renderRow = (row, label) => {
     const weapons = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
     const ranged = weapons.filter(w => w.type === 'ranged');
     const melee  = weapons.filter(w => w.type === 'melee');
-    const save = presumedSave ?? 5;
-    const ward = presumedWard ?? null;
+    const save = includeSaveWardInADO ? (presumedSave ?? 5) : 7;
+    const ward = includeSaveWardInADO ? (presumedWard ?? null) : null;
     const adoRanged = sumADO(ranged, row.unit_size, save, ward, roundingMode);
     const adoMelee  = sumADO(melee,  row.unit_size, save, ward, roundingMode);
     const adoTotal  = (adoRanged ?? 0) + (adoMelee ?? 0);
@@ -439,10 +439,22 @@ const BATTLE_COUNT_OPTS = [
   { val: 'forever', label: 'Till the Next Version of Age of Sigmar!' },
 ];
 
-const ADO_TOOLTIP = 'Average Damage Output. Total damage a full unit outputs on average vs the presumed save/ward in Settings. Crit abilities are factored in; conditional abilities (Anti-X) are not.';
+function makeAdoTooltip(includeSaveWard, save, ward) {
+  if (!includeSaveWard) {
+    return 'Average Damage Output — hit and wound rolls only (save/ward not applied). Shows raw offensive potential regardless of target defences. Crit abilities factored in; conditional (Anti-X) ignored.';
+  }
+  return `Average Damage Output vs ${save}+ save${ward ? `, ${ward}+ ward` : ', no ward'}. Includes hit, wound, save${ward ? ', and ward' : ''} rolls. Crit abilities factored in; conditional (Anti-X) ignored.`;
+}
+
+function makeAdoKTooltip(includeSaveWard, save, ward) {
+  const context = includeSaveWard
+    ? `vs ${save}+ save${ward ? `, ${ward}+ ward` : ', no ward'}`
+    : 'hit/wound only (save/ward not applied)';
+  return `ADO/k — Damage efficiency: (ADO-R + ADO-M) ÷ Points × 1000, ${context}. Higher = more damage per point. Sort descending for best-value units.`;
+}
 
 export default function SimulacrumPage({ headerCollapsed }) {
-  const { presumedSave, presumedWard, roundingMode } = useSettings();
+  const { presumedSave, presumedWard, roundingMode, includeSaveWardInADO } = useSettings();
   const [stage, setStage]           = useState(1);
   const [selectedFriendly, setSelectedFriendly] = useState(null);
   const [selectedEnemy, setSelectedEnemy]       = useState(null);
@@ -897,9 +909,11 @@ export default function SimulacrumPage({ headerCollapsed }) {
                 })}
                 <th style={thStyle('types')}>Types<span className="col-resize-handle" onMouseDown={e => startResize(e,'types')} /></th>
                 <th style={thStyle('keywords')}>Keywords<span className="col-resize-handle" onMouseDown={e => startResize(e,'keywords')} /></th>
-                <th style={{...thStyle('ado_ranged'), textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_ranged', e)}><span className="ado-tip" data-tip={ADO_TOOLTIP}>ADO-R</span><SortIcon col="ado_ranged" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_ranged'); }} /></th>
-                <th style={{...thStyle('ado_melee'),  textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_melee', e)}><span className="ado-tip" data-tip={ADO_TOOLTIP}>ADO-M</span><SortIcon col="ado_melee" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_melee'); }} /></th>
-                <th style={{...thStyle('ado_pct'),    textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_pct', e)}><span className="ado-tip" data-tip="ADO/k — Damage efficiency score: (ADO-R + ADO-M) ÷ Points × 1000. Higher = more damage per point spent. Sort descending to find your best-value units.">ADO/k</span><SortIcon col="ado_pct" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_pct'); }} /></th>
+                {(() => { const adoTip = makeAdoTooltip(includeSaveWardInADO, presumedSave ?? 5, presumedWard ?? null); const adoKTip = makeAdoKTooltip(includeSaveWardInADO, presumedSave ?? 5, presumedWard ?? null); return (<>
+                <th style={{...thStyle('ado_ranged'), textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_ranged', e)}><span className="ado-tip" data-tip={adoTip}>ADO-R</span><SortIcon col="ado_ranged" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_ranged'); }} /></th>
+                <th style={{...thStyle('ado_melee'),  textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_melee', e)}><span className="ado-tip" data-tip={adoTip}>ADO-M</span><SortIcon col="ado_melee" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_melee'); }} /></th>
+                <th style={{...thStyle('ado_pct'),    textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_pct', e)}><span className="ado-tip" data-tip={adoKTip}>ADO/k</span><SortIcon col="ado_pct" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_pct'); }} /></th>
+                </>); })()}
                 <th className="col-reinforce">Reinforce</th>
               </tr>
             </thead>
@@ -908,7 +922,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
               {['ado_ranged','ado_melee','ado_pct'].includes(sortBy) && data?.data.sort((a, b) => {
                 const getVals = row => {
                   const ws = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
-                  const sv = presumedSave ?? 5; const wd = presumedWard ?? null;
+                  const sv = includeSaveWardInADO ? (presumedSave ?? 5) : 7; const wd = includeSaveWardInADO ? (presumedWard ?? null) : null;
                   const aR = sumADO(ws.filter(w => w.type === 'ranged'), row.unit_size, sv, wd, roundingMode) ?? 0;
                   const aM = sumADO(ws.filter(w => w.type === 'melee'),  row.unit_size, sv, wd, roundingMode) ?? 0;
                   if (sortBy === 'ado_ranged') return aR;
@@ -924,8 +938,8 @@ export default function SimulacrumPage({ headerCollapsed }) {
                 const weapons = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
                 const ranged = weapons.filter(w => w.type === 'ranged');
                 const melee  = weapons.filter(w => w.type === 'melee');
-                const save = presumedSave ?? 5;
-                const ward = presumedWard ?? null;
+                const save = includeSaveWardInADO ? (presumedSave ?? 5) : 7;
+                const ward = includeSaveWardInADO ? (presumedWard ?? null) : null;
                 const adoRanged = sumADO(ranged, row.unit_size, save, ward, roundingMode);
                 const adoMelee  = sumADO(melee,  row.unit_size, save, ward, roundingMode);
                 const adoTotal  = (adoRanged ?? 0) + (adoMelee ?? 0);

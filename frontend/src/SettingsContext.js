@@ -13,6 +13,7 @@ export function SettingsProvider({ children }) {
   const [presumedSave,          setPresumedSave]          = useState(() => loadSetting('aos-setting-presumed-save', 5));
   const [presumedWard,          setPresumedWard]          = useState(() => loadSetting('aos-setting-presumed-ward', null));
   const [roundingMode,          setRoundingMode]          = useState(() => loadSetting('aos-setting-rounding-mode', 'discrete'));
+  const [includeSaveWardInADO,  setIncludeSaveWardInADO]  = useState(() => loadSetting('aos-setting-include-save-ward', true));
   // Faction Info slide toggles (all default on)
   const [showBattleTraits,      setShowBattleTraits]      = useState(() => loadSetting('aos-fi-battle-traits',      true));
   const [showBattleFormations,  setShowBattleFormations]  = useState(() => loadSetting('aos-fi-battle-formations',  true));
@@ -29,6 +30,7 @@ export function SettingsProvider({ children }) {
       case 'presumedSave':          setPresumedSave(value);          persist('aos-setting-presumed-save', value);     break;
       case 'presumedWard':          setPresumedWard(value);          persist('aos-setting-presumed-ward', value);     break;
       case 'roundingMode':          setRoundingMode(value);          persist('aos-setting-rounding-mode', value);     break;
+      case 'includeSaveWardInADO':  setIncludeSaveWardInADO(value);  persist('aos-setting-include-save-ward', value); break;
       case 'showBattleTraits':      setShowBattleTraits(value);      persist('aos-fi-battle-traits', value);          break;
       case 'showBattleFormations':  setShowBattleFormations(value);  persist('aos-fi-battle-formations', value);      break;
       case 'showHeroicTraits':      setShowHeroicTraits(value);      persist('aos-fi-heroic-traits', value);          break;
@@ -41,7 +43,7 @@ export function SettingsProvider({ children }) {
 
   return (
     <SettingsContext.Provider value={{
-      showFlavorText, calculateDynamicADO, presumedSave, presumedWard, roundingMode,
+      showFlavorText, calculateDynamicADO, presumedSave, presumedWard, roundingMode, includeSaveWardInADO,
       showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore,
       setSetting,
     }}>
