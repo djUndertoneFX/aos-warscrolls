@@ -171,16 +171,16 @@ function makeAdoTooltip(includeSaveWard, save, ward, type = '') {
               : type === 'melee'  ? 'AVERAGE DAMAGE OUTPUT — MELEE'
               : 'AVERAGE DAMAGE OUTPUT';
   if (!includeSaveWard) {
-    return `${title}\n\nHit and wound rolls only (save/ward not applied). Shows raw offensive potential regardless of target defences. Crit abilities factored in; conditional (Anti-X) ignored.`;
+    return `${title}\n  Hit and wound rolls only (save/ward not applied). Shows raw offensive potential regardless of target defences. Crit abilities factored in; conditional (Anti-X) ignored.`;
   }
-  return `${title}\n\nvs ${save}+ save${ward ? `, ${ward}+ ward` : ', no ward'}. Includes hit, wound, save${ward ? ', and ward' : ''} rolls. Crit abilities factored in; conditional (Anti-X) ignored.`;
+  return `${title}\n  vs ${save}+ save${ward ? `, ${ward}+ ward` : ', no ward'}. Includes hit, wound, save${ward ? ', and ward' : ''} rolls. Crit abilities factored in; conditional (Anti-X) ignored.`;
 }
 
 function makeAdoKTooltip(includeSaveWard, save, ward) {
   const context = includeSaveWard
     ? `vs ${save}+ save${ward ? `, ${ward}+ ward` : ', no ward'}`
     : 'hit/wound only (save/ward not applied)';
-  return `AVERAGE DAMAGE OUTPUT EFFICIENCY\n\n(ADO-R + ADO-M) ÷ Points × 1000, ${context}. Higher = more damage per point. Sort descending for best-value units.`;
+  return `AVERAGE DAMAGE OUTPUT EFFICIENCY\n  (ADO-R + ADO-M) ÷ Points × 1000, ${context}. Higher = more damage per point. Sort descending for best-value units.`;
 }
 
 export default function WarscrollsPage({ headerCollapsed }) {
