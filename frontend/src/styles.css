@@ -1315,6 +1315,7 @@ td.col-ado-pct {
   font-weight: 400;
   text-transform: none;
   line-height: 1.5;
+  white-space: normal;
   padding: 8px 12px;
   border-radius: 4px;
   width: 280px;
