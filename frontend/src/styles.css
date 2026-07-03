@@ -1829,17 +1829,19 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
 
 /* ── Nav dots (page indicator) ── */
 .gw-nav-dots {
-  display: flex;
-  justify-content: safe center;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 0 6px;
   background: #0c0a08;
   border-bottom: 1px solid rgba(200,168,64,0.25);
   position: sticky;
   top: 0;
   z-index: 5;
   overflow: hidden;
+}
+.gw-nav-dots-inner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0 6px;
+  will-change: transform;
 }
 .gw-nav-dot {
   width: 7px;
@@ -2400,7 +2402,7 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
   /* Larger tap targets on iPad/iPhone */
   .gw-nav-dot         { width: 18px; height: 18px; }
   .gw-nav-dot-faction { width: 18px; height: 18px; border-radius: 4px; }
-  .gw-nav-dots        { gap: 8px; }
+  .gw-nav-dots-inner  { gap: 8px; }
 }
 
 @media (max-width: 900px) {

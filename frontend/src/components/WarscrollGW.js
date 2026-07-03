@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { useSettings } from '../SettingsContext';
 import { calcWeaponADO } from '../awoCalc';
@@ -342,31 +342,42 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
   const abilities = React.useMemo(() => { try { return JSON.parse(unit.abilities || '[]'); } catch { return []; } }, [unit]);
   const [imageUrl, setImageUrl] = useState(null);
   const modalRef = useRef(null);
-  const dotsRef  = useRef(null);
-  const [dotsAtStart, setDotsAtStart] = useState(true);
-  const [dotsAtEnd,   setDotsAtEnd]   = useState(false);
+  const dotsRef      = useRef(null);
+  const dotsInnerRef = useRef(null);
+  const [dotsAtStart,    setDotsAtStart]    = useState(true);
+  const [dotsAtEnd,      setDotsAtEnd]      = useState(false);
   const [dotsHasOverflow, setDotsHasOverflow] = useState(false);
+  const [dotsTranslate,  setDotsTranslate]  = useState(0);
 
-  useLayoutEffect(() => {
-    const container = dotsRef.current;
-    if (!container) return;
-    const maxScroll = container.scrollWidth - container.clientWidth;
-    if (maxScroll <= 4) {
-      setDotsHasOverflow(false);
-      setDotsAtStart(true);
-      setDotsAtEnd(true);
-      return;
-    }
-    setDotsHasOverflow(true);
-    const activeDot = container.querySelector('.gw-nav-dot-active, .gw-nav-dot-faction-active');
-    if (!activeDot) return;
-    const target = Math.max(0, Math.min(
-      activeDot.offsetLeft - container.clientWidth / 2 + activeDot.offsetWidth / 2,
-      maxScroll
-    ));
-    setDotsAtStart(target <= 4);
-    setDotsAtEnd(target >= maxScroll - 4);
-    container.scrollTo({ left: target, behavior: 'smooth' });
+  useEffect(() => {
+    const outer = dotsRef.current;
+    const inner = dotsInnerRef.current;
+    if (!outer || !inner) return;
+    const raf = requestAnimationFrame(() => {
+      try {
+        const outerW = outer.clientWidth;
+        const innerW = inner.scrollWidth;
+        if (innerW <= outerW + 4) {
+          // Fits: center the whole strip
+          setDotsHasOverflow(false);
+          setDotsAtStart(true);
+          setDotsAtEnd(true);
+          setDotsTranslate((outerW - innerW) / 2);
+          return;
+        }
+        setDotsHasOverflow(true);
+        const activeDot = inner.querySelector('.gw-nav-dot-active, .gw-nav-dot-faction-active');
+        if (!activeDot) return;
+        const dotMid = activeDot.offsetLeft + activeDot.offsetWidth / 2;
+        const raw    = outerW / 2 - dotMid;
+        const minTx  = -(innerW - outerW);
+        const tx     = Math.min(0, Math.max(minTx, raw));
+        setDotsTranslate(tx);
+        setDotsAtStart(tx >= -4);
+        setDotsAtEnd(tx <= minTx + 4);
+      } catch (_) { /* layout not ready */ }
+    });
+    return () => cancelAnimationFrame(raf);
   }, [navIndex, factionSlide, navTotal]);
 
   // Faction slides
@@ -581,6 +592,11 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
               maskImage:       `linear-gradient(to right, transparent ${dotsAtStart ? '0%' : '8%'}, black ${dotsAtStart ? '0%' : '28%'}, black ${dotsAtEnd ? '100%' : '72%'}, transparent ${dotsAtEnd ? '100%' : '92%'})`,
             } : undefined}
           >
+          <div
+            className="gw-nav-dots-inner"
+            ref={dotsInnerRef}
+            style={{ transform: `translateX(${dotsTranslate}px)`, transition: dotsHasOverflow ? 'transform 0.25s ease' : 'none' }}
+          >
             {/* Faction slide dots (square, purple) — leftmost = furthest from units */}
             {factionSlides.map(s => (
               <span
@@ -606,6 +622,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
                 </React.Fragment>
               );
             })}
+          </div>
           </div>
         )}
 
