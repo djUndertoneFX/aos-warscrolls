@@ -47,11 +47,6 @@ function SettingsPanel({ onClose }) {
           onChange={e => setSetting('showFlavorText', e.target.checked)} />
         <span>Flavor Text</span>
       </label>
-      <label className="settings-cb-row">
-        <input type="checkbox" checked={calculateDynamicADO}
-          onChange={e => setSetting('calculateDynamicADO', e.target.checked)} />
-        <span>Calculate Dynamic ADO</span>
-      </label>
       <div className="settings-panel-title settings-panel-title--sub">Faction Info</div>
       {[
         ['showBattleTraits',      showBattleTraits,      'Battle Traits'],
@@ -67,6 +62,11 @@ function SettingsPanel({ onClose }) {
         </label>
       ))}
       <div className="settings-panel-title settings-panel-title--sub">ADO Settings</div>
+      <label className="settings-cb-row">
+        <input type="checkbox" checked={calculateDynamicADO}
+          onChange={e => setSetting('calculateDynamicADO', e.target.checked)} />
+        <span>Calculate Dynamic ADO</span>
+      </label>
       <label className="settings-cb-row">
         <input type="checkbox" checked={includeSaveWardInADO}
           onChange={e => setSetting('includeSaveWardInADO', e.target.checked)} />
