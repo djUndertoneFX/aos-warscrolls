@@ -600,8 +600,8 @@ export default function SimulacrumPage({ headerCollapsed }) {
   useEffect(() => { fetchFactions(); }, [fetchFactions]);
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const handleSort = (col, e) => {
-    if (e && e.ctrlKey) { setSortBy('faction'); setSortDir('asc'); }
+  const handleSort = (col, e, reset = false) => {
+    if (reset || (e && e.ctrlKey)) { setSortBy('faction'); setSortDir('asc'); }
     else if (sortBy === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
     else { setSortBy(col); setSortDir(['ado_ranged','ado_melee','ado_pct'].includes(col) ? 'desc' : 'asc'); }
     setPage(1);
@@ -903,7 +903,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
                   const wKey = keyMap[col.key] || col.key;
                   return (
                     <React.Fragment key={col.key}>
-                      <th style={thStyle(wKey)} className={`sortable${col.statGroup === 'start' ? ' stat-group stat-group-start' : col.statGroup === 'end' ? ' stat-group stat-group-end' : col.statGroup ? ' stat-group' : ''} ${sortBy === col.key ? 'sort-active' : ''}`} title={col.abbr ? col.label : undefined} onClick={e => handleSort(col.key, e)}>
+                      <th style={thStyle(wKey)} className={`sortable${col.statGroup === 'start' ? ' stat-group stat-group-start' : col.statGroup === 'end' ? ' stat-group stat-group-end' : col.statGroup ? ' stat-group' : ''} ${sortBy === col.key ? 'sort-active' : ''}`} title={col.abbr ? col.label : undefined} onClick={e => handleSort(col.key, e)} onContextMenu={e => { e.preventDefault(); handleSort(col.key, e, true); }}>
                         {col.abbr ? <span className="th-abbr">{col.abbr}</span> : col.label}
                         <SortIcon col={col.key} sortBy={sortBy} sortDir={sortDir} />
                         <span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e, wKey); }} />
@@ -920,9 +920,9 @@ export default function SimulacrumPage({ headerCollapsed }) {
                     const adoMBox = mkBox(makeAdoTooltip(includeSaveWardInADO, presumedSave ?? 5, presumedWard ?? null, 'melee'));
                     const adoKBox = mkBox(makeAdoKTooltip(includeSaveWardInADO, presumedSave ?? 5, presumedWard ?? null));
                     return (<>
-                <th style={{...thStyle('ado_ranged'), textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_ranged', e)}><span className="ado-tip">{adoRBox}ADO-R</span><SortIcon col="ado_ranged" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_ranged'); }} /></th>
-                <th style={{...thStyle('ado_melee'),  textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_melee', e)}><span className="ado-tip">{adoMBox}ADO-M</span><SortIcon col="ado_melee" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_melee'); }} /></th>
-                <th style={{...thStyle('ado_pct'),    textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_pct', e)}><span className="ado-tip">{adoKBox}ADO/e</span><SortIcon col="ado_pct" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_pct'); }} /></th>
+                <th style={{...thStyle('ado_ranged'), textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_ranged', e)} onContextMenu={e => { e.preventDefault(); handleSort('ado_ranged', e, true); }}><span className="ado-tip">{adoRBox}ADO-R</span><SortIcon col="ado_ranged" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_ranged'); }} /></th>
+                <th style={{...thStyle('ado_melee'),  textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_melee', e)} onContextMenu={e => { e.preventDefault(); handleSort('ado_melee', e, true); }}><span className="ado-tip">{adoMBox}ADO-M</span><SortIcon col="ado_melee" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_melee'); }} /></th>
+                <th style={{...thStyle('ado_pct'),    textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_pct', e)} onContextMenu={e => { e.preventDefault(); handleSort('ado_pct', e, true); }}><span className="ado-tip">{adoKBox}ADO/e</span><SortIcon col="ado_pct" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_pct'); }} /></th>
                 </>); })()}
                 <th className="col-reinforce">Reinforce</th>
               </tr>
