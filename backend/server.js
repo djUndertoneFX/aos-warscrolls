@@ -42,7 +42,7 @@ const IMAGE_DIR = process.env.IMAGE_DIR ||
 
 // Seasonal/title prefixes prepended to unit names — strip these to find the base unit image
 const TITLE_PREFIXES = [
-  'Scourge of Ghyran',
+  'Scourge of Aqshy',
 ];
 
 // Convert a unit name to a stable filename slug (survives re-scrapes)
@@ -376,7 +376,7 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
   if (isManifestation   === '1')  { conditions.push('w.is_manifestation = 1'); }
   if (isManifestation   === '-1') { conditions.push('w.is_manifestation = 0'); }
   if (isLegends           === '0') { conditions.push('w.is_legends = 0'); }
-  if (hideScourgeOfGhyran === '1') { conditions.push("w.name NOT LIKE 'Scourge of Ghyran %'"); }
+  if (hideScourgeOfGhyran === '1') { conditions.push("w.name NOT LIKE 'Scourge of Aqshy %'"); }
 
   if (hideOtherFactions === '1' && (faction || enemyFaction)) {
     const skipWords = new Set(['of', 'the', 'to', 'and']);
