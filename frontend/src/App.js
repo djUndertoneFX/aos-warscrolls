@@ -1,21 +1,4 @@
-import React, { useState, useRef, useEffect, Component } from 'react';
-
-class ErrorBoundary extends Component {
-  constructor(props) { super(props); this.state = { error: null }; }
-  static getDerivedStateFromError(err) { return { error: err }; }
-  render() {
-    if (this.state.error) {
-      return (
-        <div style={{ position:'fixed', inset:0, background:'#1a0a0a', color:'#ff8080', zIndex:9999, padding:'2rem', fontFamily:'monospace', overflow:'auto', whiteSpace:'pre-wrap' }}>
-          <strong>RENDER ERROR (click a unit)</strong>{'\n\n'}
-          {String(this.state.error)}{'\n\n'}
-          {this.state.error?.stack}
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
+import React, { useState, useRef, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, NavLink, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './AuthContext';
 import { SettingsProvider, useSettings } from './SettingsContext';
@@ -222,10 +205,10 @@ function AppRoutes() {
         <Route path="/forgot-password"  element={user ? <Navigate to="/warscrolls" /> : <ForgotPasswordPage />} />
         <Route path="/reset-password"   element={<ResetPasswordPage />} />
         <Route path="/warscrolls" element={
-          <ProtectedRoute><ErrorBoundary><WarscrollsPage headerCollapsed={headerCollapsed} /></ErrorBoundary></ProtectedRoute>
+          <ProtectedRoute><WarscrollsPage headerCollapsed={headerCollapsed} /></ProtectedRoute>
         } />
         <Route path="/army-builder"  element={<ProtectedRoute><ComingSoon title="Army Builder" /></ProtectedRoute>} />
-        <Route path="/simulacrum"    element={<ProtectedRoute><ErrorBoundary><SimulacrumPage headerCollapsed={headerCollapsed} /></ErrorBoundary></ProtectedRoute>} />
+        <Route path="/simulacrum"    element={<ProtectedRoute><SimulacrumPage headerCollapsed={headerCollapsed} /></ProtectedRoute>} />
         <Route path="/spearhead"     element={<ProtectedRoute><ComingSoon title="Spearhead" /></ProtectedRoute>} />
         <Route path="/path-to-glory"  element={<ProtectedRoute><ComingSoon title="Path to Glory" /></ProtectedRoute>} />
         <Route path="/consult-oracle" element={<ProtectedRoute><ComingSoon title="Consult the Oracle" /></ProtectedRoute>} />
