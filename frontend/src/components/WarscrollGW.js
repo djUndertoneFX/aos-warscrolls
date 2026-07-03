@@ -486,7 +486,11 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
       if (axis === null) {
         const dx = Math.abs(e.touches[0].clientX - startX);
         const dy = Math.abs(e.touches[0].clientY - startY);
-        if (dx > 8 || dy > 8) axis = dx >= dy ? 'h' : 'v';
+        // Vertical wins at 8px with any vertical lean — preserves natural scroll/pan.
+        // Horizontal only locks when clearly dominant (2:1 ratio + 14px) to avoid
+        // diagonal micro-movements stealing scroll and causing squirly vertical feel.
+        if (dy > 8) axis = 'v';
+        else if (dx > 14 && dx > dy * 2) axis = 'h';
       }
       if (axis === 'h') e.preventDefault(); // stop scroll/frame-shift on horizontal
     };
