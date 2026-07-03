@@ -2089,7 +2089,7 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
 }
 .gw-row-a { background: rgba(255,255,255,0.02); }
 .gw-row-b { background: rgba(0,0,0,0.22); }
-.gw-td-name   { text-align: center !important; font-size: 0.88rem; font-weight: 600; color: #e0d4a8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gw-td-name   { text-align: center !important; font-size: 0.88rem; font-weight: 600; color: #e0d4a8; word-break: break-word; overflow-wrap: break-word; }
 .gw-td-stat   { text-align: center !important; font-family: 'Cinzel', 'Palatino Linotype', serif; font-size: 1.0rem; font-weight: 700; white-space: nowrap; }
 .gw-td-ability{ text-align: center !important; font-size: 0.65rem; color: #c0b890; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .gw-td-ado    { text-align: center !important; font-family: 'Cinzel', 'Palatino Linotype', serif; font-size: 0.9rem; font-weight: 700; color: #a8d870; white-space: nowrap; }
@@ -2385,10 +2385,10 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
   .gw-unit-img { width: 220px; }
   .gw-abilities-grid { grid-template-columns: 1fr; }
 
-  /* Weapons table: drop ADO col, let name expand, shrink ability */
-  .gw-weapon-table { table-layout: auto; }
+  /* Weapons table: drop ADO col, keep fixed layout so table never exceeds panel width */
+  .gw-weapon-table { table-layout: fixed; }
   .gw-th-ado, .gw-td-ado { display: none; }
-  .gw-th-name    { width: auto; }
+  .gw-th-name    { width: 32%; }
   .gw-th-stat    { width: 28px; min-width: 28px; }
   .gw-th-ability { width: auto; max-width: 60px; }
   .gw-td-stat    { font-size: 0.85rem; }
