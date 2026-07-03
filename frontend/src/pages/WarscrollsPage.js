@@ -166,18 +166,21 @@ function SortIcon({ col, sortBy, sortDir }) {
   return <span className="sort-icon">{sortDir === 'asc' ? '↑' : '↓'}</span>;
 }
 
-function makeAdoTooltip(includeSaveWard, save, ward) {
+function makeAdoTooltip(includeSaveWard, save, ward, type = '') {
+  const title = type === 'ranged' ? 'AVERAGE DAMAGE OUTPUT — RANGED'
+              : type === 'melee'  ? 'AVERAGE DAMAGE OUTPUT — MELEE'
+              : 'AVERAGE DAMAGE OUTPUT';
   if (!includeSaveWard) {
-    return 'Average Damage Output — hit and wound rolls only (save/ward not applied). Shows raw offensive potential regardless of target defences. Crit abilities factored in; conditional (Anti-X) ignored.';
+    return `${title}\n\nHit and wound rolls only (save/ward not applied). Shows raw offensive potential regardless of target defences. Crit abilities factored in; conditional (Anti-X) ignored.`;
   }
-  return `Average Damage Output vs ${save}+ save${ward ? `, ${ward}+ ward` : ', no ward'}. Includes hit, wound, save${ward ? ', and ward' : ''} rolls. Crit abilities factored in; conditional (Anti-X) ignored.`;
+  return `${title}\n\nvs ${save}+ save${ward ? `, ${ward}+ ward` : ', no ward'}. Includes hit, wound, save${ward ? ', and ward' : ''} rolls. Crit abilities factored in; conditional (Anti-X) ignored.`;
 }
 
 function makeAdoKTooltip(includeSaveWard, save, ward) {
   const context = includeSaveWard
     ? `vs ${save}+ save${ward ? `, ${ward}+ ward` : ', no ward'}`
     : 'hit/wound only (save/ward not applied)';
-  return `ADO/k — Damage efficiency: (ADO-R + ADO-M) ÷ Points × 1000, ${context}. Higher = more damage per point. Sort descending for best-value units.`;
+  return `AVERAGE DAMAGE OUTPUT EFFICIENCY\n\n(ADO-R + ADO-M) ÷ Points × 1000, ${context}. Higher = more damage per point. Sort descending for best-value units.`;
 }
 
 export default function WarscrollsPage({ headerCollapsed }) {
@@ -623,9 +626,9 @@ export default function WarscrollsPage({ headerCollapsed }) {
                   })}
                   <th style={thStyle('types')}>Types<span className="col-resize-handle" onMouseDown={e => startResize(e,'types')} /></th>
                   <th style={thStyle('keywords')}>Keywords<span className="col-resize-handle" onMouseDown={e => startResize(e,'keywords')} /></th>
-                  {(() => { const adoTip = makeAdoTooltip(includeSaveWardInADO, presumedSave ?? 5, presumedWard ?? null); const adoKTip = makeAdoKTooltip(includeSaveWardInADO, presumedSave ?? 5, presumedWard ?? null); return (<>
-                  <th style={{...thStyle('ado_ranged'), textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_ranged', e)}><span className="ado-tip" data-tip={adoTip}>ADO-R</span><SortIcon col="ado_ranged" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_ranged'); }} /></th>
-                  <th style={{...thStyle('ado_melee'),  textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_melee', e)}><span className="ado-tip" data-tip={adoTip}>ADO-M</span><SortIcon col="ado_melee" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_melee'); }} /></th>
+                  {(() => { const adoRTip = makeAdoTooltip(includeSaveWardInADO, presumedSave ?? 5, presumedWard ?? null, 'ranged'); const adoMTip = makeAdoTooltip(includeSaveWardInADO, presumedSave ?? 5, presumedWard ?? null, 'melee'); const adoKTip = makeAdoKTooltip(includeSaveWardInADO, presumedSave ?? 5, presumedWard ?? null); return (<>
+                  <th style={{...thStyle('ado_ranged'), textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_ranged', e)}><span className="ado-tip" data-tip={adoRTip}>ADO-R</span><SortIcon col="ado_ranged" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_ranged'); }} /></th>
+                  <th style={{...thStyle('ado_melee'),  textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_melee', e)}><span className="ado-tip" data-tip={adoMTip}>ADO-M</span><SortIcon col="ado_melee" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_melee'); }} /></th>
                   <th style={{...thStyle('ado_pct'),    textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_pct', e)}><span className="ado-tip" data-tip={adoKTip}>ADO/k</span><SortIcon col="ado_pct" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_pct'); }} /></th>
                   </>); })()}
                 </tr>
