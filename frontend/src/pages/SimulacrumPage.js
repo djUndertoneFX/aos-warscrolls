@@ -929,19 +929,22 @@ export default function SimulacrumPage({ headerCollapsed }) {
             </thead>
             <tbody>
               {/* ADO-R, ADO-M, ADO% sorts are client-side */}
-              {['ado_ranged','ado_melee','ado_pct'].includes(sortBy) && data?.data.sort((a, b) => {
-                const getVals = row => {
-                  const ws = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
-                  const sv = includeSaveWardInADO ? (presumedSave ?? 5) : 7; const wd = includeSaveWardInADO ? (presumedWard ?? null) : null;
-                  const aR = sumADO(ws.filter(w => w.type === 'ranged'), row.unit_size, sv, wd, roundingMode) ?? 0;
-                  const aM = sumADO(ws.filter(w => w.type === 'melee'),  row.unit_size, sv, wd, roundingMode) ?? 0;
-                  if (sortBy === 'ado_ranged') return aR;
-                  if (sortBy === 'ado_melee')  return aM;
-                  return row.points ? (aR + aM) / row.points : -1;
-                };
-                const vA = getVals(a), vB = getVals(b);
-                return sortDir === 'asc' ? vA - vB : vB - vA;
-              })}
+              {['ado_ranged','ado_melee','ado_pct'].includes(sortBy) && data?.data && (() => {
+                data.data.sort((a, b) => {
+                  const getVals = row => {
+                    const ws = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
+                    const sv = includeSaveWardInADO ? (presumedSave ?? 5) : 7; const wd = includeSaveWardInADO ? (presumedWard ?? null) : null;
+                    const aR = sumADO(ws.filter(w => w.type === 'ranged'), row.unit_size, sv, wd, roundingMode) ?? 0;
+                    const aM = sumADO(ws.filter(w => w.type === 'melee'),  row.unit_size, sv, wd, roundingMode) ?? 0;
+                    if (sortBy === 'ado_ranged') return aR;
+                    if (sortBy === 'ado_melee')  return aM;
+                    return row.points ? (aR + aM) / row.points : -1;
+                  };
+                  const vA = getVals(a), vB = getVals(b);
+                  return sortDir === 'asc' ? vA - vB : vB - vA;
+                });
+                return null;
+              })()}
               {data?.data.map((row, idx) => {
                 const rowNum = (page - 1) * PAGE_SIZE + idx + 1;
                 const isExpanded = expandedIds.has(row.id);
