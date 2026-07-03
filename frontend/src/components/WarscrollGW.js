@@ -733,8 +733,8 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
 
             {unit.options_text && (
               <div className="gw-options-text">
-                {unit.options_text.split(/(?<=\.)\s+/).map((sentence, i) => (
-                  <p key={i}>{sentence}</p>
+                {unit.options_text.split(/\.\s+/).map((sentence, i, arr) => (
+                  <p key={i}>{i < arr.length - 1 ? sentence + '.' : sentence}</p>
                 ))}
               </div>
             )}
