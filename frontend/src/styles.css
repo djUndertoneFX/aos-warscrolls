@@ -1273,6 +1273,9 @@ td.col-stat {
   background: rgba(255, 255, 255, 0.035);
   border-right: 1px solid rgba(255, 255, 255, 0.09) !important;
 }
+.col-ward {
+  border-left: 1px solid rgba(255, 255, 255, 0.07) !important;
+}
 th.col-ado-hdr {
   font-family: 'Cinzel', serif;
   font-size: 0.68rem;
