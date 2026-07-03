@@ -131,6 +131,40 @@ app.use(express.json());
 // Initialize DB on startup
 initDb();
 
+// Sync warscroll data from the bundled git DB to the volume DB on startup,
+// whenever the bundled copy is newer. Preserves user/auth data on the volume.
+{
+  const Database = require('better-sqlite3');
+  const bundledPath = path.join(__dirname, 'warscrolls.db');
+  const volumePath  = process.env.DB_PATH;
+  if (volumePath && bundledPath !== volumePath && fs.existsSync(bundledPath)) {
+    try {
+      const bdb = new Database(bundledPath, { readonly: true });
+      const bundledTs = (bdb.prepare('SELECT MAX(scraped_at) as ts FROM warscrolls').get() || {}).ts;
+      bdb.close();
+
+      const vdb = getDb();
+      const volumeTs = (vdb.prepare('SELECT MAX(scraped_at) as ts FROM warscrolls').get() || {}).ts;
+
+      if (!volumeTs || (bundledTs && bundledTs > volumeTs)) {
+        console.log(`Syncing warscroll data: bundled=${bundledTs} volume=${volumeTs}`);
+        vdb.exec(`ATTACH DATABASE '${bundledPath}' AS src`);
+        for (const tbl of ['warscrolls','faction_battle_traits','faction_battle_formations','faction_extra_rules']) {
+          vdb.exec(`DELETE FROM ${tbl}`);
+          vdb.exec(`INSERT INTO ${tbl} SELECT * FROM src.${tbl}`);
+        }
+        vdb.exec('DETACH DATABASE src');
+        console.log('Warscroll data sync complete.');
+      } else {
+        console.log('Volume DB warscrolls are up to date, skipping sync.');
+      }
+      vdb.close();
+    } catch (err) {
+      console.error('Warscroll sync error:', err.message);
+    }
+  }
+}
+
 // Auto-scrape warscrolls if table is empty
 {
   const { scrapeAll } = require('./scraper');
