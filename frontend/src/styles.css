@@ -1294,19 +1294,16 @@ td.col-ado-pct {
   font-size: 0.8rem;
 }
 
-/* ── ADO CSS tooltip (more reliable than title= on small th cells) ── */
+/* ── ADO HTML tooltip ── */
 .ado-tip {
   position: relative;
   cursor: help;
 }
-.ado-tip::after {
-  content: attr(data-tip);
+.ado-tip-box {
+  display: none;
   position: absolute;
   top: calc(100% + 6px);
-  bottom: auto;
   right: 0;
-  left: auto;
-  transform: none;
   background: #1e1a10;
   border: 1px solid #c8a840;
   color: #d8cca8;
@@ -1318,15 +1315,20 @@ td.col-ado-pct {
   padding: 8px 12px;
   border-radius: 4px;
   width: 280px;
-  white-space: pre-wrap;
   text-align: left;
   z-index: 9999;
-  opacity: 0;
   pointer-events: none;
-  transition: opacity 0.15s 0.3s;
   box-shadow: 0 4px 16px rgba(0,0,0,0.7);
 }
-.ado-tip:hover::after { opacity: 1; }
+.ado-tip:hover .ado-tip-box { display: block; }
+.ado-tip-title {
+  color: #f2e8c0;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.ado-tip-body {
+  padding-left: 10px;
+}
 
 td.col-keywords {
   font-size: 0.78rem;
@@ -2409,7 +2411,7 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
 @media (max-width: 1100px) {
   .table-wrapper { overflow-x: auto; }
   /* Tooltip is hover-only; hiding it prevents its absolute positioning from extending scroll width */
-  .ado-tip::after { display: none; }
+  .ado-tip-box { display: none !important; }
   /* Larger tap targets on iPad/iPhone */
   .gw-nav-dot         { width: 18px; height: 18px; }
   .gw-nav-dot-faction { width: 18px; height: 18px; border-radius: 4px; }

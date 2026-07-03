@@ -626,10 +626,15 @@ export default function WarscrollsPage({ headerCollapsed }) {
                   })}
                   <th style={thStyle('types')}>Types<span className="col-resize-handle" onMouseDown={e => startResize(e,'types')} /></th>
                   <th style={thStyle('keywords')}>Keywords<span className="col-resize-handle" onMouseDown={e => startResize(e,'keywords')} /></th>
-                  {(() => { const adoRTip = makeAdoTooltip(includeSaveWardInADO, presumedSave ?? 5, presumedWard ?? null, 'ranged'); const adoMTip = makeAdoTooltip(includeSaveWardInADO, presumedSave ?? 5, presumedWard ?? null, 'melee'); const adoKTip = makeAdoKTooltip(includeSaveWardInADO, presumedSave ?? 5, presumedWard ?? null); return (<>
-                  <th style={{...thStyle('ado_ranged'), textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_ranged', e)}><span className="ado-tip" data-tip={adoRTip}>ADO-R</span><SortIcon col="ado_ranged" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_ranged'); }} /></th>
-                  <th style={{...thStyle('ado_melee'),  textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_melee', e)}><span className="ado-tip" data-tip={adoMTip}>ADO-M</span><SortIcon col="ado_melee" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_melee'); }} /></th>
-                  <th style={{...thStyle('ado_pct'),    textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_pct', e)}><span className="ado-tip" data-tip={adoKTip}>ADO/e</span><SortIcon col="ado_pct" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_pct'); }} /></th>
+                  {(() => {
+                    const mkBox = str => { const [title, ...rest] = str.split('\n'); return <div className="ado-tip-box"><div className="ado-tip-title">{title}</div><div className="ado-tip-body">{rest.join('\n').trim()}</div></div>; };
+                    const adoRBox = mkBox(makeAdoTooltip(includeSaveWardInADO, presumedSave ?? 5, presumedWard ?? null, 'ranged'));
+                    const adoMBox = mkBox(makeAdoTooltip(includeSaveWardInADO, presumedSave ?? 5, presumedWard ?? null, 'melee'));
+                    const adoKBox = mkBox(makeAdoKTooltip(includeSaveWardInADO, presumedSave ?? 5, presumedWard ?? null));
+                    return (<>
+                  <th style={{...thStyle('ado_ranged'), textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_ranged', e)}><span className="ado-tip">{adoRBox}ADO-R</span><SortIcon col="ado_ranged" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_ranged'); }} /></th>
+                  <th style={{...thStyle('ado_melee'),  textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_melee', e)}><span className="ado-tip">{adoMBox}ADO-M</span><SortIcon col="ado_melee" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_melee'); }} /></th>
+                  <th style={{...thStyle('ado_pct'),    textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_pct', e)}><span className="ado-tip">{adoKBox}ADO/e</span><SortIcon col="ado_pct" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_pct'); }} /></th>
                   </>); })()}
                 </tr>
               </thead>
