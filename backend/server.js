@@ -465,8 +465,8 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
     // Nulls/dashes always sort last regardless of direction via a null-flag prefix.
     // Columns with unit suffixes ("+" or '"') need CAST(col AS INTEGER) for numeric order.
     const nullFlag = c => `CASE WHEN w.${c} IS NULL OR w.${c} = '' OR w.${c} = '-' THEN 1 ELSE 0 END`;
-    const castCols = new Set(['save', 'ward', 'move']);   // stored as "3+", "5+", "5\""
-    const intCols  = new Set(['health', 'unit_size', 'points']);
+    const castCols = new Set(['save', 'ward', 'move', 'unit_size', 'health', 'points']);
+    const intCols  = new Set([]);
     const colExpr = castCols.has(col)
       ? `${nullFlag(col)} ASC, CAST(w.${col} AS INTEGER) ${dir}`
       : col === 'control'
