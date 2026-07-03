@@ -462,12 +462,18 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
       WHEN w.is_terrain=1 THEN 7
       WHEN w.is_manifestation=1 THEN 8
       ELSE 7 END`;
-    const wardSort = col === 'ward'
-      ? `CASE WHEN w.ward IS NULL OR w.ward = '' OR w.ward = '-' THEN 99 ELSE CAST(w.ward AS INTEGER) END ${dir}`
-      : `w.${col} ${dir}`;
+    // For columns that store "N+" strings (save, ward) cast to integer for numeric order.
+    // Nulls/dashes always sort last regardless of direction via a null-flag prefix.
+    const nullFlag = c => `CASE WHEN w.${c} IS NULL OR w.${c} = '' OR w.${c} = '-' THEN 1 ELSE 0 END`;
+    const plusCols = new Set(['save', 'ward']);
+    const colExpr = plusCols.has(col)
+      ? `${nullFlag(col)} ASC, CAST(w.${col} AS INTEGER) ${dir}`
+      : ['move','health','control','points'].includes(col)
+        ? `${nullFlag(col)} ASC, w.${col} ${dir}`
+        : `w.${col} ${dir}`;
     const rows = db.prepare(`
       SELECT w.* FROM warscrolls w ${join} ${where}
-      ORDER BY ${wardSort}, ${typeOrder}, w.name ASC
+      ORDER BY ${colExpr}, ${typeOrder}, w.name ASC
       LIMIT ? OFFSET ?
     `).all(...params, parseInt(pageSize), offset);
 
