@@ -348,6 +348,8 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
   const [dotsAtEnd,      setDotsAtEnd]      = useState(false);
   const [dotsHasOverflow, setDotsHasOverflow] = useState(false);
   const [dotsTranslate,  setDotsTranslate]  = useState(0);
+  const [factionSlide, setFactionSlide] = useState(null); // null | 'traits' | 'formations'
+  const [factionRules, setFactionRules] = useState(null);
 
   useEffect(() => {
     const outer = dotsRef.current;
@@ -379,10 +381,6 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
     });
     return () => cancelAnimationFrame(raf);
   }, [navIndex, factionSlide, navTotal]);
-
-  // Faction slides
-  const [factionSlide, setFactionSlide] = useState(null); // null | 'traits' | 'formations'
-  const [factionRules, setFactionRules] = useState(null);
 
   // Reset faction slide when the displayed unit changes
   useEffect(() => { setFactionSlide(null); }, [unit?.id]);
