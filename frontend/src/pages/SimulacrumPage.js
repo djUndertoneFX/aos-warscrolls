@@ -469,8 +469,13 @@ export default function SimulacrumPage({ headerCollapsed }) {
   const [simSpeed, setSimSpeed] = useState('hasted'); // 'hasted' | 'slog'
   const [friendlyModelCount, setFriendlyModelCount] = useState(1);
   const [enemyModelCount, setEnemyModelCount]       = useState(1);
-  const [friendlyReinforced, setFriendlyReinforced] = useState(false);
-  const [enemyReinforced, setEnemyReinforced]       = useState(false);
+  const [reinforcedIds, setReinforcedIds] = useState(new Set());
+  const toggleReinforced = (id) => setReinforcedIds(prev => {
+    const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s;
+  });
+
+  const friendlyReinforced = reinforcedIds.has(selectedFriendly?.id);
+  const enemyReinforced    = reinforcedIds.has(selectedEnemy?.id);
 
   // Auto-populate model counts from unit_size when selections change
   useEffect(() => {
@@ -478,14 +483,12 @@ export default function SimulacrumPage({ headerCollapsed }) {
       const n = parseInt(selectedFriendly.unit_size);
       if (n > 0) setFriendlyModelCount(n);
     }
-    setFriendlyReinforced(false);
   }, [selectedFriendly?.id]);
   useEffect(() => {
     if (selectedEnemy) {
       const n = parseInt(selectedEnemy.unit_size);
       if (n > 0) setEnemyModelCount(n);
     }
-    setEnemyReinforced(false);
   }, [selectedEnemy?.id]);
 
   // Battle results: { left: SimResult, right: SimResult }
@@ -844,8 +847,8 @@ export default function SimulacrumPage({ headerCollapsed }) {
           <SimulacrumBattle friendly={selectedFriendly} enemy={selectedEnemy} colWidths={colWidths} startResize={startResize} thStyle={thStyle} onUnitClick={setDetailUnit}
             onFilter={handleFilterFromRow}
             friendlyReinforced={friendlyReinforced} enemyReinforced={enemyReinforced}
-            onFriendlyReinforceChange={v => { setFriendlyReinforced(v); setBattleResults(null); }}
-            onEnemyReinforceChange={v => { setEnemyReinforced(v); setBattleResults(null); }}
+            onFriendlyReinforceChange={() => { toggleReinforced(selectedFriendly?.id); setBattleResults(null); }}
+            onEnemyReinforceChange={() => { toggleReinforced(selectedEnemy?.id); setBattleResults(null); }}
           />
           <div className="sim-model-counts">
             <label className="sim-model-label">
@@ -1016,18 +1019,10 @@ export default function SimulacrumPage({ headerCollapsed }) {
                       <td className="col-ado">{adoMelee  !== null ? adoMelee  : '—'}</td>
                       <td className="col-ado col-ado-pct">{adoPct !== null ? adoPct : '—'}</td>
                       <td className="col-reinforce" onClick={e => e.stopPropagation()}>
-                        {selectedFriendly?.id === row.id && (
-                          <label className="reinforce-label" style={{color:'var(--friendly-color)'}}>
-                            <input type="checkbox" checked={friendlyReinforced} onChange={e => { setFriendlyReinforced(e.target.checked); setBattleResults(null); }} />
-                            ×2
-                          </label>
-                        )}
-                        {selectedEnemy?.id === row.id && (
-                          <label className="reinforce-label" style={{color:'var(--enemy-color)'}}>
-                            <input type="checkbox" checked={enemyReinforced} onChange={e => { setEnemyReinforced(e.target.checked); setBattleResults(null); }} />
-                            ×2
-                          </label>
-                        )}
+                        <label className="reinforce-label">
+                          <input type="checkbox" checked={reinforcedIds.has(row.id)} onChange={() => { toggleReinforced(row.id); setBattleResults(null); }} />
+                          ×2
+                        </label>
                       </td>
                     </tr>
                     {isExpanded && (
