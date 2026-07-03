@@ -221,11 +221,17 @@ async function scrapeFaction(faction) {
         }
       }
 
+      // Lore text: italic prose between the ability name and "Declare:" (or "Effect:")
+      const beforeDeclare = bodyText.split(/\bDeclare:/i)[0].split(/\bEffect:/i)[0];
+      const loreRaw = beforeDeclare.replace(new RegExp(firstBold.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[:\\s]*', 'i'), '').trim();
+      const loreText = loreRaw.replace(/\s+/g, ' ').trim();
+
       abilities.push({
-        name:    firstBold,
+        name:      firstBold,
         timing,
-        declare: declareMatch ? declareMatch[1].replace(/\s+/g, ' ').trim() : '',
-        effect:  effectIntro,
+        lore_text: loreText,
+        declare:   declareMatch ? declareMatch[1].replace(/\s+/g, ' ').trim() : '',
+        effect:    effectIntro,
         bullets,
       });
     });

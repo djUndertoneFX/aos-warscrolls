@@ -214,6 +214,7 @@ function WeaponSection({ weapons, type, unitSize }) {
 
 // ── Ability card ─────────────────────────────────────────────────────────────
 function AbilityCard({ ab, keywords }) {
+  const { showFlavorText } = useSettings();
   const ps      = getPhaseStyle(ab.timing);
   const bullets = Array.isArray(ab.bullets) ? ab.bullets : [];
 
@@ -224,6 +225,9 @@ function AbilityCard({ ab, keywords }) {
       </div>
       <div className="gw-ability-body">
         <div className="gw-ability-name">{ab.name}</div>
+        {showFlavorText && ab.lore_text && (
+          <p className="gw-ability-lore">{ab.lore_text}</p>
+        )}
         {ab.declare && (
           <p className="gw-ability-para">
             <span className="gw-ability-lbl">Declare: </span>

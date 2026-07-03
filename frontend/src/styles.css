@@ -2145,6 +2145,13 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
   font-family: 'Palatino Linotype', Palatino, Georgia, serif;
   line-height: 1.2;
 }
+.gw-ability-lore {
+  font-style: italic;
+  color: #b0a070;
+  font-size: 0.68rem;
+  margin: 3px 0 5px;
+  line-height: 1.4;
+}
 .gw-ability-body {
   padding: 6px 10px 8px;
   font-size: 0.7rem;
