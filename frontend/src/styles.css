@@ -1475,6 +1475,7 @@ td.col-keywords {
 }
 tr.unit-row:hover .row-expand-hint { opacity: 1; color: var(--gold); }
 tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
+tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px solid rgba(201,168,76,0.35); outline-offset: -1px; }
 
 /* ── Expandable weapon sub-row ── */
 .weapons-expand-row td { padding: 0; border-bottom: 2px solid var(--border-gold); }

@@ -247,6 +247,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
   const [fullExpandedIds, setFullExpandedIds] = useState(new Set());
   const [detailUnit, setDetailUnit] = useState(null);
   const [thumbHover, setThumbHover] = useState(null); // { id, x, y }
+  const tableWrapperRef = useRef(null);
 
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 9999;
@@ -342,6 +343,17 @@ export default function WarscrollsPage({ headerCollapsed }) {
 
   useEffect(() => { fetchFactions(); }, [fetchFactions]);
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  useEffect(() => {
+    if (!detailUnit || !tableWrapperRef.current) return;
+    const wrapper = tableWrapperRef.current;
+    const tr = wrapper.querySelector(`tr[data-unit-id="${detailUnit.id}"]`);
+    if (!tr) return;
+    const wrapperH = wrapper.clientHeight;
+    const trTop    = tr.offsetTop - wrapper.offsetTop;
+    const trH      = tr.offsetHeight;
+    wrapper.scrollTop = trTop - (wrapperH / 2) + (trH / 2);
+  }, [detailUnit]);
 
   const handleSort = (col, e, reset = false) => {
     if (reset || (e && e.ctrlKey)) {
@@ -579,7 +591,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
         </div>
       ) : (
         <>
-          <div className="table-wrapper">
+          <div className="table-wrapper" ref={tableWrapperRef}>
             <table data-sort={sortBy}>
               {/* ADO-R, ADO-M, ADO% sorts are client-side since they're computed values */}
               {['ado_ranged','ado_melee','ado_pct'].includes(sortBy) && data?.data && (() => {
@@ -673,7 +685,8 @@ export default function WarscrollsPage({ headerCollapsed }) {
                         </tr>
                       )}
                       <tr
-                        className={`unit-row${(isExpanded || isFullExpanded) ? ' expanded' : ''}${isFullExpanded ? ' full-expanded' : ''}`}
+                        className={`unit-row${(isExpanded || isFullExpanded) ? ' expanded' : ''}${isFullExpanded ? ' full-expanded' : ''}${detailUnit?.id === row.id ? ' active-detail' : ''}`}
+                        data-unit-id={row.id}
                         onClick={() => {
                           if (isFullExpanded) { setFullExpandedIds(prev => { const s = new Set(prev); s.delete(row.id); return s; }); return; }
                           setExpandedIds(prev => { const s = new Set(prev); isExpanded ? s.delete(row.id) : s.add(row.id); return s; });
