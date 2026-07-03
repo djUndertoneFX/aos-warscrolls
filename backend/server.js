@@ -376,7 +376,7 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
   if (isManifestation   === '1')  { conditions.push('w.is_manifestation = 1'); }
   if (isManifestation   === '-1') { conditions.push('w.is_manifestation = 0'); }
   if (isLegends           === '0') { conditions.push('w.is_legends = 0'); }
-  if (hideScourgeOfGhyran === '1') { conditions.push("w.name NOT LIKE 'Scourge of Aqshy %'"); }
+  if (hideScourgeOfGhyran === '1') { conditions.push("w.name NOT LIKE 'Scourge of %'"); }
 
   if (hideOtherFactions === '1' && (faction || enemyFaction)) {
     const skipWords = new Set(['of', 'the', 'to', 'and']);

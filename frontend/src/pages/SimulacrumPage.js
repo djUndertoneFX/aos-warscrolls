@@ -817,7 +817,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
             <div className="cb-group-header">Hide:</div>
             <label className="cb-item">
               <input type="checkbox" checked={hideScourgeOfGhyran} onChange={e => { setHideScourgeOfGhyran(e.target.checked); setPage(1); }} />
-              <span>Scourge of Aqshy</span>
+              <span>Scourge</span>
             </label>
             <label className={`cb-item${!faction ? ' cb-disabled' : ''}`} title={!faction ? 'Select a faction first' : ''}>
               <input type="checkbox" checked={hideOtherFactions} disabled={!faction} onChange={e => { setHideOtherFactions(e.target.checked); setPage(1); }} />
