@@ -603,6 +603,14 @@ export default function SimulacrumPage({ headerCollapsed }) {
   useEffect(() => { fetchFactions(); }, [fetchFactions]);
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  const toggleFlag = useCallback(async (warscrollId, flag) => {
+    const current = userUnits[warscrollId] || { is_friendly: 0, is_enemy: 0 };
+    const updated = { ...current, [flag]: current[flag] ? 0 : 1 };
+    setUserUnits(prev => ({ ...prev, [warscrollId]: updated }));
+    try { await axios.post(`/api/user-units/${warscrollId}`, updated); }
+    catch { setUserUnits(prev => ({ ...prev, [warscrollId]: current })); }
+  }, [userUnits]);
+
   const handleSort = (col, e, reset = false) => {
     if (reset || (e && e.ctrlKey)) { setSortBy('faction'); setSortDir('asc'); }
     else if (sortBy === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -971,11 +979,11 @@ export default function SimulacrumPage({ headerCollapsed }) {
                     {typeChanged    && sortBy === 'faction' && <tr className="separator-type"><td colSpan={colSpan}>{unitTypeLabel(row)}</td></tr>}
                     <tr className={`unit-row${isExpanded ? ' expanded' : ''}`} onClick={() => setExpandedIds(prev => { const s = new Set(prev); isExpanded ? s.delete(row.id) : s.add(row.id); return s; })} style={{cursor:'pointer'}}>
                       <td className="col-rownum">{rowNum}</td>
-                      <td className="col-flag" onClick={e => { e.stopPropagation(); setSelectedFriendly(f => f?.id === row.id ? null : row); }}>
-                        <span className={`flag-check friendly${selectedFriendly?.id === row.id ? ' active' : ''}`}>✓</span>
+                      <td className="col-flag" onClick={e => { e.stopPropagation(); if (linkPageSelections) { toggleFlag(row.id, 'is_friendly'); } else { setSelectedFriendly(f => f?.id === row.id ? null : row); } }}>
+                        <span className={`flag-check friendly${linkPageSelections ? (userUnits[row.id]?.is_friendly ? ' active' : '') : (selectedFriendly?.id === row.id ? ' active' : '')}`}>✓</span>
                       </td>
-                      <td className="col-flag" onClick={e => { e.stopPropagation(); setSelectedEnemy(f => f?.id === row.id ? null : row); }}>
-                        <span className={`flag-check enemy${selectedEnemy?.id === row.id ? ' active' : ''}`}>✓</span>
+                      <td className="col-flag" onClick={e => { e.stopPropagation(); if (linkPageSelections) { toggleFlag(row.id, 'is_enemy'); } else { setSelectedEnemy(f => f?.id === row.id ? null : row); } }}>
+                        <span className={`flag-check enemy${linkPageSelections ? (userUnits[row.id]?.is_enemy ? ' active' : '') : (selectedEnemy?.id === row.id ? ' active' : '')}`}>✓</span>
                       </td>
                       <td><span className="row-expand-hint">{isExpanded ? '▲' : '▼'}</span></td>
                       <td className="col-name" onClick={e => { e.stopPropagation(); setDetailUnit(row); }}><span className="unit-name-link">{row.name}</span></td>
