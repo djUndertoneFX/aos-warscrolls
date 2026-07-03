@@ -603,7 +603,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
   const handleSort = (col, e, reset = false) => {
     if (reset || (e && e.ctrlKey)) { setSortBy('faction'); setSortDir('asc'); }
     else if (sortBy === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    else { setSortBy(col); setSortDir(['ado_ranged','ado_melee','ado_pct','control','move','unit_size','points'].includes(col) ? 'desc' : 'asc'); }
+    else { setSortBy(col); setSortDir(['ado_ranged','ado_melee','ado_pct','control','move','unit_size','points','health'].includes(col) ? 'desc' : 'asc'); }
     setPage(1);
   };
 
