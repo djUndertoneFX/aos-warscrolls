@@ -508,14 +508,13 @@ input, select {
 }
 
 .page-header {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  display: flex;
   align-items: flex-end;
+  justify-content: space-between;
   margin-bottom: 0.6rem;
   padding-bottom: 0.6rem;
   border-bottom: 1px solid var(--border);
 }
-.page-header > :last-child { justify-self: end; }
 
 .page-title {
   font-family: 'Cinzel', serif;
@@ -1115,27 +1114,29 @@ th.sort-active { color: var(--gold); }
 table[data-sort] th.sort-active {
   background: rgba(201,168,76,0.12);
 }
-/* Column positions: 1=# 2=F 3=E 4=▼ 5=name 6=thumb 7=faction 8=points 9=alliance
-                     10=move 11=health 12=control 13=save 14=models */
+/* Column positions: 1=# 2=F 3=E 4=▼ 5=name 6=thumb 7=faction 8=alliance
+                     9=points 10=models 11=move 12=health 13=control 14=save 15=ward */
 table[data-sort="name"]           td:nth-child(5),
 table[data-sort="faction"]        td:nth-child(7),
-table[data-sort="points"]         td:nth-child(8),
-table[data-sort="grand_alliance"] td:nth-child(9),
-table[data-sort="move"]           td:nth-child(10),
-table[data-sort="health"]         td:nth-child(11),
-table[data-sort="control"]        td:nth-child(12),
-table[data-sort="save"]           td:nth-child(13) {
+table[data-sort="grand_alliance"] td:nth-child(8),
+table[data-sort="points"]         td:nth-child(9),
+table[data-sort="move"]           td:nth-child(11),
+table[data-sort="health"]         td:nth-child(12),
+table[data-sort="control"]        td:nth-child(13),
+table[data-sort="save"]           td:nth-child(14),
+table[data-sort="ward"]           td:nth-child(15) {
   background: rgba(201,168,76,0.06);
 }
 /* Stronger tint on the active header cell itself */
 table[data-sort="name"]           th:nth-child(5),
 table[data-sort="faction"]        th:nth-child(7),
-table[data-sort="points"]         th:nth-child(8),
-table[data-sort="grand_alliance"] th:nth-child(9),
-table[data-sort="move"]           th:nth-child(10),
-table[data-sort="health"]         th:nth-child(11),
-table[data-sort="control"]        th:nth-child(12),
-table[data-sort="save"]           th:nth-child(13) {
+table[data-sort="grand_alliance"] th:nth-child(8),
+table[data-sort="points"]         th:nth-child(9),
+table[data-sort="move"]           th:nth-child(11),
+table[data-sort="health"]         th:nth-child(12),
+table[data-sort="control"]        th:nth-child(13),
+table[data-sort="save"]           th:nth-child(14),
+table[data-sort="ward"]           th:nth-child(15) {
   background: rgba(201,168,76,0.14);
 }
 

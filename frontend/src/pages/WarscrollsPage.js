@@ -51,7 +51,8 @@ const SORTABLE_COLS = [
   { key: 'move',          label: 'Move',      abbr: 'Mv',   statGroup: 'start' },
   { key: 'health',        label: 'Health',    abbr: 'HP',   statGroup: true },
   { key: 'control',       label: 'Control',   abbr: 'Ctrl', statGroup: true },
-  { key: 'save',          label: 'Save',      abbr: 'Sv',   statGroup: 'end' },
+  { key: 'save',          label: 'Save',      abbr: 'Sv',   statGroup: true },
+  { key: 'ward',          label: 'Ward',      abbr: 'Wd',   statGroup: 'end' },
 ];
 
 function AllianceBadge({ alliance, onClick, onContextMenu }) {
@@ -167,9 +168,9 @@ function SortIcon({ col, sortBy, sortDir }) {
 }
 
 function makeAdoTooltip(includeSaveWard, save, ward, type = '') {
-  const title = type === 'ranged' ? 'AVERAGE DAMAGE OUTPUT — RANGED'
-              : type === 'melee'  ? 'AVERAGE DAMAGE OUTPUT — MELEE'
-              : 'AVERAGE DAMAGE OUTPUT';
+  const title = type === 'ranged' ? 'Average Damage Output — Ranged'
+              : type === 'melee'  ? 'Average Damage Output — Melee'
+              : 'Average Damage Output';
   if (!includeSaveWard) {
     return `${title}\n  Hit and wound rolls only (save/ward not applied). Shows raw offensive potential regardless of target defences. Crit abilities factored in; conditional (Anti-X) ignored.`;
   }
@@ -180,7 +181,7 @@ function makeAdoKTooltip(includeSaveWard, save, ward) {
   const context = includeSaveWard
     ? `vs ${save}+ save${ward ? `, ${ward}+ ward` : ', no ward'}`
     : 'hit/wound only (save/ward not applied)';
-  return `AVERAGE DAMAGE OUTPUT EFFICIENCY\n  (ADO-R + ADO-M) ÷ Points × 1000, ${context}. Higher = more damage per point. Sort descending for best-value units.`;
+  return `Average Damage Output Efficiency\n  (ADO-R + ADO-M) ÷ Points × 1000, ${context}. Higher = more damage per point. Sort descending for best-value units.`;
 }
 
 export default function WarscrollsPage({ headerCollapsed }) {
@@ -350,7 +351,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
       setSortDir(d => d === 'asc' ? 'desc' : 'asc');
     } else {
       setSortBy(col);
-      setSortDir('asc');
+      setSortDir(['ado_ranged','ado_melee','ado_pct'].includes(col) ? 'desc' : 'asc');
     }
     setPage(1);
   };
@@ -393,11 +394,11 @@ export default function WarscrollsPage({ headerCollapsed }) {
   const DEFAULT_COL_WIDTHS = {
     rownum: 22, friendly: 24, enemy: 24, expand: 22, thumb: 44,
     name: 190, faction: 110, alliance: 66, models: 42,
-    move: 42, health: 42, control: 42, save: 42, points: 48,
+    move: 42, health: 42, control: 42, save: 42, ward: 38, points: 48,
     types: 68, keywords: 130,
     ado_ranged: 54, ado_melee: 54, ado_pct: 56,
   };
-  const STORAGE_KEY = 'aos-col-widths-v8';
+  const STORAGE_KEY = 'aos-col-widths-v9';
   const [colWidths, setColWidths] = useState(() => {
     try { return { ...DEFAULT_COL_WIDTHS, ...JSON.parse(localStorage.getItem(STORAGE_KEY)) }; }
     catch { return DEFAULT_COL_WIDTHS; }
@@ -604,7 +605,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
                   <th style={{...thStyle('enemy'), color:'var(--enemy-color)'}} title="Enemy"><span className="th-abbr" style={{color:'var(--enemy-color)'}}>E</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'enemy')} /></th>
                   <th style={thStyle('expand')}><span className="col-resize-handle" onMouseDown={e => startResize(e,'expand')} /></th>
                   {SORTABLE_COLS.map(col => {
-                    const keyMap = { name:'name', faction:'faction', grand_alliance:'alliance', move:'move', health:'health', control:'control', save:'save', points:'points', unit_size:'models' };
+                    const keyMap = { name:'name', faction:'faction', grand_alliance:'alliance', move:'move', health:'health', control:'control', save:'save', ward:'ward', points:'points', unit_size:'models' };
                     const wKey = keyMap[col.key] || col.key;
                     return (
                       <React.Fragment key={col.key}>
@@ -657,7 +658,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
                   const prev = data.data[idx - 1];
                   const factionChanged = !prev || prev.faction !== row.faction;
                   const typeChanged    = !prev || prev.faction !== row.faction || unitTypeLabel(prev) !== unitTypeLabel(row);
-                  const colSpan = 19;
+                  const colSpan = 20;
                   return (
                     <React.Fragment key={row.id}>
                       {factionChanged && sortBy === 'faction' && (
@@ -724,7 +725,8 @@ export default function WarscrollsPage({ headerCollapsed }) {
                         <td className="col-stat stat-group stat-group-start">{row.move || '—'}</td>
                         <td className="col-stat stat-group">{row.health || '—'}</td>
                         <td className="col-stat stat-group">{row.control || '—'}</td>
-                        <td className="col-stat stat-group stat-group-end">{row.save || '—'}</td>
+                        <td className="col-stat stat-group">{row.save || '—'}</td>
+                        <td className="col-stat stat-group stat-group-end">{row.ward || '—'}</td>
                         <td onClick={e => e.stopPropagation()} onContextMenu={e => e.stopPropagation()}>
                           <TypeTags row={row} onFilter={(type, exclude) => handleFilterFromRow(type, null, exclude)} />
                         </td>
