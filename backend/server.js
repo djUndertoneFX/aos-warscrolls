@@ -369,7 +369,7 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
     showFriendly, showEnemy, hideOtherFactions,
   } = req.query;
 
-  const allowedSort = ['name', 'faction', 'grand_alliance', 'move', 'health', 'control', 'save', 'points'];
+  const allowedSort = ['name', 'faction', 'grand_alliance', 'move', 'health', 'control', 'save', 'ward', 'points'];
   const col = allowedSort.includes(sortBy) ? sortBy : 'faction';
   const dir = sortDir === 'desc' ? 'DESC' : 'ASC';
 
@@ -462,9 +462,12 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
       WHEN w.is_terrain=1 THEN 7
       WHEN w.is_manifestation=1 THEN 8
       ELSE 7 END`;
+    const wardSort = col === 'ward'
+      ? `CASE WHEN w.ward IS NULL OR w.ward = '' OR w.ward = '-' THEN 99 ELSE CAST(w.ward AS INTEGER) END ${dir}`
+      : `w.${col} ${dir}`;
     const rows = db.prepare(`
       SELECT w.* FROM warscrolls w ${join} ${where}
-      ORDER BY w.${col} ${dir}, ${typeOrder}, w.name ASC
+      ORDER BY ${wardSort}, ${typeOrder}, w.name ASC
       LIMIT ? OFFSET ?
     `).all(...params, parseInt(pageSize), offset);
 
