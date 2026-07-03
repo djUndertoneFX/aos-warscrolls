@@ -466,12 +466,14 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
     // Columns with unit suffixes ("+" or '"') need CAST(col AS INTEGER) for numeric order.
     const nullFlag = c => `CASE WHEN w.${c} IS NULL OR w.${c} = '' OR w.${c} = '-' THEN 1 ELSE 0 END`;
     const castCols = new Set(['save', 'ward', 'move']);   // stored as "3+", "5+", "5\""
-    const intCols  = new Set(['health', 'control', 'unit_size', 'points']);
+    const intCols  = new Set(['health', 'unit_size', 'points']);
     const colExpr = castCols.has(col)
       ? `${nullFlag(col)} ASC, CAST(w.${col} AS INTEGER) ${dir}`
-      : intCols.has(col)
-        ? `${nullFlag(col)} ASC, w.${col} ${dir}`
-        : `w.${col} ${dir}`;
+      : col === 'control'
+        ? `w.is_manifestation ASC, ${nullFlag(col)} ASC, w.${col} ${dir}`
+        : intCols.has(col)
+          ? `${nullFlag(col)} ASC, w.${col} ${dir}`
+          : `w.${col} ${dir}`;
     const rows = db.prepare(`
       SELECT w.* FROM warscrolls w ${join} ${where}
       ORDER BY ${colExpr}, ${typeOrder}, w.name ASC
