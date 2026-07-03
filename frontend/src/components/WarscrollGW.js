@@ -473,11 +473,12 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
   useEffect(() => {
     const el = modalRef.current;
     if (!el) return;
-    let startX = null, startY = null, axis = null; // axis: null | 'h' | 'v'
+    let startX = null, startY = null, startT = null, axis = null; // axis: null | 'h' | 'v'
 
     const onStart = e => {
       startX = e.touches[0].clientX;
       startY = e.touches[0].clientY;
+      startT = Date.now();
       axis = null;
     };
     const onMove = e => {
@@ -492,9 +493,14 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
     const onEnd = e => {
       if (startX !== null && axis === 'h') {
         const dx = e.changedTouches[0].clientX - startX;
-        if (Math.abs(dx) > 50) { dx < 0 ? handleNext() : handlePrev(); }
+        const velocity = Math.abs(dx) / (Date.now() - startT); // px/ms
+        // Require either a fast flick (≥0.4 px/ms) or a long deliberate swipe (≥120px).
+        // This lets slow content-panning on iPhone coexist with navigation gestures.
+        if (Math.abs(dx) > 50 && (velocity >= 0.4 || Math.abs(dx) >= 120)) {
+          dx < 0 ? handleNext() : handlePrev();
+        }
       }
-      startX = null; startY = null; axis = null;
+      startX = null; startY = null; startT = null; axis = null;
     };
 
     el.addEventListener('touchstart', onStart, { passive: true });
