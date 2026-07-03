@@ -1281,7 +1281,6 @@ th.col-ado-hdr {
   text-align: center;
   white-space: nowrap;
   overflow: visible;
-  position: relative; /* containing block for .ado-tip-box */
 }
 td.col-ado {
   text-align: center;
@@ -1298,7 +1297,10 @@ td.col-ado-pct {
 
 /* ── ADO HTML tooltip ── */
 .ado-tip {
+  position: relative;
   cursor: help;
+  display: inline-block;
+  width: 100%;
 }
 .ado-tip-box {
   display: none;
