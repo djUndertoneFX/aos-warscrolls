@@ -1,9 +1,6 @@
 # Dependencies
 node_modules/
 
-# Database (don't upload - will be created on server)
-backend/warscrolls.db
-
 # Environment secrets
 backend/.env
 backend/.env.local
