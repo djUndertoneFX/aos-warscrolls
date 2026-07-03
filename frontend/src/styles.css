@@ -2060,6 +2060,7 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
   font-family: Arial, sans-serif;
   border: 1px solid rgba(200,168,64,0.2);
 }
+.gw-weapon-table thead { position: static; }
 .gw-weapon-table thead tr { background: #201c18; }
 .gw-weapon-table th {
   padding: 3px 4px;
