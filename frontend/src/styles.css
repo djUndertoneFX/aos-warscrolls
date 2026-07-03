@@ -2371,8 +2371,11 @@ tr.unit-row.expanded { background: rgba(201,168,76,0.05); }
 @media (max-width: 600px) {
   /* Header: keep 3-column row but shrink everything */
   .gw-top-band { flex-direction: row; align-items: center; }
-  .gw-wheel-col { flex: 0 0 auto; padding: 6px 6px 6px 8px; border-right: 1px solid rgba(200,168,64,0.22); border-bottom: none; }
+  .gw-wheel-col { flex: 0 0 auto; padding: 2px 2px 2px 2px; border-right: 1px solid rgba(200,168,64,0.22); border-bottom: none; align-items: flex-end; justify-content: flex-start; }
   .gw-stats-wheel { width: 80px; height: 80px; }
+  .gw-ward-pip { top: 2px; right: 0px; width: 32px; height: 32px; }
+  .gw-ward-pip-val { font-size: 0.72rem; }
+  .gw-ward-pip-lbl { font-size: 0.38rem; }
   .gw-header-center { flex: 1; min-width: 0; padding: 6px 8px; }
   .gw-header-type { font-size: 0.58rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .gw-header-warscroll-label { display: none; }
