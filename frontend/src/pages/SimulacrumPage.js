@@ -459,7 +459,7 @@ function makeAdoKTooltip(includeSaveWard, save, ward) {
 }
 
 export default function SimulacrumPage({ headerCollapsed }) {
-  const { presumedSave, presumedWard, roundingMode, includeSaveWardInADO } = useSettings();
+  const { presumedSave, presumedWard, roundingMode, includeSaveWardInADO, linkPageSelections } = useSettings();
   const [stage, setStage]           = useState(1);
   const [selectedFriendly, setSelectedFriendly] = useState(null);
   const [selectedEnemy, setSelectedEnemy]       = useState(null);
@@ -500,7 +500,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState('');
 
-  const FILTER_KEY = 'aos-sim-filters';
+  const FILTER_KEY = linkPageSelections ? 'aos-filters' : 'aos-sim-filters';
   const saved = (() => { try { return JSON.parse(localStorage.getItem(FILTER_KEY)) || {}; } catch { return {}; } })();
 
   const [search, setSearch]             = useState(saved.search       ?? '');
@@ -529,7 +529,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
       isHero, isMonster, isInfantry, isCavalry, isBeast, isWarMachine, isTerrain, isManifestation,
       hideLegends, hideOtherFactions, hideScourgeOfGhyran, showFriendly, showEnemy, sortBy, sortDir,
     }));
-  }, [search, faction, enemyFaction, alliance, isHero, isMonster, isInfantry, isCavalry,
+  }, [FILTER_KEY, search, faction, enemyFaction, alliance, isHero, isMonster, isInfantry, isCavalry,
       isBeast, isWarMachine, isTerrain, isManifestation, hideLegends, hideOtherFactions, hideScourgeOfGhyran, showFriendly, showEnemy, sortBy, sortDir]);
 
   const [filteredCounts, setFilteredCounts] = useState({});

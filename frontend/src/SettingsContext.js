@@ -21,6 +21,7 @@ export function SettingsProvider({ children }) {
   const [showArtefacts,         setShowArtefacts]         = useState(() => loadSetting('aos-fi-artefacts',          false));
   const [showSpellLore,         setShowSpellLore]         = useState(() => loadSetting('aos-fi-spell-lore',         false));
   const [showManifestationLore, setShowManifestationLore] = useState(() => loadSetting('aos-fi-manifestation-lore', false));
+  const [linkPageSelections,    setLinkPageSelections]    = useState(() => loadSetting('aos-setting-link-pages', false));
 
   const setSetting = (key, value) => {
     const persist = (k, v) => localStorage.setItem(k, JSON.stringify(v));
@@ -37,6 +38,7 @@ export function SettingsProvider({ children }) {
       case 'showArtefacts':         setShowArtefacts(value);         persist('aos-fi-artefacts', value);              break;
       case 'showSpellLore':         setShowSpellLore(value);         persist('aos-fi-spell-lore', value);             break;
       case 'showManifestationLore': setShowManifestationLore(value); persist('aos-fi-manifestation-lore', value);     break;
+      case 'linkPageSelections':    setLinkPageSelections(value);    persist('aos-setting-link-pages', value);         break;
       default: break;
     }
   };
@@ -45,6 +47,7 @@ export function SettingsProvider({ children }) {
     <SettingsContext.Provider value={{
       showFlavorText, calculateDynamicADO, presumedSave, presumedWard, roundingMode, includeSaveWardInADO,
       showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore,
+      linkPageSelections,
       setSetting,
     }}>
       {children}

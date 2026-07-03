@@ -27,6 +27,7 @@ function SettingsPanel({ onClose }) {
   const {
     showFlavorText, presumedSave, presumedWard, roundingMode, includeSaveWardInADO,
     showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore,
+    linkPageSelections,
     setSetting,
   } = useSettings();
   const ref = useRef(null);
@@ -46,6 +47,11 @@ function SettingsPanel({ onClose }) {
         <input type="checkbox" checked={showFlavorText}
           onChange={e => setSetting('showFlavorText', e.target.checked)} />
         <span>Flavor Text</span>
+      </label>
+      <label className="settings-cb-row">
+        <input type="checkbox" checked={linkPageSelections}
+          onChange={e => setSetting('linkPageSelections', e.target.checked)} />
+        <span>Link Page Selections</span>
       </label>
       <div className="settings-panel-title settings-panel-title--sub">Faction Info</div>
       {[
