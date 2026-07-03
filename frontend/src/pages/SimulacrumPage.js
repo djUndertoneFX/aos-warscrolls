@@ -636,7 +636,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
   const DEFAULT_COL_WIDTHS = {
     rownum: 22, friendly: 24, enemy: 24, expand: 22, thumb: 44,
     name: 190, faction: 110, alliance: 66,
-    ado_ranged: 42, ado_melee: 42, ado_pct: 44,
+    ado_ranged: 54, ado_melee: 54, ado_pct: 56,
     move: 42, health: 42, control: 42, save: 42, ward: 38, points: 48, models: 42,
     types: 68, keywords: 130,
   };
