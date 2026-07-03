@@ -369,7 +369,7 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
     showFriendly, showEnemy, hideOtherFactions,
   } = req.query;
 
-  const allowedSort = ['name', 'faction', 'grand_alliance', 'move', 'health', 'control', 'save', 'ward', 'points'];
+  const allowedSort = ['name', 'faction', 'grand_alliance', 'move', 'health', 'control', 'save', 'ward', 'unit_size', 'points'];
   const col = allowedSort.includes(sortBy) ? sortBy : 'faction';
   const dir = sortDir === 'desc' ? 'DESC' : 'ASC';
 
@@ -462,13 +462,14 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
       WHEN w.is_terrain=1 THEN 7
       WHEN w.is_manifestation=1 THEN 8
       ELSE 7 END`;
-    // For columns that store "N+" strings (save, ward) cast to integer for numeric order.
     // Nulls/dashes always sort last regardless of direction via a null-flag prefix.
+    // Columns with unit suffixes ("+" or '"') need CAST(col AS INTEGER) for numeric order.
     const nullFlag = c => `CASE WHEN w.${c} IS NULL OR w.${c} = '' OR w.${c} = '-' THEN 1 ELSE 0 END`;
-    const plusCols = new Set(['save', 'ward']);
-    const colExpr = plusCols.has(col)
+    const castCols = new Set(['save', 'ward', 'move']);   // stored as "3+", "5+", "5\""
+    const intCols  = new Set(['health', 'control', 'unit_size', 'points']);
+    const colExpr = castCols.has(col)
       ? `${nullFlag(col)} ASC, CAST(w.${col} AS INTEGER) ${dir}`
-      : ['move','health','control','points'].includes(col)
+      : intCols.has(col)
         ? `${nullFlag(col)} ASC, w.${col} ${dir}`
         : `w.${col} ${dir}`;
     const rows = db.prepare(`

@@ -363,7 +363,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
       setSortDir(d => d === 'asc' ? 'desc' : 'asc');
     } else {
       setSortBy(col);
-      setSortDir(['ado_ranged','ado_melee','ado_pct'].includes(col) ? 'desc' : 'asc');
+      setSortDir(['ado_ranged','ado_melee','ado_pct','control','move','unit_size','points'].includes(col) ? 'desc' : 'asc');
     }
     setPage(1);
   };
