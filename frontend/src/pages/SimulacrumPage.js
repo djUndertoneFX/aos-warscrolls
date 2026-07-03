@@ -569,12 +569,12 @@ export default function SimulacrumPage({ headerCollapsed }) {
   const fetchData = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      // F/E filter buttons on SimulacrumPage are purely faction-based:
-      // "Friendly" hides the enemy faction; "Enemy" hides the friendly faction.
+      const friendlyByFaction = showFriendly && !hasFriendlyMarks;
+      const enemyByFaction    = showEnemy    && !hasEnemyMarks;
       let qFaction      = faction;
       let qEnemyFaction = enemyFaction;
-      if (showFriendly && !showEnemy) qEnemyFaction = '';
-      if (showEnemy    && !showFriendly) qFaction    = '';
+      if (friendlyByFaction && !enemyByFaction  && !showEnemy)   qEnemyFaction = '';
+      if (enemyByFaction    && !friendlyByFaction && !showFriendly) qFaction    = '';
 
       const params = {
         search, faction: qFaction, enemyFaction: qEnemyFaction, alliance,
@@ -590,6 +590,8 @@ export default function SimulacrumPage({ headerCollapsed }) {
         ...(hideLegends          ? { isLegends: '0' }             : {}),
         ...(hideOtherFactions    ? { hideOtherFactions: '1' }    : {}),
         ...(hideScourgeOfGhyran  ? { hideScourgeOfGhyran: '1' }  : {}),
+        ...(showFriendly && hasFriendlyMarks ? { showFriendly: '1' } : {}),
+        ...(showEnemy    && hasEnemyMarks    ? { showEnemy: '1' }    : {}),
       };
       const res = await axios.get('/api/warscrolls', { params });
       setData(res.data);
@@ -597,7 +599,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
       if (err.response?.status === 401) setError('Session expired. Please sign out and log back in.');
       else setError('Failed to load warscrolls. Is the backend running?');
     } finally { setLoading(false); }
-  }, [search, faction, enemyFaction, alliance, sortBy, sortDir, page, isHero, isMonster, isInfantry, isCavalry, isBeast, isWarMachine, isTerrain, isManifestation, hideLegends, hideOtherFactions, hideScourgeOfGhyran, showFriendly, showEnemy]);
+  }, [search, faction, enemyFaction, alliance, sortBy, sortDir, page, isHero, isMonster, isInfantry, isCavalry, isBeast, isWarMachine, isTerrain, isManifestation, hideLegends, hideOtherFactions, hideScourgeOfGhyran, showFriendly, showEnemy, hasFriendlyMarks, hasEnemyMarks]);
 
   useEffect(() => { axios.get('/api/user-units').then(res => { const map = {}; res.data.forEach(r => { map[r.warscroll_id] = { is_friendly: r.is_friendly, is_enemy: r.is_enemy }; }); setUserUnits(map); }).catch(() => {}); }, []);
   useEffect(() => { fetchFactions(); }, [fetchFactions]);
