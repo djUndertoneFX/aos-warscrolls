@@ -370,10 +370,14 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
         setDotsHasOverflow(true);
         const activeDot = inner.querySelector('.gw-nav-dot-active, .gw-nav-dot-faction-active');
         if (!activeDot) return;
-        const dotMid = activeDot.offsetLeft + activeDot.offsetWidth / 2;
-        const raw    = outerW / 2 - dotMid;
-        const minTx  = -(innerW - outerW);
-        const tx     = Math.min(0, Math.max(minTx, raw));
+        const dotMid  = activeDot.offsetLeft + activeDot.offsetWidth / 2;
+        const dotRight = activeDot.offsetLeft + activeDot.offsetWidth;
+        const minTx   = -(innerW - outerW);
+        const raw     = outerW / 2 - dotMid;
+        const rawTx   = Math.min(0, Math.max(minTx, raw));
+        // If centering would clip the left end but the active dot is already
+        // visible at tx=0, prefer left-aligned so faction dots stay in view.
+        const tx = (rawTx < 0 && dotRight <= outerW) ? 0 : rawTx;
         setDotsTranslate(tx);
         setDotsAtStart(tx >= -4);
         setDotsAtEnd(tx <= minTx + 4);
