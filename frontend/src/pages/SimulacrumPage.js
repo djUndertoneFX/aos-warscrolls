@@ -450,7 +450,7 @@ function makeAdoKTooltip(includeSaveWard, save, ward) {
   const context = includeSaveWard
     ? `vs ${save}+ save${ward ? `, ${ward}+ ward` : ', no ward'}`
     : 'hit/wound only (save/ward not applied)';
-  return `ADO/k — Damage efficiency: (ADO-R + ADO-M) ÷ Points × 1000, ${context}. Higher = more damage per point. Sort descending for best-value units.`;
+  return `ADO/e — Damage efficiency: (ADO-R + ADO-M) ÷ Points × 1000, ${context}. Higher = more damage per point. Sort descending for best-value units.`;
 }
 
 export default function SimulacrumPage({ headerCollapsed }) {
@@ -912,7 +912,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
                 {(() => { const adoTip = makeAdoTooltip(includeSaveWardInADO, presumedSave ?? 5, presumedWard ?? null); const adoKTip = makeAdoKTooltip(includeSaveWardInADO, presumedSave ?? 5, presumedWard ?? null); return (<>
                 <th style={{...thStyle('ado_ranged'), textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_ranged', e)}><span className="ado-tip" data-tip={adoTip}>ADO-R</span><SortIcon col="ado_ranged" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_ranged'); }} /></th>
                 <th style={{...thStyle('ado_melee'),  textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_melee', e)}><span className="ado-tip" data-tip={adoTip}>ADO-M</span><SortIcon col="ado_melee" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_melee'); }} /></th>
-                <th style={{...thStyle('ado_pct'),    textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_pct', e)}><span className="ado-tip" data-tip={adoKTip}>ADO/k</span><SortIcon col="ado_pct" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_pct'); }} /></th>
+                <th style={{...thStyle('ado_pct'),    textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_pct', e)}><span className="ado-tip" data-tip={adoKTip}>ADO/e</span><SortIcon col="ado_pct" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_pct'); }} /></th>
                 </>); })()}
                 <th className="col-reinforce">Reinforce</th>
               </tr>
