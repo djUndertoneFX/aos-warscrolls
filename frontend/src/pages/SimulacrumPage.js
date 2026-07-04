@@ -546,6 +546,8 @@ export default function SimulacrumPage({ headerCollapsed }) {
     ).then(entries => setFilteredCounts(Object.fromEntries(entries)));
   }, [hideOtherFactions, faction, enemyFaction, hideLegends, hideScourgeOfGhyran]);
 
+  const tableWrapperRef = useRef(null);
+  const scrollAnchorRef = useRef(null);
   const [userUnits, setUserUnits] = useState({});
   const [expandedIds, setExpandedIds] = useState(new Set());
   const [detailUnit, setDetailUnit] = useState(null);
@@ -612,6 +614,31 @@ export default function SimulacrumPage({ headerCollapsed }) {
     try { await axios.post(`/api/user-units/${warscrollId}`, updated); }
     catch { setUserUnits(prev => ({ ...prev, [warscrollId]: current })); }
   }, [userUnits]);
+
+  const simIsFirstRender = useRef(true);
+  useEffect(() => {
+    if (simIsFirstRender.current) { simIsFirstRender.current = false; return; }
+    const wrapper = tableWrapperRef.current;
+    if (!wrapper) return;
+    const wrapperRect = wrapper.getBoundingClientRect();
+    const centerY = wrapperRect.top + wrapperRect.height / 2;
+    let best = null, bestDist = Infinity;
+    wrapper.querySelectorAll('tr[data-unit-id]').forEach(tr => {
+      const rect = tr.getBoundingClientRect();
+      const dist = Math.abs((rect.top + rect.height / 2) - centerY);
+      if (dist < bestDist) { bestDist = dist; best = tr; }
+    });
+    if (best) scrollAnchorRef.current = { unitId: best.dataset.unitId, offsetFromTop: best.getBoundingClientRect().top - wrapperRect.top };
+  }, [search, faction, enemyFaction, alliance, isHero, isMonster, isInfantry, isCavalry, isBeast, isWarMachine, isTerrain, isManifestation, hideLegends, hideOtherFactions, hideScourgeOfGhyran, showFriendly, showEnemy, sortBy, sortDir]);
+
+  useEffect(() => {
+    const anchor = scrollAnchorRef.current;
+    if (!anchor || !tableWrapperRef.current) return;
+    scrollAnchorRef.current = null;
+    const wrapper = tableWrapperRef.current;
+    const tr = wrapper.querySelector(`tr[data-unit-id="${anchor.unitId}"]`);
+    if (tr) wrapper.scrollTop = tr.offsetTop - wrapper.offsetTop - anchor.offsetFromTop;
+  }, [data]);
 
   const handleSort = (col, e, reset = false) => {
     if (reset || (e && e.ctrlKey)) { setSortBy('faction'); setSortDir('asc'); }
@@ -903,7 +930,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
       ) : data && data.data.length === 0 ? (
         <div className="empty-state">No warscrolls found. Try adjusting your filters.</div>
       ) : (
-        <div className="table-wrapper">
+        <div className="table-wrapper" ref={tableWrapperRef}>
           <table data-sort={sortBy}>
             <thead>
               <tr>
@@ -979,7 +1006,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
                   <React.Fragment key={row.id}>
                     {factionChanged && sortBy === 'faction' && <tr className="separator-faction"><td colSpan={colSpan}>{row.faction}</td></tr>}
                     {typeChanged    && sortBy === 'faction' && <tr className="separator-type"><td colSpan={colSpan}>{unitTypeLabel(row)}</td></tr>}
-                    <tr className={`unit-row${isExpanded ? ' expanded' : ''}`} onClick={() => setExpandedIds(prev => { const s = new Set(prev); isExpanded ? s.delete(row.id) : s.add(row.id); return s; })} style={{cursor:'pointer'}}>
+                    <tr className={`unit-row${isExpanded ? ' expanded' : ''}`} data-unit-id={row.id} onClick={() => setExpandedIds(prev => { const s = new Set(prev); isExpanded ? s.delete(row.id) : s.add(row.id); return s; })} style={{cursor:'pointer'}}>
                       <td className="col-rownum">{rowNum}</td>
                       <td className="col-flag" onClick={e => { e.stopPropagation(); if (linkPageSelections) { toggleFlag(row.id, 'is_friendly'); } else { setSelectedFriendly(f => f?.id === row.id ? null : row); } }}>
                         <span className={`flag-check friendly${linkPageSelections ? (userUnits[row.id]?.is_friendly ? ' active' : '') : (selectedFriendly?.id === row.id ? ' active' : '')}`}>✓</span>

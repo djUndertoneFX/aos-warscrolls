@@ -248,6 +248,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
   const [detailUnit, setDetailUnit] = useState(null);
   const [thumbHover, setThumbHover] = useState(null); // { id, x, y }
   const tableWrapperRef = useRef(null);
+  const scrollAnchorRef = useRef(null);
 
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 9999;
@@ -343,6 +344,33 @@ export default function WarscrollsPage({ headerCollapsed }) {
 
   useEffect(() => { fetchFactions(); }, [fetchFactions]);
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Capture center-most visible unit before filter-triggered refetch
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    const wrapper = tableWrapperRef.current;
+    if (!wrapper) return;
+    const wrapperRect = wrapper.getBoundingClientRect();
+    const centerY = wrapperRect.top + wrapperRect.height / 2;
+    let best = null, bestDist = Infinity;
+    wrapper.querySelectorAll('tr[data-unit-id]').forEach(tr => {
+      const rect = tr.getBoundingClientRect();
+      const dist = Math.abs((rect.top + rect.height / 2) - centerY);
+      if (dist < bestDist) { bestDist = dist; best = tr; }
+    });
+    if (best) scrollAnchorRef.current = { unitId: best.dataset.unitId, offsetFromTop: best.getBoundingClientRect().top - wrapperRect.top };
+  }, [search, faction, enemyFaction, alliance, isHero, isMonster, isInfantry, isCavalry, isBeast, isWarMachine, isTerrain, isManifestation, hideLegends, hideOtherFactions, hideScourgeOfGhyran, showFriendly, showEnemy, sortBy, sortDir]);
+
+  // Restore scroll after new data renders
+  useEffect(() => {
+    const anchor = scrollAnchorRef.current;
+    if (!anchor || !tableWrapperRef.current) return;
+    scrollAnchorRef.current = null;
+    const wrapper = tableWrapperRef.current;
+    const tr = wrapper.querySelector(`tr[data-unit-id="${anchor.unitId}"]`);
+    if (tr) wrapper.scrollTop = tr.offsetTop - wrapper.offsetTop - anchor.offsetFromTop;
+  }, [data]);
 
   useEffect(() => {
     if (!detailUnit || !tableWrapperRef.current) return;
