@@ -615,6 +615,12 @@ export default function SimulacrumPage({ headerCollapsed }) {
     catch { setUserUnits(prev => ({ ...prev, [warscrollId]: current })); }
   }, [userUnits]);
 
+  const rowContentTop = (tr, wrapper) => {
+    let top = 0, node = tr;
+    while (node && node !== wrapper) { top += node.offsetTop; node = node.offsetParent; }
+    return top;
+  };
+
   const simIsFirstRender = useRef(true);
   useEffect(() => {
     if (simIsFirstRender.current) { simIsFirstRender.current = false; return; }
@@ -622,22 +628,25 @@ export default function SimulacrumPage({ headerCollapsed }) {
     if (!wrapper) return;
     const wrapperRect = wrapper.getBoundingClientRect();
     const centerY = wrapperRect.top + wrapperRect.height / 2;
-    let best = null, bestDist = Infinity;
+    const candidates = [];
     wrapper.querySelectorAll('tr[data-unit-id]').forEach(tr => {
       const rect = tr.getBoundingClientRect();
       const dist = Math.abs((rect.top + rect.height / 2) - centerY);
-      if (dist < bestDist) { bestDist = dist; best = tr; }
+      candidates.push({ unitId: tr.dataset.unitId, offsetFromTop: rect.top - wrapperRect.top, dist });
     });
-    if (best) scrollAnchorRef.current = { unitId: best.dataset.unitId, offsetFromTop: best.getBoundingClientRect().top - wrapperRect.top };
+    candidates.sort((a, b) => a.dist - b.dist);
+    scrollAnchorRef.current = candidates.slice(0, 5);
   }, [search, faction, enemyFaction, alliance, isHero, isMonster, isInfantry, isCavalry, isBeast, isWarMachine, isTerrain, isManifestation, hideLegends, hideOtherFactions, hideScourgeOfGhyran, showFriendly, showEnemy, sortBy, sortDir]);
 
   useEffect(() => {
-    const anchor = scrollAnchorRef.current;
-    if (!anchor || !tableWrapperRef.current) return;
+    const candidates = scrollAnchorRef.current;
+    if (!candidates?.length || !tableWrapperRef.current) return;
     scrollAnchorRef.current = null;
     const wrapper = tableWrapperRef.current;
-    const tr = wrapper.querySelector(`tr[data-unit-id="${anchor.unitId}"]`);
-    if (tr) wrapper.scrollTop = tr.offsetTop - wrapper.offsetTop - anchor.offsetFromTop;
+    for (const { unitId, offsetFromTop } of candidates) {
+      const tr = wrapper.querySelector(`tr[data-unit-id="${unitId}"]`);
+      if (tr) { wrapper.scrollTop = rowContentTop(tr, wrapper) - offsetFromTop; break; }
+    }
   }, [data]);
 
   const handleSort = (col, e, reset = false) => {
