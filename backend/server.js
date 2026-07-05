@@ -190,6 +190,22 @@ initDb();
   }
 }
 
+// Auto-seed spearhead data if column is empty
+{
+  const _db3 = getDb();
+  const spCount = _db3.prepare("SELECT COUNT(*) as n FROM warscrolls WHERE spearhead IS NOT NULL").get().n;
+  _db3.close();
+  if (spCount === 0) {
+    console.log('Spearhead data missing — seeding from bundled data…');
+    try {
+      const { run: seedSpearheads } = require('./scrapeSpearheads');
+      seedSpearheads();
+    } catch (e) {
+      console.error('Spearhead seeding failed:', e.message);
+    }
+  }
+}
+
 // ─── Auth Middleware ─────────────────────────────────────────────────────────
 
 function requireAuth(req, res, next) {

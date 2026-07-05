@@ -227,7 +227,7 @@ const SPEARHEADS = {
   },
 };
 
-function run() {
+function run(opts = {}) {
   initDb();
   const db = getDb();
 
@@ -266,7 +266,7 @@ function run() {
     }
   }
 
-  db.close();
+  if (opts.closeDb !== false && require.main === module) db.close();
 
   console.log(`\n✅ Updated ${totalUpdated} units with spearhead data.`);
   if (missed.length) {
@@ -275,4 +275,5 @@ function run() {
   }
 }
 
-run();
+if (require.main === module) run();
+module.exports = { run };
