@@ -1298,34 +1298,82 @@ td.col-ado-pct {
   font-size: 0.8rem;
 }
 
-/* Spearhead column */
-th.col-spearhead-hdr {
-  font-size: 0.72rem;
-  color: var(--gold);
-  white-space: nowrap;
-  overflow: hidden;
+/* ── Spearhead group header rows ── */
+tr.spearhead-group-hdr td {
+  padding: 0;
+  background: rgba(255,255,255,0.04);
+  border-top: 1px solid rgba(255,255,255,0.10);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
   user-select: none;
-  border-right: 1px solid rgba(255,255,255,0.07);
 }
-th.col-spearhead-hdr .sp-col-toggle {
-  opacity: 0.5;
+tr.spearhead-group-hdr:hover td {
+  background: rgba(255,255,255,0.07);
+}
+tr.spearhead-group-hdr.sp-group-friendly td {
+  background: rgba(80,200,120,0.08);
+  border-top-color: rgba(80,200,120,0.25);
+}
+tr.spearhead-group-hdr.sp-group-enemy td {
+  background: rgba(220,80,80,0.08);
+  border-top-color: rgba(220,80,80,0.25);
+}
+.sp-group-hdr-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+}
+.sp-group-chevron {
   font-size: 0.65rem;
-  margin-left: 4px;
+  color: var(--text-dim);
+  width: 14px;
+  flex-shrink: 0;
 }
-td.col-spearhead {
+.sp-group-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--gold);
+  letter-spacing: 0.01em;
+}
+.sp-group-count {
   font-size: 0.72rem;
   color: var(--text-dim);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  border-right: 1px solid rgba(255,255,255,0.07);
-  max-width: 0;
+  margin-left: 2px;
 }
-td.col-spearhead .spearhead-name {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.sp-group-flags {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
 }
+.sp-flag-btn {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 3px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.05);
+  cursor: pointer;
+  color: var(--text-dim);
+  line-height: 1.4;
+  transition: background 0.12s, color 0.12s;
+}
+.sp-flag-btn.sp-flag-f { border-color: rgba(80,200,120,0.3); }
+.sp-flag-btn.sp-flag-f:hover, .sp-flag-btn.sp-flag-f.active {
+  background: rgba(80,200,120,0.2);
+  color: var(--friendly-color);
+  border-color: rgba(80,200,120,0.6);
+}
+.sp-flag-btn.sp-flag-e { border-color: rgba(220,80,80,0.3); }
+.sp-flag-btn.sp-flag-e:hover, .sp-flag-btn.sp-flag-e.active {
+  background: rgba(220,80,80,0.2);
+  color: var(--enemy-color);
+  border-color: rgba(220,80,80,0.6);
+}
+
+/* Unit rows inside an expanded spearhead group */
+tr.sp-unit-row { border-left: 2px solid transparent; }
+tr.sp-unit-row.sp-unit-friendly { border-left-color: rgba(80,200,120,0.4); }
+tr.sp-unit-row.sp-unit-enemy    { border-left-color: rgba(220,80,80,0.4); }
 
 /* ── ADO HTML tooltip ── */
 .ado-tip {
