@@ -345,13 +345,6 @@ export default function WarscrollsPage({ headerCollapsed }) {
   useEffect(() => { fetchFactions(); }, [fetchFactions]);
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Walk the offsetParent chain to find a row's position within the scroll container
-  const rowContentTop = (tr, wrapper) => {
-    let top = 0, node = tr;
-    while (node && node !== wrapper) { top += node.offsetTop; node = node.offsetParent; }
-    return top;
-  };
-
   // Capture the 5 closest unit rows to center before a filter-triggered refetch
   const isFirstRender = useRef(true);
   useEffect(() => {
@@ -378,7 +371,11 @@ export default function WarscrollsPage({ headerCollapsed }) {
     const wrapper = tableWrapperRef.current;
     for (const { unitId, offsetFromTop } of candidates) {
       const tr = wrapper.querySelector(`tr[data-unit-id="${unitId}"]`);
-      if (tr) { wrapper.scrollTop = rowContentTop(tr, wrapper) - offsetFromTop; break; }
+      if (tr) {
+        const currentOffset = tr.getBoundingClientRect().top - wrapper.getBoundingClientRect().top;
+        wrapper.scrollTop += currentOffset - offsetFromTop;
+        break;
+      }
     }
   }, [data]);
 
@@ -387,8 +384,9 @@ export default function WarscrollsPage({ headerCollapsed }) {
     const wrapper = tableWrapperRef.current;
     const tr = wrapper.querySelector(`tr[data-unit-id="${detailUnit.id}"]`);
     if (!tr) return;
-    const trH = tr.offsetHeight;
-    wrapper.scrollTop = rowContentTop(tr, wrapper) - (wrapper.clientHeight / 2) + (trH / 2);
+    const currentOffset = tr.getBoundingClientRect().top - wrapper.getBoundingClientRect().top;
+    const targetOffset = (wrapper.clientHeight - tr.offsetHeight) / 2;
+    wrapper.scrollTop += currentOffset - targetOffset;
   }, [detailUnit]);
 
   const handleSort = (col, e, reset = false) => {

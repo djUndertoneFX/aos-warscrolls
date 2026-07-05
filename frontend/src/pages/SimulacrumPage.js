@@ -615,12 +615,6 @@ export default function SimulacrumPage({ headerCollapsed }) {
     catch { setUserUnits(prev => ({ ...prev, [warscrollId]: current })); }
   }, [userUnits]);
 
-  const rowContentTop = (tr, wrapper) => {
-    let top = 0, node = tr;
-    while (node && node !== wrapper) { top += node.offsetTop; node = node.offsetParent; }
-    return top;
-  };
-
   const simIsFirstRender = useRef(true);
   useEffect(() => {
     if (simIsFirstRender.current) { simIsFirstRender.current = false; return; }
@@ -645,7 +639,11 @@ export default function SimulacrumPage({ headerCollapsed }) {
     const wrapper = tableWrapperRef.current;
     for (const { unitId, offsetFromTop } of candidates) {
       const tr = wrapper.querySelector(`tr[data-unit-id="${unitId}"]`);
-      if (tr) { wrapper.scrollTop = rowContentTop(tr, wrapper) - offsetFromTop; break; }
+      if (tr) {
+        const currentOffset = tr.getBoundingClientRect().top - wrapper.getBoundingClientRect().top;
+        wrapper.scrollTop += currentOffset - offsetFromTop;
+        break;
+      }
     }
   }, [data]);
 
