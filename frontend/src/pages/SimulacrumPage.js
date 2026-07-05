@@ -4,7 +4,7 @@ import axios from 'axios';
 import WarscrollGW from '../components/WarscrollGW';
 import { simulateBattle } from '../simulation/engine';
 import { useSettings } from '../SettingsContext';
-import { calcWeaponADO } from '../awoCalc';
+import { calcWeaponADO, resolveWeaponLoadout } from '../awoCalc';
 
 function sumADO(weapons, unitSize, save, ward, rounding) {
   let total = 0, any = false;
@@ -171,10 +171,11 @@ function SimulacrumBattle({ friendly, enemy, colWidths, thStyle, onUnitClick, on
   const { presumedSave, presumedWard, roundingMode, includeSaveWardInADO } = useSettings();
   const renderRow = (row, label) => {
     const weapons = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
-    const ranged = weapons.filter(w => w.type === 'ranged');
-    const melee  = weapons.filter(w => w.type === 'melee');
     const save = includeSaveWardInADO ? (presumedSave ?? 5) : 7;
     const ward = includeSaveWardInADO ? (presumedWard ?? null) : null;
+    const resolvedWeapons = resolveWeaponLoadout(weapons, row.options_text, row.unit_size, save, ward, roundingMode) ?? weapons;
+    const ranged = resolvedWeapons.filter(w => w.type === 'ranged');
+    const melee  = resolvedWeapons.filter(w => w.type === 'melee');
     const adoRanged = sumADO(ranged, row.unit_size, save, ward, roundingMode);
     const adoMelee  = sumADO(melee,  row.unit_size, save, ward, roundingMode);
     const adoTotal  = (adoRanged ?? 0) + (adoMelee ?? 0);
@@ -981,8 +982,9 @@ export default function SimulacrumPage({ headerCollapsed }) {
                   const getVals = row => {
                     const ws = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
                     const sv = includeSaveWardInADO ? (presumedSave ?? 5) : 7; const wd = includeSaveWardInADO ? (presumedWard ?? null) : null;
-                    const aR = sumADO(ws.filter(w => w.type === 'ranged'), row.unit_size, sv, wd, roundingMode) ?? 0;
-                    const aM = sumADO(ws.filter(w => w.type === 'melee'),  row.unit_size, sv, wd, roundingMode) ?? 0;
+                    const rw = resolveWeaponLoadout(ws, row.options_text, row.unit_size, sv, wd, roundingMode) ?? ws;
+                    const aR = sumADO(rw.filter(w => w.type === 'ranged'), row.unit_size, sv, wd, roundingMode) ?? 0;
+                    const aM = sumADO(rw.filter(w => w.type === 'melee'),  row.unit_size, sv, wd, roundingMode) ?? 0;
                     if (sortBy === 'ado_ranged') return aR;
                     if (sortBy === 'ado_melee')  return aM;
                     return row.points ? (aR + aM) / row.points : -1;
@@ -996,10 +998,11 @@ export default function SimulacrumPage({ headerCollapsed }) {
                 const rowNum = (page - 1) * PAGE_SIZE + idx + 1;
                 const isExpanded = expandedIds.has(row.id);
                 const weapons = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
-                const ranged = weapons.filter(w => w.type === 'ranged');
-                const melee  = weapons.filter(w => w.type === 'melee');
                 const save = includeSaveWardInADO ? (presumedSave ?? 5) : 7;
                 const ward = includeSaveWardInADO ? (presumedWard ?? null) : null;
+                const resolvedWeapons = resolveWeaponLoadout(weapons, row.options_text, row.unit_size, save, ward, roundingMode) ?? weapons;
+                const ranged = resolvedWeapons.filter(w => w.type === 'ranged');
+                const melee  = resolvedWeapons.filter(w => w.type === 'melee');
                 const adoRanged = sumADO(ranged, row.unit_size, save, ward, roundingMode);
                 const adoMelee  = sumADO(melee,  row.unit_size, save, ward, roundingMode);
                 const adoTotal  = (adoRanged ?? 0) + (adoMelee ?? 0);

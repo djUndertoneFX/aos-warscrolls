@@ -1,5 +1,173 @@
 // Average Wound Output calculator — AoS 4th edition standard rules
 
+/**
+ * Given a unit's weapons array and options_text, return a modified weapons array
+ * with model_count set to reflect fractional/optional loadouts. Returns null if
+ * nothing meaningful can be parsed (caller should fall back to original weapons).
+ *
+ * Handles:
+ *   - "X/Y models must be armed with 1 of the following options: [block]" (e.g. Stormfiends)
+ *   - "and 1 of the following options: [block]" – all-model pick-best (e.g. Stormdrake Guard)
+ *   - "X/Y models can replace their A with B [and C]" (e.g. Liberators)
+ *   - "X/Y models … in addition to their other weapons" (e.g. Rat Ogors)
+ */
+export function resolveWeaponLoadout(weapons, optionsText, unitSize, save, ward, rounding) {
+  if (!optionsText || !weapons?.length) return null;
+  const N = parseInt(unitSize) || 1;
+  if (N < 1) return null;
+
+  // Skip texts that are clearly not about weapon options
+  if (/terrain abilities|only be taken in|no longer have current|comprise \d/i.test(optionsText)) return null;
+
+  // ── Weapon lookup helpers ──────────────────────────────────────────────────
+  const stripArticle = s => s.toLowerCase().replace(/^(a |an |the )/, '').trim();
+  const wByNorm = new Map(weapons.map(w => [stripArticle(w.name), w]));
+  // Also index by raw lowercase for weapons that start with articles
+  for (const w of weapons) wByNorm.set(w.name.toLowerCase(), w);
+
+  // Sorted longest-first for greedy matching
+  const norms = [...new Set(wByNorm.keys())].sort((a, b) => b.length - a.length);
+
+  const findW = text => {
+    const t = stripArticle(text);
+    return wByNorm.get(t) || wByNorm.get(text.toLowerCase().trim()) || null;
+  };
+
+  // Tokenize a run-on option block into groups using weapon names as anchors.
+  // e.g. "Warpfire Projectors and Clubbing BlowsWindlaunchers and Clubbing Blows"
+  // → [[WP, CB], [WL, CB]]
+  const tokenize = text => {
+    const groups = [];
+    let rem = text.trim();
+    while (rem.length > 0) {
+      let hit = false;
+      for (const n of norms) {
+        if (rem.toLowerCase().startsWith(n)) {
+          const w = wByNorm.get(n);
+          if (!w) { rem = rem.slice(n.length); hit = true; break; }
+          const group = [w];
+          rem = rem.slice(n.length);
+          // "and [weapon]" continuation
+          const am = rem.match(/^ and (.+)/i);
+          if (am) {
+            for (const n2 of norms) {
+              if (am[1].toLowerCase().startsWith(n2)) {
+                const w2 = wByNorm.get(n2);
+                if (w2) group.push(w2);
+                rem = am[1].slice(n2.length);
+                break;
+              }
+            }
+          }
+          groups.push(group);
+          hit = true; break;
+        }
+      }
+      if (!hit) rem = rem.slice(1);
+    }
+    return groups;
+  };
+
+  // ADO for a list of weapons at `mc` models
+  const groupADO = (wList, mc) => wList.reduce((t, w) =>
+    t + (calcWeaponADO({ ...w, model_count: mc }, N, save ?? 7, ward ?? null, rounding ?? 'overall') ?? 0), 0
+  );
+
+  // Pick the highest-ADO option from a set of options; return best option
+  const pickBest = (opts, mc) => opts.reduce((b, opt) => {
+    const a = groupADO(opt, mc); return a > b.ado ? { opt, ado: a } : b;
+  }, { opt: opts[0], ado: -1 }).opt;
+
+  const counts = new Map();        // weaponName → final model count
+  const optWeps = new Set();       // all weapons mentioned in option blocks (mutex sets)
+  let anyParsed = false;
+  let baseReduction = 0;           // models removed from base loadout by "replace all weapons"
+
+  // ── 1. "X/Y models must be armed with 1 of the following options:[block]" ──
+  // Block ends at the next such clause or end of string
+  const mustRe = /(\d+)\/(\d+) models? must be armed with 1 of the following options?:(.+?)(?=\d+\/\d+ models? must be|$)/gis;
+  for (const m of optionsText.matchAll(mustRe)) {
+    const mc = Math.round(N * parseInt(m[1]) / parseInt(m[2]));
+    const opts = tokenize(m[3]);
+    if (!opts.length) continue;
+    opts.forEach(opt => opt.forEach(w => optWeps.add(w.name)));
+    const best = pickBest(opts, mc);
+    best.forEach(w => counts.set(w.name, (counts.get(w.name) ?? 0) + mc));
+    anyParsed = true;
+  }
+
+  // ── 2. "and 1 of the following options:[block]" (all-model pick) ──
+  const allChoiceRe = /and 1 of the following options?:(.+?)(?=\.|$)/gis;
+  for (const m of optionsText.matchAll(allChoiceRe)) {
+    const opts = tokenize(m[1]);
+    if (!opts.length) continue;
+    opts.forEach(opt => opt.forEach(w => optWeps.add(w.name)));
+    const best = pickBest(opts, N);
+    best.forEach(w => counts.set(w.name, N));
+    anyParsed = true;
+  }
+
+  // ── 3. "X/Y models … replace their [A] with [B] [and C]" ──
+  const replRe = /(\d+)\/(\d+) models?[^.]*?replace (?:their )?(.+?) with (?:an? |a )?(.+?)(?=\.|The champion|\d+\/\d+|$)/gim;
+  for (const m of optionsText.matchAll(replRe)) {
+    const rc = Math.round(N * parseInt(m[1]) / parseInt(m[2]));
+    const fromTxt = m[3].trim();
+    const toTxt   = m[4].trim();
+    const isAll   = /^(their )?weapons?$/i.test(fromTxt);
+
+    if (isAll) {
+      baseReduction += rc;
+    } else {
+      const fw = findW(fromTxt);
+      if (fw && !optWeps.has(fw.name)) {
+        const prev = counts.get(fw.name) ?? N;
+        counts.set(fw.name, Math.max(0, prev - rc));
+      }
+    }
+
+    // Parse "to" weapons (may be "A and B")
+    let tr = toTxt;
+    for (let i = 0; i < 5 && tr.length > 0; i++) {
+      let f = false;
+      for (const n of norms) {
+        if (tr.toLowerCase().startsWith(n)) {
+          const w = wByNorm.get(n);
+          if (w && !optWeps.has(w.name)) {
+            counts.set(w.name, (counts.get(w.name) ?? 0) + rc);
+          }
+          tr = tr.slice(n.length).replace(/^[ ,]*(?:and )?/i, '');
+          f = true; break;
+        }
+      }
+      if (!f) break;
+    }
+    anyParsed = true;
+  }
+
+  // ── 4. "X/Y models … in addition to their other weapons" ──
+  const addlRe = /(\d+)\/(\d+) models?[^.]*?(?:can be )?armed with (.+?) in addition/gim;
+  for (const m of optionsText.matchAll(addlRe)) {
+    const mc = Math.round(N * parseInt(m[1]) / parseInt(m[2]));
+    const w = findW(m[3].trim());
+    if (w) { counts.set(w.name, mc); anyParsed = true; }
+  }
+
+  if (!anyParsed) return null;
+
+  return weapons
+    .filter(w => {
+      // Exclude non-chosen option weapons (in optWeps but not assigned a count)
+      if (optWeps.has(w.name) && !counts.has(w.name)) return false;
+      return true;
+    })
+    .map(w => ({
+      ...w,
+      model_count: counts.has(w.name)
+        ? counts.get(w.name)
+        : Math.max(0, N - baseReduction),
+    }));
+}
+
 // Parse a stat string like "3+", "4+" → the integer threshold (3, 4…)
 function parseRoll(val) {
   if (!val || val === '-') return null;
