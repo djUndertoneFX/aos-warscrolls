@@ -1298,6 +1298,35 @@ td.col-ado-pct {
   font-size: 0.8rem;
 }
 
+/* Spearhead column */
+th.col-spearhead-hdr {
+  font-size: 0.72rem;
+  color: var(--gold);
+  white-space: nowrap;
+  overflow: hidden;
+  user-select: none;
+  border-right: 1px solid rgba(255,255,255,0.07);
+}
+th.col-spearhead-hdr .sp-col-toggle {
+  opacity: 0.5;
+  font-size: 0.65rem;
+  margin-left: 4px;
+}
+td.col-spearhead {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-right: 1px solid rgba(255,255,255,0.07);
+  max-width: 0;
+}
+td.col-spearhead .spearhead-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ── ADO HTML tooltip ── */
 .ado-tip {
   position: relative;

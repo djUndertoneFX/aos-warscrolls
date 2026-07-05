@@ -8,13 +8,14 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import WarscrollsPage from './pages/WarscrollsPage';
 import SimulacrumPage from './pages/SimulacrumPage';
+import SpearheadPage from './pages/SpearheadPage';
 import './styles.css';
 
 const NAV_PAGES = [
   { label: 'Warscrolls',         path: '/warscrolls' },
   { label: 'Army Builder',       path: '/army-builder',    soon: true },
   { label: 'Simulacrum',         path: '/simulacrum' },
-  { label: 'Spearhead',          path: '/spearhead',       soon: true },
+  { label: 'Spearhead',          path: '/spearhead' },
   { label: 'Path to Glory',      path: '/path-to-glory',   soon: true },
   { label: 'Consult the Oracle', path: '/consult-oracle',  soon: true },
   { label: 'Comparitator',       path: '/comparitator',    soon: true },
@@ -113,7 +114,7 @@ function Navbar({ headerCollapsed, onToggleCollapse }) {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const isWarscrolls = location.pathname === '/warscrolls' || location.pathname === '/simulacrum';
+  const isWarscrolls = location.pathname === '/warscrolls' || location.pathname === '/simulacrum' || location.pathname === '/spearhead';
   if (!user) return null;
   return (
     <>
@@ -210,7 +211,7 @@ function AppRoutes() {
         } />
         <Route path="/army-builder"  element={<ProtectedRoute><ComingSoon title="Army Builder" /></ProtectedRoute>} />
         <Route path="/simulacrum"    element={<ProtectedRoute><SimulacrumPage headerCollapsed={headerCollapsed} /></ProtectedRoute>} />
-        <Route path="/spearhead"     element={<ProtectedRoute><ComingSoon title="Spearhead" /></ProtectedRoute>} />
+        <Route path="/spearhead"     element={<ProtectedRoute><SpearheadPage headerCollapsed={headerCollapsed} /></ProtectedRoute>} />
         <Route path="/path-to-glory"  element={<ProtectedRoute><ComingSoon title="Path to Glory" /></ProtectedRoute>} />
         <Route path="/consult-oracle" element={<ProtectedRoute><ComingSoon title="Consult the Oracle" /></ProtectedRoute>} />
         <Route path="/comparitator"   element={<ProtectedRoute><ComingSoon title="Comparitator" /></ProtectedRoute>} />
