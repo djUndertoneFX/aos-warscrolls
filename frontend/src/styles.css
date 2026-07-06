@@ -1329,6 +1329,11 @@ tr.spearhead-group-hdr.sp-group-enemy td {
   width: 14px;
   flex-shrink: 0;
 }
+.sp-group-faction {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
 .sp-group-name {
   font-size: 0.82rem;
   font-weight: 600;
@@ -1341,9 +1346,9 @@ tr.spearhead-group-hdr.sp-group-enemy td {
   margin-left: 2px;
 }
 .sp-group-flags {
-  margin-left: auto;
   display: flex;
   gap: 4px;
+  margin-right: 6px;
 }
 .sp-flag-btn {
   font-size: 0.68rem;

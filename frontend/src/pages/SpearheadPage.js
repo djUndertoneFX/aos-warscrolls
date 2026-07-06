@@ -38,11 +38,12 @@ function TypeTags({ row }) {
   );
 }
 
-function FactionDropdown({ factions, value, onChange, placeholder }) {
+// Dropdown that shows spearhead names with faction in parentheses
+function SpearheadDropdown({ groups, value, onChange, placeholder }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
-  const selected = factions.find(f => f.faction_slug === value);
-  const label = selected ? selected.faction : placeholder;
+  const selected = groups.find(g => g.spearheadName === value);
+  const label = selected ? selected.spearheadName : placeholder;
 
   useEffect(() => {
     if (!open) return;
@@ -51,7 +52,7 @@ function FactionDropdown({ factions, value, onChange, placeholder }) {
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
-  const pick = slug => { onChange(slug); setOpen(false); };
+  const pick = name => { onChange(name); setOpen(false); };
 
   return (
     <div className="faction-dropdown" ref={ref}>
@@ -64,13 +65,14 @@ function FactionDropdown({ factions, value, onChange, placeholder }) {
           <div className={`faction-dropdown-item${value === '' ? ' selected' : ''}`} onMouseDown={() => pick('')}>
             {placeholder}
           </div>
-          {factions.map(f => (
+          {groups.map(g => (
             <div
-              key={f.faction_slug}
-              className={`faction-dropdown-item${value === f.faction_slug ? ' selected' : ''}`}
-              onMouseDown={() => pick(f.faction_slug)}
+              key={g.spearheadName}
+              className={`faction-dropdown-item${value === g.spearheadName ? ' selected' : ''}`}
+              onMouseDown={() => pick(g.spearheadName)}
             >
-              {f.faction}
+              {g.spearheadName}
+              <span style={{ color: 'var(--text-dim)', fontSize: '0.75em', marginLeft: '0.4em' }}>({g.faction})</span>
             </div>
           ))}
         </div>
@@ -81,15 +83,15 @@ function FactionDropdown({ factions, value, onChange, placeholder }) {
 
 const FILTER_KEY = 'aos-sp-filters';
 const DEFAULT_COL_WIDTHS = {
-  expand: 22, name: 190, thumb: 44,
+  expand: 22, spearhead: 160, name: 190, thumb: 44,
   move: 42, health: 42, control: 42, save: 42, ward: 38,
   ado_ranged: 54, ado_melee: 54,
   types: 68, keywords: 130,
 };
-const STORAGE_KEY = 'aos-sp-col-widths-v2';
-// expand | name | thumb | mv | hp | ctrl | sv | wd | ado-r | ado-m | types | kw = 12
-const TOTAL_COLS = 12;
-const WEAPONS_EXPAND_COLS = 10;
+const STORAGE_KEY = 'aos-sp-col-widths-v3';
+// expand | spearhead | name | thumb | mv | hp | ctrl | sv | wd | ado-r | ado-m | types | kw = 13
+const TOTAL_COLS = 13;
+const WEAPONS_EXPAND_COLS = 11;
 
 export default function SpearheadPage({ headerCollapsed }) {
   const { presumedSave, presumedWard, roundingMode, includeSaveWardInADO } = useSettings();
@@ -102,21 +104,21 @@ export default function SpearheadPage({ headerCollapsed }) {
 
   // ── Persisted filter state ────────────────────────────────────────────────
   const saved = useMemo(() => { try { return JSON.parse(localStorage.getItem(FILTER_KEY)) || {}; } catch { return {}; } }, []);
-  const [yourFaction,    setYourFaction]    = useState(saved.yourFaction    ?? '');
-  const [opponentFaction,setOpponentFaction] = useState(saved.opponentFaction ?? '');
-  const [alliance,       setAlliance]       = useState(saved.alliance ?? '');
-  const [showFriendly,   setShowFriendly]   = useState(saved.showFriendly ?? false);
-  const [showEnemy,      setShowEnemy]      = useState(saved.showEnemy ?? false);
+  const [yourSpearhead,    setYourSpearhead]    = useState(saved.yourSpearhead    ?? '');
+  const [opponentSpearhead,setOpponentSpearhead] = useState(saved.opponentSpearhead ?? '');
+  const [alliance,         setAlliance]          = useState(saved.alliance ?? '');
+  const [showFriendly,     setShowFriendly]      = useState(saved.showFriendly ?? false);
+  const [showEnemy,        setShowEnemy]          = useState(saved.showEnemy ?? false);
 
   useEffect(() => {
-    localStorage.setItem(FILTER_KEY, JSON.stringify({ yourFaction, opponentFaction, alliance, showFriendly, showEnemy }));
-  }, [yourFaction, opponentFaction, alliance, showFriendly, showEnemy]);
+    localStorage.setItem(FILTER_KEY, JSON.stringify({ yourSpearhead, opponentSpearhead, alliance, showFriendly, showEnemy }));
+  }, [yourSpearhead, opponentSpearhead, alliance, showFriendly, showEnemy]);
 
   // ── Per-group expand state ────────────────────────────────────────────────
   const [expandedGroups, setExpandedGroups] = useState(() => {
     const s = new Set();
-    if (saved.yourFaction)     s.add(saved.yourFaction);
-    if (saved.opponentFaction) s.add(saved.opponentFaction);
+    if (saved.yourSpearhead)    s.add(saved.yourSpearhead);
+    if (saved.opponentSpearhead) s.add(saved.opponentSpearhead);
     return s;
   });
 
@@ -157,71 +159,75 @@ export default function SpearheadPage({ headerCollapsed }) {
       .finally(() => setLoading(false));
   }, []);
 
-  // ── Build groups from fetched rows ────────────────────────────────────────
+  // ── Build groups keyed by spearhead NAME ──────────────────────────────────
   const groups = useMemo(() => {
     if (!allRows) return [];
     const map = new Map();
     for (const row of allRows) {
-      const key = row.faction_slug;
+      const key = row.spearhead; // spearhead name is the group key
       if (!map.has(key)) {
-        map.set(key, { factionSlug: key, name: row.spearhead, faction: row.faction, alliance: row.grand_alliance, units: [] });
+        map.set(key, {
+          spearheadName: key,
+          faction: row.faction,
+          factionSlug: row.faction_slug,
+          alliance: row.grand_alliance,
+          units: [],
+        });
       }
       map.get(key).units.push(row);
     }
     return [...map.values()].sort((a, b) => {
       const ao = ALLIANCE_ORDER[a.alliance] ?? 99, bo = ALLIANCE_ORDER[b.alliance] ?? 99;
       if (ao !== bo) return ao - bo;
-      return a.name.localeCompare(b.name);
+      if (a.faction !== b.faction) return a.faction.localeCompare(b.faction);
+      return a.spearheadName.localeCompare(b.spearheadName);
     });
   }, [allRows]);
 
-  // ── All unique factions that have spearheads (for dropdowns) ─────────────
-  const spearheadFactions = useMemo(() => groups.map(g => ({ faction_slug: g.factionSlug, faction: g.name })), [groups]);
-
-  // ── Filter groups (alliance, friendly/enemy) ──────────────────────────────
+  // ── Filter groups ─────────────────────────────────────────────────────────
   const visibleGroups = useMemo(() => {
     let filtered = groups;
     if (alliance) filtered = filtered.filter(g => g.alliance === alliance);
-    if (showFriendly && yourFaction)     filtered = filtered.filter(g => g.factionSlug === yourFaction);
-    if (showEnemy   && opponentFaction)  filtered = filtered.filter(g => g.factionSlug === opponentFaction);
-    if (showFriendly && showEnemy && yourFaction && opponentFaction) {
-      filtered = groups.filter(g => g.factionSlug === yourFaction || g.factionSlug === opponentFaction);
+    if (showFriendly && showEnemy && yourSpearhead && opponentSpearhead) {
+      filtered = filtered.filter(g => g.spearheadName === yourSpearhead || g.spearheadName === opponentSpearhead);
       if (alliance) filtered = filtered.filter(g => g.alliance === alliance);
+    } else {
+      if (showFriendly && yourSpearhead)     filtered = filtered.filter(g => g.spearheadName === yourSpearhead);
+      if (showEnemy   && opponentSpearhead)  filtered = filtered.filter(g => g.spearheadName === opponentSpearhead);
     }
     return filtered;
-  }, [groups, alliance, showFriendly, showEnemy, yourFaction, opponentFaction]);
+  }, [groups, alliance, showFriendly, showEnemy, yourSpearhead, opponentSpearhead]);
 
-  // ── Toggle faction as your/opponent spearhead ────────────────────────────
-  const toggleFriendly = (slug, spearheadName) => {
-    const newSlug = yourFaction === slug ? '' : slug;
-    setYourFaction(newSlug);
-    if (newSlug) setExpandedGroups(prev => { const s = new Set(prev); s.add(slug); return s; });
+  // ── Toggle your/opponent spearhead ────────────────────────────────────────
+  const toggleFriendly = name => {
+    const next = yourSpearhead === name ? '' : name;
+    setYourSpearhead(next);
+    if (next) setExpandedGroups(prev => { const s = new Set(prev); s.add(next); return s; });
   };
-  const toggleEnemy = (slug, spearheadName) => {
-    const newSlug = opponentFaction === slug ? '' : slug;
-    setOpponentFaction(newSlug);
-    if (newSlug) setExpandedGroups(prev => { const s = new Set(prev); s.add(slug); return s; });
+  const toggleEnemy = name => {
+    const next = opponentSpearhead === name ? '' : name;
+    setOpponentSpearhead(next);
+    if (next) setExpandedGroups(prev => { const s = new Set(prev); s.add(next); return s; });
   };
-  const swapFactions = () => {
-    const tmp = yourFaction;
-    setYourFaction(opponentFaction);
-    setOpponentFaction(tmp);
-  };
-
-  // Selecting from dropdown auto-expands the group
-  const handleYourFaction = slug => {
-    setYourFaction(slug);
-    if (slug) setExpandedGroups(prev => { const s = new Set(prev); s.add(slug); return s; });
-  };
-  const handleOpponentFaction = slug => {
-    setOpponentFaction(slug);
-    if (slug) setExpandedGroups(prev => { const s = new Set(prev); s.add(slug); return s; });
+  const swapSpearheads = () => {
+    const tmp = yourSpearhead;
+    setYourSpearhead(opponentSpearhead);
+    setOpponentSpearhead(tmp);
   };
 
-  const toggleGroup = slug => {
+  const handleYourSpearhead = name => {
+    setYourSpearhead(name);
+    if (name) setExpandedGroups(prev => { const s = new Set(prev); s.add(name); return s; });
+  };
+  const handleOpponentSpearhead = name => {
+    setOpponentSpearhead(name);
+    if (name) setExpandedGroups(prev => { const s = new Set(prev); s.add(name); return s; });
+  };
+
+  const toggleGroup = name => {
     setExpandedGroups(prev => {
       const s = new Set(prev);
-      if (s.has(slug)) s.delete(slug); else s.add(slug);
+      if (s.has(name)) s.delete(name); else s.add(name);
       return s;
     });
   };
@@ -233,15 +239,12 @@ export default function SpearheadPage({ headerCollapsed }) {
 
   const allUnits = useMemo(() => visibleGroups.flatMap(g => g.units), [visibleGroups]);
 
-  const makeAdoTooltip = (type) => {
-    const title = type === 'ranged' ? 'ADO — Ranged' : 'ADO — Melee';
-    if (!includeSaveWardInADO) return `${title}\n  Hit and wound only (save/ward not applied).`;
-    return `${title}\n  vs ${presumedSave ?? 5}+ save${presumedWard ? `, ${presumedWard}+ ward` : ', no ward'}.`;
-  };
   const mkBox = str => {
     const [title, ...rest] = str.split('\n');
     return <div className="ado-tip-box"><div className="ado-tip-title">{title}</div><div className="ado-tip-body">{rest.join('\n').trim()}</div></div>;
   };
+  const adoRTip = mkBox(`ADO — Ranged\n  Hit and wound${includeSaveWardInADO ? ` vs ${presumedSave ?? 5}+` : ' only (save not applied)'}.`);
+  const adoMTip = mkBox(`ADO — Melee\n  Hit and wound${includeSaveWardInADO ? ` vs ${presumedSave ?? 5}+` : ' only (save not applied)'}.`);
 
   return (
     <>
@@ -253,8 +256,8 @@ export default function SpearheadPage({ headerCollapsed }) {
       document.body
     )}
     {navbarExtrasEl && ReactDOM.createPortal(
-      <button className={`btn-both-toggle${yourFaction !== opponentFaction && (yourFaction || opponentFaction) ? ' active' : ''}`}
-        title="Swap Friendly and Enemy spearheads" onClick={swapFactions}>⇔</button>,
+      <button className={`btn-both-toggle${(yourSpearhead || opponentSpearhead) && yourSpearhead !== opponentSpearhead ? ' active' : ''}`}
+        title="Swap Your/Opponent spearheads" onClick={swapSpearheads}>⇔</button>,
       navbarExtrasEl
     )}
     <div className="table-page">
@@ -276,17 +279,18 @@ export default function SpearheadPage({ headerCollapsed }) {
 
           <div className="filter-group">
             <div className="filter-label" style={{color:'var(--friendly-color)'}}>Your Spearhead</div>
-            <FactionDropdown factions={spearheadFactions} value={yourFaction} onChange={handleYourFaction} placeholder="— None —" />
+            <SpearheadDropdown groups={groups} value={yourSpearhead} onChange={handleYourSpearhead} placeholder="— None —" />
           </div>
 
           <div className="filter-group" style={{justifyContent:'center', paddingTop:'1.1rem'}}>
-            <button className={`btn-both-toggle${yourFaction !== opponentFaction && (yourFaction || opponentFaction) ? ' active' : ''}`}
-              title="Swap Friendly and Enemy" onClick={swapFactions}>⇔</button>
+            <button
+              className={`btn-both-toggle${(yourSpearhead || opponentSpearhead) && yourSpearhead !== opponentSpearhead ? ' active' : ''}`}
+              title="Swap" onClick={swapSpearheads}>⇔</button>
           </div>
 
           <div className="filter-group">
             <div className="filter-label" style={{color:'var(--enemy-color)'}}>Opponent's Spearhead</div>
-            <FactionDropdown factions={spearheadFactions} value={opponentFaction} onChange={handleOpponentFaction} placeholder="— None —" />
+            <SpearheadDropdown groups={groups} value={opponentSpearhead} onChange={handleOpponentSpearhead} placeholder="— None —" />
           </div>
 
           <div className="filter-checkboxes">
@@ -315,19 +319,22 @@ export default function SpearheadPage({ headerCollapsed }) {
             <thead>
               <tr>
                 <th style={thStyle('expand')}><span className="col-resize-handle" onMouseDown={e => startResize(e,'expand')} /></th>
+                <th style={{...thStyle('spearhead')}} className="col-spearhead-hdr">
+                  Spearhead<span className="col-resize-handle" onMouseDown={e => startResize(e,'spearhead')} />
+                </th>
                 <th style={thStyle('name')}>Unit Name<span className="col-resize-handle" onMouseDown={e => startResize(e,'name')} /></th>
                 <th style={thStyle('thumb')}><span className="col-resize-handle" onMouseDown={e => startResize(e,'thumb')} /></th>
-                <th style={{...thStyle('move')}}   className="stat-group stat-group-start" title="Move"><span className="th-abbr">Mv</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'move')} /></th>
-                <th style={{...thStyle('health')}} className="stat-group" title="Health"><span className="th-abbr">HP</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'health')} /></th>
-                <th style={{...thStyle('control')}}className="stat-group" title="Control"><span className="th-abbr">Ctrl</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'control')} /></th>
-                <th style={{...thStyle('save')}}   className="stat-group stat-group-end" title="Save"><span className="th-abbr">Sv</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'save')} /></th>
-                <th style={{...thStyle('ward')}}   className="col-ward" title="Ward"><span className="th-abbr">Wd</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'ward')} /></th>
+                <th style={thStyle('move')}    className="stat-group stat-group-start" title="Move"><span className="th-abbr">Mv</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'move')} /></th>
+                <th style={thStyle('health')}  className="stat-group" title="Health"><span className="th-abbr">HP</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'health')} /></th>
+                <th style={thStyle('control')} className="stat-group" title="Control"><span className="th-abbr">Ctrl</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'control')} /></th>
+                <th style={thStyle('save')}    className="stat-group stat-group-end" title="Save"><span className="th-abbr">Sv</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'save')} /></th>
+                <th style={thStyle('ward')}    className="col-ward" title="Ward"><span className="th-abbr">Wd</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'ward')} /></th>
                 <th style={{...thStyle('ado_ranged'), textAlign:'center'}} className="col-ado-hdr">
-                  <span className="ado-tip">{mkBox(makeAdoTooltip('ranged'))}ADO-R</span>
+                  <span className="ado-tip">{adoRTip}ADO-R</span>
                   <span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_ranged'); }} />
                 </th>
                 <th style={{...thStyle('ado_melee'), textAlign:'center'}} className="col-ado-hdr">
-                  <span className="ado-tip">{mkBox(makeAdoTooltip('melee'))}ADO-M</span>
+                  <span className="ado-tip">{adoMTip}ADO-M</span>
                   <span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_melee'); }} />
                 </th>
                 <th style={thStyle('types')}>Types<span className="col-resize-handle" onMouseDown={e => startResize(e,'types')} /></th>
@@ -341,40 +348,42 @@ export default function SpearheadPage({ headerCollapsed }) {
                 </td></tr>
               )}
               {visibleGroups.map(group => {
-                const isGroupExpanded = expandedGroups.has(group.factionSlug);
-                const isFriendly = yourFaction === group.factionSlug;
-                const isEnemy    = opponentFaction === group.factionSlug;
+                const isGroupExpanded = expandedGroups.has(group.spearheadName);
+                const isFriendly = yourSpearhead    === group.spearheadName;
+                const isEnemy    = opponentSpearhead === group.spearheadName;
                 return (
-                  <React.Fragment key={group.factionSlug}>
+                  <React.Fragment key={group.spearheadName}>
                     {/* ── Spearhead group header ── */}
                     <tr
                       className={`spearhead-group-hdr${isFriendly ? ' sp-group-friendly' : ''}${isEnemy ? ' sp-group-enemy' : ''}`}
-                      onClick={() => toggleGroup(group.factionSlug)}
+                      onClick={() => toggleGroup(group.spearheadName)}
                       style={{ cursor: 'pointer' }}
                     >
                       <td colSpan={TOTAL_COLS}>
                         <div className="sp-group-hdr-inner">
-                          <span className="sp-group-chevron">{isGroupExpanded ? '▼' : '▶'}</span>
-                          <AllianceBadge alliance={group.alliance} />
-                          <span className="sp-group-name">{group.name}</span>
-                          <span className="sp-group-count">({group.units.length} units)</span>
+                          {/* F/E buttons on the LEFT */}
                           <span className="sp-group-flags" onClick={e => e.stopPropagation()}>
                             <button
                               className={`sp-flag-btn sp-flag-f${isFriendly ? ' active' : ''}`}
                               title={isFriendly ? 'Clear friendly' : 'Mark as Your Spearhead'}
-                              onClick={() => toggleFriendly(group.factionSlug, group.name)}
+                              onClick={() => toggleFriendly(group.spearheadName)}
                             >F</button>
                             <button
                               className={`sp-flag-btn sp-flag-e${isEnemy ? ' active' : ''}`}
                               title={isEnemy ? 'Clear enemy' : "Mark as Opponent's Spearhead"}
-                              onClick={() => toggleEnemy(group.factionSlug, group.name)}
+                              onClick={() => toggleEnemy(group.spearheadName)}
                             >E</button>
                           </span>
+                          <span className="sp-group-chevron">{isGroupExpanded ? '▼' : '▶'}</span>
+                          <AllianceBadge alliance={group.alliance} />
+                          <span className="sp-group-faction">{group.faction}</span>
+                          <span className="sp-group-name">{group.spearheadName}</span>
+                          <span className="sp-group-count">({group.units.length} units)</span>
                         </div>
                       </td>
                     </tr>
 
-                    {/* ── Unit rows (only when group is expanded) ── */}
+                    {/* ── Unit rows ── */}
                     {isGroupExpanded && group.units.map(row => {
                       const isExpanded     = expandedIds.has(row.id);
                       const isFullExpanded = fullExpandedIds.has(row.id);
@@ -404,6 +413,9 @@ export default function SpearheadPage({ headerCollapsed }) {
                             style={{ cursor: 'pointer' }}
                           >
                             <td><span className="row-expand-hint">{isFullExpanded ? '◆' : isExpanded ? '▲' : '▼'}</span></td>
+                            <td className="col-spearhead">
+                              <span className="spearhead-name">{row.spearhead}</span>
+                            </td>
                             <td className="col-name" onClick={e => { e.stopPropagation(); setDetailUnit(row); }}>
                               <span className="unit-name-link">{row.name}</span>
                             </td>
@@ -430,7 +442,6 @@ export default function SpearheadPage({ headerCollapsed }) {
                             )) : '—'}</td>
                           </tr>
 
-                          {/* ── Weapon expansion ── */}
                           {(isExpanded || isFullExpanded) && (
                             <tr className="weapons-expand-row">
                               <td colSpan={WEAPONS_EXPAND_COLS}>
@@ -525,7 +536,7 @@ export default function SpearheadPage({ headerCollapsed }) {
       return (
         <WarscrollGW
           unit={detailUnit}
-          factions={spearheadFactions.map(f => ({ ...f, grand_alliance: groups.find(g => g.factionSlug === f.faction_slug)?.alliance }))}
+          factions={groups.map(g => ({ faction_slug: g.factionSlug, faction: g.faction, grand_alliance: g.alliance }))}
           navIndex={idx}
           navList={allUnits}
           onClose={() => setDetailUnit(null)}
