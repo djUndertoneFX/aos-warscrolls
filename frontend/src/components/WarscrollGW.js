@@ -37,7 +37,13 @@ function TransparentImage({ src, alt, className, onError }) {
     img.src = src;
   }, [src]);
 
-  useEffect(() => { process(); }, [process]);
+  // Run process when src changes OR when failed resets to false.
+  // The failed-reset case is critical: it ensures process() fires only after
+  // the canvas is mounted (failed=true removes the canvas from the DOM, so
+  // calling process() in the same render cycle as setFailed(false) hits null ref).
+  useEffect(() => {
+    if (!failed) process();
+  }, [failed, process]);
 
   if (failed) return null;
   return <canvas ref={canvasRef} className={className} aria-label={alt} />;
