@@ -14,8 +14,6 @@ function sumADO(weapons, unitSize, save, ward, rounding) {
   return any ? total : null;
 }
 
-const ALLIANCE_ORDER = { Order: 0, Chaos: 1, Death: 2, Destruction: 3 };
-
 function AllianceBadge({ alliance }) {
   return <span className={`alliance-badge alliance-${alliance}`}>{alliance}</span>;
 }
@@ -38,7 +36,6 @@ function TypeTags({ row }) {
   );
 }
 
-// Dropdown that shows spearhead names with faction in parentheses
 function SpearheadDropdown({ groups, value, onChange, placeholder }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -83,15 +80,16 @@ function SpearheadDropdown({ groups, value, onChange, placeholder }) {
 
 const FILTER_KEY = 'aos-sp-filters';
 const DEFAULT_COL_WIDTHS = {
-  expand: 22, spearhead: 160, name: 190, thumb: 44,
+  rownum: 22, friendly: 24, enemy: 24, expand: 22, spearhead: 150,
+  name: 190, thumb: 44, faction: 110, alliance: 66, models: 42,
   move: 42, health: 42, control: 42, save: 42, ward: 38,
-  ado_ranged: 54, ado_melee: 54,
   types: 68, keywords: 130,
+  ado_ranged: 54, ado_melee: 54, ado_pct: 56,
 };
-const STORAGE_KEY = 'aos-sp-col-widths-v3';
-// expand | spearhead | name | thumb | mv | hp | ctrl | sv | wd | ado-r | ado-m | types | kw = 13
-const TOTAL_COLS = 13;
-const WEAPONS_EXPAND_COLS = 11;
+const STORAGE_KEY = 'aos-sp-col-widths-v4';
+// rownum | friendly | enemy | expand | spearhead | name | thumb | faction | alliance | models | mv | hp | ctrl | sv | wd | types | kw | ado-r | ado-m | ado-pct = 20
+const TOTAL_COLS = 20;
+const WEAPONS_EXPAND_COLS = 18;
 
 export default function SpearheadPage({ headerCollapsed }) {
   const { presumedSave, presumedWard, roundingMode, includeSaveWardInADO } = useSettings();
@@ -102,7 +100,6 @@ export default function SpearheadPage({ headerCollapsed }) {
   const [thumbHover, setThumbHover] = useState(null);
   const tableWrapperRef = useRef(null);
 
-  // ── Persisted filter state ────────────────────────────────────────────────
   const saved = useMemo(() => { try { return JSON.parse(localStorage.getItem(FILTER_KEY)) || {}; } catch { return {}; } }, []);
   const [yourSpearhead,    setYourSpearhead]    = useState(saved.yourSpearhead    ?? '');
   const [opponentSpearhead,setOpponentSpearhead] = useState(saved.opponentSpearhead ?? '');
@@ -114,19 +111,16 @@ export default function SpearheadPage({ headerCollapsed }) {
     localStorage.setItem(FILTER_KEY, JSON.stringify({ yourSpearhead, opponentSpearhead, alliance, showFriendly, showEnemy }));
   }, [yourSpearhead, opponentSpearhead, alliance, showFriendly, showEnemy]);
 
-  // ── Per-group expand state ────────────────────────────────────────────────
   const [expandedGroups, setExpandedGroups] = useState(() => {
     const s = new Set();
-    if (saved.yourSpearhead)    s.add(saved.yourSpearhead);
+    if (saved.yourSpearhead)     s.add(saved.yourSpearhead);
     if (saved.opponentSpearhead) s.add(saved.opponentSpearhead);
     return s;
   });
 
-  // ── Per-unit row expand state ─────────────────────────────────────────────
   const [expandedIds,     setExpandedIds]     = useState(new Set());
   const [fullExpandedIds, setFullExpandedIds] = useState(new Set());
 
-  // ── Column resizing ───────────────────────────────────────────────────────
   const [colWidths, setColWidths] = useState(() => {
     try { return { ...DEFAULT_COL_WIDTHS, ...JSON.parse(localStorage.getItem(STORAGE_KEY)) }; }
     catch { return DEFAULT_COL_WIDTHS; }
@@ -147,7 +141,6 @@ export default function SpearheadPage({ headerCollapsed }) {
   }, [colWidths]);
   const thStyle = key => ({ width: colWidths[key], position: 'relative' });
 
-  // ── Fetch all spearhead units once ────────────────────────────────────────
   useEffect(() => {
     setLoading(true);
     axios.get('/api/warscrolls', { params: { spearheadOnly: '1', sortBy: 'faction', sortDir: 'asc', pageSize: 9999, page: 1 } })
@@ -159,9 +152,7 @@ export default function SpearheadPage({ headerCollapsed }) {
       .finally(() => setLoading(false));
   }, []);
 
-  // ── Build groups keyed by spearhead NAME ──────────────────────────────────
-  // row.spearhead may be pipe-separated for units in multiple spearheads:
-  //   "Gnawfeast Clawpack|Warpspark Clawpack"
+  // Build groups keyed by spearhead NAME; pipe-separated values → unit belongs to multiple groups
   const groups = useMemo(() => {
     if (!allRows) return [];
     const map = new Map();
@@ -178,34 +169,29 @@ export default function SpearheadPage({ headerCollapsed }) {
             units: [],
           });
         }
-        // Avoid duplicating the same unit in one group (it may appear in the array twice due to multi-size)
         const g = map.get(key);
         if (!g.units.find(u => u.id === row.id)) g.units.push(row);
       }
     }
     return [...map.values()].sort((a, b) => {
-      const ao = ALLIANCE_ORDER[a.alliance] ?? 99, bo = ALLIANCE_ORDER[b.alliance] ?? 99;
-      if (ao !== bo) return ao - bo;
+      // Sort by faction name then spearhead name within faction
       if (a.faction !== b.faction) return a.faction.localeCompare(b.faction);
       return a.spearheadName.localeCompare(b.spearheadName);
     });
   }, [allRows]);
 
-  // ── Filter groups ─────────────────────────────────────────────────────────
   const visibleGroups = useMemo(() => {
     let filtered = groups;
     if (alliance) filtered = filtered.filter(g => g.alliance === alliance);
     if (showFriendly && showEnemy && yourSpearhead && opponentSpearhead) {
       filtered = filtered.filter(g => g.spearheadName === yourSpearhead || g.spearheadName === opponentSpearhead);
-      if (alliance) filtered = filtered.filter(g => g.alliance === alliance);
     } else {
-      if (showFriendly && yourSpearhead)     filtered = filtered.filter(g => g.spearheadName === yourSpearhead);
-      if (showEnemy   && opponentSpearhead)  filtered = filtered.filter(g => g.spearheadName === opponentSpearhead);
+      if (showFriendly && yourSpearhead)    filtered = filtered.filter(g => g.spearheadName === yourSpearhead);
+      if (showEnemy   && opponentSpearhead) filtered = filtered.filter(g => g.spearheadName === opponentSpearhead);
     }
     return filtered;
   }, [groups, alliance, showFriendly, showEnemy, yourSpearhead, opponentSpearhead]);
 
-  // ── Toggle your/opponent spearhead ────────────────────────────────────────
   const toggleFriendly = name => {
     const next = yourSpearhead === name ? '' : name;
     setYourSpearhead(next);
@@ -221,7 +207,6 @@ export default function SpearheadPage({ headerCollapsed }) {
     setYourSpearhead(opponentSpearhead);
     setOpponentSpearhead(tmp);
   };
-
   const handleYourSpearhead = name => {
     setYourSpearhead(name);
     if (name) setExpandedGroups(prev => { const s = new Set(prev); s.add(name); return s; });
@@ -230,13 +215,8 @@ export default function SpearheadPage({ headerCollapsed }) {
     setOpponentSpearhead(name);
     if (name) setExpandedGroups(prev => { const s = new Set(prev); s.add(name); return s; });
   };
-
   const toggleGroup = name => {
-    setExpandedGroups(prev => {
-      const s = new Set(prev);
-      if (s.has(name)) s.delete(name); else s.add(name);
-      return s;
-    });
+    setExpandedGroups(prev => { const s = new Set(prev); if (s.has(name)) s.delete(name); else s.add(name); return s; });
   };
 
   const [navbarExtrasEl, setNavbarExtrasEl] = useState(null);
@@ -252,6 +232,9 @@ export default function SpearheadPage({ headerCollapsed }) {
   };
   const adoRTip = mkBox(`ADO — Ranged\n  Hit and wound${includeSaveWardInADO ? ` vs ${presumedSave ?? 5}+` : ' only (save not applied)'}.`);
   const adoMTip = mkBox(`ADO — Melee\n  Hit and wound${includeSaveWardInADO ? ` vs ${presumedSave ?? 5}+` : ' only (save not applied)'}.`);
+
+  // Row counter across all visible groups (for # column)
+  let rowCounter = 0;
 
   return (
     <>
@@ -325,17 +308,61 @@ export default function SpearheadPage({ headerCollapsed }) {
           <table>
             <thead>
               <tr>
-                <th style={thStyle('expand')}><span className="col-resize-handle" onMouseDown={e => startResize(e,'expand')} /></th>
-                <th style={{...thStyle('spearhead')}} className="col-spearhead-hdr">
+                <th style={{...thStyle('rownum'), textAlign:'right'}} title="Row number">
+                  <span className="th-abbr" style={{color:'var(--text-dim)'}}>#</span>
+                  <span className="col-resize-handle" onMouseDown={e => startResize(e,'rownum')} />
+                </th>
+                <th style={{...thStyle('friendly')}} title="Friendly (marks whole spearhead)">
+                  <span className="th-abbr" style={{color:'var(--friendly-color)'}}>F</span>
+                  <span className="col-resize-handle" onMouseDown={e => startResize(e,'friendly')} />
+                </th>
+                <th style={{...thStyle('enemy')}} title="Enemy (marks whole spearhead)">
+                  <span className="th-abbr" style={{color:'var(--enemy-color)'}}>E</span>
+                  <span className="col-resize-handle" onMouseDown={e => startResize(e,'enemy')} />
+                </th>
+                <th style={thStyle('expand')}>
+                  <span className="col-resize-handle" onMouseDown={e => startResize(e,'expand')} />
+                </th>
+                <th style={thStyle('spearhead')} className="col-spearhead-hdr">
                   Spearhead<span className="col-resize-handle" onMouseDown={e => startResize(e,'spearhead')} />
                 </th>
-                <th style={thStyle('name')}>Unit Name<span className="col-resize-handle" onMouseDown={e => startResize(e,'name')} /></th>
-                <th style={thStyle('thumb')}><span className="col-resize-handle" onMouseDown={e => startResize(e,'thumb')} /></th>
-                <th style={thStyle('move')}    className="stat-group stat-group-start" title="Move"><span className="th-abbr">Mv</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'move')} /></th>
-                <th style={thStyle('health')}  className="stat-group" title="Health"><span className="th-abbr">HP</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'health')} /></th>
-                <th style={thStyle('control')} className="stat-group" title="Control"><span className="th-abbr">Ctrl</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'control')} /></th>
-                <th style={thStyle('save')}    className="stat-group stat-group-end" title="Save"><span className="th-abbr">Sv</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'save')} /></th>
-                <th style={thStyle('ward')}    className="col-ward" title="Ward"><span className="th-abbr">Wd</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'ward')} /></th>
+                <th style={thStyle('name')}>
+                  Unit Name<span className="col-resize-handle" onMouseDown={e => startResize(e,'name')} />
+                </th>
+                <th style={thStyle('thumb')}>
+                  <span className="col-resize-handle" onMouseDown={e => startResize(e,'thumb')} />
+                </th>
+                <th style={thStyle('faction')}>
+                  Faction<span className="col-resize-handle" onMouseDown={e => startResize(e,'faction')} />
+                </th>
+                <th style={thStyle('alliance')}>
+                  Alliance<span className="col-resize-handle" onMouseDown={e => startResize(e,'alliance')} />
+                </th>
+                <th style={thStyle('models')} title="Models in unit">
+                  <span className="th-abbr">MDL</span>
+                  <span className="col-resize-handle" onMouseDown={e => startResize(e,'models')} />
+                </th>
+                <th style={thStyle('move')}    className="stat-group stat-group-start" title="Move">
+                  <span className="th-abbr">Mv</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'move')} />
+                </th>
+                <th style={thStyle('health')}  className="stat-group" title="Health">
+                  <span className="th-abbr">HP</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'health')} />
+                </th>
+                <th style={thStyle('control')} className="stat-group" title="Control">
+                  <span className="th-abbr">Ctrl</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'control')} />
+                </th>
+                <th style={thStyle('save')}    className="stat-group stat-group-end" title="Save">
+                  <span className="th-abbr">Sv</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'save')} />
+                </th>
+                <th style={thStyle('ward')}    className="col-ward" title="Ward">
+                  <span className="th-abbr">Wd</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'ward')} />
+                </th>
+                <th style={thStyle('types')}>
+                  Types<span className="col-resize-handle" onMouseDown={e => startResize(e,'types')} />
+                </th>
+                <th style={thStyle('keywords')}>
+                  Keywords<span className="col-resize-handle" onMouseDown={e => startResize(e,'keywords')} />
+                </th>
                 <th style={{...thStyle('ado_ranged'), textAlign:'center'}} className="col-ado-hdr">
                   <span className="ado-tip">{adoRTip}ADO-R</span>
                   <span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_ranged'); }} />
@@ -344,8 +371,10 @@ export default function SpearheadPage({ headerCollapsed }) {
                   <span className="ado-tip">{adoMTip}ADO-M</span>
                   <span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_melee'); }} />
                 </th>
-                <th style={thStyle('types')}>Types<span className="col-resize-handle" onMouseDown={e => startResize(e,'types')} /></th>
-                <th style={thStyle('keywords')}>Keywords<span className="col-resize-handle" onMouseDown={e => startResize(e,'keywords')} /></th>
+                <th style={{...thStyle('ado_pct'), textAlign:'center'}} className="col-ado-hdr" title="ADO efficiency (ADO per point × 1000)">
+                  <span className="th-abbr">ADO/E</span>
+                  <span className="col-resize-handle" onMouseDown={e => startResize(e,'ado_pct')} />
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -368,7 +397,6 @@ export default function SpearheadPage({ headerCollapsed }) {
                     >
                       <td colSpan={TOTAL_COLS}>
                         <div className="sp-group-hdr-inner">
-                          {/* F/E buttons on the LEFT */}
                           <span className="sp-group-flags" onClick={e => e.stopPropagation()}>
                             <button
                               className={`sp-flag-btn sp-flag-f${isFriendly ? ' active' : ''}`}
@@ -392,6 +420,8 @@ export default function SpearheadPage({ headerCollapsed }) {
 
                     {/* ── Unit rows ── */}
                     {isGroupExpanded && group.units.map(row => {
+                      rowCounter++;
+                      const rowNum = rowCounter;
                       const isExpanded     = expandedIds.has(row.id);
                       const isFullExpanded = fullExpandedIds.has(row.id);
                       const weapons = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
@@ -402,8 +432,12 @@ export default function SpearheadPage({ headerCollapsed }) {
                       const melee  = resolvedWeapons.filter(w => w.type === 'melee');
                       const adoRanged = sumADO(ranged, row.unit_size, save, ward, roundingMode);
                       const adoMelee  = sumADO(melee,  row.unit_size, save, ward, roundingMode);
+                      const adoTotal = (adoRanged ?? 0) + (adoMelee ?? 0);
+                      const adoPct   = (adoRanged !== null || adoMelee !== null) && row.points
+                        ? Math.round(adoTotal / row.points * 1000) : null;
+                      // Show the specific spearhead name for this group (not all pipe-separated names)
                       return (
-                        <React.Fragment key={row.id}>
+                        <React.Fragment key={`${group.spearheadName}-${row.id}`}>
                           <tr
                             className={`unit-row sp-unit-row${isFriendly ? ' sp-unit-friendly' : ''}${isEnemy ? ' sp-unit-enemy' : ''}${(isExpanded || isFullExpanded) ? ' expanded' : ''}${isFullExpanded ? ' full-expanded' : ''}${detailUnit?.id === row.id ? ' active-detail' : ''}`}
                             data-unit-id={row.id}
@@ -419,9 +453,16 @@ export default function SpearheadPage({ headerCollapsed }) {
                             }}
                             style={{ cursor: 'pointer' }}
                           >
+                            <td className="col-rownum" style={{textAlign:'right', color:'var(--text-dim)', fontSize:'0.75em'}}>{rowNum}</td>
+                            <td className="col-flag" onClick={e => { e.stopPropagation(); toggleFriendly(group.spearheadName); }}>
+                              <span className={`flag-check friendly${isFriendly ? ' active' : ''}`}>✓</span>
+                            </td>
+                            <td className="col-flag" onClick={e => { e.stopPropagation(); toggleEnemy(group.spearheadName); }}>
+                              <span className={`flag-check enemy${isEnemy ? ' active' : ''}`}>✓</span>
+                            </td>
                             <td><span className="row-expand-hint">{isFullExpanded ? '◆' : isExpanded ? '▲' : '▼'}</span></td>
                             <td className="col-spearhead">
-                              <span className="spearhead-name">{row.spearhead}</span>
+                              <span className="spearhead-name">{group.spearheadName}</span>
                             </td>
                             <td className="col-name" onClick={e => { e.stopPropagation(); setDetailUnit(row); }}>
                               <span className="unit-name-link">{row.name}</span>
@@ -436,17 +477,23 @@ export default function SpearheadPage({ headerCollapsed }) {
                                 onError={e => { e.target.style.display = 'none'; }}
                               />
                             </td>
+                            <td className="col-faction">{row.faction}</td>
+                            <td className="col-alliance">
+                              {row.grand_alliance && <AllianceBadge alliance={row.grand_alliance} />}
+                            </td>
+                            <td className="col-stat">{row.unit_size || '—'}</td>
                             <td className="col-stat stat-group stat-group-start">{row.move    || '—'}</td>
                             <td className="col-stat stat-group"                  >{row.health  || '—'}</td>
                             <td className="col-stat stat-group"                  >{row.control || '—'}</td>
                             <td className="col-stat stat-group stat-group-end"   >{row.save    || '—'}</td>
                             <td className="col-stat col-ward"                    >{row.ward    || '—'}</td>
-                            <td className="col-ado">{adoRanged !== null ? adoRanged : '—'}</td>
-                            <td className="col-ado">{adoMelee  !== null ? adoMelee  : '—'}</td>
                             <td><TypeTags row={row} /></td>
                             <td className="col-keywords">{row.keywords ? row.keywords.split(',').slice(0, 6).map((kw, i, arr) => (
                               <span key={kw} className="kw-chip">{kw.trim()}{i < arr.length - 1 ? ', ' : ''}</span>
                             )) : '—'}</td>
+                            <td className="col-ado">{adoRanged !== null ? adoRanged : '—'}</td>
+                            <td className="col-ado">{adoMelee  !== null ? adoMelee  : '—'}</td>
+                            <td className="col-ado">{adoPct    !== null ? adoPct    : '—'}</td>
                           </tr>
 
                           {(isExpanded || isFullExpanded) && (
