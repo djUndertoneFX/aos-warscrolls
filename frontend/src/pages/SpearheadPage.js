@@ -107,6 +107,7 @@ export default function SpearheadPage({ headerCollapsed }) {
   const [alliance,         setAlliance]          = useState(saved.alliance ?? '');
   const [showFriendly,     setShowFriendly]      = useState(saved.showFriendly ?? false);
   const [showEnemy,        setShowEnemy]          = useState(saved.showEnemy ?? false);
+  const [nameSearch,       setNameSearch]        = useState('');
 
   useEffect(() => {
     localStorage.setItem(FILTER_KEY, JSON.stringify({ yourSpearhead, opponentSpearhead, alliance, showFriendly, showEnemy }));
@@ -196,6 +197,13 @@ export default function SpearheadPage({ headerCollapsed }) {
 
   const visibleGroups = useMemo(() => {
     let filtered = groups;
+    if (nameSearch.trim()) {
+      const q = nameSearch.trim().toLowerCase();
+      filtered = filtered.filter(g =>
+        g.spearheadName.toLowerCase().includes(q) ||
+        g.faction.toLowerCase().includes(q)
+      );
+    }
     if (alliance) filtered = filtered.filter(g => g.alliance === alliance);
     if (showFriendly && showEnemy && yourSpearhead && opponentSpearhead) {
       filtered = filtered.filter(g => g.spearheadName === yourSpearhead || g.spearheadName === opponentSpearhead);
@@ -204,7 +212,7 @@ export default function SpearheadPage({ headerCollapsed }) {
       if (showEnemy   && opponentSpearhead) filtered = filtered.filter(g => g.spearheadName === opponentSpearhead);
     }
     return filtered;
-  }, [groups, alliance, showFriendly, showEnemy, yourSpearhead, opponentSpearhead]);
+  }, [groups, nameSearch, alliance, showFriendly, showEnemy, yourSpearhead, opponentSpearhead]);
 
   const toggleFriendly = name => {
     const next = yourSpearhead === name ? '' : name;
@@ -282,7 +290,18 @@ export default function SpearheadPage({ headerCollapsed }) {
           {allRows && <div className="unit-count">{groups.length} spearhead armies</div>}
         </div>
 
-        <div className="filters">
+        <div className="filters sp-filters-row1">
+          <div className="filter-group sp-search-group">
+            <div className="filter-label">Search</div>
+            <input
+              className="filter-input"
+              type="text"
+              placeholder="Name or faction…"
+              value={nameSearch}
+              onChange={e => setNameSearch(e.target.value)}
+            />
+          </div>
+
           <div className="filter-group">
             <div className="filter-label">Grand Alliance</div>
             <select className="filter-select" value={alliance} onChange={e => setAlliance(e.target.value)}>
@@ -296,23 +315,22 @@ export default function SpearheadPage({ headerCollapsed }) {
             <SpearheadDropdown groups={groups} value={yourSpearhead} onChange={handleYourSpearhead} placeholder="— None —" />
           </div>
 
-          <div className="filter-group" style={{justifyContent:'center', paddingTop:'1.1rem'}}>
-            <button
-              className={`btn-both-toggle${(yourSpearhead || opponentSpearhead) && yourSpearhead !== opponentSpearhead ? ' active' : ''}`}
-              title="Swap" onClick={swapSpearheads}>⇔</button>
-          </div>
-
           <div className="filter-group">
             <div className="filter-label" style={{color:'var(--enemy-color)'}}>Opponent's Spearhead</div>
             <SpearheadDropdown groups={groups} value={opponentSpearhead} onChange={handleOpponentSpearhead} placeholder="— None —" />
           </div>
+        </div>
 
+        <div className="filters sp-filters-row2">
           <div className="filter-checkboxes">
             <div className="cb-group cb-group-left">
               <label className="cb-item">
                 <input type="checkbox" checked={showFriendly} onChange={e => setShowFriendly(e.target.checked)} />
                 <span style={{color:'var(--friendly-color)'}}>Friendly</span>
               </label>
+              <button
+                className={`btn-both-toggle${(yourSpearhead || opponentSpearhead) && yourSpearhead !== opponentSpearhead ? ' active' : ''}`}
+                title="Swap Your / Opponent spearheads" onClick={swapSpearheads}>⇔</button>
               <label className="cb-item">
                 <input type="checkbox" checked={showEnemy} onChange={e => setShowEnemy(e.target.checked)} />
                 <span style={{color:'var(--enemy-color)'}}>Enemy</span>

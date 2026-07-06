@@ -868,6 +868,21 @@ input, select {
   align-items: end;
 }
 
+/* Spearhead page: two-row filter layout */
+.sp-filters-row1 {
+  grid-template-columns: 1fr 160px 1fr 1fr;
+  margin-bottom: 0;
+}
+.sp-filters-row2 {
+  grid-template-columns: 1fr;
+  margin-top: 0;
+  margin-bottom: 0.6rem;
+}
+.sp-filters-row2 .filter-checkboxes {
+  border-top: none;
+  padding-top: 0.3rem;
+}
+
 .filter-group { display: flex; flex-direction: column; gap: 0.3rem; }
 .filter-label {
   font-family: 'Cinzel', serif;
