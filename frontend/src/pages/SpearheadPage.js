@@ -435,7 +435,6 @@ export default function SpearheadPage({ headerCollapsed }) {
                           </span>
                           <span className="sp-group-chevron">{isGroupExpanded ? '▼' : '▶'}</span>
                           <AllianceBadge alliance={group.alliance} />
-                          <span className="sp-group-faction">{group.faction}</span>
                           <span className="sp-group-name">{group.spearheadName}</span>
                           <span className="sp-group-count">({group.units.length} units)</span>
                           {/* Rules toggle button */}
