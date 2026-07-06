@@ -320,15 +320,12 @@ export default function SpearheadPage({ headerCollapsed }) {
 
   const allUnits = useMemo(() => visibleGroups.flatMap(g => g.units.map(u => ({ ...u, _spName: g.spearheadName }))), [visibleGroups]);
 
-  // When the filter swaps (allUnits changes), navigate the warscroll viewer to the
-  // first unit of the newly visible list if the current unit is no longer present.
-  useEffect(() => {
-    if (!detailUnit) return;
-    const stillPresent = allUnits.some(u => u.id === detailUnit.id);
-    if (!stillPresent) {
-      setDetailUnit(allUnits.length > 0 ? allUnits[0] : null);
-    }
-  }, [allUnits]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Navigate the warscroll viewer to the first unit of a named spearhead
+  const jumpToSpearhead = useCallback((spName) => {
+    if (!spName) return;
+    const g = groups.find(gr => gr.spearheadName === spName);
+    if (g?.units[0]) setDetailUnit({ ...g.units[0], _spName: g.spearheadName });
+  }, [groups]);
 
   const mkBox = str => {
     const [title, ...rest] = str.split('\n');
@@ -813,9 +810,22 @@ export default function SpearheadPage({ headerCollapsed }) {
           spearheadData={spearheadDataForViewer}
           allSpearheadRulesMap={spearheadRules}
           {...(yourSpearhead && opponentSpearhead ? {
-            onSwapFriendlyEnemy: () => { swapSpearheads(); },
-            onShowFriendlyOnly:  () => { setShowFriendly(true);  setShowEnemy(false); },
-            onShowEnemyOnly:     () => { setShowFriendly(false); setShowEnemy(true); },
+            onSwapFriendlyEnemy: () => {
+              // Determine which spearhead we're switching TO before swapping booleans
+              const targetSp = showFriendly && !showEnemy ? opponentSpearhead
+                             : showEnemy && !showFriendly ? yourSpearhead
+                             : null; // both shown — swap booleans only
+              swapSpearheads();
+              if (targetSp) jumpToSpearhead(targetSp);
+            },
+            onShowFriendlyOnly: () => {
+              setShowFriendly(true); setShowEnemy(false);
+              jumpToSpearhead(yourSpearhead);
+            },
+            onShowEnemyOnly: () => {
+              setShowFriendly(false); setShowEnemy(true);
+              jumpToSpearhead(opponentSpearhead);
+            },
           } : {})}
         />
       );
