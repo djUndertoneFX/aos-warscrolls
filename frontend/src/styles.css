@@ -1321,7 +1321,11 @@ tr.spearhead-group-hdr.sp-group-enemy td {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.4rem 0.6rem;
+  padding: 0.3rem 0.4rem;
+}
+tr.spearhead-group-hdr td:not(.sp-group-hdr-inner td) {
+  vertical-align: middle;
+  padding: 0 4px;
 }
 .sp-group-chevron {
   font-size: 0.65rem;

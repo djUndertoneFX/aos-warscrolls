@@ -413,38 +413,40 @@ export default function SpearheadPage({ headerCollapsed }) {
                 );
                 return (
                   <React.Fragment key={group.spearheadName}>
-                    {/* ── Spearhead group header ── */}
+                    {/* ── Spearhead group header — one cell per column so faction/alliance land in the right place ── */}
                     <tr
                       className={`spearhead-group-hdr${isFriendly ? ' sp-group-friendly' : ''}${isEnemy ? ' sp-group-enemy' : ''}`}
                       onClick={() => toggleGroup(group.spearheadName)}
                       style={{ cursor: 'pointer' }}
                     >
-                      <td colSpan={TOTAL_COLS}>
+                      {/* col 1: # — show group number */}
+                      <td className="col-rownum" style={{textAlign:'right', color:'var(--text-dim)', fontSize:'0.75em'}}>{groupCounter}</td>
+                      {/* col 2: F */}
+                      <td onClick={e => e.stopPropagation()}>
+                        <button className={`sp-flag-btn sp-flag-f${isFriendly ? ' active' : ''}`}
+                          title={isFriendly ? 'Clear friendly' : 'Mark as Your Spearhead'}
+                          onClick={() => toggleFriendly(group.spearheadName)}>F</button>
+                      </td>
+                      {/* col 3: E */}
+                      <td onClick={e => e.stopPropagation()}>
+                        <button className={`sp-flag-btn sp-flag-e${isEnemy ? ' active' : ''}`}
+                          title={isEnemy ? 'Clear enemy' : "Mark as Opponent's Spearhead"}
+                          onClick={() => toggleEnemy(group.spearheadName)}>E</button>
+                      </td>
+                      {/* col 4: expand chevron */}
+                      <td><span className="sp-group-chevron">{isGroupExpanded ? '▼' : '▶'}</span></td>
+                      {/* col 5: Spearhead — thumbnail + name + unit count + rules btn */}
+                      <td>
                         <div className="sp-group-hdr-inner">
-                          <span className="sp-group-flags" onClick={e => e.stopPropagation()}>
-                            <button
-                              className={`sp-flag-btn sp-flag-f${isFriendly ? ' active' : ''}`}
-                              title={isFriendly ? 'Clear friendly' : 'Mark as Your Spearhead'}
-                              onClick={() => toggleFriendly(group.spearheadName)}
-                            >F</button>
-                            <button
-                              className={`sp-flag-btn sp-flag-e${isEnemy ? ' active' : ''}`}
-                              title={isEnemy ? 'Clear enemy' : "Mark as Opponent's Spearhead"}
-                              onClick={() => toggleEnemy(group.spearheadName)}
-                            >E</button>
-                          </span>
-                          <span className="sp-group-chevron">{isGroupExpanded ? '▼' : '▶'}</span>
                           <img
                             className="sp-group-thumb"
                             src={`${axios.defaults.baseURL || ''}/api/spearhead-image/${encodeURIComponent(group.spearheadName)}`}
                             alt=""
                             onError={e => { e.target.style.display = 'none'; }}
                           />
-                          <AllianceBadge alliance={group.alliance} />
                           <span className="sp-group-name">{group.spearheadName}</span>
-                          <span className="sp-group-count">({group.units.length} units)</span>
-                          {/* Rules toggle button */}
-                          <span className="sp-group-rules-flags" onClick={e => e.stopPropagation()}>
+                          <span className="sp-group-count">({group.units.length})</span>
+                          <span onClick={e => e.stopPropagation()}>
                             <button
                               className={`sp-rules-btn${isRulesExpanded ? ' active' : ''}${!hasRules ? ' sp-rules-btn-dim' : ''}`}
                               title={isRulesExpanded ? 'Hide rules' : 'Show Battle Traits & Abilities'}
@@ -453,6 +455,16 @@ export default function SpearheadPage({ headerCollapsed }) {
                           </span>
                         </div>
                       </td>
+                      {/* col 6: Unit Name — empty */}
+                      <td />
+                      {/* col 7: thumb — empty */}
+                      <td />
+                      {/* col 8: Faction */}
+                      <td className="col-faction">{group.faction}</td>
+                      {/* col 9: Alliance */}
+                      <td className="col-alliance"><AllianceBadge alliance={group.alliance} /></td>
+                      {/* cols 10-20: remaining stat cols — empty */}
+                      <td colSpan={11} />
                     </tr>
 
                     {/* ── Spearhead rules row ── */}
