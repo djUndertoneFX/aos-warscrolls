@@ -537,8 +537,13 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
       // Already on a faction/spearhead slide — go to previous slide in same group
       const slides = resolveSlidesFor(activePage.factionSlug);
       const idx = slides.findIndex(s => s.key === activePage.slideKey);
-      if (idx > 0) setActivePage({ factionSlug: activePage.factionSlug, slideKey: slides[idx - 1].key });
-      // idx === 0: leftmost slide, stay
+      if (idx > 0) {
+        setActivePage({ factionSlug: activePage.factionSlug, slideKey: slides[idx - 1].key });
+      } else {
+        // At leftmost slide: exit to unit view and step to previous unit
+        setActivePage(null);
+        onPrev?.();
+      }
       return;
     }
     // In unit mode — check if we're at the first unit of a faction group
@@ -780,7 +785,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
                     {/* Purple rule slide dots for this faction */}
                     {slides.map(s => (
                       <span key={s.key}
-                        className={`gw-nav-dot-faction${activePage?.factionSlug === group.faction_slug && activePage?.slideKey === s.key ? ' gw-nav-dot-faction-active' : ''}`}
+                        className={`gw-nav-dot-faction${activePage?.factionSlug === group.faction_slug && activePage?.slideKey === s.key && navIndex >= group.startIdx && navIndex <= group.endIdx ? ' gw-nav-dot-faction-active' : ''}`}
                         title={`${group.faction} — ${SLIDE_LABELS[s.key] ?? s.key}`}
                         onClick={() => setActivePage({ factionSlug: group.faction_slug, slideKey: s.key })}
                       />
