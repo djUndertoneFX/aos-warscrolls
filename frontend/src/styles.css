@@ -475,6 +475,24 @@ input, select {
 .auth-switch a { color: var(--gold); }
 .auth-switch a:hover { color: var(--gold-light); }
 
+.login-disclaimer {
+  margin-top: 2rem;
+  padding: 1rem 1.1rem;
+  border-top: 1px solid var(--border);
+  text-align: left;
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  line-height: 1.55;
+  opacity: 0.75;
+}
+.login-disclaimer p { margin: 0 0 0.65rem; }
+.login-disclaimer p:last-child { margin-bottom: 0; }
+.login-disclaimer-heading {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--text);
+}
+
 .auth-success {
   color: var(--parchment);
   font-size: 0.92rem;

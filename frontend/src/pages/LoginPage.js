@@ -78,6 +78,14 @@ export default function LoginPage() {
         <p className="auth-switch" style={{ marginTop: '0.4rem' }}>
           <Link to="/forgot-password">Forgot your password?</Link>
         </p>
+
+        <div className="login-disclaimer">
+          <p className="login-disclaimer-heading">For personal use only, of a single individual and their immediate gaming group.</p>
+          <p>This website was created for an individual person, getting into the game&hellip; to better learn the units, see how they compare against one another and have a very fast, live digital reference at matches. And run some simulations to see how various units stack up against one another.</p>
+          <p>Some friends and family have been invited, for beta and kleenex testing only.</p>
+          <p>This website is not designed for profit nor public consumption.</p>
+          <p>Please do not log in, if you have not been invited. If there are any issues legally or otherwise here, please contact us and we will lock the site down to avoid unintended usage.</p>
+        </div>
       </div>
     </div>
   );
