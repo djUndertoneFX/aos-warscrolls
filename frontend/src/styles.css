@@ -1380,6 +1380,111 @@ tr.sp-unit-row { border-left: 2px solid transparent; }
 tr.sp-unit-row.sp-unit-friendly { border-left-color: rgba(80,200,120,0.4); }
 tr.sp-unit-row.sp-unit-enemy    { border-left-color: rgba(220,80,80,0.4); }
 
+/* ── Rules toggle button ── */
+.sp-group-rules-flags { margin-left: auto; flex-shrink: 0; }
+.sp-rules-btn {
+  background: rgba(160,100,220,0.1);
+  border: 1px solid rgba(160,100,220,0.35);
+  color: rgba(160,100,220,0.7);
+  border-radius: 3px;
+  font-size: 0.82rem;
+  padding: 1px 6px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  line-height: 1.4;
+}
+.sp-rules-btn:hover, .sp-rules-btn.active {
+  background: rgba(160,100,220,0.22);
+  color: #c090f0;
+  border-color: rgba(160,100,220,0.7);
+}
+.sp-rules-btn-dim { opacity: 0.35; }
+
+/* ── Spearhead rules row ── */
+tr.sp-rules-row td { background: rgba(160,100,220,0.04); border-top: 1px solid rgba(160,100,220,0.18); border-bottom: 1px solid rgba(160,100,220,0.12); }
+.sp-rules-inner { padding: 12px 16px; display: flex; flex-direction: column; gap: 14px; }
+.sp-rules-empty { color: var(--text-dim); font-style: italic; font-size: 0.85rem; margin: 0; }
+.sp-rules-section { display: flex; flex-direction: column; gap: 8px; }
+.sp-rules-section-hdr {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #c090f0;
+  border-bottom: 1px solid rgba(160,100,220,0.3);
+  padding-bottom: 4px;
+}
+.sp-rules-cards { display: flex; flex-wrap: wrap; gap: 8px; }
+.sp-rules-card {
+  background: rgba(160,100,220,0.07);
+  border: 1px solid rgba(160,100,220,0.25);
+  border-radius: 5px;
+  padding: 8px 10px;
+  flex: 1 1 260px;
+  min-width: 200px;
+  max-width: 420px;
+}
+.sp-rules-card-hdr { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
+.sp-rules-card-name { font-weight: 600; color: #d8b8f8; font-size: 0.85rem; }
+.sp-rules-card-timing {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #a070d0;
+  background: rgba(160,100,220,0.15);
+  border: 1px solid rgba(160,100,220,0.3);
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+.sp-rules-card-text { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5; }
+
+/* ── Spearhead nav dots (bright purple, differentiated from faction dots) ── */
+.gw-nav-dot-sp {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  background: rgba(200,140,255,0.28);
+  border: 1px solid rgba(200,140,255,0.55);
+  flex-shrink: 0;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.2s, border-color 0.2s, transform 0.2s;
+}
+.gw-nav-dot-sp:hover { background: rgba(200,140,255,0.5); border-color: rgba(200,140,255,0.8); }
+.gw-nav-dot-sp-active {
+  background: #c890ff;
+  border-color: #e0b8ff;
+  transform: scale(1.35);
+}
+
+/* ── Spearhead slide header (purple instead of faction's gold) ── */
+.gw-spearhead-slide-header {
+  background: #0c0a12;
+  border-bottom: 2px solid #9060d0;
+  padding: 18px 20px 14px;
+  text-align: center;
+}
+.gw-spearhead-slide-name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #c090f0;
+  margin-top: 4px;
+  font-family: 'Palatino Linotype', Georgia, serif;
+}
+.gw-spearhead-slide-title {
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: #e8d8ff;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-family: 'Palatino Linotype', Georgia, serif;
+  margin-top: 6px;
+  text-shadow: 0 0 24px rgba(160,100,220,0.35);
+}
+
 /* ── ADO HTML tooltip ── */
 .ado-tip {
   position: relative;

@@ -339,7 +339,7 @@ function getPrimaryType(u) {
   return 'Other';
 }
 
-export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onFilterApply, factions = [], navIndex, navList }) {
+export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onFilterApply, factions = [], navIndex, navList, spearheadData }) {
   const navTotal = navList ? navList.length : 0;
   const { showFlavorText, showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore } = useSettings();
   const weapons   = React.useMemo(() => { try { return JSON.parse(unit.weapons   || '[]'); } catch { return []; } }, [unit]);
@@ -393,20 +393,27 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
   // Reset faction slide when the displayed unit changes
   useEffect(() => { setFactionSlide(null); }, [unit?.id]);
 
-  // Fetch faction rules once per faction slug
+  // Fetch faction rules once per faction slug (skipped in spearhead mode)
   useEffect(() => {
-    if (!unit?.faction_slug) return;
+    if (spearheadData || !unit?.faction_slug) return;
     let cancelled = false;
     setFactionRules(null);
     axios.get(`/api/faction-rules/${unit.faction_slug}`)
       .then(r => { if (!cancelled) setFactionRules(r.data); })
       .catch(() => { if (!cancelled) setFactionRules({ traits: [], formations: [] }); });
     return () => { cancelled = true; };
-  }, [unit?.faction_slug]);
+  }, [unit?.faction_slug, spearheadData]);
 
-  // Build ordered list of enabled faction slides (left-to-right, so prev navigates rightward through them)
-  // Each entry: { key, has, data }
+  // Build active slides — spearhead mode replaces faction slides with 2 spearhead-specific pages
   const factionSlides = React.useMemo(() => {
+    if (spearheadData) {
+      const slides = [];
+      if ((spearheadData.battleTraits ?? []).length > 0)
+        slides.push({ key: 'sp_traits',    isSpearhead: true, data: spearheadData.battleTraits });
+      if ((spearheadData.regimentAbilities ?? []).length > 0 || (spearheadData.enhancements ?? []).length > 0)
+        slides.push({ key: 'sp_regiment',  isSpearhead: true, data: [...(spearheadData.regimentAbilities ?? []), ...(spearheadData.enhancements ?? [])] });
+      return slides;
+    }
     if (!factionRules) return [];
     const spellPrayerData = [...(factionRules.spell_lore ?? []), ...(factionRules.prayer_lore ?? [])];
     return [
@@ -417,7 +424,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
       { key: 'formations',         enabled: showBattleFormations,  data: factionRules.formations ?? [] },
       { key: 'traits',             enabled: showBattleTraits,      data: factionRules.traits ?? [] },
     ].filter(s => s.enabled && s.data.length > 0);
-  }, [factionRules, showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore]);
+  }, [factionRules, spearheadData, showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore]);
 
   // Scroll to top when switching slides
   useEffect(() => {
@@ -613,12 +620,12 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
             ref={dotsInnerRef}
             style={{ transform: `translateX(${dotsTranslate}px)`, transition: dotsHasOverflow ? 'transform 0.25s ease' : 'none' }}
           >
-            {/* Faction slide dots (square, purple) — leftmost = furthest from units */}
+            {/* Faction/Spearhead slide dots (square) — leftmost = furthest from units */}
             {factionSlides.map(s => (
               <span
                 key={s.key}
-                className={`gw-nav-dot-faction${factionSlide === s.key ? ' gw-nav-dot-faction-active' : ''}`}
-                title={s.key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                className={`${s.isSpearhead ? 'gw-nav-dot-sp' : 'gw-nav-dot-faction'}${factionSlide === s.key ? (s.isSpearhead ? ' gw-nav-dot-sp-active' : ' gw-nav-dot-faction-active') : ''}`}
+                title={s.key === 'sp_traits' ? 'Battle Traits' : s.key === 'sp_regiment' ? 'Regiment Abilities & Enhancements' : s.key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
                 onClick={() => setFactionSlide(s.key)}
               />
             ))}
@@ -642,11 +649,36 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
           </div>
         )}
 
-        {/* ── Faction slide content (replaces warscroll when active) ── */}
-        {factionSlide !== null && factionRules && (() => {
+        {/* ── Slide content (spearhead or faction, replaces warscroll when active) ── */}
+        {factionSlide !== null && (() => {
           const slide = factionSlides.find(s => s.key === factionSlide);
           if (!slide) return null;
 
+          // Spearhead slides
+          if (slide.isSpearhead) {
+            const title = factionSlide === 'sp_traits' ? 'Battle Traits' : 'Regiment Abilities & Enhancements';
+            const subtitle = spearheadData?.spearheadName ?? '';
+            return (
+              <div className="gw-faction-slide gw-spearhead-slide">
+                <div className="gw-spearhead-slide-header">
+                  <div className="gw-header-type" style={{color:'#c8a0f0'}}>{unit.grand_alliance?.toUpperCase()}{unit.grand_alliance && unit.faction ? ' · ' : ''}{unit.faction?.toUpperCase()}</div>
+                  <div className="gw-spearhead-slide-name">{subtitle}</div>
+                  <div className="gw-spearhead-slide-title">{title.toUpperCase()}</div>
+                </div>
+                <div className="gw-faction-slide-body">
+                  {slide.data.length === 0
+                    ? <p style={{color:'var(--text-dim)',fontStyle:'italic',padding:'1rem'}}>No data available for this spearhead.</p>
+                    : <div className="gw-abilities-grid">
+                        {slide.data.map((ab, i) => <AbilityCard key={i} ab={{ ...ab, bullets: parseBullets(ab.bullets) }} keywords={[]} />)}
+                      </div>
+                  }
+                </div>
+              </div>
+            );
+          }
+
+          // Faction slides (original behaviour)
+          if (!factionRules) return null;
           const SLIDE_TITLES = {
             traits:             'Battle Traits',
             formations:         'Battle Formations',

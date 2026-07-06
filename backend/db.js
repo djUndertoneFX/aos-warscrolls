@@ -130,6 +130,19 @@ function initDb() {
   try { db.exec('ALTER TABLE warscrolls ADD COLUMN options_text TEXT DEFAULT NULL'); } catch {}
   try { db.exec('ALTER TABLE warscrolls ADD COLUMN spearhead TEXT DEFAULT NULL'); } catch {}
 
+  // Spearhead rules table (battle traits, regiment abilities, enhancements)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS spearheads (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT UNIQUE NOT NULL,
+      faction_slug TEXT NOT NULL,
+      battle_traits TEXT DEFAULT '[]',
+      regiment_abilities TEXT DEFAULT '[]',
+      enhancements TEXT DEFAULT '[]'
+    );
+    CREATE INDEX IF NOT EXISTS idx_spearheads_faction ON spearheads(faction_slug);
+  `);
+
   db.close();
   console.log('Database initialized.');
 }

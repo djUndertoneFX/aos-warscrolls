@@ -335,6 +335,27 @@ function run(opts = {}) {
     db.prepare('UPDATE warscrolls SET spearhead = ? WHERE id = ?').run(value, id);
   }
 
+  // Upsert spearhead rules into the spearheads table
+  const upsert = db.prepare(`
+    INSERT INTO spearheads (name, faction_slug, battle_traits, regiment_abilities, enhancements)
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(name) DO UPDATE SET
+      faction_slug = excluded.faction_slug,
+      battle_traits = excluded.battle_traits,
+      regiment_abilities = excluded.regiment_abilities,
+      enhancements = excluded.enhancements
+  `);
+  for (const sp of SPEARHEADS) {
+    const slug = Array.isArray(sp.faction) ? sp.faction[0] : sp.faction;
+    upsert.run(
+      sp.name,
+      slug,
+      JSON.stringify(sp.battleTraits       || []),
+      JSON.stringify(sp.regimentAbilities  || []),
+      JSON.stringify(sp.enhancements       || []),
+    );
+  }
+
   if (opts.closeDb !== false && require.main === module) db.close();
 
   console.log(`\n✅ Updated ${totalUpdated} unique DB units across ${SPEARHEADS.length} spearheads.`);

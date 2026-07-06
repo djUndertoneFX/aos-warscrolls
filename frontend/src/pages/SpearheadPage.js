@@ -120,6 +120,8 @@ export default function SpearheadPage({ headerCollapsed }) {
 
   const [expandedIds,     setExpandedIds]     = useState(new Set());
   const [fullExpandedIds, setFullExpandedIds] = useState(new Set());
+  const [rulesExpanded,   setRulesExpanded]   = useState(new Set()); // spearhead names with rules row open
+  const [spearheadRules,  setSpearheadRules]  = useState({}); // name → { battleTraits, regimentAbilities, enhancements }
 
   const [colWidths, setColWidths] = useState(() => {
     try { return { ...DEFAULT_COL_WIDTHS, ...JSON.parse(localStorage.getItem(STORAGE_KEY)) }; }
@@ -140,6 +142,17 @@ export default function SpearheadPage({ headerCollapsed }) {
     window.addEventListener('mouseup', onUp);
   }, [colWidths]);
   const thStyle = key => ({ width: colWidths[key], position: 'relative' });
+
+  // Fetch spearhead rules (battle traits, regiment abilities, enhancements)
+  useEffect(() => {
+    axios.get('/api/spearheads')
+      .then(res => {
+        const map = {};
+        for (const sp of res.data) map[sp.name] = sp;
+        setSpearheadRules(map);
+      })
+      .catch(() => {}); // non-fatal — page still works without rules
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -217,6 +230,9 @@ export default function SpearheadPage({ headerCollapsed }) {
   };
   const toggleGroup = name => {
     setExpandedGroups(prev => { const s = new Set(prev); if (s.has(name)) s.delete(name); else s.add(name); return s; });
+  };
+  const toggleRules = name => {
+    setRulesExpanded(prev => { const s = new Set(prev); if (s.has(name)) s.delete(name); else s.add(name); return s; });
   };
 
   const [navbarExtrasEl, setNavbarExtrasEl] = useState(null);
@@ -385,8 +401,15 @@ export default function SpearheadPage({ headerCollapsed }) {
               )}
               {visibleGroups.map(group => {
                 const isGroupExpanded = expandedGroups.has(group.spearheadName);
+                const isRulesExpanded = rulesExpanded.has(group.spearheadName);
                 const isFriendly = yourSpearhead    === group.spearheadName;
                 const isEnemy    = opponentSpearhead === group.spearheadName;
+                const rules = spearheadRules[group.spearheadName];
+                const hasRules = rules && (
+                  (rules.battleTraits?.length > 0) ||
+                  (rules.regimentAbilities?.length > 0) ||
+                  (rules.enhancements?.length > 0)
+                );
                 return (
                   <React.Fragment key={group.spearheadName}>
                     {/* ── Spearhead group header ── */}
@@ -414,9 +437,81 @@ export default function SpearheadPage({ headerCollapsed }) {
                           <span className="sp-group-faction">{group.faction}</span>
                           <span className="sp-group-name">{group.spearheadName}</span>
                           <span className="sp-group-count">({group.units.length} units)</span>
+                          {/* Rules toggle button */}
+                          <span className="sp-group-rules-flags" onClick={e => e.stopPropagation()}>
+                            <button
+                              className={`sp-rules-btn${isRulesExpanded ? ' active' : ''}${!hasRules ? ' sp-rules-btn-dim' : ''}`}
+                              title={isRulesExpanded ? 'Hide rules' : 'Show Battle Traits & Abilities'}
+                              onClick={() => toggleRules(group.spearheadName)}
+                            >≡</button>
+                          </span>
                         </div>
                       </td>
                     </tr>
+
+                    {/* ── Spearhead rules row ── */}
+                    {isRulesExpanded && (
+                      <tr className="sp-rules-row">
+                        <td colSpan={TOTAL_COLS}>
+                          <div className="sp-rules-inner">
+                            {!hasRules ? (
+                              <p className="sp-rules-empty">No rules data available yet for {group.spearheadName}.</p>
+                            ) : (
+                              <>
+                                {rules.battleTraits?.length > 0 && (
+                                  <div className="sp-rules-section">
+                                    <div className="sp-rules-section-hdr">Battle Traits</div>
+                                    <div className="sp-rules-cards">
+                                      {rules.battleTraits.map((t, i) => (
+                                        <div key={i} className="sp-rules-card">
+                                          <div className="sp-rules-card-hdr">
+                                            <span className="sp-rules-card-name">{t.name}</span>
+                                            {t.timing && <span className="sp-rules-card-timing">{t.timing}</span>}
+                                          </div>
+                                          <div className="sp-rules-card-text">{t.text}</div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                {rules.regimentAbilities?.length > 0 && (
+                                  <div className="sp-rules-section">
+                                    <div className="sp-rules-section-hdr">Regiment Abilities</div>
+                                    <div className="sp-rules-cards">
+                                      {rules.regimentAbilities.map((t, i) => (
+                                        <div key={i} className="sp-rules-card">
+                                          <div className="sp-rules-card-hdr">
+                                            <span className="sp-rules-card-name">{t.name}</span>
+                                            {t.timing && <span className="sp-rules-card-timing">{t.timing}</span>}
+                                          </div>
+                                          <div className="sp-rules-card-text">{t.text}</div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                {rules.enhancements?.length > 0 && (
+                                  <div className="sp-rules-section">
+                                    <div className="sp-rules-section-hdr">Enhancements</div>
+                                    <div className="sp-rules-cards">
+                                      {rules.enhancements.map((t, i) => (
+                                        <div key={i} className="sp-rules-card">
+                                          <div className="sp-rules-card-hdr">
+                                            <span className="sp-rules-card-name">{t.name}</span>
+                                            {t.timing && <span className="sp-rules-card-timing">{t.timing}</span>}
+                                          </div>
+                                          <div className="sp-rules-card-text">{t.text}</div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
 
                     {/* ── Unit rows ── */}
                     {isGroupExpanded && group.units.map(row => {
@@ -587,6 +682,15 @@ export default function SpearheadPage({ headerCollapsed }) {
 
     {detailUnit && (() => {
       const idx = allUnits.findIndex(u => u.id === detailUnit.id);
+      // Find which spearhead group this unit belongs to (for the warscroll viewer slides)
+      const unitGroup = visibleGroups.find(g => g.units.some(u => u.id === detailUnit.id));
+      const unitSpRules = unitGroup ? spearheadRules[unitGroup.spearheadName] : null;
+      const spearheadDataForViewer = unitGroup ? {
+        spearheadName:      unitGroup.spearheadName,
+        battleTraits:       unitSpRules?.battleTraits      ?? [],
+        regimentAbilities:  unitSpRules?.regimentAbilities ?? [],
+        enhancements:       unitSpRules?.enhancements      ?? [],
+      } : null;
       return (
         <WarscrollGW
           unit={detailUnit}
@@ -598,6 +702,7 @@ export default function SpearheadPage({ headerCollapsed }) {
           onNext={() => { if (idx < allUnits.length - 1) setDetailUnit(allUnits[idx + 1]); }}
           onJump={i => setDetailUnit(allUnits[i])}
           onFilterApply={() => setDetailUnit(null)}
+          spearheadData={spearheadDataForViewer}
         />
       );
     })()}

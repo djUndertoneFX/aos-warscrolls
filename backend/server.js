@@ -717,6 +717,27 @@ app.get('/api/faction-rules/:slug', requireAuth, (req, res) => {
   }
 });
 
+// GET /api/spearheads — all spearhead rules (battle traits, regiment abilities, enhancements)
+app.get('/api/spearheads', requireAuth, (req, res) => {
+  const db = getDb();
+  try {
+    const rows = db.prepare('SELECT name, faction_slug, battle_traits, regiment_abilities, enhancements FROM spearheads ORDER BY name').all();
+    const result = rows.map(r => ({
+      name: r.name,
+      faction_slug: r.faction_slug,
+      battleTraits:       JSON.parse(r.battle_traits       || '[]'),
+      regimentAbilities:  JSON.parse(r.regiment_abilities  || '[]'),
+      enhancements:       JSON.parse(r.enhancements        || '[]'),
+    }));
+    res.json(result);
+  } catch (e) {
+    console.error('GET /api/spearheads error:', e);
+    res.status(500).json({ error: 'Failed to fetch spearhead rules' });
+  } finally {
+    db.close();
+  }
+});
+
 // GET /api/stats
 app.get('/api/stats', requireAuth, (req, res) => {
   const db = getDb();
