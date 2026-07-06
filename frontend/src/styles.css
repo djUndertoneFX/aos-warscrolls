@@ -1117,7 +1117,7 @@ th {
 th.sortable { cursor: pointer; }
 th.sortable:hover { color: var(--gold); }
 th.sort-active { color: var(--gold); }
-.sort-icon { margin-left: 4px; opacity: 0.7; }
+.sort-icon { margin-left: 2px; }
 
 /* ── Sort column highlight ─────────────────────────────────────────────────
    Column positions: 1=F 2=E 3=▼ 4=name 5=faction 6=alliance

@@ -201,13 +201,11 @@ export default function SpearheadPage({ headerCollapsed }) {
     return [...map.values()];
   }, [allRows]);
 
-  const cycleSort = useCallback((col) => {
-    setSortBy(prev => {
-      if (prev === col) { setSortDir(d => d === 'asc' ? 'desc' : 'asc'); return col; }
-      setSortDir('asc');
-      return col;
-    });
-  }, []);
+  const cycleSort = useCallback((col, e, reset = false) => {
+    if (reset || (e && e.ctrlKey)) { setSortBy('faction'); setSortDir('asc'); }
+    else if (sortBy === col) { setSortDir(d => d === 'asc' ? 'desc' : 'asc'); }
+    else { setSortBy(col); setSortDir('asc'); }
+  }, [sortBy]);
 
   const visibleGroups = useMemo(() => {
     let filtered = groups;
@@ -386,7 +384,7 @@ export default function SpearheadPage({ headerCollapsed }) {
                 <th style={thStyle('expand')}>
                   <span className="col-resize-handle" onMouseDown={e => startResize(e,'expand')} />
                 </th>
-                <th style={thStyle('spearhead')} className="col-spearhead-hdr sortable-col" onClick={() => cycleSort('spearhead')}>
+                <th style={thStyle('spearhead')} className="col-spearhead-hdr sortable-col" onClick={e => cycleSort('spearhead', e)} onContextMenu={e => { e.preventDefault(); cycleSort('spearhead', e, true); }}>
                   Spearhead{sortBy==='spearhead' ? (sortDir==='asc'?' ▲':' ▼') : ''}<span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'spearhead'); }} />
                 </th>
                 <th style={thStyle('name')}>
@@ -395,10 +393,10 @@ export default function SpearheadPage({ headerCollapsed }) {
                 <th style={thStyle('thumb')}>
                   <span className="col-resize-handle" onMouseDown={e => startResize(e,'thumb')} />
                 </th>
-                <th style={thStyle('faction')} className="sortable-col" onClick={() => cycleSort('faction')}>
+                <th style={thStyle('faction')} className="sortable-col" onClick={e => cycleSort('faction', e)} onContextMenu={e => { e.preventDefault(); cycleSort('faction', e, true); }}>
                   Faction{sortBy==='faction' ? (sortDir==='asc'?' ▲':' ▼') : ''}<span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'faction'); }} />
                 </th>
-                <th style={thStyle('alliance')} className="sortable-col" onClick={() => cycleSort('alliance')}>
+                <th style={thStyle('alliance')} className="sortable-col" onClick={e => cycleSort('alliance', e)} onContextMenu={e => { e.preventDefault(); cycleSort('alliance', e, true); }}>
                   Alliance{sortBy==='alliance' ? (sortDir==='asc'?' ▲':' ▼') : ''}<span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'alliance'); }} />
                 </th>
                 <th style={thStyle('models')} title="Models in unit">
