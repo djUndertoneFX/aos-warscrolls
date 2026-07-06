@@ -420,7 +420,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
     if ((spearheadData.battleTraits ?? []).length > 0)
       slides.push({ key: 'sp_traits', isSpearhead: true, data: spearheadData.battleTraits });
     if ((spearheadData.regimentAbilities ?? []).length > 0 || (spearheadData.enhancements ?? []).length > 0)
-      slides.push({ key: 'sp_regiment', isSpearhead: true, data: [...(spearheadData.regimentAbilities ?? []), ...(spearheadData.enhancements ?? [])] });
+      slides.push({ key: 'sp_regiment', isSpearhead: true, regimentAbilities: spearheadData.regimentAbilities ?? [], enhancements: spearheadData.enhancements ?? [] });
     return slides;
   }, [spearheadData]);
 
@@ -801,40 +801,127 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
             const slide = spearheadSlides.find(s => s.key === slideKey);
             if (!slide) return null;
             const title = slideKey === 'sp_traits' ? 'Battle Traits' : 'Regiment Abilities & Enhancements';
+            const spName = spearheadData?.spearheadName ?? '';
+
+            // Checkbox + filter state (localStorage keyed per spearhead + slide)
+            const storageKey = `sp-selected-${spName}-${slideKey}`;
+            const [selectedAbs, setSelectedAbs] = React.useState(() => {
+              try { return new Set(JSON.parse(localStorage.getItem(storageKey) || '[]')); }
+              catch { return new Set(); }
+            });
+            const [filterSelected, setFilterSelected] = React.useState(false);
+
+            const toggleSelected = (name) => {
+              setSelectedAbs(prev => {
+                const next = new Set(prev);
+                next.has(name) ? next.delete(name) : next.add(name);
+                localStorage.setItem(storageKey, JSON.stringify([...next]));
+                return next;
+              });
+            };
+
+            const renderAbilityCard = (ab, i) => {
+              let { text, declare, effect, ...rest } = ab;
+              if (text && !effect) {
+                const effMatch = text.match(/^(.*?)\bEffect:\s*/s);
+                if (effMatch) {
+                  const before = effMatch[1].trim();
+                  const declMatch = before.match(/^Declare:\s*([\s\S]*)/);
+                  if (declMatch) {
+                    declare = declMatch[1].trim() || undefined;
+                    effect = text.slice(effMatch[0].length).trim();
+                  } else {
+                    declare = undefined;
+                    const afterEffect = text.slice(effMatch[0].length).trim();
+                    effect = before ? `${before} ${afterEffect}` : afterEffect;
+                  }
+                } else {
+                  effect = text;
+                }
+              }
+              const isSelected = selectedAbs.has(ab.name);
+              if (filterSelected && !isSelected) return null;
+              return (
+                <div key={i} className="gw-ab-selectable">
+                  <button
+                    className={`gw-ab-checkbox${isSelected ? ' gw-ab-checkbox-on' : ''}`}
+                    onClick={() => toggleSelected(ab.name)}
+                    title={isSelected ? 'Deselect' : 'Select (mark as in use)'}
+                  >{isSelected ? '☑' : '☐'}</button>
+                  <AbilityCard ab={{ ...rest, declare, effect, bullets: parseBullets(ab.bullets) }} keywords={[]} />
+                </div>
+              );
+            };
+
+            const hasSelected = selectedAbs.size > 0;
+
+            if (slideKey === 'sp_regiment') {
+              const ra  = slide.regimentAbilities ?? [];
+              const en  = slide.enhancements ?? [];
+              const raFiltered = filterSelected ? ra.filter(a => selectedAbs.has(a.name)) : ra;
+              const enFiltered = filterSelected ? en.filter(a => selectedAbs.has(a.name)) : en;
+              return (
+                <div className="gw-faction-slide gw-spearhead-slide">
+                  <div className="gw-spearhead-slide-header">
+                    <div className="gw-header-type" style={{color:'#c8a0f0'}}>{unit.grand_alliance?.toUpperCase()}{unit.grand_alliance && unit.faction ? ' · ' : ''}{unit.faction?.toUpperCase()}</div>
+                    <div className="gw-spearhead-slide-name">{spName}</div>
+                    <div className="gw-spearhead-slide-title">{title.toUpperCase()}</div>
+                  </div>
+                  <div className="gw-faction-slide-body">
+                    <div className="gw-sp-filter-bar">
+                      <button
+                        className={`gw-sp-filter-btn${filterSelected ? ' active' : ''}`}
+                        onClick={() => setFilterSelected(f => !f)}
+                        disabled={!hasSelected}
+                        title="Show only selected abilities"
+                      >{filterSelected ? 'Show All' : 'Show Selected'}</button>
+                    </div>
+                    {ra.length > 0 && (
+                      <>
+                        <div className="gw-sp-section-hdr">Regiment Abilities</div>
+                        <div className="gw-abilities-grid">
+                          {ra.map((ab, i) => renderAbilityCard(ab, i))}
+                        </div>
+                      </>
+                    )}
+                    {en.length > 0 && (
+                      <>
+                        <div className="gw-sp-section-sep" />
+                        <div className="gw-sp-section-hdr">Enhancements</div>
+                        <div className="gw-abilities-grid">
+                          {en.map((ab, i) => renderAbilityCard(ab, `e${i}`))}
+                        </div>
+                      </>
+                    )}
+                    {filterSelected && raFiltered.length === 0 && enFiltered.length === 0 && (
+                      <p style={{color:'var(--text-dim)',fontStyle:'italic',padding:'1rem'}}>No selected abilities to show.</p>
+                    )}
+                  </div>
+                </div>
+              );
+            }
+
+            // Battle Traits slide
             return (
               <div className="gw-faction-slide gw-spearhead-slide">
                 <div className="gw-spearhead-slide-header">
                   <div className="gw-header-type" style={{color:'#c8a0f0'}}>{unit.grand_alliance?.toUpperCase()}{unit.grand_alliance && unit.faction ? ' · ' : ''}{unit.faction?.toUpperCase()}</div>
-                  <div className="gw-spearhead-slide-name">{spearheadData?.spearheadName ?? ''}</div>
+                  <div className="gw-spearhead-slide-name">{spName}</div>
                   <div className="gw-spearhead-slide-title">{title.toUpperCase()}</div>
                 </div>
                 <div className="gw-faction-slide-body">
-                  {slide.data.length === 0
-                    ? <p style={{color:'var(--text-dim)',fontStyle:'italic',padding:'1rem'}}>No data available for this spearhead.</p>
+                  <div className="gw-sp-filter-bar">
+                    <button
+                      className={`gw-sp-filter-btn${filterSelected ? ' active' : ''}`}
+                      onClick={() => setFilterSelected(f => !f)}
+                      disabled={!hasSelected}
+                      title="Show only selected abilities"
+                    >{filterSelected ? 'Show All' : 'Show Selected'}</button>
+                  </div>
+                  {(slide.data ?? []).length === 0
+                    ? <p style={{color:'var(--text-dim)',fontStyle:'italic',padding:'1rem'}}>No data available.</p>
                     : <div className="gw-abilities-grid">
-                        {slide.data.map((ab, i) => {
-                          // PDF rules store everything in ab.text; split into declare/effect for AbilityCard
-                          let { text, declare, effect, ...rest } = ab;
-                          if (text && !effect) {
-                            const effMatch = text.match(/^(.*?)\bEffect:\s*/s);
-                            if (effMatch) {
-                              const before = effMatch[1].trim();
-                              const declMatch = before.match(/^Declare:\s*([\s\S]*)/);
-                              if (declMatch) {
-                                declare = declMatch[1].trim() || undefined;
-                                effect = text.slice(effMatch[0].length).trim();
-                              } else {
-                                // No explicit Declare: — prepend any pre-effect sentence to the effect
-                                declare = undefined;
-                                const afterEffect = text.slice(effMatch[0].length).trim();
-                                effect = before ? `${before} ${afterEffect}` : afterEffect;
-                              }
-                            } else {
-                              effect = text;
-                            }
-                          }
-                          return <AbilityCard key={i} ab={{ ...rest, declare, effect, bullets: parseBullets(ab.bullets) }} keywords={[]} />;
-                        })}
+                        {(slide.data ?? []).map((ab, i) => renderAbilityCard(ab, i))}
                       </div>
                   }
                 </div>

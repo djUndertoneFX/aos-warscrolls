@@ -4,6 +4,7 @@ import axios from 'axios';
 import WarscrollGW from '../components/WarscrollGW';
 import { simulateBattle } from '../simulation/engine';
 import { useSettings } from '../SettingsContext';
+import { useAuth } from '../AuthContext';
 import { calcWeaponADO, resolveWeaponLoadout } from '../awoCalc';
 
 function sumADO(weapons, unitSize, save, ward, rounding) {
@@ -464,6 +465,7 @@ function makeAdoKTooltip(includeSaveWard, save, ward) {
 
 export default function SimulacrumPage({ headerCollapsed }) {
   const { presumedSave, presumedWard, roundingMode, includeSaveWardInADO, linkPageSelections } = useSettings();
+  const { logout } = useAuth();
   const [stage, setStage]           = useState(1);
   const [selectedFriendly, setSelectedFriendly] = useState(null);
   const [selectedEnemy, setSelectedEnemy]       = useState(null);
@@ -935,7 +937,13 @@ export default function SimulacrumPage({ headerCollapsed }) {
       )}
 
       {/* ── Stage 1: Table ── */}
-      {stage === 1 && error && <div className="error-msg" style={{marginBottom:'1rem'}}>{error}</div>}
+      {stage === 1 && error && (
+        <div className="error-msg" style={{marginBottom:'1rem'}}>
+          {error.includes('expired')
+            ? <>{error.replace('Please sign out and log back in.', '')} <button className="error-logout-link" onClick={logout}>Sign out and log back in.</button></>
+            : error}
+        </div>
+      )}
       {stage === 1 && (<>{loading ? (
         <div className="loading-state"><span className="loading-rune">⚙</span>Consulting the Grand Conclave…</div>
       ) : data && data.data.length === 0 ? (

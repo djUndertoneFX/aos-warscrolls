@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import axios from 'axios';
 import WarscrollGW from '../components/WarscrollGW';
 import { useSettings } from '../SettingsContext';
+import { useAuth } from '../AuthContext';
 import { calcWeaponADO, resolveWeaponLoadout } from '../awoCalc';
 
 const TEXT_SORT_COLS = new Set(['faction','name','types','keywords','alliance','spearhead']);
@@ -101,6 +102,7 @@ const WEAPONS_EXPAND_COLS = 18;
 
 export default function SpearheadPage({ headerCollapsed }) {
   const { presumedSave, presumedWard, roundingMode, includeSaveWardInADO } = useSettings();
+  const { logout } = useAuth();
   const [allRows, setAllRows] = useState(null);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState('');
@@ -368,7 +370,13 @@ export default function SpearheadPage({ headerCollapsed }) {
         </>
       )}
 
-      {error && <div className="error-msg" style={{marginBottom:'1rem'}}>{error}</div>}
+      {error && (
+        <div className="error-msg" style={{marginBottom:'1rem'}}>
+          {error.includes('expired')
+            ? <>{error.replace('Please sign out and log back in.', '')} <button className="error-logout-link" onClick={logout}>Sign out and log back in.</button></>
+            : error}
+        </div>
+      )}
 
       {loading ? (
         <div className="loading-state"><span className="loading-rune">⚙</span>Mustering the Spearheads…</div>

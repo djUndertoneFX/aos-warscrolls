@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import axios from 'axios';
 import WarscrollGW from '../components/WarscrollGW';
 import { useSettings } from '../SettingsContext';
+import { useAuth } from '../AuthContext';
 import { calcWeaponADO, resolveWeaponLoadout } from '../awoCalc';
 
 function sumADO(weapons, unitSize, save, ward, rounding) {
@@ -189,6 +190,7 @@ function makeAdoKTooltip(includeSaveWard, save, ward) {
 
 export default function WarscrollsPage({ headerCollapsed }) {
   const { presumedSave, presumedWard, roundingMode, includeSaveWardInADO } = useSettings();
+  const { logout } = useAuth();
   const [data, setData]           = useState(null);
   const [factions, setFactions]   = useState([]);
   const [loading, setLoading]     = useState(true);
@@ -615,7 +617,13 @@ export default function WarscrollsPage({ headerCollapsed }) {
       )}
 
       {/* ── Table ── */}
-      {error && <div className="error-msg" style={{marginBottom:'1rem'}}>{error}</div>}
+      {error && (
+        <div className="error-msg" style={{marginBottom:'1rem'}}>
+          {error.includes('expired')
+            ? <>{error.replace('Please sign out and log back in.', '')} <button className="error-logout-link" onClick={logout}>Sign out and log back in.</button></>
+            : error}
+        </div>
+      )}
 
       {loading ? (
         <div className="loading-state">
