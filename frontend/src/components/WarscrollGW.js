@@ -81,19 +81,37 @@ const UNIVERSAL_KW = new Set([
   'FRIENDLY','ENEMY',
 ]);
 
+// AoS 4e special rules phrases — bolded as written (not uppercased)
+// key = lowercase for matching, value = canonical display form
+const RULE_TERMS = new Map([
+  ['strike-first',      'Strike-first'],
+  ['strike-last',       'Strike-last'],
+  ['crit (mortal)',     'Crit (Mortal)'],
+  ['crit (auto-wound)', 'Crit (Auto-wound)'],
+  ['crit (2 hits)',     'Crit (2 Hits)'],
+  ['ward',              'Ward'],
+  ['mortal damage',     'mortal damage'],
+  ['fly',               'Fly'],
+]);
+
 function FormatText({ text, keywords = [] }) {
   if (!text) return null;
   const kwSet = new Set([...UNIVERSAL_KW, ...keywords.map(k => k.trim().toUpperCase())]);
   const kwList = [...kwSet].sort((a, b) => b.length - a.length);
-  const escaped = kwList.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-  const regex = new RegExp(`(${escaped.join('|')})`, 'gi');
+  const kwEsc  = kwList.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const rtList = [...RULE_TERMS.keys()].sort((a, b) => b.length - a.length);
+  const rtEsc  = rtList.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const regex = new RegExp(`(${[...kwEsc, ...rtEsc].join('|')})`, 'gi');
   const tokens = text.split(regex);
   return (
-    <>{tokens.map((tok, i) =>
-      kwSet.has(tok.toUpperCase())
-        ? <strong key={i} className="gw-kw-inline">{tok.toUpperCase()}</strong>
-        : tok
-    )}</>
+    <>{tokens.map((tok, i) => {
+      if (kwSet.has(tok.toUpperCase()))
+        return <strong key={i} className="gw-kw-inline">{tok.toUpperCase()}</strong>;
+      const rt = RULE_TERMS.get(tok.toLowerCase());
+      if (rt !== undefined)
+        return <strong key={i} className="gw-kw-inline">{rt}</strong>;
+      return tok;
+    })}</>
   );
 }
 
@@ -113,18 +131,27 @@ function BoldTerm({ text, keywords }) {
 
 function splitEffectParts(text) {
   if (!text) return [];
-  const parts = text.split(/ (?=[A-Z][A-Za-z0-9''-]{1,20}(?:\s[A-Za-z0-9''-]{1,20}){0,3}:)/)
-    .map(p => p.trim()).filter(Boolean);
-  const merged = [];
-  for (let i = 0; i < parts.length; i++) {
-    if (i < parts.length - 1 && !parts[i].includes(':')) {
-      merged.push(parts[i] + ' ' + parts[i + 1]);
-      i++;
-    } else {
-      merged.push(parts[i]);
+  const result = [];
+  // First split on em-dash (used in AoS rules to introduce a list of named effects)
+  const emSegments = text.split(/\s*—\s*/);
+  for (const seg of emSegments) {
+    if (!seg.trim()) continue;
+    // Split on "Term: " patterns (allow hyphens, apostrophes, ! in term names)
+    const subParts = seg
+      .split(/ (?=[A-Z][-A-Za-z0-9''!]{1,20}(?:\s[-A-Za-z0-9''!]{1,20}){0,3}:)/)
+      .map(p => p.trim()).filter(Boolean);
+    const merged = [];
+    for (let i = 0; i < subParts.length; i++) {
+      if (i < subParts.length - 1 && !subParts[i].includes(':')) {
+        merged.push(subParts[i] + ' ' + subParts[i + 1]);
+        i++;
+      } else {
+        merged.push(subParts[i]);
+      }
     }
+    result.push(...merged);
   }
-  return merged;
+  return result;
 }
 
 // ── Stats Wheel (SVG) ────────────────────────────────────────────────────────
@@ -792,9 +819,16 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
                             const effMatch = text.match(/^(.*?)\bEffect:\s*/s);
                             if (effMatch) {
                               const before = effMatch[1].trim();
-                              const declMatch = before.match(/^Declare:\s*(.*)/s);
-                              declare = declMatch ? declMatch[1].trim() : (before || undefined);
-                              effect = text.slice(effMatch[0].length).trim();
+                              const declMatch = before.match(/^Declare:\s*([\s\S]*)/);
+                              if (declMatch) {
+                                declare = declMatch[1].trim() || undefined;
+                                effect = text.slice(effMatch[0].length).trim();
+                              } else {
+                                // No explicit Declare: — prepend any pre-effect sentence to the effect
+                                declare = undefined;
+                                const afterEffect = text.slice(effMatch[0].length).trim();
+                                effect = before ? `${before} ${afterEffect}` : afterEffect;
+                              }
                             } else {
                               effect = text;
                             }
