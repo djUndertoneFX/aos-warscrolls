@@ -717,6 +717,48 @@ app.get('/api/faction-rules/:slug', requireAuth, (req, res) => {
   }
 });
 
+// PUT /api/spearhead-image/:name — upload cover art for a spearhead (protected)
+app.put('/api/spearhead-image/:name', (req, res) => {
+  if (req.headers['x-upload-secret'] !== process.env.UPLOAD_SECRET) return res.status(403).json({ error: 'Forbidden' });
+  const spName = decodeURIComponent(req.params.name);
+  const slug = spName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const dir  = path.join(IMAGE_DIR, 'Spearhead');
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  const imgPath = path.join(dir, `${slug}.jpg`);
+  const chunks = [];
+  req.on('data', c => chunks.push(c));
+  req.on('end', () => {
+    const buf = Buffer.concat(chunks);
+    fs.writeFileSync(imgPath, buf);
+    const db = getDb();
+    try { db.prepare('UPDATE spearheads SET image_path = ? WHERE name = ?').run(imgPath, spName); }
+    finally { db.close(); }
+    res.json({ ok: true, path: imgPath });
+  });
+});
+
+// GET /api/spearhead-image/:name — serve cover art for a spearhead
+app.get('/api/spearhead-image/:name', (req, res) => {
+  const spName = decodeURIComponent(req.params.name);
+  // Check for stored image path in DB
+  const db = getDb();
+  let imgPath = null;
+  try {
+    const row = db.prepare('SELECT image_path FROM spearheads WHERE name = ?').get(spName);
+    if (row?.image_path) imgPath = row.image_path;
+  } finally { db.close(); }
+
+  if (!imgPath) {
+    // Try slug-based lookup in Spearhead/ subdir
+    const slug = spName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const candidate = path.join(IMAGE_DIR, 'Spearhead', `${slug}.jpg`);
+    if (fs.existsSync(candidate)) imgPath = candidate;
+  }
+
+  if (!imgPath || !fs.existsSync(imgPath)) return res.status(404).json({ error: 'No image' });
+  return serveImage(imgPath, res);
+});
+
 // GET /api/spearheads — all spearhead rules (battle traits, regiment abilities, enhancements)
 app.get('/api/spearheads', requireAuth, (req, res) => {
   const db = getDb();
