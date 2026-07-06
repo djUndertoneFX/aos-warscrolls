@@ -320,6 +320,16 @@ export default function SpearheadPage({ headerCollapsed }) {
 
   const allUnits = useMemo(() => visibleGroups.flatMap(g => g.units.map(u => ({ ...u, _spName: g.spearheadName }))), [visibleGroups]);
 
+  // When the filter swaps (allUnits changes), navigate the warscroll viewer to the
+  // first unit of the newly visible list if the current unit is no longer present.
+  useEffect(() => {
+    if (!detailUnit) return;
+    const stillPresent = allUnits.some(u => u.id === detailUnit.id);
+    if (!stillPresent) {
+      setDetailUnit(allUnits.length > 0 ? allUnits[0] : null);
+    }
+  }, [allUnits]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const mkBox = str => {
     const [title, ...rest] = str.split('\n');
     return <div className="ado-tip-box"><div className="ado-tip-title">{title}</div><div className="ado-tip-body">{rest.join('\n').trim()}</div></div>;
