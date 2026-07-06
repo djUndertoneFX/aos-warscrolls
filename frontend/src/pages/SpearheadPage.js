@@ -407,7 +407,7 @@ export default function SpearheadPage({ headerCollapsed }) {
                   No spearheads match the current filters.
                 </td></tr>
               )}
-              {visibleGroups.map(group => {
+              {visibleGroups.map((group, gi) => {
                 groupCounter++;
                 const isGroupExpanded = expandedGroups.has(group.spearheadName);
                 const isRulesExpanded = rulesExpanded.has(group.spearheadName);
@@ -419,11 +419,12 @@ export default function SpearheadPage({ headerCollapsed }) {
                   (rules.regimentAbilities?.length > 0) ||
                   (rules.enhancements?.length > 0)
                 );
+                const isFactionBreak = gi > 0 && visibleGroups[gi - 1].faction !== group.faction;
                 return (
                   <React.Fragment key={group.spearheadName}>
                     {/* ── Spearhead group header — one cell per column so faction/alliance land in the right place ── */}
                     <tr
-                      className={`spearhead-group-hdr${isFriendly ? ' sp-group-friendly' : ''}${isEnemy ? ' sp-group-enemy' : ''}`}
+                      className={`spearhead-group-hdr${isFriendly ? ' sp-group-friendly' : ''}${isEnemy ? ' sp-group-enemy' : ''}${isFactionBreak ? ' sp-faction-break' : ''}`}
                       onClick={() => toggleGroup(group.spearheadName)}
                       style={{ cursor: 'pointer' }}
                     >

@@ -1317,6 +1317,16 @@ tr.spearhead-group-hdr.sp-group-enemy td {
   background: rgba(220,80,80,0.08);
   border-top-color: rgba(220,80,80,0.25);
 }
+/* Bold top border at faction changes */
+tr.spearhead-group-hdr.sp-faction-break td {
+  border-top: 2px solid rgba(201,168,76,0.55);
+}
+tr.spearhead-group-hdr.sp-faction-break.sp-group-friendly td {
+  border-top-color: rgba(80,200,120,0.55);
+}
+tr.spearhead-group-hdr.sp-faction-break.sp-group-enemy td {
+  border-top-color: rgba(220,80,80,0.55);
+}
 .sp-group-hdr-inner {
   display: flex;
   align-items: center;
