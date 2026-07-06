@@ -44,6 +44,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('aos_username');
     delete axios.defaults.headers.common['Authorization'];
     setUser(null);
+    window.location.href = '/login';
   };
 
   return (
