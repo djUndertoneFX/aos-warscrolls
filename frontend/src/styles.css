@@ -2079,6 +2079,16 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   margin: 0 3px;
   border-radius: 1px;
 }
+/* Bold faction-change separator between faction groups in the dot strip */
+.gw-nav-faction-sep {
+  width: 3px;
+  height: 22px;
+  background: linear-gradient(to bottom, transparent 0%, #c8a840 30%, #c8a840 70%, transparent 100%);
+  flex-shrink: 0;
+  margin: 0 5px;
+  border-radius: 2px;
+  opacity: 0.9;
+}
 /* Faction slide dots — square, purple, appear before unit dots */
 .gw-nav-dot-faction {
   width: 7px;

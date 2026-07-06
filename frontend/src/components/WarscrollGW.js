@@ -8,6 +8,9 @@ function TransparentImage({ src, alt, className, onError }) {
   const canvasRef = useRef(null);
   const [failed, setFailed] = useState(false);
 
+  // Reset failed state whenever src changes so a new valid image can load
+  useEffect(() => { setFailed(false); }, [src]);
+
   const process = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -352,8 +355,76 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
   const [dotsAtEnd,      setDotsAtEnd]      = useState(false);
   const [dotsHasOverflow, setDotsHasOverflow] = useState(false);
   const [dotsTranslate,  setDotsTranslate]  = useState(0);
-  const [factionSlide, setFactionSlide] = useState(null); // null | 'traits' | 'formations'
-  const [factionRules, setFactionRules] = useState(null);
+
+  // activePage: null = show unit; { factionSlug, slideKey } = show that faction's rule page
+  // factionSlug '__sp__' = spearhead mode slides
+  const [activePage, setActivePage] = useState(null);
+
+  // Per-faction rules cache (populated for all slugs in navList)
+  const rulesCache = useRef(new Map());
+  const [loadedSlugs, setLoadedSlugs] = useState(new Set());
+
+  // Compute contiguous faction groups from navList
+  const factionGroups = React.useMemo(() => {
+    if (!navList?.length) return [];
+    const groups = [];
+    for (let i = 0; i < navList.length; i++) {
+      const u = navList[i];
+      const last = groups[groups.length - 1];
+      if (last && last.faction_slug === u.faction_slug) {
+        last.endIdx = i;
+      } else {
+        groups.push({ faction_slug: u.faction_slug, faction: u.faction, grand_alliance: u.grand_alliance, startIdx: i, endIdx: i });
+      }
+    }
+    return groups;
+  }, [navList]);
+
+  // Spearhead slides (only in spearhead mode)
+  const spearheadSlides = React.useMemo(() => {
+    if (!spearheadData) return [];
+    const slides = [];
+    if ((spearheadData.battleTraits ?? []).length > 0)
+      slides.push({ key: 'sp_traits', isSpearhead: true, data: spearheadData.battleTraits });
+    if ((spearheadData.regimentAbilities ?? []).length > 0 || (spearheadData.enhancements ?? []).length > 0)
+      slides.push({ key: 'sp_regiment', isSpearhead: true, data: [...(spearheadData.regimentAbilities ?? []), ...(spearheadData.enhancements ?? [])] });
+    return slides;
+  }, [spearheadData]);
+
+  // Build slides for a given faction slug from the cache
+  const getSlidesForSlug = useCallback((slug) => {
+    const rules = rulesCache.current.get(slug);
+    if (!rules) return [];
+    const spellPrayerData = [...(rules.spell_lore ?? []), ...(rules.prayer_lore ?? [])];
+    return [
+      { key: 'manifestation_lore', enabled: showManifestationLore, data: rules.manifestation_lore ?? [] },
+      { key: 'spell_lore',         enabled: showSpellLore,         data: spellPrayerData },
+      { key: 'artefacts',          enabled: showArtefacts,         data: rules.artefacts ?? [] },
+      { key: 'heroic_traits',      enabled: showHeroicTraits,      data: rules.heroic_traits ?? [] },
+      { key: 'formations',         enabled: showBattleFormations,  data: rules.formations ?? [] },
+      { key: 'traits',             enabled: showBattleTraits,      data: rules.traits ?? [] },
+    ].filter(s => s.enabled && s.data.length > 0);
+  }, [loadedSlugs, showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore]); // eslint-disable-line
+
+  // Fetch rules for every unique faction slug in navList (skip in spearhead mode)
+  useEffect(() => {
+    if (spearheadData || !navList?.length) return;
+    const slugs = [...new Set(navList.map(u => u.faction_slug).filter(Boolean))];
+    slugs.forEach(slug => {
+      if (rulesCache.current.has(slug)) return;
+      // Optimistic placeholder so we don't double-fetch
+      rulesCache.current.set(slug, null);
+      axios.get(`/api/faction-rules/${slug}`)
+        .then(r => {
+          rulesCache.current.set(slug, r.data);
+          setLoadedSlugs(prev => new Set([...prev, slug]));
+        })
+        .catch(() => {
+          rulesCache.current.set(slug, { traits: [], formations: [] });
+          setLoadedSlugs(prev => new Set([...prev, slug]));
+        });
+    });
+  }, [navList, spearheadData]);
 
   useEffect(() => {
     const outer = dotsRef.current;
@@ -364,7 +435,6 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
         const outerW = outer.clientWidth;
         const innerW = inner.scrollWidth;
         if (innerW <= outerW + 4) {
-          // Fits: center the whole strip
           setDotsHasOverflow(false);
           setDotsAtStart(true);
           setDotsAtEnd(true);
@@ -372,64 +442,29 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
           return;
         }
         setDotsHasOverflow(true);
-        const activeDot = inner.querySelector('.gw-nav-dot-active, .gw-nav-dot-faction-active');
+        const activeDot = inner.querySelector('.gw-nav-dot-active, .gw-nav-dot-faction-active, .gw-nav-dot-sp-active');
         if (!activeDot) return;
-        const dotMid  = activeDot.offsetLeft + activeDot.offsetWidth / 2;
+        const dotMid   = activeDot.offsetLeft + activeDot.offsetWidth / 2;
         const dotRight = activeDot.offsetLeft + activeDot.offsetWidth;
-        const minTx   = -(innerW - outerW);
-        const raw     = outerW / 2 - dotMid;
-        const rawTx   = Math.min(0, Math.max(minTx, raw));
-        // If centering would clip the left end but the active dot is already
-        // visible at tx=0, prefer left-aligned so faction dots stay in view.
+        const minTx    = -(innerW - outerW);
+        const raw      = outerW / 2 - dotMid;
+        const rawTx    = Math.min(0, Math.max(minTx, raw));
         const tx = (rawTx < 0 && dotRight <= outerW) ? 0 : rawTx;
         setDotsTranslate(tx);
         setDotsAtStart(tx >= -4);
         setDotsAtEnd(tx <= minTx + 4);
-      } catch (_) { /* layout not ready */ }
+      } catch (_) {}
     });
     return () => cancelAnimationFrame(raf);
-  }, [navIndex, factionSlide, navTotal]);
+  }, [navIndex, activePage, navTotal, loadedSlugs]);
 
-  // Reset faction slide when the displayed unit changes
-  useEffect(() => { setFactionSlide(null); }, [unit?.id]);
+  // Clear active page when the displayed unit changes (e.g. after onJump)
+  useEffect(() => { setActivePage(null); }, [unit?.id]);
 
-  // Fetch faction rules once per faction slug (skipped in spearhead mode)
-  useEffect(() => {
-    if (spearheadData || !unit?.faction_slug) return;
-    let cancelled = false;
-    setFactionRules(null);
-    axios.get(`/api/faction-rules/${unit.faction_slug}`)
-      .then(r => { if (!cancelled) setFactionRules(r.data); })
-      .catch(() => { if (!cancelled) setFactionRules({ traits: [], formations: [] }); });
-    return () => { cancelled = true; };
-  }, [unit?.faction_slug, spearheadData]);
-
-  // Build active slides — spearhead mode replaces faction slides with 2 spearhead-specific pages
-  const factionSlides = React.useMemo(() => {
-    if (spearheadData) {
-      const slides = [];
-      if ((spearheadData.battleTraits ?? []).length > 0)
-        slides.push({ key: 'sp_traits',    isSpearhead: true, data: spearheadData.battleTraits });
-      if ((spearheadData.regimentAbilities ?? []).length > 0 || (spearheadData.enhancements ?? []).length > 0)
-        slides.push({ key: 'sp_regiment',  isSpearhead: true, data: [...(spearheadData.regimentAbilities ?? []), ...(spearheadData.enhancements ?? [])] });
-      return slides;
-    }
-    if (!factionRules) return [];
-    const spellPrayerData = [...(factionRules.spell_lore ?? []), ...(factionRules.prayer_lore ?? [])];
-    return [
-      { key: 'manifestation_lore', enabled: showManifestationLore, data: factionRules.manifestation_lore ?? [] },
-      { key: 'spell_lore',         enabled: showSpellLore,         data: spellPrayerData },
-      { key: 'artefacts',          enabled: showArtefacts,         data: factionRules.artefacts ?? [] },
-      { key: 'heroic_traits',      enabled: showHeroicTraits,      data: factionRules.heroic_traits ?? [] },
-      { key: 'formations',         enabled: showBattleFormations,  data: factionRules.formations ?? [] },
-      { key: 'traits',             enabled: showBattleTraits,      data: factionRules.traits ?? [] },
-    ].filter(s => s.enabled && s.data.length > 0);
-  }, [factionRules, spearheadData, showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore]);
-
-  // Scroll to top when switching slides
+  // Scroll to top when switching slides or units
   useEffect(() => {
     if (modalRef.current) modalRef.current.scrollTop = 0;
-  }, [factionSlide, unit?.id]);
+  }, [activePage, unit?.id]);
 
   useEffect(() => {
     if (!unit?.id) return;
@@ -437,35 +472,77 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
     setImageUrl(`${base}/api/unit-image/${unit.id}`);
   }, [unit?.id]);
 
-  // Internal prev/next: intercept at navIndex 0 to enter faction slides (right = closer to unit 0)
+  // Resolve slides for a given context (spearhead or faction slug)
+  const resolveSlidesFor = useCallback((factionSlug) => {
+    if (factionSlug === '__sp__') return spearheadSlides;
+    return getSlidesForSlug(factionSlug);
+  }, [spearheadSlides, getSlidesForSlug]);
+
+  // Find which faction group the current navIndex belongs to
+  const currentGroupIdx = React.useMemo(() =>
+    factionGroups.findIndex(g => navIndex >= g.startIdx && navIndex <= g.endIdx),
+  [factionGroups, navIndex]);
+
   const handlePrev = useCallback(() => {
-    if (factionSlide === null) {
-      // Enter the rightmost faction slide (closest to unit 0)
-      if (navIndex === 0 && factionSlides.length > 0) {
-        setFactionSlide(factionSlides[factionSlides.length - 1].key);
+    if (activePage !== null) {
+      // Already on a faction/spearhead slide — go to previous slide in same group
+      const slides = resolveSlidesFor(activePage.factionSlug);
+      const idx = slides.findIndex(s => s.key === activePage.slideKey);
+      if (idx > 0) setActivePage({ factionSlug: activePage.factionSlug, slideKey: slides[idx - 1].key });
+      // idx === 0: leftmost slide, stay
+      return;
+    }
+    // In unit mode — check if we're at the first unit of a faction group
+    const group = factionGroups[currentGroupIdx];
+    if (group && navIndex === group.startIdx) {
+      // Enter this faction's rule slides (rightmost first)
+      const slug = spearheadData ? '__sp__' : group.faction_slug;
+      const slides = resolveSlidesFor(slug);
+      if (slides.length > 0) {
+        setActivePage({ factionSlug: slug, slideKey: slides[slides.length - 1].key });
         return;
       }
-      onPrev?.();
-    } else {
-      // Move further left through faction slides
-      const idx = factionSlides.findIndex(s => s.key === factionSlide);
-      if (idx > 0) setFactionSlide(factionSlides[idx - 1].key);
-      // idx === 0: already leftmost, do nothing
     }
-  }, [factionSlide, navIndex, factionSlides, onPrev]);
+    onPrev?.();
+  }, [activePage, navIndex, factionGroups, currentGroupIdx, spearheadData, resolveSlidesFor, onPrev]);
 
   const handleNext = useCallback(() => {
-    if (factionSlide !== null) {
-      const idx = factionSlides.findIndex(s => s.key === factionSlide);
-      if (idx < factionSlides.length - 1) {
-        setFactionSlide(factionSlides[idx + 1].key);
+    if (activePage !== null) {
+      // On a faction/spearhead slide — go to next slide or exit to units
+      const slides = resolveSlidesFor(activePage.factionSlug);
+      const idx = slides.findIndex(s => s.key === activePage.slideKey);
+      if (idx < slides.length - 1) {
+        setActivePage({ factionSlug: activePage.factionSlug, slideKey: slides[idx + 1].key });
       } else {
-        setFactionSlide(null); // return to unit 0
+        // Exit slides: jump to first unit of this faction group
+        if (spearheadData) {
+          // Spearhead mode: return to unit 0
+          setActivePage(null);
+          onJump?.(0);
+        } else {
+          const gi = factionGroups.findIndex(g => g.faction_slug === activePage.factionSlug);
+          const group = factionGroups[gi];
+          setActivePage(null);
+          if (group) onJump?.(group.startIdx);
+        }
       }
       return;
     }
+    // In unit mode — check if we're at the last unit of a faction group (and there's a next group)
+    if (!spearheadData) {
+      const group = factionGroups[currentGroupIdx];
+      const nextGroup = factionGroups[currentGroupIdx + 1];
+      if (group && nextGroup && navIndex === group.endIdx) {
+        // Enter next faction's rule slides
+        const slides = getSlidesForSlug(nextGroup.faction_slug);
+        if (slides.length > 0) {
+          setActivePage({ factionSlug: nextGroup.faction_slug, slideKey: slides[0].key });
+          return;
+        }
+      }
+    }
     onNext?.();
-  }, [factionSlide, factionSlides, onNext]);
+  }, [activePage, navIndex, factionGroups, currentGroupIdx, spearheadData, resolveSlidesFor, getSlidesForSlug, onNext, onJump]);
 
   // Keyboard: Escape=close, ←=prev, →=next
   useEffect(() => {
@@ -596,8 +673,6 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
     }
   };
 
-  const showFactionDots = factionSlides.length > 0;
-
   return (
     <>
       <div className="gw-overlay" />
@@ -605,8 +680,8 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
 
         <button className="gw-close" onClick={onClose} title="Close (Esc)">✕</button>
 
-        {/* ── Nav dots: faction squares + unit circles ── */}
-        {navTotal > 0 && (showFactionDots || navTotal > 1) && (
+        {/* ── Nav dots ── */}
+        {navTotal > 0 && (
           <div
             className="gw-nav-dots"
             ref={dotsRef}
@@ -620,49 +695,84 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
             ref={dotsInnerRef}
             style={{ transform: `translateX(${dotsTranslate}px)`, transition: dotsHasOverflow ? 'transform 0.25s ease' : 'none' }}
           >
-            {/* Faction/Spearhead slide dots (square) — leftmost = furthest from units */}
-            {factionSlides.map(s => (
-              <span
-                key={s.key}
-                className={`${s.isSpearhead ? 'gw-nav-dot-sp' : 'gw-nav-dot-faction'}${factionSlide === s.key ? (s.isSpearhead ? ' gw-nav-dot-sp-active' : ' gw-nav-dot-faction-active') : ''}`}
-                title={s.key === 'sp_traits' ? 'Battle Traits' : s.key === 'sp_regiment' ? 'Regiment Abilities & Enhancements' : s.key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
-                onClick={() => setFactionSlide(s.key)}
-              />
-            ))}
-            {showFactionDots && navTotal > 0 && <span className="gw-nav-sep" />}
-            {/* Unit dots (round, gold) */}
-            {navList && navList.map((u, i) => {
-              const type = getPrimaryType(u);
-              const prevType = i > 0 ? getPrimaryType(navList[i - 1]) : null;
-              return (
-                <React.Fragment key={u.id ?? i}>
-                  {i > 0 && prevType !== type && <span className="gw-nav-sep" title={type} />}
-                  <span
-                    className={`gw-nav-dot${factionSlide === null && i === navIndex ? ' gw-nav-dot-active' : ''}`}
-                    title={u.name}
-                    onClick={() => { setFactionSlide(null); onJump?.(i); }}
+            {spearheadData ? (
+              /* ── Spearhead mode: sp slides then all units ── */
+              <>
+                {spearheadSlides.map(s => (
+                  <span key={s.key}
+                    className={`gw-nav-dot-sp${activePage?.slideKey === s.key ? ' gw-nav-dot-sp-active' : ''}`}
+                    title={s.key === 'sp_traits' ? 'Battle Traits' : 'Regiment Abilities & Enhancements'}
+                    onClick={() => setActivePage({ factionSlug: '__sp__', slideKey: s.key })}
                   />
-                </React.Fragment>
-              );
-            })}
+                ))}
+                {spearheadSlides.length > 0 && <span className="gw-nav-sep" />}
+                {navList && navList.map((u, i) => {
+                  const type = getPrimaryType(u);
+                  const prevType = i > 0 ? getPrimaryType(navList[i - 1]) : null;
+                  return (
+                    <React.Fragment key={u.id ?? i}>
+                      {i > 0 && prevType !== type && <span className="gw-nav-sep" />}
+                      <span className={`gw-nav-dot${activePage === null && i === navIndex ? ' gw-nav-dot-active' : ''}`}
+                            title={u.name}
+                            onClick={() => { setActivePage(null); onJump?.(i); }} />
+                    </React.Fragment>
+                  );
+                })}
+              </>
+            ) : (
+              /* ── Normal mode: per-faction rule dots + units, with faction separators ── */
+              factionGroups.map((group, gi) => {
+                const slides = getSlidesForSlug(group.faction_slug);
+                const SLIDE_LABELS = { traits: 'Battle Traits', formations: 'Battle Formations', heroic_traits: 'Heroic Traits', artefacts: 'Artefacts of Power', spell_lore: 'Spell / Prayer Lore', manifestation_lore: 'Manifestation Lore' };
+                return (
+                  <React.Fragment key={group.faction_slug + '-' + gi}>
+                    {/* Bold faction-change separator between groups */}
+                    {gi > 0 && <span className="gw-nav-faction-sep" title={group.faction} />}
+                    {/* Purple rule slide dots for this faction */}
+                    {slides.map(s => (
+                      <span key={s.key}
+                        className={`gw-nav-dot-faction${activePage?.factionSlug === group.faction_slug && activePage?.slideKey === s.key ? ' gw-nav-dot-faction-active' : ''}`}
+                        title={`${group.faction} — ${SLIDE_LABELS[s.key] ?? s.key}`}
+                        onClick={() => setActivePage({ factionSlug: group.faction_slug, slideKey: s.key })}
+                      />
+                    ))}
+                    {slides.length > 0 && <span className="gw-nav-sep" />}
+                    {/* Unit dots for this faction group */}
+                    {navList.slice(group.startIdx, group.endIdx + 1).map((u, localI) => {
+                      const i = group.startIdx + localI;
+                      const type = getPrimaryType(u);
+                      const prevType = localI > 0 ? getPrimaryType(navList[i - 1]) : null;
+                      return (
+                        <React.Fragment key={u.id ?? i}>
+                          {localI > 0 && prevType !== type && <span className="gw-nav-sep" />}
+                          <span className={`gw-nav-dot${activePage === null && i === navIndex ? ' gw-nav-dot-active' : ''}`}
+                                title={u.name}
+                                onClick={() => { setActivePage(null); onJump?.(i); }} />
+                        </React.Fragment>
+                      );
+                    })}
+                  </React.Fragment>
+                );
+              })
+            )}
           </div>
           </div>
         )}
 
         {/* ── Slide content (spearhead or faction, replaces warscroll when active) ── */}
-        {factionSlide !== null && (() => {
-          const slide = factionSlides.find(s => s.key === factionSlide);
-          if (!slide) return null;
+        {activePage !== null && (() => {
+          const { factionSlug, slideKey } = activePage;
 
           // Spearhead slides
-          if (slide.isSpearhead) {
-            const title = factionSlide === 'sp_traits' ? 'Battle Traits' : 'Regiment Abilities & Enhancements';
-            const subtitle = spearheadData?.spearheadName ?? '';
+          if (factionSlug === '__sp__') {
+            const slide = spearheadSlides.find(s => s.key === slideKey);
+            if (!slide) return null;
+            const title = slideKey === 'sp_traits' ? 'Battle Traits' : 'Regiment Abilities & Enhancements';
             return (
               <div className="gw-faction-slide gw-spearhead-slide">
                 <div className="gw-spearhead-slide-header">
                   <div className="gw-header-type" style={{color:'#c8a0f0'}}>{unit.grand_alliance?.toUpperCase()}{unit.grand_alliance && unit.faction ? ' · ' : ''}{unit.faction?.toUpperCase()}</div>
-                  <div className="gw-spearhead-slide-name">{subtitle}</div>
+                  <div className="gw-spearhead-slide-name">{spearheadData?.spearheadName ?? ''}</div>
                   <div className="gw-spearhead-slide-title">{title.toUpperCase()}</div>
                 </div>
                 <div className="gw-faction-slide-body">
@@ -677,39 +787,23 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
             );
           }
 
-          // Faction slides (original behaviour)
-          if (!factionRules) return null;
-          const SLIDE_TITLES = {
-            traits:             'Battle Traits',
-            formations:         'Battle Formations',
-            heroic_traits:      'Heroic Traits',
-            artefacts:          'Artefacts of Power',
-            spell_lore:         'Spell / Prayer Lore',
-            manifestation_lore: 'Manifestation Lore',
-          };
+          // Faction slides
+          const slides = getSlidesForSlug(factionSlug);
+          const slide = slides.find(s => s.key === slideKey);
+          if (!slide) return null;
+          const group = factionGroups.find(g => g.faction_slug === factionSlug);
+          const factionName     = group?.faction ?? factionSlug;
+          const grandAlliance   = group?.grand_alliance ?? '';
+          const SLIDE_TITLES = { traits: 'Battle Traits', formations: 'Battle Formations', heroic_traits: 'Heroic Traits', artefacts: 'Artefacts of Power', spell_lore: 'Spell / Prayer Lore', manifestation_lore: 'Manifestation Lore' };
 
-          if (factionSlide === 'formations') {
-            return (
-              <FactionFormationsSlide
-                faction={unit.faction}
-                grandAlliance={unit.grand_alliance}
-                formations={slide.data}
-              />
-            );
+          if (slideKey === 'formations') {
+            return <FactionFormationsSlide faction={factionName} grandAlliance={grandAlliance} formations={slide.data} />;
           }
-
-          return (
-            <FactionTraitsSlide
-              faction={unit.faction}
-              grandAlliance={unit.grand_alliance}
-              title={SLIDE_TITLES[factionSlide] ?? factionSlide}
-              traits={slide.data}
-            />
-          );
+          return <FactionTraitsSlide faction={factionName} grandAlliance={grandAlliance} title={SLIDE_TITLES[slideKey] ?? slideKey} traits={slide.data} />;
         })()}
 
-        {/* ── Warscroll content (hidden when on a faction slide) ── */}
-        {factionSlide === null && (
+        {/* ── Warscroll content (hidden when on a rule slide) ── */}
+        {activePage === null && (
           <>
             {/* Top band: wheel | centered name | right meta */}
             <div className="gw-top-band">
