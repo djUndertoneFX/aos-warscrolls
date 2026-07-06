@@ -558,10 +558,12 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
       const idx = slides.findIndex(s => s.key === activePage.slideKey);
       if (idx > 0) {
         setActivePage({ ...activePage, slideKey: slides[idx - 1].key });
-      } else {
+      } else if (navIndex > 0) {
+        // Only cross left past a slide boundary if there's content to the left
         setActivePage(null);
         onPrev?.();
       }
+      // else: already at the very start, stay on this slide
       return;
     }
     if (isSpMode) {

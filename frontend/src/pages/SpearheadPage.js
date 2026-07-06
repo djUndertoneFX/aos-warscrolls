@@ -6,6 +6,29 @@ import { useSettings } from '../SettingsContext';
 import { useAuth } from '../AuthContext';
 import { calcWeaponADO, resolveWeaponLoadout } from '../awoCalc';
 
+// Phase colour lookup (mirrors WarscrollGW PHASE_PRESETS)
+const SP_PHASE_PRESETS = [
+  { keys: ['passive'],                               style: { bg: '#3d2a0e', txt: '#f0dc88', border: '#8a6428' } },
+  { keys: ['any combat', 'combat'],                  style: { bg: '#6a0c0c', txt: '#fde8e0', border: '#c03030' } },
+  { keys: ['hero phase'],                            style: { bg: '#9a802e', txt: '#ffffff', border: '#c8a840' } },
+  { keys: ['movement', 'move phase'],                style: { bg: '#0a3e28', txt: '#b8f0d8', border: '#1a7850' } },
+  { keys: ['shooting'],                              style: { bg: '#0a2850', txt: '#c0d8f8', border: '#2858b8' } },
+  { keys: ['once per battle round', 'start of battle round'], style: { bg: '#1a3040', txt: '#90c8e0', border: '#2878a8' } },
+  { keys: ['once per turn'],                         style: { bg: '#182838', txt: '#80b8d0', border: '#205878' } },
+  { keys: ['once per battle'],                       style: { bg: '#480838', txt: '#f0c8e8', border: '#901870' } },
+  { keys: ['deployment'],                            style: { bg: '#200c50', txt: '#d0c8f8', border: '#5040b0' } },
+  { keys: ['end of battle', 'end of turn'],          style: { bg: '#181818', txt: '#b8b8b8', border: '#484848' } },
+  { keys: ['reaction', 'any phase'],                 style: { bg: '#183828', txt: '#c0f0e0', border: '#2a7050' } },
+];
+function spPhaseStyle(timing) {
+  if (!timing) return SP_PHASE_PRESETS[0].style;
+  const t = timing.toLowerCase();
+  for (const { keys, style } of SP_PHASE_PRESETS) {
+    if (keys.some(k => t.includes(k))) return style;
+  }
+  return { bg: '#242018', txt: '#d0d0b8', border: '#585838' };
+}
+
 const TEXT_SORT_COLS = new Set(['faction','name','types','keywords','alliance','spearhead']);
 function SortIcon({ col, sortBy, sortDir }) {
   if (sortBy !== col) return <span className="sort-icon">↕</span>;
@@ -546,10 +569,10 @@ export default function SpearheadPage({ headerCollapsed }) {
                                     <div className="sp-rules-section-hdr">Battle Traits</div>
                                     <div className="sp-rules-cards">
                                       {rules.battleTraits.map((t, i) => (
-                                        <div key={i} className="sp-rules-card">
+                                        <div key={i} className="sp-rules-card" style={{ borderColor: spPhaseStyle(t.timing).border + '60', background: spPhaseStyle(t.timing).bg + '28' }}>
                                           <div className="sp-rules-card-hdr">
                                             <span className="sp-rules-card-name">{t.name}</span>
-                                            {t.timing && <span className="sp-rules-card-timing">{t.timing}</span>}
+                                            {t.timing && <span className="sp-rules-card-timing" style={{ background: spPhaseStyle(t.timing).bg, color: spPhaseStyle(t.timing).txt, borderColor: spPhaseStyle(t.timing).border + '80' }}>{t.timing}</span>}
                                           </div>
                                           <div className="sp-rules-card-text">{t.text}</div>
                                         </div>
@@ -562,10 +585,10 @@ export default function SpearheadPage({ headerCollapsed }) {
                                     <div className="sp-rules-section-hdr">Regiment Abilities</div>
                                     <div className="sp-rules-cards">
                                       {rules.regimentAbilities.map((t, i) => (
-                                        <div key={i} className="sp-rules-card">
+                                        <div key={i} className="sp-rules-card" style={{ borderColor: spPhaseStyle(t.timing).border + '60', background: spPhaseStyle(t.timing).bg + '28' }}>
                                           <div className="sp-rules-card-hdr">
                                             <span className="sp-rules-card-name">{t.name}</span>
-                                            {t.timing && <span className="sp-rules-card-timing">{t.timing}</span>}
+                                            {t.timing && <span className="sp-rules-card-timing" style={{ background: spPhaseStyle(t.timing).bg, color: spPhaseStyle(t.timing).txt, borderColor: spPhaseStyle(t.timing).border + '80' }}>{t.timing}</span>}
                                           </div>
                                           <div className="sp-rules-card-text">{t.text}</div>
                                         </div>
@@ -578,10 +601,10 @@ export default function SpearheadPage({ headerCollapsed }) {
                                     <div className="sp-rules-section-hdr">Enhancements</div>
                                     <div className="sp-rules-cards">
                                       {rules.enhancements.map((t, i) => (
-                                        <div key={i} className="sp-rules-card">
+                                        <div key={i} className="sp-rules-card" style={{ borderColor: spPhaseStyle(t.timing).border + '60', background: spPhaseStyle(t.timing).bg + '28' }}>
                                           <div className="sp-rules-card-hdr">
                                             <span className="sp-rules-card-name">{t.name}</span>
-                                            {t.timing && <span className="sp-rules-card-timing">{t.timing}</span>}
+                                            {t.timing && <span className="sp-rules-card-timing" style={{ background: spPhaseStyle(t.timing).bg, color: spPhaseStyle(t.timing).txt, borderColor: spPhaseStyle(t.timing).border + '80' }}>{t.timing}</span>}
                                           </div>
                                           <div className="sp-rules-card-text">{t.text}</div>
                                         </div>
