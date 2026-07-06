@@ -1475,28 +1475,35 @@ tr.sp-rules-row td { background: rgba(160,100,220,0.04); border-top: 1px solid r
 }
 .sp-rules-cards { display: flex; flex-wrap: wrap; gap: 8px; }
 .sp-rules-card {
-  background: rgba(160,100,220,0.07);
+  background: rgba(0,0,0,0.25);
   border: 1px solid rgba(160,100,220,0.25);
   border-radius: 5px;
-  padding: 8px 10px;
+  overflow: hidden;
   flex: 1 1 260px;
   min-width: 200px;
   max-width: 420px;
+  display: flex;
+  flex-direction: column;
 }
-.sp-rules-card-hdr { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
-.sp-rules-card-name { font-weight: 600; color: #d8b8f8; font-size: 0.85rem; }
+.sp-rules-card-banner {
+  padding: 4px 10px;
+}
 .sp-rules-card-timing {
-  font-size: 0.68rem;
+  font-size: 0.54rem;
   font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: #a070d0;
-  background: rgba(160,100,220,0.15);
-  border: 1px solid rgba(160,100,220,0.3);
-  border-radius: 3px;
-  padding: 1px 5px;
+  letter-spacing: 0.14em;
+  font-family: Arial, sans-serif;
+  color: #fff;
+  opacity: 0.92;
 }
-.sp-rules-card-text { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5; }
+.sp-rules-card-body {
+  padding: 6px 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.sp-rules-card-name { font-weight: 700; color: #c8bc98; font-size: 0.88rem; font-family: 'Palatino Linotype', Palatino, Georgia, serif; margin-bottom: 2px; }
+.sp-rules-card-text { font-size: 0.75rem; color: var(--text-secondary); line-height: 1.5; }
 
 /* ── Spearhead nav dots (bright purple, differentiated from faction dots) ── */
 /* ── Thin separator between spearhead groups within the same faction ── */
@@ -2432,23 +2439,25 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   flex-direction: column;
 }
 .gw-ability-hdr {
-  padding: 5px 10px;
+  padding: 4px 10px;
   display: flex;
-  flex-direction: column;
-  gap: 1px;
+  align-items: center;
 }
 .gw-ability-timing {
-  font-size: 0.53rem;
+  font-size: 0.54rem;
   letter-spacing: 0.14em;
-  opacity: 0.85;
   font-family: Arial, sans-serif;
   font-weight: 700;
+  color: #fff;
+  opacity: 0.92;
 }
 .gw-ability-name {
-  font-size: 0.78rem;
+  font-size: 0.9rem;
   font-weight: 700;
   font-family: 'Palatino Linotype', Palatino, Georgia, serif;
+  color: #c8bc98;
   line-height: 1.2;
+  margin-bottom: 2px;
 }
 .gw-ability-lore {
   font-style: italic;
@@ -2464,15 +2473,15 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   line-height: 1.5;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
   flex: 1;
 }
-.gw-ability-para { margin: 7px 0 0 0; }
+.gw-ability-para { margin: 4px 0 0 0; }
 .gw-ability-lbl {
   font-weight: 700;
-  color: #d8c870;
+  color: #c8bc98;
   font-family: Arial, sans-serif;
-  font-size: 0.62rem;
+  font-size: 0.7rem;
 }
 .gw-ability-bullets {
   margin: 0;
