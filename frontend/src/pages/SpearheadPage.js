@@ -97,7 +97,8 @@ export default function SpearheadPage({ headerCollapsed }) {
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState('');
   const [detailUnit, setDetailUnit] = useState(null);
-  const [thumbHover, setThumbHover] = useState(null);
+  const [thumbHover,   setThumbHover]   = useState(null);
+  const [spThumbHover, setSpThumbHover] = useState(null); // { name, x, y }
   const tableWrapperRef = useRef(null);
 
   const saved = useMemo(() => { try { return JSON.parse(localStorage.getItem(FILTER_KEY)) || {}; } catch { return {}; } }, []);
@@ -257,6 +258,13 @@ export default function SpearheadPage({ headerCollapsed }) {
     {thumbHover && ReactDOM.createPortal(
       <div className="thumb-popup-fixed" style={{ left: thumbHover.x + 16, top: thumbHover.y + 16 }}>
         <img src={`${axios.defaults.baseURL || ''}/api/unit-image/${thumbHover.id}`} alt=""
+          onError={e => { e.target.style.display = 'none'; }} />
+      </div>,
+      document.body
+    )}
+    {spThumbHover && ReactDOM.createPortal(
+      <div className="thumb-popup-fixed" style={{ left: spThumbHover.x + 16, top: spThumbHover.y + 16 }}>
+        <img src={`${axios.defaults.baseURL || ''}/api/spearhead-image/${encodeURIComponent(spThumbHover.name)}`} alt=""
           onError={e => { e.target.style.display = 'none'; }} />
       </div>,
       document.body
@@ -442,6 +450,9 @@ export default function SpearheadPage({ headerCollapsed }) {
                             className="sp-group-thumb"
                             src={`${axios.defaults.baseURL || ''}/api/spearhead-image/${encodeURIComponent(group.spearheadName)}`}
                             alt=""
+                            onMouseEnter={e => setSpThumbHover({ name: group.spearheadName, x: e.clientX, y: e.clientY })}
+                            onMouseMove={e  => setSpThumbHover(h => h ? { ...h, x: e.clientX, y: e.clientY } : h)}
+                            onMouseLeave={() => setSpThumbHover(null)}
                             onError={e => { e.target.style.display = 'none'; }}
                           />
                           <span className="sp-group-name">{group.spearheadName}</span>
