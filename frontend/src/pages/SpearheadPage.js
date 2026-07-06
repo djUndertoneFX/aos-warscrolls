@@ -228,6 +228,9 @@ export default function SpearheadPage({ headerCollapsed }) {
     const tmp = yourSpearhead;
     setYourSpearhead(opponentSpearhead);
     setOpponentSpearhead(tmp);
+    const tmpF = showFriendly;
+    setShowFriendly(showEnemy);
+    setShowEnemy(tmpF);
   };
   const handleYourSpearhead = name => {
     setYourSpearhead(name);
