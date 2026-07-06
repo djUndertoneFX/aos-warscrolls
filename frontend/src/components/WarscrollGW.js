@@ -56,6 +56,8 @@ const PHASE_PRESETS = [
   { keys: ['hero phase'],           style: { hdrBg: '#9a802e', hdrTxt: '#ffffff', border: '#c8a840' } },
   { keys: ['movement', 'move phase'],style:{ hdrBg: '#0a3e28', hdrTxt: '#b8f0d8', border: '#1a7850' } },
   { keys: ['shooting'],             style: { hdrBg: '#0a2850', hdrTxt: '#c0d8f8', border: '#2858b8' } },
+  { keys: ['once per battle round', 'start of battle round'], style: { hdrBg: '#1a3040', hdrTxt: '#90c8e0', border: '#2878a8' } },
+  { keys: ['once per turn'],        style: { hdrBg: '#182838', hdrTxt: '#80b8d0', border: '#205878' } },
   { keys: ['once per battle'],      style: { hdrBg: '#480838', hdrTxt: '#f0c8e8', border: '#901870' } },
   { keys: ['deployment'],           style: { hdrBg: '#200c50', hdrTxt: '#d0c8f8', border: '#5040b0' } },
   { keys: ['end of battle', 'end of turn'], style: { hdrBg: '#181818', hdrTxt: '#b8b8b8', border: '#484848' } },
@@ -393,6 +395,10 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
   // factionSlug '__sp__' = spearhead mode slides
   const [activePage, setActivePage] = useState(null);
 
+  // Spearhead slide checkbox/filter state — kept at top level to avoid hook-in-conditional violation
+  const [spSlideSelectedAbs, setSpSlideSelectedAbs] = useState(new Set());
+  const [spSlideFilterSelected, setSpSlideFilterSelected] = useState(false);
+
   // Per-faction rules cache (populated for all slugs in navList)
   const rulesCache = useRef(new Map());
   const [loadedSlugs, setLoadedSlugs] = useState(new Set());
@@ -498,6 +504,16 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
   useEffect(() => {
     if (modalRef.current) modalRef.current.scrollTop = 0;
   }, [activePage, unit?.id]);
+
+  // Load spearhead slide checkbox state from localStorage when slide changes
+  useEffect(() => {
+    if (!activePage || activePage.factionSlug !== '__sp__') return;
+    const spName = spearheadData?.spearheadName ?? '';
+    const storageKey = `sp-selected-${spName}-${activePage.slideKey}`;
+    try { setSpSlideSelectedAbs(new Set(JSON.parse(localStorage.getItem(storageKey) || '[]'))); }
+    catch { setSpSlideSelectedAbs(new Set()); }
+    setSpSlideFilterSelected(false);
+  }, [activePage?.slideKey, spearheadData?.spearheadName]); // eslint-disable-line
 
   useEffect(() => {
     if (!unit?.id) return;
@@ -803,22 +819,20 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
             const title = slideKey === 'sp_traits' ? 'Battle Traits' : 'Regiment Abilities & Enhancements';
             const spName = spearheadData?.spearheadName ?? '';
 
-            // Checkbox + filter state (localStorage keyed per spearhead + slide)
+            // Checkbox + filter state (top-level state, loaded via useEffect on slide change)
             const storageKey = `sp-selected-${spName}-${slideKey}`;
-            const [selectedAbs, setSelectedAbs] = React.useState(() => {
-              try { return new Set(JSON.parse(localStorage.getItem(storageKey) || '[]')); }
-              catch { return new Set(); }
-            });
-            const [filterSelected, setFilterSelected] = React.useState(false);
+            const selectedAbs = spSlideSelectedAbs;
+            const filterSelected = spSlideFilterSelected;
 
             const toggleSelected = (name) => {
-              setSelectedAbs(prev => {
+              setSpSlideSelectedAbs(prev => {
                 const next = new Set(prev);
                 next.has(name) ? next.delete(name) : next.add(name);
                 localStorage.setItem(storageKey, JSON.stringify([...next]));
                 return next;
               });
             };
+            const setFilterSelected = setSpSlideFilterSelected;
 
             const renderAbilityCard = (ab, i) => {
               let { text, declare, effect, ...rest } = ab;
