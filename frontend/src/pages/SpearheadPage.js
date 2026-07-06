@@ -160,21 +160,28 @@ export default function SpearheadPage({ headerCollapsed }) {
   }, []);
 
   // ── Build groups keyed by spearhead NAME ──────────────────────────────────
+  // row.spearhead may be pipe-separated for units in multiple spearheads:
+  //   "Gnawfeast Clawpack|Warpspark Clawpack"
   const groups = useMemo(() => {
     if (!allRows) return [];
     const map = new Map();
     for (const row of allRows) {
-      const key = row.spearhead; // spearhead name is the group key
-      if (!map.has(key)) {
-        map.set(key, {
-          spearheadName: key,
-          faction: row.faction,
-          factionSlug: row.faction_slug,
-          alliance: row.grand_alliance,
-          units: [],
-        });
+      const names = row.spearhead ? row.spearhead.split('|') : [];
+      for (const name of names) {
+        const key = name.trim();
+        if (!map.has(key)) {
+          map.set(key, {
+            spearheadName: key,
+            faction: row.faction,
+            factionSlug: row.faction_slug,
+            alliance: row.grand_alliance,
+            units: [],
+          });
+        }
+        // Avoid duplicating the same unit in one group (it may appear in the array twice due to multi-size)
+        const g = map.get(key);
+        if (!g.units.find(u => u.id === row.id)) g.units.push(row);
       }
-      map.get(key).units.push(row);
     }
     return [...map.values()].sort((a, b) => {
       const ao = ALLIANCE_ORDER[a.alliance] ?? 99, bo = ALLIANCE_ORDER[b.alliance] ?? 99;

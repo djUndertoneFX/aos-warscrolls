@@ -1,277 +1,346 @@
 /**
  * Seed the warscrolls.spearhead column with AoS 4th edition Spearhead army data.
- * Each faction has one official Spearhead army. We store the faction name in the
- * spearhead column for each unit that belongs to that faction's Spearhead force.
+ * The spearhead column stores the specific spearhead name (e.g. "Fangs of the Blood God").
+ * Units that appear in multiple spearheads have pipe-separated values:
+ *   "Gnawfeast Clawpack|Warpspark Clawpack"
  *
- * Unit names must match exactly what's in the DB (lowercase, normalized).
  * Run: node scrapeSpearheads.js
  */
 
 const { getDb, initDb } = require('./db');
 
-// Maps faction_slug -> { display name, unit names as they appear in the DB }
-const SPEARHEADS = {
-  'stormcast-eternals': {
-    name: 'Stormcast Eternals',
-    units: [
-      'lordimperatant',
-      'liberators',
-      'prosecutors',
-      'annihilators',
-    ],
+// Each spearhead entry: name, faction_slug(s), and unit names as they appear in the DB.
+// Units are matched by LOWER(name) exact or fuzzy LIKE search within the faction.
+// faction_slug can be a string or array (for multi-subfaction armies like Orruk Warclans).
+const SPEARHEADS = [
+  // ── ORDER ────────────────────────────────────────────────────────────────
+  {
+    name: 'Castelite Company',
+    faction: 'cities-of-sigmar',
+    units: ['Freeguild Cavalier-Marshal', 'Freeguild Steelhelms', 'Freeguild Cavaliers', 'Ironweld Great Cannon'],
   },
-  'cities-of-sigmar': {
-    name: 'Cities of Sigmar',
-    units: [
-      'freeguild marshal and relic envoy',
-      'freeguild steelhelms',
-      'freeguild fusiliers',
-      'freeguild cavaliers',
-    ],
+  {
+    name: 'Fusil-Platoon',
+    faction: 'cities-of-sigmar',
+    units: ['Fusil-Major on Ogor Warhulk', 'Alchemite Warforger', 'Freeguild Fusiliers', 'Wildercorps Hunters'],
   },
-  'daughters-of-khaine': {
-    name: 'Daughters of Khaine',
-    units: [
-      'slaughter queen',
-      'witch aelves',
-      'blood sisters',
-      'blood stalkers',
-    ],
+  {
+    name: "Zenestra's Zealots",
+    faction: 'cities-of-sigmar',
+    units: ['Freeguild Marshal and Relic Envoy', 'Pontifex Zenestra', 'Freeguild Command Corps', 'Freeguild Steelhelms'],
   },
-  'fyreslayers': {
-    name: 'Fyreslayers',
-    units: [
-      'auric runemaster',
-      'vulkite berzerkers with fyresteel weapons',
-      'hearthguard berzerker with berzerker broadaxes',
-      'auric hearthguard',
-    ],
+  {
+    name: 'Heartflayer Troupe',
+    faction: 'daughters-of-khaine',
+    units: ['Melusai Ironscale', 'Witch Aelves', 'Doomfire Warlocks', 'Blood Stalkers'],
   },
-  'idoneth-deepkin': {
-    name: 'Idoneth Deepkin',
-    units: [
-      'isharann soulrender',
-      'namarti thralls',
-      'namarti reavers',
-      'akhelian morrsarr guard',
-    ],
+  {
+    name: 'Khainite Shadow Coven',
+    faction: 'daughters-of-khaine',
+    units: ['Slaughter Queen on Cauldron of Blood', 'Hag Queen', 'Bloodwrack Medusa', 'Khainite Shadowstalkers', 'Sisters of Slaughter'],
   },
-  'kharadron-overlords': {
-    name: 'Kharadron Overlords',
-    units: [
-      'aetherkhemist',
-      'arkanaut company',
-      'grundstok thunderers',
-      'endrinriggers',
-    ],
+  {
+    name: 'Saga Axeband',
+    faction: 'fyreslayers',
+    units: ['Battlesmith', 'Hearthguard Berzerkers', 'Vulkite Berzerkers'],
   },
-  'lumineth-realm-lords': {
-    name: 'Lumineth Realm-lords',
-    units: [
-      'scinari cathallar',
-      'vanari auralan wardens',
-      'vanari auralan sentinels',
-      'hurakan windchargers',
-    ],
+  {
+    name: 'Akhelian Tide Guard',
+    faction: 'idoneth-deepkin',
+    units: ['Akhelian King', 'Akhelian Morrsarr Guard', 'Akhelian Ishlaen Guard', 'Namarti Reavers'],
   },
-  'seraphon': {
-    name: 'Seraphon',
-    units: [
-      'skink starpriest',
-      'skinks',
-      'saurus warriors',
-      'aggradon lancers',
-    ],
+  {
+    name: 'Soulraid Hunt',
+    faction: 'idoneth-deepkin',
+    units: ['Isharann Soulscryer', 'Akhelian Morrsarr Guard', 'Akhelian Allopex', 'Namarti Thralls'],
   },
-  'sylvaneth': {
-    name: 'Sylvaneth',
-    units: [
-      'branchwych',
-      'dryads',
-      'treerevenants',
-      'kurnoth hunters with greatbows',
-    ],
+  {
+    name: 'Grundstok Trailblazers',
+    faction: 'kharadron-overlords',
+    units: ['Endrinmaster with Dirigible Suit', 'Grundstok Thunderers', 'Grundstok Gunhauler', 'Endrinriggers'],
   },
-  'blades-of-khorne': {
-    name: 'Blades of Khorne',
-    units: [
-      'slaughterpriest',
-      'bloodreavers',
-      'bloodletters',
-      'flesh hounds',
-    ],
+  {
+    name: 'Skyhammer Task Force',
+    faction: 'kharadron-overlords',
+    units: ['Arkanaut Admiral', 'Arkanaut Company', 'Skywardens', 'Arkanaut Frigate'],
   },
-  'disciples-of-tzeentch': {
-    name: 'Disciples of Tzeentch',
-    units: [
-      'magister',
-      'kairic acolytes',
-      'pink horrors',
-      'flamers of tzeentch',
-    ],
+  {
+    name: 'Glittering Phalanx',
+    faction: 'lumineth-realm-lords',
+    units: ['Scinari Cathallar', 'Vanari Auralan Sentinels', 'Vanari Auralan Wardens', 'Vanari Bladelords'],
   },
-  'hedonites-of-slaanesh': {
-    name: 'Hedonites of Slaanesh',
-    units: [
-      'shardspeaker of slaanesh',
-      'blissbarb archers',
-      'daemonettes',
-      'slickblade seekers',
-    ],
+  {
+    name: 'Hurakan Vanguard',
+    faction: 'lumineth-realm-lords',
+    units: ['Hurakan Windmage', 'Hurakan Windchargers', 'Vanari Auralan Wardens', 'Hurakan Spirit of the Wind'],
   },
-  'maggotkin-of-nurgle': {
-    name: 'Maggotkin of Nurgle',
-    units: [
-      'lord of plagues',
-      'putrid blightkings',
-      'plaguebearers',
-      'nurglings',
-    ],
+  {
+    name: 'Starscale Warhost',
+    faction: 'seraphon',
+    units: ['Saurus Oldblood on Carnosaur', 'Saurus Warriors', 'Kroxigor'],
   },
-  'skaven': {
-    name: 'Skaven',
-    units: [
-      'warlock bombardier',
-      'clanrats',
-      'stormfiends',
-      'warplock jezzails',
-    ],
+  {
+    name: 'Sunblooded Prowlers',
+    faction: 'seraphon',
+    units: ['Sunblood', 'Saurus Warriors', 'Hunters of Huanchi', 'Terrawings', 'Spawn of Chotec'],
   },
-  'slaves-to-darkness': {
-    name: 'Slaves to Darkness',
-    units: [
-      'chaos lord',
-      'chaos warriors',
-      'darkoath marauders',
-      'chaos knights',
-    ],
+  {
+    name: "Yndrasta's Spearhead",
+    faction: 'stormcast-eternals',
+    units: ['Yndrasta', 'Knight-Vexillor', 'Annihilators', 'Vanquishers', 'Stormstrike Chariot'],
   },
-  'flesh-eater-courts': {
-    name: 'Flesh-eater Courts',
-    units: [
-      'abhorrant archregent',
-      'crypt ghouls',
-      'crypt horrors',
-      'crypt flayers',
-    ],
+  {
+    name: 'Vigilant Brotherhood',
+    faction: 'stormcast-eternals',
+    units: ['Lord-Vigilant on Gryph-stalker', 'Lord-Veritant', 'Prosecutors', 'Liberators'],
   },
-  'nighthaunt': {
-    name: 'Nighthaunt',
-    units: [
-      'lady olynder mortarch of grief',
-      'chainrasps',
-      'grimghast reapers',
-      'myrmourn banshees',
-    ],
+  {
+    name: 'Bitterbark Copse',
+    faction: 'sylvaneth',
+    units: ['Branchwych', 'Treelord', 'Kurnoth Hunters', 'Treerevenants'],
   },
-  'ossiarch-bonereapers': {
-    name: 'Ossiarch Bonereapers',
-    units: [
-      'mortisan soulmason',
-      'mortek guard',
-      'kavalos deathriders',
-      'gothizzar harvester',
-    ],
+  {
+    name: 'Spitewing Flight',
+    faction: 'sylvaneth',
+    units: ['Archrevenant', 'Gossamid Archers', 'Spiterider Lancers', 'Revenant Seekers'],
   },
-  'soulblight-gravelords': {
-    name: 'Soulblight Gravelords',
-    units: [
-      'lauka vai mother of nightmares',
-      'deathrattle skeletons',
-      'dire wolves',
-      'vargheists',
-    ],
+  // ── CHAOS ─────────────────────────────────────────────────────────────────
+  {
+    name: 'Fangs of the Blood God',
+    faction: 'blades-of-khorne',
+    units: ['Karanak', 'Flesh Hounds', 'Claws of Karanak'],
   },
-  'gloomspite-gitz': {
-    name: 'Gloomspite Gitz',
-    units: [
-      'loonboss',
-      'moonclan stabbas',
-      'squig hoppers',
-      'squig herd',
-    ],
+  {
+    name: 'Gore Pilgrims',
+    faction: 'blades-of-khorne',
+    units: ['Slaughterpriest', 'Blood Warriors', 'Bloodreavers', 'Mighty Skullcrushers'],
   },
-  'ironjawz': {
-    name: 'Ironjawz',
-    units: [
-      'megaboss',
-      'ardboyz',
-      'brutes',
-      'goregruntas',
-    ],
+  {
+    name: 'Fluxblade Coven',
+    faction: 'disciples-of-tzeentch',
+    units: ['Magister on Disc of Tzeentch', 'Flamers of Tzeentch', 'Screamers of Tzeentch', 'Tzaangors', 'Kairic Acolytes'],
   },
-  'kruleboyz': {
-    name: 'Kruleboyz',
-    units: [
-      'swampcalla shaman with potgrot',
-      'gutrippaz',
-      'manskewer boltboyz',
-      'hobgrot slittaz',
-    ],
+  {
+    name: 'Tzaangor Warflock',
+    faction: 'disciples-of-tzeentch',
+    units: ['Tzaangor Shaman', 'Tzaangors', 'Tzaangor Enlightened', 'Tzaangor Skyfires'],
   },
-  'ogor-mawtribes': {
-    name: 'Ogor Mawtribes',
-    units: [
-      'butcher',
-      'ogor gluttons',
-      'leadbelchers',
-      'mournfang pack',
-    ],
+  {
+    name: 'Blades of The Lurid Dream',
+    faction: 'hedonites-of-slaanesh',
+    units: ['Shardspeaker of Slaanesh', 'Blissbarb Archers', 'Slickblade Seekers', 'Slaangor Fiendbloods'],
   },
-  'sons-of-behemat': {
-    name: 'Sons of Behemat',
-    units: [
-      'warstomper megagargant',
-      'mancrusher mob',
-    ],
+  {
+    name: 'Epicurean Revellers',
+    faction: 'hedonites-of-slaanesh',
+    units: ['Thricefold Discord', 'Fiends', 'Daemonettes', 'Seekers'],
   },
-};
+  {
+    name: 'Bleak Host',
+    faction: 'maggotkin-of-nurgle',
+    units: ['Spoilpox Scrivener', 'Pusgoyle Blightlords', 'Putrid Blightkings', 'Plaguebearers'],
+  },
+  {
+    name: 'Bubonic Cell',
+    faction: 'maggotkin-of-nurgle',
+    units: ['Rotbringer Sorcerer', 'Nurglings', 'Beast of Nurgle', 'Rotmire Creed'],
+  },
+  {
+    name: 'Gnawfeast Clawpack',
+    faction: 'skaven',
+    units: ['Clawlord', 'Grey Seer', 'Warlock Engineer', 'Clanrats', 'Rat Ogors'],
+  },
+  {
+    name: 'Warpspark Clawpack',
+    faction: 'skaven',
+    units: ['Grey Seer', 'Stormfiends', 'Warp Lightning Cannon', 'Clanrats'],
+  },
+  {
+    name: 'Bloodwind Legion',
+    faction: 'slaves-to-darkness',
+    units: ['Chaos Lord', 'Chaos Chariot', 'Chaos Warriors', 'Chaos Knights'],
+  },
+  {
+    name: 'Darkoath Raiders',
+    faction: 'slaves-to-darkness',
+    units: ['Darkoath Warqueen', 'Darkoath Savagers', 'Darkoath Fellriders', 'Darkoath Marauders'],
+  },
+  // ── DEATH ─────────────────────────────────────────────────────────────────
+  {
+    name: 'Carrion Retainers',
+    faction: 'flesh-eater-courts',
+    units: ['Abhorrant Archregent', 'Cryptguard', 'Morbheg Knights', 'Varghulf Courtier'],
+  },
+  {
+    name: 'Charnel Watch',
+    faction: 'flesh-eater-courts',
+    units: ['Abhorrant Gorewarden', 'Royal Beastflayers', 'Crypt Horrors', 'Crypt Flayers'],
+  },
+  {
+    name: 'Cursed Shacklehorde',
+    faction: 'nighthaunt',
+    units: ['Spirit Torment', 'Chainghasts', 'Bladegheist Revenants', 'Dreadscythe Harridans', 'Dreadblade Harrows'],
+  },
+  {
+    name: 'Slasher Host',
+    faction: 'nighthaunt',
+    units: ['Knight of Shrouds', 'Spirit Hosts', 'Grimghast Reapers', 'Chainrasps'],
+  },
+  {
+    name: 'Kavalos Vanguard',
+    faction: 'ossiarch-bonereapers',
+    units: ['Liege-Kavalos', 'Kavalos Deathriders', 'Teratic Cohort'],
+  },
+  {
+    name: 'Mortisan Elite',
+    faction: 'ossiarch-bonereapers',
+    units: ['Mortisan Ossifector', 'Immortis Guard', 'Necropolis Stalkers', 'Morghast Archai'],
+  },
+  {
+    name: 'Tithe-Reaper Echelon',
+    faction: 'ossiarch-bonereapers',
+    units: ['Mortisan Soulreaper', 'Mortek Guard', 'Kavalos Deathriders', 'Gothizzar Harvester'],
+  },
+  {
+    name: 'Bloodcrave Hunt',
+    faction: 'soulblight-gravelords',
+    units: ['Vampire Lord', 'Deathrattle Skeletons', 'Blood Knights', 'Vargheists'],
+  },
+  {
+    name: 'Deathrattle Tomb Host',
+    faction: 'soulblight-gravelords',
+    units: ['Wight King', 'Barrow Guard', 'Barrow Knights', 'Deathrattle Skeletons'],
+  },
+  // ── DESTRUCTION ────────────────────────────────────────────────────────────
+  {
+    name: 'Bad Moon Madmob',
+    faction: 'gloomspite-gitz',
+    units: ['Loonboss', 'Moonclan Stabbas', 'Squig Hoppers', 'Rockgut Troggoths'],
+  },
+  {
+    name: 'Snarlpack Huntaz',
+    faction: 'gloomspite-gitz',
+    units: ['Snarlboss', 'Wolfgit Retinue', 'Snarlpack Cavalry', 'Sunsteala Wheela'],
+  },
+  {
+    name: 'Ironjawz Bigmob',
+    faction: ['ironjawz', 'orruk-warclans'],
+    units: ['Megaboss', 'Brute Ragerz', 'Ardboyz', 'Brutes'],
+  },
+  {
+    name: 'Swampskulka Gang',
+    faction: ['kruleboyz', 'orruk-warclans'],
+    units: ['Killaboss on Great Gnashtoof', 'Murknob with Belcha-banna', 'Man-skewer Boltboyz', 'Gutrippaz', 'Beast-skewer Killbow'],
+  },
+  {
+    name: 'Scrapglutt',
+    faction: 'ogor-mawtribes',
+    units: ['Gnoblar Scraplauncher', 'Ironguts', 'Gnoblars'],
+  },
+  {
+    name: "Tyrant's Bellow",
+    faction: 'ogor-mawtribes',
+    units: ['Tyrant', 'Mournfang Pack', 'Ogor Gluttons', 'Leadbelchers', 'Ironblaster'],
+  },
+  {
+    name: 'Wallsmasher Stomp',
+    faction: 'sons-of-behemat',
+    units: ['Mancrusher Gargant', 'Mancrusher Mob'],
+  },
+  // ── NEW / UNRELEASED FACTIONS (may not be in DB yet) ─────────────────────
+  {
+    name: 'Helforge Host',
+    faction: 'helsmiths-of-hashut',
+    units: ['War Despot', 'Dominator Engine', 'Tormentor Bombard', 'Infernal Cohort'],
+  },
+];
 
 function run(opts = {}) {
   initDb();
   const db = getDb();
 
-  // Clear all existing spearhead values first
+  // Clear all existing spearhead values
   db.prepare('UPDATE warscrolls SET spearhead = NULL').run();
 
   let totalUpdated = 0;
   const missed = [];
+  // Track which warscroll IDs have been assigned which spearhead names, to build pipe-separated lists
+  const assigned = new Map(); // warscroll_id → Set of spearhead names
 
-  for (const [slug, sp] of Object.entries(SPEARHEADS)) {
-    console.log(`\n${sp.name}:`);
-    for (const unitName of sp.units) {
-      // Exact match against the normalized name in the DB
-      const row = db.prepare(
+  const tryMatch = (factionSlug, unitName) => {
+    const slugs = Array.isArray(factionSlug) ? factionSlug : [factionSlug];
+    const nameLower = unitName.toLowerCase().trim();
+    // DB strips hyphens during scraping, so also try hyphen-stripped version
+    const nameNorm = nameLower.replace(/-/g, '');
+
+    for (const slug of slugs) {
+      // Exact match
+      let row = db.prepare(
         'SELECT id, name FROM warscrolls WHERE faction_slug = ? AND LOWER(name) = ?'
-      ).get(slug, unitName.toLowerCase());
+      ).get(slug, nameLower)
+      || db.prepare(
+        'SELECT id, name FROM warscrolls WHERE faction_slug = ? AND LOWER(name) = ?'
+      ).get(slug, nameNorm);
 
+      if (!row) {
+        // Prefix match
+        row = db.prepare(
+          "SELECT id, name FROM warscrolls WHERE faction_slug = ? AND LOWER(name) LIKE ? LIMIT 1"
+        ).get(slug, `${nameLower}%`)
+        || db.prepare(
+          "SELECT id, name FROM warscrolls WHERE faction_slug = ? AND LOWER(name) LIKE ? LIMIT 1"
+        ).get(slug, `${nameNorm}%`);
+      }
+
+      if (!row) {
+        // Substring match — also try DB-side hyphen stripping
+        row = db.prepare(
+          "SELECT id, name FROM warscrolls WHERE faction_slug = ? AND LOWER(name) LIKE ? LIMIT 1"
+        ).get(slug, `%${nameLower}%`)
+        || db.prepare(
+          "SELECT id, name FROM warscrolls WHERE faction_slug = ? AND LOWER(REPLACE(name,'-','')) LIKE ? LIMIT 1"
+        ).get(slug, `%${nameNorm}%`);
+      }
+
+      if (row) return row;
+    }
+    return null;
+  };
+
+  for (const sp of SPEARHEADS) {
+    console.log(`\n${sp.name} (${Array.isArray(sp.faction) ? sp.faction.join('/') : sp.faction}):`);
+    // Track matched unit names to avoid double-counting for multi-size units (e.g. Flesh Hounds appearing twice)
+    const matchedUnitNames = new Set();
+
+    for (const unitName of sp.units) {
+      const row = tryMatch(sp.faction, unitName);
       if (row) {
-        db.prepare('UPDATE warscrolls SET spearhead = ? WHERE id = ?').run(sp.name, row.id);
-        console.log(`  ✓ ${row.name}`);
-        totalUpdated++;
-      } else {
-        // Try a LIKE fallback (partial match)
-        const fuzzy = db.prepare(
-          "SELECT id, name FROM warscrolls WHERE faction_slug = ? AND LOWER(name) LIKE ?"
-        ).get(slug, `%${unitName.toLowerCase()}%`);
-        if (fuzzy) {
-          db.prepare('UPDATE warscrolls SET spearhead = ? WHERE id = ?').run(sp.name, fuzzy.id);
-          console.log(`  ~ ${fuzzy.name}  (fuzzy match for "${unitName}")`);
+        if (!assigned.has(row.id)) assigned.set(row.id, new Set());
+        assigned.get(row.id).add(sp.name);
+        if (!matchedUnitNames.has(row.name)) {
+          console.log(`  ✓ ${row.name}`);
+          matchedUnitNames.add(row.name);
           totalUpdated++;
-        } else {
-          console.log(`  ✗ NOT FOUND: "${unitName}"`);
-          missed.push({ slug, unitName });
         }
+      } else {
+        console.log(`  ✗ NOT FOUND: "${unitName}"`);
+        missed.push({ spearhead: sp.name, slug: Array.isArray(sp.faction) ? sp.faction[0] : sp.faction, unitName });
       }
     }
   }
 
+  // Write back: pipe-separated spearhead names for units in multiple spearheads
+  for (const [id, names] of assigned.entries()) {
+    const value = [...names].join('|');
+    db.prepare('UPDATE warscrolls SET spearhead = ? WHERE id = ?').run(value, id);
+  }
+
   if (opts.closeDb !== false && require.main === module) db.close();
 
-  console.log(`\n✅ Updated ${totalUpdated} units with spearhead data.`);
+  console.log(`\n✅ Updated ${totalUpdated} unique DB units across ${SPEARHEADS.length} spearheads.`);
   if (missed.length) {
-    console.log(`⚠️  ${missed.length} unit(s) not found:`);
-    missed.forEach(m => console.log(`   [${m.slug}] "${m.unitName}"`));
+    console.log(`⚠️  ${missed.length} unit(s) not found in DB:`);
+    missed.forEach(m => console.log(`   [${m.spearhead}] "${m.unitName}"`));
   }
 }
 
