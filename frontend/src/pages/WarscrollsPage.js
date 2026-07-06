@@ -162,9 +162,12 @@ function FactionDropdown({ factions, value, onChange, liveCount }) {
   );
 }
 
+const TEXT_SORT_COLS = new Set(['faction','name','types','keywords','alliance','spearhead']);
 function SortIcon({ col, sortBy, sortDir }) {
   if (sortBy !== col) return <span className="sort-icon">↕</span>;
-  return <span className="sort-icon">{sortDir === 'asc' ? '↑' : '↓'}</span>;
+  const asc = sortDir === 'asc';
+  const up = TEXT_SORT_COLS.has(col) ? !asc : asc;
+  return <span className="sort-icon">{up ? '↑' : '↓'}</span>;
 }
 
 function makeAdoTooltip(includeSaveWard, save, ward, type = '') {
