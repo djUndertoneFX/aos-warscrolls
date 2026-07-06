@@ -560,6 +560,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
   const [thumbHover, setThumbHover] = useState(null);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 9999;
+  const navigateToFirstRef = useRef(false);
 
   const [searchInput, setSearchInput] = useState(saved.search ?? '');
   useEffect(() => {
@@ -651,6 +652,13 @@ export default function SimulacrumPage({ headerCollapsed }) {
         break;
       }
     }
+  }, [data]);
+
+  useEffect(() => {
+    if (!navigateToFirstRef.current) return;
+    navigateToFirstRef.current = false;
+    const rows = data?.data ?? [];
+    if (rows.length > 0) setDetailUnit(rows[0]);
   }, [data]);
 
   const handleSort = (col, e, reset = false) => {
@@ -1146,6 +1154,11 @@ export default function SimulacrumPage({ headerCollapsed }) {
           onPrev={() => { if (idx > 0) setDetailUnit(rows[idx - 1]); }}
           onNext={() => { if (idx < rows.length - 1) setDetailUnit(rows[idx + 1]); }}
           onJump={i => setDetailUnit(rows[i])}
+          {...(hasFriendlyMarks && hasEnemyMarks ? {
+            onSwapFriendlyEnemy: () => { navigateToFirstRef.current = true; setShowFriendly(e => !e); setShowEnemy(f => !f); setPage(1); },
+            onShowFriendlyOnly:  () => { navigateToFirstRef.current = true; setShowFriendly(true);  setShowEnemy(false); setPage(1); },
+            onShowEnemyOnly:     () => { navigateToFirstRef.current = true; setShowFriendly(false); setShowEnemy(true);  setPage(1); },
+          } : {})}
         />
       );
     })()}

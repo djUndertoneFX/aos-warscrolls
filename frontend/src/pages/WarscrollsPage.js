@@ -257,6 +257,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
 
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 9999;
+  const navigateToFirstRef = useRef(false);
 
   // Debounced search
   const [searchInput, setSearchInput] = useState(saved.search ?? '');
@@ -382,6 +383,14 @@ export default function WarscrollsPage({ headerCollapsed }) {
         break;
       }
     }
+  }, [data]);
+
+  // When data refreshes after a filter swap, navigate to the first unit if needed
+  useEffect(() => {
+    if (!navigateToFirstRef.current) return;
+    navigateToFirstRef.current = false;
+    const rows = data?.data ?? [];
+    if (rows.length > 0) setDetailUnit(rows[0]);
   }, [data]);
 
   useEffect(() => {
@@ -929,9 +938,9 @@ export default function WarscrollsPage({ headerCollapsed }) {
           }
         }}
         {...(hasFriendlyMarks && hasEnemyMarks ? {
-          onSwapFriendlyEnemy: () => { setShowFriendly(e => !e); setShowEnemy(f => !f); setPage(1); },
-          onShowFriendlyOnly:  () => { setShowFriendly(true);  setShowEnemy(false); setPage(1); },
-          onShowEnemyOnly:     () => { setShowFriendly(false); setShowEnemy(true);  setPage(1); },
+          onSwapFriendlyEnemy: () => { navigateToFirstRef.current = true; setShowFriendly(e => !e); setShowEnemy(f => !f); setPage(1); },
+          onShowFriendlyOnly:  () => { navigateToFirstRef.current = true; setShowFriendly(true);  setShowEnemy(false); setPage(1); },
+          onShowEnemyOnly:     () => { navigateToFirstRef.current = true; setShowFriendly(false); setShowEnemy(true);  setPage(1); },
         } : {})}
       />
       );
