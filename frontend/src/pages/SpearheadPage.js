@@ -249,8 +249,8 @@ export default function SpearheadPage({ headerCollapsed }) {
   const adoRTip = mkBox(`ADO — Ranged\n  Hit and wound${includeSaveWardInADO ? ` vs ${presumedSave ?? 5}+` : ' only (save not applied)'}.`);
   const adoMTip = mkBox(`ADO — Melee\n  Hit and wound${includeSaveWardInADO ? ` vs ${presumedSave ?? 5}+` : ' only (save not applied)'}.`);
 
-  // Row counter across all visible groups (for # column)
-  let rowCounter = 0;
+  // Spearhead group counter (# column shows group number, same for all units in a group)
+  let groupCounter = 0;
 
   return (
     <>
@@ -400,6 +400,7 @@ export default function SpearheadPage({ headerCollapsed }) {
                 </td></tr>
               )}
               {visibleGroups.map(group => {
+                groupCounter++;
                 const isGroupExpanded = expandedGroups.has(group.spearheadName);
                 const isRulesExpanded = rulesExpanded.has(group.spearheadName);
                 const isFriendly = yourSpearhead    === group.spearheadName;
@@ -515,8 +516,7 @@ export default function SpearheadPage({ headerCollapsed }) {
 
                     {/* ── Unit rows ── */}
                     {isGroupExpanded && group.units.map(row => {
-                      rowCounter++;
-                      const rowNum = rowCounter;
+                      const rowNum = groupCounter;
                       const isExpanded     = expandedIds.has(row.id);
                       const isFullExpanded = fullExpandedIds.has(row.id);
                       const weapons = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
