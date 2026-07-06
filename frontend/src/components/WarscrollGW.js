@@ -785,7 +785,22 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
                   {slide.data.length === 0
                     ? <p style={{color:'var(--text-dim)',fontStyle:'italic',padding:'1rem'}}>No data available for this spearhead.</p>
                     : <div className="gw-abilities-grid">
-                        {slide.data.map((ab, i) => <AbilityCard key={i} ab={{ ...ab, bullets: parseBullets(ab.bullets) }} keywords={[]} />)}
+                        {slide.data.map((ab, i) => {
+                          // PDF rules store everything in ab.text; split into declare/effect for AbilityCard
+                          let { text, declare, effect, ...rest } = ab;
+                          if (text && !effect) {
+                            const effMatch = text.match(/^(.*?)\bEffect:\s*/s);
+                            if (effMatch) {
+                              const before = effMatch[1].trim();
+                              const declMatch = before.match(/^Declare:\s*(.*)/s);
+                              declare = declMatch ? declMatch[1].trim() : (before || undefined);
+                              effect = text.slice(effMatch[0].length).trim();
+                            } else {
+                              effect = text;
+                            }
+                          }
+                          return <AbilityCard key={i} ab={{ ...rest, declare, effect, bullets: parseBullets(ab.bullets) }} keywords={[]} />;
+                        })}
                       </div>
                   }
                 </div>
