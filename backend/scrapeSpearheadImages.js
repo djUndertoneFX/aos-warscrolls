@@ -7,8 +7,6 @@
  * Setup: create .env.local with:
  *   RAILWAY_API_URL=https://your-app.railway.app
  *   UPLOAD_SECRET=your-secret
- *   LOGIN_USER=your-login
- *   LOGIN_PASS=your-password
  *
  * Run: node scrapeSpearheadImages.js
  */
@@ -28,53 +26,68 @@ const UPLOAD_SECRET = process.env.UPLOAD_SECRET || '';
 if (!RAILWAY_API)   { console.error('Set RAILWAY_API_URL in .env.local'); process.exit(1); }
 if (!UPLOAD_SECRET) { console.error('Set UPLOAD_SECRET in .env.local'); process.exit(1); }
 
-// All 47 spearhead names — used to match against GW product catalog
-const SPEARHEAD_NAMES = [
+// Manual overrides: spearhead name → Algolia product name
+// Used for spearheads that share a faction-level box (no individual product listing)
+// and for cases where fuzzy matching picks the wrong product.
+const MANUAL_PRODUCT_MAP = {
+  'Saga Axeband':         'Spearhead: Fyreslayers',
+  'Bloodwind Legion':     'Spearhead: Slaves to Darkness',
+  'Gnawfeast Clawpack':   'Spearhead: Skaven',
+  'Warpspark Clawpack':   'Spearhead: Skaven',
+  'Swampskulka Gang':     'Spearhead: Orruk Warclans',
+};
+
+// Spearheads to skip (no GW product found in catalog yet)
+const NO_PRODUCT = new Set([
   'Castelite Company',
   'Fusil-Platoon',
-  "Zenestra's Zealots",
   'Heartflayer Troupe',
-  'Khainite Shadow Coven',
-  'Saga Axeband',
-  'Akhelian Tide Guard',
   'Soulraid Hunt',
-  'Grundstok Trailblazers',
   'Skyhammer Task Force',
   'Glittering Phalanx',
-  'Hurakan Vanguard',
   'Starscale Warhost',
-  'Sunblooded Prowlers',
   "Yndrasta's Spearhead",
   'Vigilant Brotherhood',
   'Bitterbark Copse',
-  'Spitewing Flight',
-  'Fangs of the Blood God',
-  'Gore Pilgrims',
   'Fluxblade Coven',
-  'Tzaangor Warflock',
   'Blades of The Lurid Dream',
-  'Epicurean Revellers',
+  'Gore Pilgrims',
   'Bleak Host',
-  'Bubonic Cell',
-  'Gnawfeast Clawpack',
-  'Warpspark Clawpack',
-  'Bloodwind Legion',
-  'Darkoath Raiders',
   'Carrion Retainers',
-  'Charnel Watch',
-  'Cursed Shacklehorde',
   'Slasher Host',
-  'Kavalos Vanguard',
   'Mortisan Elite',
   'Tithe-Reaper Echelon',
   'Bloodcrave Hunt',
-  'Deathrattle Tomb Host',
   'Bad Moon Madmob',
-  'Snarlpack Huntaz',
-  'Ironjawz Bigmob',
-  'Swampskulka Gang',
   'Scrapglutt',
   "Tyrant's Bellow",
+  'Wallsmasher Stomp',
+]);
+
+// All 47 spearhead names
+const SPEARHEAD_NAMES = [
+  'Castelite Company', 'Fusil-Platoon', "Zenestra's Zealots",
+  'Heartflayer Troupe', 'Khainite Shadow Coven',
+  'Saga Axeband',
+  'Akhelian Tide Guard', 'Soulraid Hunt',
+  'Grundstok Trailblazers', 'Skyhammer Task Force',
+  'Glittering Phalanx', 'Hurakan Vanguard',
+  'Starscale Warhost', 'Sunblooded Prowlers',
+  "Yndrasta's Spearhead", 'Vigilant Brotherhood',
+  'Bitterbark Copse', 'Spitewing Flight',
+  'Fangs of the Blood God', 'Gore Pilgrims',
+  'Fluxblade Coven', 'Tzaangor Warflock',
+  'Blades of The Lurid Dream', 'Epicurean Revellers',
+  'Bleak Host', 'Bubonic Cell',
+  'Gnawfeast Clawpack', 'Warpspark Clawpack',
+  'Bloodwind Legion', 'Darkoath Raiders',
+  'Carrion Retainers', 'Charnel Watch',
+  'Cursed Shacklehorde', 'Slasher Host',
+  'Kavalos Vanguard', 'Mortisan Elite', 'Tithe-Reaper Echelon',
+  'Bloodcrave Hunt', 'Deathrattle Tomb Host',
+  'Bad Moon Madmob', 'Snarlpack Huntaz',
+  'Ironjawz Bigmob', 'Swampskulka Gang',
+  'Scrapglutt', "Tyrant's Bellow",
   'Wallsmasher Stomp',
   'Helforge Host',
 ];
@@ -91,22 +104,10 @@ function nameSlug(str) {
   return str.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
-function stem(w) { return w.length > 3 && w.endsWith('s') ? w.slice(0, -1) : w; }
-
-function matchScore(a, b) {
-  if (a === b) return 1;
-  const sa = a.replace(/^the /, '');
-  const sb = b.replace(/^the /, '');
-  if (sa === sb) return 0.98;
-  const wordsA = [...new Set(sa.split(' ').filter(w => w.length > 2).map(stem))];
-  const wordsB = [...new Set(sb.split(' ').filter(w => w.length > 2).map(stem))];
-  if (wordsA.length === 0) return 0;
-  let shared = 0;
-  for (const w of wordsA) { if (wordsB.includes(w)) shared++; }
-  const precision = shared / wordsA.length;
-  const recall    = wordsB.length > 0 ? shared / wordsB.length : 0;
-  if (precision === 0 || recall === 0) return 0;
-  return 2 * precision * recall / (precision + recall);
+// Extract the spearhead name portion from "Spearhead: Faction – Name" strings
+function extractSpearheadName(productName) {
+  const m = productName.match(/–\s*(.+)$/);
+  return m ? m[1].trim() : null;
 }
 
 function upgradeImageUrl(imgUrl) {
@@ -115,7 +116,7 @@ function upgradeImageUrl(imgUrl) {
 }
 
 async function downloadImage(imgUrl, localPath) {
-  if (fs.existsSync(localPath)) { console.log(`  (cached)`); return true; }
+  if (fs.existsSync(localPath)) { console.log('  (cached locally)'); return true; }
   try {
     const res = await fetch(imgUrl, {
       headers: {
@@ -142,7 +143,7 @@ async function uploadImage(localPath, spName) {
     headers: { 'Content-Type': 'image/jpeg', 'x-upload-secret': UPLOAD_SECRET },
     body: fs.readFileSync(localPath),
   });
-  if (!res.ok) { console.warn(`  ✗ Upload failed: ${res.status}`); return false; }
+  if (!res.ok) { console.warn(`  ✗ Upload failed: ${res.status} ${await res.text()}`); return false; }
   return true;
 }
 
@@ -160,14 +161,32 @@ async function main() {
   const hits = JSON.parse(fs.readFileSync(ALGOLIA_PRODUCTS, 'utf8'));
   console.log(`📖 ${hits.length} products loaded from Algolia`);
 
-  // Build product image map: normalized name → { name, imgUrl }
-  const products = [];
+  // Build product name → imgUrl map (only products with images)
+  const productMap = new Map();
   for (const p of hits) {
     if (!p.name || !p.images?.length) continue;
     const imgUrl = upgradeImageUrl(`${WARHAMMER_BASE}${p.images[0]}`);
-    products.push({ name: p.name, norm: normalize(p.name), imgUrl });
+    productMap.set(p.name, imgUrl);
   }
-  console.log(`🖼  ${products.length} products with images\n`);
+
+  // Build two lookup structures for spearhead products:
+  // 1. spearheadSubname → product name (from "Spearhead: Faction – SubName")
+  // 2. faction-level spearhead products (no " – " in name)
+  const spearheadBySubname = new Map(); // e.g. "Charnel Watch" → "Spearhead: Flesh-eater Courts – Charnel Watch"
+  const spearheadByFull    = new Map(); // e.g. "Spearhead: Fyreslayers" → imgUrl
+
+  for (const [name] of productMap) {
+    if (!name.toLowerCase().startsWith('spearhead:')) continue;
+    const subname = extractSpearheadName(name);
+    if (subname) {
+      spearheadBySubname.set(subname.toLowerCase(), name);
+    } else {
+      spearheadByFull.set(name, name);
+    }
+  }
+
+  console.log(`  ${spearheadBySubname.size} named spearhead products found`);
+  console.log(`  ${spearheadByFull.size} faction-level spearhead boxes found\n`);
 
   let downloaded = 0, uploaded = 0, skipped = 0;
 
@@ -176,39 +195,50 @@ async function main() {
     const localPath = path.join(LOCAL_IMG_DIR, `${slug}.jpg`);
     console.log(`\n▶ ${spName}`);
 
-    // Already uploaded?
-    if (fs.existsSync(localPath)) {
-      console.log(`  Cached locally — re-uploading...`);
-      const ok = await uploadImage(localPath, spName);
-      if (ok) { uploaded++; console.log(`  ✓ Uploaded`); } else skipped++;
-      continue;
-    }
-
-    // Find best matching product
-    const normSp = normalize(spName);
-    let best = null, bestScore = 0;
-    for (const p of products) {
-      const s = matchScore(normSp, p.norm);
-      if (s > bestScore) { bestScore = s; best = p; }
-    }
-
-    if (!best || bestScore < 0.4) {
-      console.log(`  ✗ No product match found (best: ${best?.name ?? 'none'}, score: ${bestScore.toFixed(2)})`);
+    // Skip known missing ones
+    if (NO_PRODUCT.has(spName)) {
+      console.log('  — No GW product found in catalog, skipping');
       skipped++;
       continue;
     }
 
-    console.log(`  → "${best.name}" (score: ${bestScore.toFixed(2)})`);
-    console.log(`  → ${best.imgUrl}`);
+    // Find the right product:
+    // 1. Check manual override
+    // 2. Try exact subname match from "Spearhead: Faction – SubName"
+    // 3. Try case-insensitive subname match
+    let productName = null;
 
-    const ok = await downloadImage(best.imgUrl, localPath);
+    if (MANUAL_PRODUCT_MAP[spName]) {
+      productName = MANUAL_PRODUCT_MAP[spName];
+    } else {
+      productName = spearheadBySubname.get(spName.toLowerCase())
+        ?? [...spearheadBySubname.entries()].find(([k]) => k.includes(spName.toLowerCase()))?.[1];
+    }
+
+    if (!productName) {
+      console.log('  — No product match found');
+      skipped++;
+      continue;
+    }
+
+    const imgUrl = productMap.get(productName);
+    if (!imgUrl) {
+      console.log(`  — Product found but no image: "${productName}"`);
+      skipped++;
+      continue;
+    }
+
+    console.log(`  → "${productName}"`);
+    console.log(`  → ${imgUrl}`);
+
+    const ok = await downloadImage(imgUrl, localPath);
     if (!ok) { skipped++; continue; }
     downloaded++;
 
     const uploadOk = await uploadImage(localPath, spName);
-    if (uploadOk) { uploaded++; console.log(`  ✓ Uploaded`); } else skipped++;
+    if (uploadOk) { uploaded++; console.log('  ✓ Uploaded'); } else skipped++;
 
-    await sleep(400); // polite delay
+    await sleep(300);
   }
 
   console.log(`\n✅ Done — downloaded: ${downloaded}, uploaded: ${uploaded}, skipped: ${skipped}`);

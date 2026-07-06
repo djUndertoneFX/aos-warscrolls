@@ -1380,6 +1380,16 @@ tr.sp-unit-row { border-left: 2px solid transparent; }
 tr.sp-unit-row.sp-unit-friendly { border-left-color: rgba(80,200,120,0.4); }
 tr.sp-unit-row.sp-unit-enemy    { border-left-color: rgba(220,80,80,0.4); }
 
+/* ── Spearhead group thumbnail ── */
+.sp-group-thumb {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 3px;
+  flex-shrink: 0;
+  border: 1px solid rgba(255,255,255,0.12);
+}
+
 /* ── Rules toggle button ── */
 .sp-group-rules-flags { margin-left: auto; flex-shrink: 0; }
 .sp-rules-btn {

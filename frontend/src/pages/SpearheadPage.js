@@ -434,6 +434,12 @@ export default function SpearheadPage({ headerCollapsed }) {
                             >E</button>
                           </span>
                           <span className="sp-group-chevron">{isGroupExpanded ? '▼' : '▶'}</span>
+                          <img
+                            className="sp-group-thumb"
+                            src={`${axios.defaults.baseURL || ''}/api/spearhead-image/${encodeURIComponent(group.spearheadName)}`}
+                            alt=""
+                            onError={e => { e.target.style.display = 'none'; }}
+                          />
                           <AllianceBadge alliance={group.alliance} />
                           <span className="sp-group-name">{group.spearheadName}</span>
                           <span className="sp-group-count">({group.units.length} units)</span>
