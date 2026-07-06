@@ -160,8 +160,16 @@ export default function SpearheadPage({ headerCollapsed }) {
 
   useEffect(() => {
     setLoading(true);
-    axios.get('/api/warscrolls', { params: { spearheadOnly: '1', sortBy: 'faction', sortDir: 'asc', pageSize: 9999, page: 1 } })
-      .then(res => setAllRows(res.data.data))
+    Promise.all([
+      axios.get('/api/warscrolls', { params: { spearheadOnly: '1', sortBy: 'faction', sortDir: 'asc', pageSize: 9999, page: 1 } }),
+      axios.get('/api/spearheads'),
+    ])
+      .then(([wRes, spRes]) => {
+        setAllRows(wRes.data.data);
+        const rulesMap = {};
+        for (const sp of spRes.data) rulesMap[sp.name] = sp;
+        setSpearheadRules(rulesMap);
+      })
       .catch(err => {
         if (err.response?.status === 401) setError('Session expired. Please sign out and log back in.');
         else setError('Failed to load spearheads. Is the backend running?');
