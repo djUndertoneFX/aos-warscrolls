@@ -505,19 +505,17 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
         setDotsHasOverflow(true);
         const activeDot = inner.querySelector('.gw-nav-dot-active, .gw-nav-dot-faction-active, .gw-nav-dot-sp-active');
         if (!activeDot) return;
-        const dotMid   = activeDot.offsetLeft + activeDot.offsetWidth / 2;
-        const dotRight = activeDot.offsetLeft + activeDot.offsetWidth;
-        const minTx    = -(innerW - outerW);
-        const raw      = outerW / 2 - dotMid;
-        const rawTx    = Math.min(0, Math.max(minTx, raw));
-        const tx = (rawTx < 0 && dotRight <= outerW) ? 0 : rawTx;
+        const dotMid = activeDot.offsetLeft + activeDot.offsetWidth / 2;
+        const minTx  = -(innerW - outerW);
+        // Always center the active dot; clamping handles the left/right extremes naturally
+        const tx = Math.min(0, Math.max(minTx, outerW / 2 - dotMid));
         setDotsTranslate(tx);
         setDotsAtStart(tx >= -4);
         setDotsAtEnd(tx <= minTx + 4);
       } catch (_) {}
     });
     return () => cancelAnimationFrame(raf);
-  }, [navIndex, activePage, navTotal, loadedSlugs]);
+  }, [navIndex, activePage, navTotal, loadedSlugs, spearheadNavGroups]); // eslint-disable-line
 
   // Clear active page when the displayed unit changes (e.g. after onJump)
   useEffect(() => { setActivePage(null); }, [unit?.id]);
