@@ -612,7 +612,18 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
       }
       return;
     }
-    if (!isSpMode) {
+    if (isSpMode) {
+      const spGrp = spearheadNavGroups.find(g => navIndex >= g.startIdx && navIndex <= g.endIdx);
+      const spGrpIdx = spearheadNavGroups.indexOf(spGrp);
+      const nextSpGrp = spearheadNavGroups[spGrpIdx + 1];
+      if (spGrp && nextSpGrp && navIndex === spGrp.endIdx) {
+        const slides = getSpSlides(nextSpGrp.spearheadName);
+        if (slides.length > 0) {
+          setActivePage({ factionSlug: '__sp__', spearheadName: nextSpGrp.spearheadName, slideKey: slides[0].key });
+          return;
+        }
+      }
+    } else {
       const group = factionGroups[currentGroupIdx];
       const nextGroup = factionGroups[currentGroupIdx + 1];
       if (group && nextGroup && navIndex === group.endIdx) {
@@ -624,7 +635,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
       }
     }
     onNext?.();
-  }, [activePage, navIndex, factionGroups, currentGroupIdx, isSpMode, spearheadNavGroups, resolveSlidesFor, getSlidesForSlug, onNext, onJump]);
+  }, [activePage, navIndex, factionGroups, currentGroupIdx, isSpMode, spearheadNavGroups, getSpSlides, resolveSlidesFor, getSlidesForSlug, onNext, onJump]);
 
   // Keyboard: Escape=close, ←=prev, →=next, PageUp=friendly only, PageDown=enemy only
   useEffect(() => {
