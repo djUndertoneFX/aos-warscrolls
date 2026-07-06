@@ -1342,6 +1342,8 @@ tr.spearhead-group-hdr.sp-faction-break.sp-group-friendly td {
 tr.spearhead-group-hdr.sp-faction-break.sp-group-enemy td {
   border-top-color: rgba(220,80,80,0.55);
 }
+.sortable-col { cursor: pointer; user-select: none; }
+.sortable-col:hover { background: rgba(200,168,64,0.12); }
 .sp-group-hdr-inner {
   display: flex;
   align-items: center;

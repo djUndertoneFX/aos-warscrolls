@@ -108,6 +108,8 @@ export default function SpearheadPage({ headerCollapsed }) {
   const [showFriendly,     setShowFriendly]      = useState(saved.showFriendly ?? false);
   const [showEnemy,        setShowEnemy]          = useState(saved.showEnemy ?? false);
   const [nameSearch,       setNameSearch]        = useState('');
+  const [sortBy,           setSortBy]            = useState('faction');   // 'spearhead' | 'faction' | 'alliance'
+  const [sortDir,          setSortDir]           = useState('asc');
 
   useEffect(() => {
     localStorage.setItem(FILTER_KEY, JSON.stringify({ yourSpearhead, opponentSpearhead, alliance, showFriendly, showEnemy }));
@@ -188,12 +190,16 @@ export default function SpearheadPage({ headerCollapsed }) {
         if (!g.units.find(u => u.id === row.id)) g.units.push(row);
       }
     }
-    return [...map.values()].sort((a, b) => {
-      // Sort by faction name then spearhead name within faction
-      if (a.faction !== b.faction) return a.faction.localeCompare(b.faction);
-      return a.spearheadName.localeCompare(b.spearheadName);
-    });
+    return [...map.values()];
   }, [allRows]);
+
+  const cycleSort = useCallback((col) => {
+    setSortBy(prev => {
+      if (prev === col) { setSortDir(d => d === 'asc' ? 'desc' : 'asc'); return col; }
+      setSortDir('asc');
+      return col;
+    });
+  }, []);
 
   const visibleGroups = useMemo(() => {
     let filtered = groups;
@@ -211,8 +217,15 @@ export default function SpearheadPage({ headerCollapsed }) {
       if (showFriendly && yourSpearhead)    filtered = filtered.filter(g => g.spearheadName === yourSpearhead);
       if (showEnemy   && opponentSpearhead) filtered = filtered.filter(g => g.spearheadName === opponentSpearhead);
     }
+    const dir = sortDir === 'asc' ? 1 : -1;
+    filtered = [...filtered].sort((a, b) => {
+      if (sortBy === 'spearhead') return dir * a.spearheadName.localeCompare(b.spearheadName);
+      if (sortBy === 'alliance')  return dir * (a.alliance ?? '').localeCompare(b.alliance ?? '') || a.faction.localeCompare(b.faction) || a.spearheadName.localeCompare(b.spearheadName);
+      // default: faction
+      return dir * a.faction.localeCompare(b.faction) || a.spearheadName.localeCompare(b.spearheadName);
+    });
     return filtered;
-  }, [groups, nameSearch, alliance, showFriendly, showEnemy, yourSpearhead, opponentSpearhead]);
+  }, [groups, nameSearch, alliance, showFriendly, showEnemy, yourSpearhead, opponentSpearhead, sortBy, sortDir]);
 
   const toggleFriendly = name => {
     const next = yourSpearhead === name ? '' : name;
@@ -365,8 +378,8 @@ export default function SpearheadPage({ headerCollapsed }) {
                 <th style={thStyle('expand')}>
                   <span className="col-resize-handle" onMouseDown={e => startResize(e,'expand')} />
                 </th>
-                <th style={thStyle('spearhead')} className="col-spearhead-hdr">
-                  Spearhead<span className="col-resize-handle" onMouseDown={e => startResize(e,'spearhead')} />
+                <th style={thStyle('spearhead')} className="col-spearhead-hdr sortable-col" onClick={() => cycleSort('spearhead')}>
+                  Spearhead{sortBy==='spearhead' ? (sortDir==='asc'?' ▲':' ▼') : ''}<span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'spearhead'); }} />
                 </th>
                 <th style={thStyle('name')}>
                   Unit Name<span className="col-resize-handle" onMouseDown={e => startResize(e,'name')} />
@@ -374,11 +387,11 @@ export default function SpearheadPage({ headerCollapsed }) {
                 <th style={thStyle('thumb')}>
                   <span className="col-resize-handle" onMouseDown={e => startResize(e,'thumb')} />
                 </th>
-                <th style={thStyle('faction')}>
-                  Faction<span className="col-resize-handle" onMouseDown={e => startResize(e,'faction')} />
+                <th style={thStyle('faction')} className="sortable-col" onClick={() => cycleSort('faction')}>
+                  Faction{sortBy==='faction' ? (sortDir==='asc'?' ▲':' ▼') : ''}<span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'faction'); }} />
                 </th>
-                <th style={thStyle('alliance')}>
-                  Alliance<span className="col-resize-handle" onMouseDown={e => startResize(e,'alliance')} />
+                <th style={thStyle('alliance')} className="sortable-col" onClick={() => cycleSort('alliance')}>
+                  Alliance{sortBy==='alliance' ? (sortDir==='asc'?' ▲':' ▼') : ''}<span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'alliance'); }} />
                 </th>
                 <th style={thStyle('models')} title="Models in unit">
                   <span className="th-abbr">MDL</span>
