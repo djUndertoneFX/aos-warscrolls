@@ -1481,6 +1481,18 @@ tr.sp-rules-row td { background: rgba(160,100,220,0.04); border-top: 1px solid r
 .sp-rules-card-text { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5; }
 
 /* ── Spearhead nav dots (bright purple, differentiated from faction dots) ── */
+/* ── Thin separator between spearhead groups within the same faction ── */
+.gw-nav-sp-grp-sep {
+  display: inline-block;
+  width: 1px;
+  height: 10px;
+  background: rgba(200,140,255,0.25);
+  border-radius: 1px;
+  flex-shrink: 0;
+  margin: 0 1px;
+  align-self: center;
+}
+
 .gw-nav-dot-sp {
   width: 7px;
   height: 7px;

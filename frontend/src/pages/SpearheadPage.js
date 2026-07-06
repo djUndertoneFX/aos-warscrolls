@@ -278,7 +278,7 @@ export default function SpearheadPage({ headerCollapsed }) {
     setNavbarExtrasEl(headerCollapsed ? document.getElementById('navbar-extras') : null);
   }, [headerCollapsed]);
 
-  const allUnits = useMemo(() => visibleGroups.flatMap(g => g.units), [visibleGroups]);
+  const allUnits = useMemo(() => visibleGroups.flatMap(g => g.units.map(u => ({ ...u, _spName: g.spearheadName }))), [visibleGroups]);
 
   const mkBox = str => {
     const [title, ...rest] = str.split('\n');
@@ -785,6 +785,7 @@ export default function SpearheadPage({ headerCollapsed }) {
           onJump={i => setDetailUnit(allUnits[i])}
           onFilterApply={() => setDetailUnit(null)}
           spearheadData={spearheadDataForViewer}
+          allSpearheadRulesMap={spearheadRules}
         />
       );
     })()}
