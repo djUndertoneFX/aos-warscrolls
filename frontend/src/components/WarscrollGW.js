@@ -582,7 +582,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
     if (group && navIndex === group.startIdx) {
       const slides = getSlidesForSlug(group.faction_slug);
       if (slides.length > 0) {
-        setActivePage({ factionSlug: group.faction_slug, slideKey: slides[slides.length - 1].key });
+        setActivePage({ factionSlug: group.faction_slug, slideKey: slides[slides.length - 1].key, groupStartIdx: group.startIdx });
         return;
       }
     }
@@ -601,8 +601,9 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
           setActivePage(null);
           if (spGrp) onJump?.(spGrp.startIdx);
         } else {
-          const gi = factionGroups.findIndex(g => g.faction_slug === activePage.factionSlug && navIndex >= g.startIdx && navIndex <= g.endIdx);
-          const grp = factionGroups[gi >= 0 ? gi : factionGroups.findIndex(g => g.faction_slug === activePage.factionSlug)];
+          // Use groupStartIdx to uniquely identify the group (works regardless of navIndex position)
+          const grp = factionGroups.find(g => g.startIdx === activePage.groupStartIdx)
+            ?? factionGroups.find(g => g.faction_slug === activePage.factionSlug);
           setActivePage(null);
           if (grp) onJump?.(grp.startIdx);
         }
@@ -615,7 +616,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
       if (group && nextGroup && navIndex === group.endIdx) {
         const slides = getSlidesForSlug(nextGroup.faction_slug);
         if (slides.length > 0) {
-          setActivePage({ factionSlug: nextGroup.faction_slug, slideKey: slides[0].key });
+          setActivePage({ factionSlug: nextGroup.faction_slug, slideKey: slides[0].key, groupStartIdx: nextGroup.startIdx });
           return;
         }
       }
@@ -814,9 +815,9 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
                     {/* Purple rule slide dots for this faction */}
                     {slides.map(s => (
                       <span key={s.key}
-                        className={`gw-nav-dot-faction${activePage?.factionSlug === group.faction_slug && activePage?.slideKey === s.key && navIndex >= group.startIdx && navIndex <= group.endIdx ? ' gw-nav-dot-faction-active' : ''}`}
+                        className={`gw-nav-dot-faction${activePage?.groupStartIdx === group.startIdx && activePage?.slideKey === s.key ? ' gw-nav-dot-faction-active' : ''}`}
                         title={`${group.faction} — ${SLIDE_LABELS[s.key] ?? s.key}`}
-                        onClick={() => setActivePage({ factionSlug: group.faction_slug, slideKey: s.key })}
+                        onClick={() => setActivePage({ factionSlug: group.faction_slug, slideKey: s.key, groupStartIdx: group.startIdx })}
                       />
                     ))}
                     {slides.length > 0 && <span className="gw-nav-sep" />}
