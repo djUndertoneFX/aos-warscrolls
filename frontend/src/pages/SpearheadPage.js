@@ -225,9 +225,6 @@ export default function SpearheadPage({ headerCollapsed }) {
     if (next) setExpandedGroups(prev => { const s = new Set(prev); s.add(next); return s; });
   };
   const swapSpearheads = () => {
-    const tmp = yourSpearhead;
-    setYourSpearhead(opponentSpearhead);
-    setOpponentSpearhead(tmp);
     const tmpF = showFriendly;
     setShowFriendly(showEnemy);
     setShowEnemy(tmpF);
