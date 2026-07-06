@@ -692,13 +692,13 @@ app.get('/api/faction-rules/:slug', requireAuth, (req, res) => {
   try {
     const slug = req.params.slug;
     const traits = db.prepare(
-      'SELECT id, name, timing, declare, effect, bullets, keywords FROM faction_battle_traits WHERE faction_slug = ? ORDER BY id'
+      'SELECT id, name, timing, declare, effect, bullets, keywords, lore_text FROM faction_battle_traits WHERE faction_slug = ? ORDER BY id'
     ).all(slug);
     const formations = db.prepare(
-      'SELECT id, formation_name, name, timing, declare, effect, bullets, keywords FROM faction_battle_formations WHERE faction_slug = ? ORDER BY id'
+      'SELECT id, formation_name, name, timing, declare, effect, bullets, keywords, lore_text FROM faction_battle_formations WHERE faction_slug = ? ORDER BY id'
     ).all(slug);
     const extra = db.prepare(
-      'SELECT id, section, group_name, name, timing, declare, effect, bullets, keywords FROM faction_extra_rules WHERE faction_slug = ? ORDER BY id'
+      'SELECT id, section, group_name, name, timing, declare, effect, bullets, keywords, lore_text FROM faction_extra_rules WHERE faction_slug = ? ORDER BY id'
     ).all(slug);
 
     // Partition extra rules by section

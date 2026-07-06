@@ -73,9 +73,12 @@ function parseAbilityBlock($, block) {
   const name = normalizeText(rawName);
   if (!name || name === 'Effect' || name === 'KEYWORDS' || name === 'Declare') return null;
 
+  // Capture flavour text before stripping it
+  const loreText = normalizeText(abBody.find('.ShowFluff.legend4').text());
+
   // Convert block elements to newlines for text extraction
   const bodyClone = abBody.clone();
-  bodyClone.find('.ShowFluff.legend4').remove(); // strip flavour text
+  bodyClone.find('.ShowFluff.legend4').remove();
   bodyClone.find('li').each((_, li) => {
     $(li).replaceWith('\n• ' + $(li).text().trim());
   });
@@ -114,6 +117,7 @@ function parseAbilityBlock($, block) {
     effect:  normalizeText(effectIntro),
     bullets: JSON.stringify(bullets.map(b => normalizeText(b))),
     keywords: normalizeText(keywords),
+    lore_text: loreText || null,
   };
 }
 
@@ -247,23 +251,23 @@ async function scrapeAllRules(targetSlug = null) {
 
   const insertTrait = db.prepare(`
     INSERT INTO faction_battle_traits
-      (faction_slug, faction_name, name, timing, declare, effect, bullets, keywords)
+      (faction_slug, faction_name, name, timing, declare, effect, bullets, keywords, lore_text)
     VALUES
-      (@faction_slug, @faction_name, @name, @timing, @declare, @effect, @bullets, @keywords)
+      (@faction_slug, @faction_name, @name, @timing, @declare, @effect, @bullets, @keywords, @lore_text)
   `);
 
   const insertFormation = db.prepare(`
     INSERT INTO faction_battle_formations
-      (faction_slug, faction_name, formation_name, name, timing, declare, effect, bullets, keywords)
+      (faction_slug, faction_name, formation_name, name, timing, declare, effect, bullets, keywords, lore_text)
     VALUES
-      (@faction_slug, @faction_name, @formation_name, @name, @timing, @declare, @effect, @bullets, @keywords)
+      (@faction_slug, @faction_name, @formation_name, @name, @timing, @declare, @effect, @bullets, @keywords, @lore_text)
   `);
 
   const insertExtra = db.prepare(`
     INSERT INTO faction_extra_rules
-      (faction_slug, faction_name, section, group_name, name, timing, declare, effect, bullets, keywords)
+      (faction_slug, faction_name, section, group_name, name, timing, declare, effect, bullets, keywords, lore_text)
     VALUES
-      (@faction_slug, @faction_name, @section, @group_name, @name, @timing, @declare, @effect, @bullets, @keywords)
+      (@faction_slug, @faction_name, @section, @group_name, @name, @timing, @declare, @effect, @bullets, @keywords, @lore_text)
   `);
 
   let totals = { traits: 0, formations: 0, extra: 0 };

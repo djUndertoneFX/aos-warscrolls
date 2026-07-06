@@ -143,6 +143,9 @@ function initDb() {
     CREATE INDEX IF NOT EXISTS idx_spearheads_faction ON spearheads(faction_slug);
   `);
   try { db.exec('ALTER TABLE spearheads ADD COLUMN image_path TEXT DEFAULT NULL'); } catch {}
+  try { db.exec('ALTER TABLE faction_battle_traits ADD COLUMN lore_text TEXT DEFAULT NULL'); } catch {}
+  try { db.exec('ALTER TABLE faction_battle_formations ADD COLUMN lore_text TEXT DEFAULT NULL'); } catch {}
+  try { db.exec('ALTER TABLE faction_extra_rules ADD COLUMN lore_text TEXT DEFAULT NULL'); } catch {}
 
   db.close();
   console.log('Database initialized.');
