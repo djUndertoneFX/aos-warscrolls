@@ -163,8 +163,8 @@ function FactionDropdown({ factions, value, onChange, liveCount }) {
 }
 
 function SortIcon({ col, sortBy, sortDir }) {
-  if (sortBy !== col) return null;
-  return <span className="sort-icon">{sortDir === 'asc' ? ' ▲' : ' ▼'}</span>;
+  if (sortBy !== col) return <span className="sort-icon">↕</span>;
+  return <span className="sort-icon">{sortDir === 'asc' ? '↑' : '↓'}</span>;
 }
 
 function makeAdoTooltip(includeSaveWard, save, ward, type = '') {

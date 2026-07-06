@@ -5,6 +5,11 @@ import WarscrollGW from '../components/WarscrollGW';
 import { useSettings } from '../SettingsContext';
 import { calcWeaponADO, resolveWeaponLoadout } from '../awoCalc';
 
+function SortIcon({ col, sortBy, sortDir }) {
+  if (sortBy !== col) return <span className="sort-icon">↕</span>;
+  return <span className="sort-icon">{sortDir === 'asc' ? '↑' : '↓'}</span>;
+}
+
 function sumADO(weapons, unitSize, save, ward, rounding) {
   let total = 0, any = false;
   for (const w of weapons) {
@@ -385,7 +390,7 @@ export default function SpearheadPage({ headerCollapsed }) {
                   <span className="col-resize-handle" onMouseDown={e => startResize(e,'expand')} />
                 </th>
                 <th style={thStyle('spearhead')} className="col-spearhead-hdr sortable-col" onClick={e => cycleSort('spearhead', e)} onContextMenu={e => { e.preventDefault(); cycleSort('spearhead', e, true); }}>
-                  Spearhead{sortBy==='spearhead' ? (sortDir==='asc'?' ▲':' ▼') : ''}<span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'spearhead'); }} />
+                  Spearhead<SortIcon col="spearhead" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'spearhead'); }} />
                 </th>
                 <th style={thStyle('name')}>
                   Unit Name<span className="col-resize-handle" onMouseDown={e => startResize(e,'name')} />
@@ -394,10 +399,10 @@ export default function SpearheadPage({ headerCollapsed }) {
                   <span className="col-resize-handle" onMouseDown={e => startResize(e,'thumb')} />
                 </th>
                 <th style={thStyle('faction')} className="sortable-col" onClick={e => cycleSort('faction', e)} onContextMenu={e => { e.preventDefault(); cycleSort('faction', e, true); }}>
-                  Faction{sortBy==='faction' ? (sortDir==='asc'?' ▲':' ▼') : ''}<span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'faction'); }} />
+                  Faction<SortIcon col="faction" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'faction'); }} />
                 </th>
                 <th style={thStyle('alliance')} className="sortable-col" onClick={e => cycleSort('alliance', e)} onContextMenu={e => { e.preventDefault(); cycleSort('alliance', e, true); }}>
-                  Alliance{sortBy==='alliance' ? (sortDir==='asc'?' ▲':' ▼') : ''}<span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'alliance'); }} />
+                  Alliance<SortIcon col="alliance" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'alliance'); }} />
                 </th>
                 <th style={thStyle('models')} title="Models in unit">
                   <span className="th-abbr">MDL</span>
