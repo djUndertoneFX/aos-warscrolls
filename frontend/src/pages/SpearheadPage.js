@@ -809,6 +809,11 @@ export default function SpearheadPage({ headerCollapsed }) {
           onFilterApply={() => setDetailUnit(null)}
           spearheadData={spearheadDataForViewer}
           allSpearheadRulesMap={spearheadRules}
+          {...(yourSpearhead && opponentSpearhead ? {
+            onSwapFriendlyEnemy: () => { swapSpearheads(); },
+            onShowFriendlyOnly:  () => { setShowFriendly(true);  setShowEnemy(false); },
+            onShowEnemyOnly:     () => { setShowFriendly(false); setShowEnemy(true); },
+          } : {})}
         />
       );
     })()}

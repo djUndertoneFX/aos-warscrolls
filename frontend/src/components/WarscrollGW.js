@@ -377,7 +377,7 @@ function getPrimaryType(u) {
   return 'Other';
 }
 
-export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onFilterApply, factions = [], navIndex, navList, spearheadData, allSpearheadRulesMap }) {
+export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onFilterApply, factions = [], navIndex, navList, spearheadData, allSpearheadRulesMap, onSwapFriendlyEnemy, onShowFriendlyOnly, onShowEnemyOnly }) {
   const navTotal = navList ? navList.length : 0;
   const { showFlavorText, showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore } = useSettings();
   const weapons   = React.useMemo(() => { try { return JSON.parse(unit.weapons   || '[]'); } catch { return []; } }, [unit]);
@@ -624,16 +624,18 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
     onNext?.();
   }, [activePage, navIndex, factionGroups, currentGroupIdx, isSpMode, spearheadNavGroups, resolveSlidesFor, getSlidesForSlug, onNext, onJump]);
 
-  // Keyboard: Escape=close, ←=prev, →=next
+  // Keyboard: Escape=close, ←=prev, →=next, PageUp=friendly only, PageDown=enemy only
   useEffect(() => {
     const h = e => {
       if (e.key === 'Escape')      onClose();
       if (e.key === 'ArrowLeft')  { e.preventDefault(); handlePrev(); }
       if (e.key === 'ArrowRight') { e.preventDefault(); handleNext(); }
+      if (e.key === 'PageUp')     { e.preventDefault(); onShowFriendlyOnly?.(); }
+      if (e.key === 'PageDown')   { e.preventDefault(); onShowEnemyOnly?.(); }
     };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
-  }, [onClose, handlePrev, handleNext]);
+  }, [onClose, handlePrev, handleNext, onShowFriendlyOnly, onShowEnemyOnly]);
 
   // Touch swipe: left=next, right=prev.
   // Axis-locked: once the gesture direction is determined (H vs V), we commit.
@@ -775,6 +777,9 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
             ref={dotsInnerRef}
             style={{ transform: `translateX(${dotsTranslate}px)`, transition: dotsHasOverflow ? 'transform 0.25s ease' : 'none' }}
           >
+            {onSwapFriendlyEnemy && (
+              <button className="gw-nav-swap-btn" onClick={onSwapFriendlyEnemy} title="Swap friendly / enemy filter">⇔</button>
+            )}
             {isSpMode ? (
               /* ── Spearhead mode: per-spearhead group (rule dots + unit dots + separator) ── */
               spearheadNavGroups.map((grp, gi) => {

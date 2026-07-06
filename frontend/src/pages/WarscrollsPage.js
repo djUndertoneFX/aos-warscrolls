@@ -928,6 +928,11 @@ export default function WarscrollsPage({ headerCollapsed }) {
             setSearchInput(s => s.includes(term) ? s : (s + ' ' + term).trim());
           }
         }}
+        {...(hasFriendlyMarks && hasEnemyMarks ? {
+          onSwapFriendlyEnemy: () => { setShowFriendly(e => !e); setShowEnemy(f => !f); setPage(1); },
+          onShowFriendlyOnly:  () => { setShowFriendly(true);  setShowEnemy(false); setPage(1); },
+          onShowEnemyOnly:     () => { setShowFriendly(false); setShowEnemy(true);  setPage(1); },
+        } : {})}
       />
       );
     })()}
