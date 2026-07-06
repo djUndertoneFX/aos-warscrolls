@@ -1465,13 +1465,14 @@ tr.sp-rules-row td { background: rgba(160,100,220,0.04); border-top: 1px solid r
 .sp-rules-empty { color: var(--text-dim); font-style: italic; font-size: 0.85rem; margin: 0; }
 .sp-rules-section { display: flex; flex-direction: column; gap: 8px; }
 .sp-rules-section-hdr {
-  font-size: 0.7rem;
+  font-size: 0.95rem;
   font-weight: 700;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: #c090f0;
+  font-family: 'Palatino Linotype', Palatino, Georgia, serif;
   border-bottom: 1px solid rgba(160,100,220,0.3);
-  padding-bottom: 4px;
+  padding-bottom: 5px;
 }
 .sp-rules-cards { display: flex; flex-wrap: wrap; gap: 8px; }
 .sp-rules-card {
