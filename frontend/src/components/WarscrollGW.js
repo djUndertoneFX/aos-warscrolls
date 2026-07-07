@@ -79,35 +79,64 @@ function getPhaseStyle(timing) {
 const UNIVERSAL_KW = new Set([
   'HERO','MONSTER','CAVALRY','INFANTRY','BEAST','WAR MACHINE','FLY',
   'WIZARD','PRIEST','UNIQUE','CHAMPION','MUSICIAN','STANDARD BEARER',
-  'FACTION TERRAIN','MANIFESTATION','REINFORCED',
+  'FACTION TERRAIN','MANIFESTATION','REINFORCED','WARMASTER',
   'ORDER','CHAOS','DEATH','DESTRUCTION',
   'FRIENDLY','ENEMY',
 ]);
 
+// Compound rule patterns — matched before simple terms so the full form is captured.
+// src: regex source (case-insensitive, no flags), fmt: (matchedStr) => displayStr
+const RULE_PATTERNS = [
+  { src: 'ward\\s*\\(\\d+\\+\\)',     fmt: m => m.charAt(0).toUpperCase() + m.slice(1) },
+  { src: 'heal\\s*\\([^)]+\\)',        fmt: m => 'Heal' + m.replace(/^heal/i, '') },
+  { src: 'crit\\s*\\([^)]+\\)',        fmt: m => 'Crit' + m.replace(/^crit/i, '') },
+  { src: 'charge\\s*\\(\\+?[^)]*\\)', fmt: m => 'Charge' + m.replace(/^charge/i, '') },
+];
+
 // AoS 4e special rules phrases — bolded as written (not uppercased)
 // key = lowercase for matching, value = canonical display form
 const RULE_TERMS = new Map([
-  ['strike-first',      'Strike-first'],
-  ['strike-last',       'Strike-last'],
-  ['crit (mortal)',     'Crit (Mortal)'],
-  ['crit (auto-wound)', 'Crit (Auto-wound)'],
-  ['crit (2 hits)',     'Crit (2 Hits)'],
-  ['ward',              'Ward'],
-  ['mortal damage',     'mortal damage'],
-  ['fly',               'Fly'],
+  ['strike-first',   'Strike-first'],
+  ['strike-last',    'Strike-last'],
+  ['mortal damage',  'mortal damage'],
+  ['mortal wounds',  'mortal wounds'],
+  ['retreat',        'Retreat'],
+  ['garrison',       'Garrison'],
+  ['reinforcements', 'Reinforcements'],
+  ['ward',           'Ward'],
+  ['heal',           'Heal'],
+  ['crit',           'Crit'],
+  ['charge',         'Charge'],
+  ['fight',          'Fight'],
+  ['shoot',          'Shoot'],
+  ['run',            'Run'],
+  ['fly',            'Fly'],
 ]);
 
-function FormatText({ text, keywords = [] }) {
+function _reEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+export function FormatText({ text, keywords = [] }) {
   if (!text) return null;
   const kwSet = new Set([...UNIVERSAL_KW, ...keywords.map(k => k.trim().toUpperCase())]);
   const kwList = [...kwSet].sort((a, b) => b.length - a.length);
-  const kwEsc  = kwList.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
   const rtList = [...RULE_TERMS.keys()].sort((a, b) => b.length - a.length);
-  const rtEsc  = rtList.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-  const regex = new RegExp(`(${[...kwEsc, ...rtEsc].join('|')})`, 'gi');
+
+  // Compound patterns listed first so they win over the simple fallback term.
+  // \b at start + (?![a-zA-Z]) at end prevents partial-word matches.
+  const cpEsc = RULE_PATTERNS.map(p => `\\b(?:${p.src})`);
+  const kwEsc = kwList.map(k => `\\b${_reEsc(k)}(?![a-zA-Z])`);
+  const rtEsc = rtList.map(t => `\\b${_reEsc(t)}(?![a-zA-Z])`);
+
+  const regex = new RegExp(`(${[...cpEsc, ...kwEsc, ...rtEsc].join('|')})`, 'gi');
   const tokens = text.split(regex);
+
   return (
     <>{tokens.map((tok, i) => {
+      if (!tok) return null;
+      for (const { src, fmt } of RULE_PATTERNS) {
+        if (new RegExp(`^(?:${src})$`, 'i').test(tok))
+          return <strong key={i} className="gw-kw-inline">{fmt(tok)}</strong>;
+      }
       if (kwSet.has(tok.toUpperCase()))
         return <strong key={i} className="gw-kw-inline">{tok.toUpperCase()}</strong>;
       const rt = RULE_TERMS.get(tok.toLowerCase());

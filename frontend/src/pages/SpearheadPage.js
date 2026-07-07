@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import axios from 'axios';
-import WarscrollGW from '../components/WarscrollGW';
+import WarscrollGW, { FormatText } from '../components/WarscrollGW';
 import { useSettings } from '../SettingsContext';
 import { useAuth } from '../AuthContext';
 import { calcWeaponADO, resolveWeaponLoadout } from '../awoCalc';
@@ -30,8 +30,34 @@ function spPhaseStyle(timing) {
   return { bg: '#282010', txt: '#d0c8a0', border: '#504830' };
 }
 
+function parseAbilityText(text) {
+  if (!text) return [];
+  const markerRe = /\b(Declare|Effect|Keywords):\s*/g;
+  const parts = [];
+  let lastIdx = 0;
+  let match;
+  while ((match = markerRe.exec(text)) !== null) {
+    if (match.index > lastIdx) {
+      const before = text.slice(lastIdx, match.index).trim();
+      if (before) parts.push({ label: null, text: before });
+    }
+    const labelEnd = match.index + match[0].length;
+    const nextMatch = /\b(?:Declare|Effect|Keywords):\s*/.exec(text.slice(labelEnd));
+    const contentEnd = nextMatch ? labelEnd + nextMatch.index : text.length;
+    parts.push({ label: match[1] + ':', text: text.slice(labelEnd, contentEnd).trim() });
+    lastIdx = contentEnd;
+    markerRe.lastIndex = contentEnd;
+  }
+  if (lastIdx < text.length) {
+    const remaining = text.slice(lastIdx).trim();
+    if (remaining) parts.push({ label: null, text: remaining });
+  }
+  return parts;
+}
+
 function SpRulesCard({ t }) {
   const s = spPhaseStyle(t.timing);
+  const parts = parseAbilityText(t.text);
   return (
     <div className="sp-rules-card" style={{ borderColor: s.border + '60' }}>
       {t.timing && (
@@ -41,7 +67,14 @@ function SpRulesCard({ t }) {
       )}
       <div className="sp-rules-card-body">
         <div className="sp-rules-card-name">{t.name}</div>
-        <div className="sp-rules-card-text">{t.text}</div>
+        <div className="sp-rules-card-text">
+          {parts.map((part, i) => (
+            <div key={i} className="sp-ability-para">
+              {part.label && <><strong className="gw-effect-term">{part.label}</strong>{' '}</>}
+              <FormatText text={part.text} />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
