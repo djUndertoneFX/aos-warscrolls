@@ -998,7 +998,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
               );
             }
 
-            // Battle Traits slide
+            // Battle Traits slide — no checkboxes or filter, all traits always visible
             return (
               <div className="gw-faction-slide gw-spearhead-slide">
                 <div className="gw-spearhead-slide-header">
@@ -1007,18 +1007,22 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
                   <div className="gw-spearhead-slide-title">{title.toUpperCase()}</div>
                 </div>
                 <div className="gw-faction-slide-body">
-                  <div className="gw-sp-filter-bar">
-                    <button
-                      className={`gw-sp-filter-btn${filterSelected ? ' active' : ''}`}
-                      onClick={() => setFilterSelected(f => !f)}
-                      disabled={!hasSelected}
-                      title="Show only selected abilities"
-                    >{filterSelected ? 'Show All' : 'Show Selected'}</button>
-                  </div>
                   {(slide.data ?? []).length === 0
                     ? <p style={{color:'var(--text-dim)',fontStyle:'italic',padding:'1rem'}}>No data available.</p>
                     : <div className="gw-abilities-grid">
-                        {(slide.data ?? []).map((ab, i) => renderAbilityCard(ab, i))}
+                        {(slide.data ?? []).map((ab, i) => {
+                          let { text, declare, effect, ...rest } = ab;
+                          if (text && !effect) {
+                            const effMatch = text.match(/^(.*?)\bEffect:\s*/s);
+                            if (effMatch) {
+                              const before = effMatch[1].trim();
+                              const declMatch = before.match(/^Declare:\s*([\s\S]*)/);
+                              if (declMatch) { declare = declMatch[1].trim() || undefined; effect = text.slice(effMatch[0].length).trim(); }
+                              else { declare = undefined; const afterEffect = text.slice(effMatch[0].length).trim(); effect = before ? `${before} ${afterEffect}` : afterEffect; }
+                            } else { effect = text; }
+                          }
+                          return <AbilityCard key={i} ab={{ ...rest, declare, effect, bullets: parseBullets(ab.bullets) }} keywords={[]} />;
+                        })}
                       </div>
                   }
                 </div>
