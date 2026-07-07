@@ -669,7 +669,9 @@ export default function SpearheadPage({ headerCollapsed }) {
                       const weapons = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
                       const save = includeSaveWardInADO ? (presumedSave ?? 5) : 7;
                       const ward = includeSaveWardInADO ? (presumedWard ?? null) : null;
-                      const resolvedWeapons = resolveWeaponLoadout(weapons, row.options_text, row.unit_size, save, ward, roundingMode) ?? weapons;
+                      const resolved = resolveWeaponLoadout(weapons, row.options_text, row.unit_size, save, ward, roundingMode);
+                      const resolvedWeapons = resolved ?? weapons;
+                      const hasSpecialADO = resolved !== null;
                       const ranged = resolvedWeapons.filter(w => w.type === 'ranged');
                       const melee  = resolvedWeapons.filter(w => w.type === 'melee');
                       const adoRanged = sumADO(ranged, row.unit_size, save, ward, roundingMode);
@@ -733,9 +735,9 @@ export default function SpearheadPage({ headerCollapsed }) {
                             <td className="col-keywords">{row.keywords ? row.keywords.split(',').slice(0, 6).map((kw, i, arr) => (
                               <span key={kw} className="kw-chip">{kw.trim()}{i < arr.length - 1 ? ', ' : ''}</span>
                             )) : '—'}</td>
-                            <td className="col-ado">{adoRanged !== null ? adoRanged : '—'}</td>
-                            <td className="col-ado">{adoMelee  !== null ? adoMelee  : '—'}</td>
-                            <td className="col-ado">{adoPct    !== null ? adoPct    : '—'}</td>
+                            <td className="col-ado">{adoRanged !== null ? `${adoRanged}${hasSpecialADO ? '*' : ''}` : '—'}</td>
+                            <td className="col-ado">{adoMelee  !== null ? `${adoMelee}${hasSpecialADO ? '*' : ''}` : '—'}</td>
+                            <td className="col-ado">{adoPct    !== null ? `${adoPct}${hasSpecialADO ? '*' : ''}` : '—'}</td>
                           </tr>
 
                           {(isExpanded || isFullExpanded) && (
@@ -760,7 +762,7 @@ export default function SpearheadPage({ headerCollapsed }) {
                                               <td className="iwt-td-stat">{w.hit}</td><td className="iwt-td-stat">{w.wound}</td>
                                               <td className="iwt-td-stat">{w.rend || '—'}</td><td className="iwt-td-stat">{w.damage}</td>
                                               <td className="iwt-td-ability">{w.ability || '—'}</td>
-                                              <td className="iwt-td-ado">{(() => { const v = calcWeaponADO(w, row.unit_size || 1, save, ward, roundingMode); return v !== null ? v : '—'; })()}</td>
+                                              <td className="iwt-td-ado">{(() => { const v = calcWeaponADO(w, row.unit_size || 1, save, ward, roundingMode); const sp = w.model_count != null && w.model_count < (parseInt(row.unit_size) || 1); return v !== null ? `${v}${sp ? '*' : ''}` : '—'; })()}</td>
                                             </tr>
                                           ))}
                                         </tbody>
@@ -784,7 +786,7 @@ export default function SpearheadPage({ headerCollapsed }) {
                                               <td className="iwt-td-stat">{w.hit}</td><td className="iwt-td-stat">{w.wound}</td>
                                               <td className="iwt-td-stat">{w.rend || '—'}</td><td className="iwt-td-stat">{w.damage}</td>
                                               <td className="iwt-td-ability">{w.ability || '—'}</td>
-                                              <td className="iwt-td-ado">{(() => { const v = calcWeaponADO(w, row.unit_size || 1, save, ward, roundingMode); return v !== null ? v : '—'; })()}</td>
+                                              <td className="iwt-td-ado">{(() => { const v = calcWeaponADO(w, row.unit_size || 1, save, ward, roundingMode); const sp = w.model_count != null && w.model_count < (parseInt(row.unit_size) || 1); return v !== null ? `${v}${sp ? '*' : ''}` : '—'; })()}</td>
                                             </tr>
                                           ))}
                                         </tbody>

@@ -152,6 +152,22 @@ export function resolveWeaponLoadout(weapons, optionsText, unitSize, save, ward,
     if (w) { counts.set(w.name, mc); anyParsed = true; }
   }
 
+  // ── 5. "X model(s) in this unit [Name], who is/are armed with [weapon(s)]" ──
+  // Handles named characters within multi-model units, each with exclusive weapons.
+  // e.g. "1 model in this unit is Cado Ezechiar, who is armed with an Ezechiarian Greatsword."
+  const namedModelRe = /(\d+) models? in this unit[^.]*?,? who (?:is|are) armed with (.+?)(?=\.|$)/gi;
+  for (const m of optionsText.matchAll(namedModelRe)) {
+    if (/in addition/i.test(m[0])) continue; // handled by addlRe
+    const mc = parseInt(m[1]);
+    const wepsFound = tokenize(m[2]).flat();
+    if (!wepsFound.length) continue;
+    for (const w of wepsFound) {
+      counts.set(w.name, (counts.get(w.name) ?? 0) + mc);
+      optWeps.add(w.name);
+    }
+    anyParsed = true;
+  }
+
   if (!anyParsed) return null;
 
   return weapons
