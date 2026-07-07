@@ -708,7 +708,7 @@ export default function SpearheadPage({ headerCollapsed }) {
                             <td className="col-spearhead">
                               <span className="spearhead-name">{group.spearheadName}</span>
                             </td>
-                            <td className="col-name" onClick={e => { e.stopPropagation(); setDetailUnit(row); }}>
+                            <td className="col-name" onClick={e => { e.stopPropagation(); setDetailUnit({ ...row, _spName: group.spearheadName }); }}>
                               <span className="unit-name-link">{row.name}</span>
                             </td>
                             <td className="col-thumb">
