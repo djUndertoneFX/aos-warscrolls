@@ -435,6 +435,8 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
   // Last slide visited per spearhead — restored only when switching to a different spearhead
   const lastSpSlide = useRef({}); // spName → slideKey
   const prevUnitSpName = useRef(null); // tracks previous spearhead name to detect side-switches
+  const prevActivePage = useRef(null); // tracks previous activePage for slide-clear logic
+  const unitChangeClear = useRef(false); // true when activePage→null came from unit change (not user nav)
 
   // Per-faction rules cache (populated for all slugs in navList)
   const rulesCache = useRef(new Map());
@@ -563,7 +565,8 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
     prevUnitSpName.current = newSpName;
 
     if (newSpName && spNameChanged) {
-      // Switching to a different spearhead — restore slide if we've been here before
+      // Switching to a different spearhead — restore slide only if user was ON that slide
+      // when they last left this spearhead (lastSpSlide cleared when user returns to unit view)
       const savedKey = lastSpSlide.current[newSpName];
       if (savedKey) {
         const spSlides = getSpSlides(newSpName);
@@ -584,15 +587,28 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
         }
       }
     }
-    // Same spearhead (left/right nav) or no saved slide: show unit warscroll
+    // Same spearhead (left/right nav) or no saved slide: show unit warscroll.
+    // Mark that this null came from a unit change, not user navigation.
+    unitChangeClear.current = true;
     setActivePage(null);
   }, [unit?.id]); // eslint-disable-line
 
-  // Track last slide per spearhead so it can be restored when returning to it
+  // Track last slide per spearhead.
+  // When user navigates FROM a spearhead slide TO the unit warscroll, clear the saved slide
+  // so that switching sides later doesn't unexpectedly restore it.
+  // When the transition to null was caused by a unit change (not user), preserve it.
   useEffect(() => {
+    const fromUnitChange = unitChangeClear.current;
+    unitChangeClear.current = false;
+
+    if (!fromUnitChange && prevActivePage.current?.factionSlug === '__sp__' && !activePage) {
+      // User explicitly left the slide — clear saved slide for that spearhead
+      delete lastSpSlide.current[prevActivePage.current.spearheadName];
+    }
     if (activePage?.factionSlug === '__sp__' && activePage.spearheadName && activePage.slideKey) {
       lastSpSlide.current[activePage.spearheadName] = activePage.slideKey;
     }
+    prevActivePage.current = activePage;
   }, [activePage]);
 
   // Scroll to top when switching slides or units
