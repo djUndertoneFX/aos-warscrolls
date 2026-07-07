@@ -425,22 +425,30 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
   if (req.query.hideRoR   === '1') { conditions.push("(w.keywords IS NOT NULL AND w.keywords != '')"); }
   if (req.query.spearheadOnly === '1') { conditions.push('w.spearhead IS NOT NULL'); }
 
-  if (hideOtherFactions === '1' && (faction || enemyFaction)) {
-    const skipWords = new Set(['of', 'the', 'to', 'and']);
-    const getDistinctWord = (slug) => slug
-      .split('-')
-      .filter(w => !skipWords.has(w) && w.length > 2)
-      .map(w => w.toUpperCase())[0];
-    const words = [faction, enemyFaction]
-      .filter(Boolean)
-      .map(getDistinctWord)
-      .filter(Boolean);
-    if (words.length === 1) {
-      conditions.push('instr(UPPER(w.keywords), ?) > 0');
-      params.push(words[0]);
-    } else if (words.length === 2) {
-      conditions.push('(instr(UPPER(w.keywords), ?) > 0 OR instr(UPPER(w.keywords), ?) > 0)');
-      params.push(words[0], words[1]);
+  if (hideOtherFactions === '1') {
+    // Always exclude RoR/cross-faction units (they have empty keywords).
+    // When a faction IS selected, the faction_slug filter already restricts the set;
+    // this condition removes the RoR units stored under that faction_slug.
+    conditions.push("(w.keywords IS NOT NULL AND w.keywords != '')");
+    // Additionally, when a faction is selected, exclude units whose keywords
+    // don't include the selected faction's identifier (catches any non-RoR guests).
+    if (faction || enemyFaction) {
+      const skipWords = new Set(['of', 'the', 'to', 'and']);
+      const getDistinctWord = (slug) => slug
+        .split('-')
+        .filter(w => !skipWords.has(w) && w.length > 2)
+        .map(w => w.toUpperCase())[0];
+      const words = [faction, enemyFaction]
+        .filter(Boolean)
+        .map(getDistinctWord)
+        .filter(Boolean);
+      if (words.length === 1) {
+        conditions.push('instr(UPPER(w.keywords), ?) > 0');
+        params.push(words[0]);
+      } else if (words.length === 2) {
+        conditions.push('(instr(UPPER(w.keywords), ?) > 0 OR instr(UPPER(w.keywords), ?) > 0)');
+        params.push(words[0], words[1]);
+      }
     }
   }
 
