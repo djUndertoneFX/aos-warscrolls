@@ -431,6 +431,9 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
   const [spSlideSelectedAbs, setSpSlideSelectedAbs] = useState(new Set());
   const [spSlideFilterSelected, setSpSlideFilterSelected] = useState(false);
 
+  // Last slide visited per spearhead — persists across unit/side switches
+  const lastSpSlide = useRef({}); // spName → slideKey
+
   // Per-faction rules cache (populated for all slugs in navList)
   const rulesCache = useRef(new Map());
   const [loadedSlugs, setLoadedSlugs] = useState(new Set());
@@ -549,22 +552,59 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
     return () => cancelAnimationFrame(raf);
   }, [navIndex, activePage, navTotal, loadedSlugs, spearheadNavGroups]); // eslint-disable-line
 
-  // Clear active page when the displayed unit changes (e.g. after onJump)
-  useEffect(() => { setActivePage(null); }, [unit?.id]);
+  // When unit changes, restore the last slide they were on for this spearhead (or carry
+  // the current slide type across to the new spearhead if it exists there too).
+  // activePage in this closure is the value *before* the unit changed — that's intentional.
+  useEffect(() => {
+    const newSpName = unit?._spName ?? (unit?.spearhead || '').split('|')[0].trim();
+    if (newSpName) {
+      const savedKey = lastSpSlide.current[newSpName];   // per-spearhead memory
+      const carryKey = activePage?.slideKey;             // current slide type (pre-switch)
+      const targetKey = savedKey ?? carryKey;
+      if (targetKey) {
+        const spSlides = getSpSlides(newSpName);
+        const valid = spSlides.find(s => s.key === targetKey);
+        if (valid) {
+          setActivePage({ factionSlug: '__sp__', spearheadName: newSpName, slideKey: targetKey });
+          return;
+        }
+        // Try same slide key in the new faction's rule pages (purple bullet pages)
+        const fSlug = unit?.faction_slug;
+        if (fSlug) {
+          const fSlides = getSlidesForSlug(fSlug);
+          const fValid = fSlides.find(s => s.key === targetKey);
+          if (fValid) {
+            const grp = factionGroups.find(g => g.faction_slug === fSlug);
+            setActivePage({ factionSlug: fSlug, slideKey: targetKey, groupStartIdx: grp?.startIdx ?? 0 });
+            return;
+          }
+        }
+      }
+    }
+    setActivePage(null);
+  }, [unit?.id]); // eslint-disable-line — activePage/getSpSlides/getSlidesForSlug/factionGroups intentionally stale
+
+  // Track last slide per spearhead so it can be restored when returning to it
+  useEffect(() => {
+    if (activePage?.factionSlug === '__sp__' && activePage.spearheadName && activePage.slideKey) {
+      lastSpSlide.current[activePage.spearheadName] = activePage.slideKey;
+    }
+  }, [activePage]);
 
   // Scroll to top when switching slides or units
   useEffect(() => {
     if (modalRef.current) modalRef.current.scrollTop = 0;
   }, [activePage, unit?.id]);
 
-  // Load spearhead slide checkbox state from localStorage when slide changes
+  // Load spearhead slide checkbox + filter state from localStorage when slide changes
   useEffect(() => {
     if (!activePage || activePage.factionSlug !== '__sp__') return;
     const spName = activePage.spearheadName ?? spearheadData?.spearheadName ?? '';
     const storageKey = `sp-selected-${spName}-${activePage.slideKey}`;
+    const filterKey  = `sp-filter-${spName}-${activePage.slideKey}`;
     try { setSpSlideSelectedAbs(new Set(JSON.parse(localStorage.getItem(storageKey) || '[]'))); }
     catch { setSpSlideSelectedAbs(new Set()); }
-    setSpSlideFilterSelected(false);
+    setSpSlideFilterSelected(localStorage.getItem(filterKey) === '1');
   }, [activePage?.slideKey, spearheadData?.spearheadName]); // eslint-disable-line
 
   useEffect(() => {
@@ -915,7 +955,13 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
                 return next;
               });
             };
-            const setFilterSelected = setSpSlideFilterSelected;
+            const setFilterSelected = (updater) => {
+              setSpSlideFilterSelected(prev => {
+                const next = typeof updater === 'function' ? updater(prev) : updater;
+                localStorage.setItem(`sp-filter-${spName}-${slideKey}`, next ? '1' : '0');
+                return next;
+              });
+            };
 
             const renderAbilityCard = (ab, i) => {
               let { text, declare, effect, ...rest } = ab;
