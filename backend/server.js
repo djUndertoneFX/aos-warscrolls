@@ -763,10 +763,11 @@ app.get('/api/spearhead-image/:name', (req, res) => {
 app.get('/api/spearheads', requireAuth, (req, res) => {
   const db = getDb();
   try {
-    const rows = db.prepare('SELECT name, faction_slug, battle_traits, regiment_abilities, enhancements FROM spearheads ORDER BY name').all();
+    const rows = db.prepare('SELECT name, faction_slug, battle_traits, regiment_abilities, enhancements, lore_text FROM spearheads ORDER BY name').all();
     const result = rows.map(r => ({
       name: r.name,
       faction_slug: r.faction_slug,
+      lore_text:          r.lore_text || null,
       battleTraits:       JSON.parse(r.battle_traits       || '[]'),
       regimentAbilities:  JSON.parse(r.regiment_abilities  || '[]'),
       enhancements:       JSON.parse(r.enhancements        || '[]'),

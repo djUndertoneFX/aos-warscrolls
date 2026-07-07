@@ -1506,6 +1506,8 @@ tr.sp-rules-row td { background: rgba(160,100,220,0.04); border-top: 1px solid r
 .sp-rules-card-name { font-weight: 700; color: #c8bc98; font-size: 0.88rem; font-family: 'Palatino Linotype', Palatino, Georgia, serif; margin-bottom: 2px; }
 .sp-rules-card-text { font-size: 0.75rem; color: var(--text-secondary); line-height: 1.5; }
 .sp-ability-para { margin: 2px 0 0 0; }
+.sp-rules-lore { font-size: 0.78rem; font-style: italic; color: var(--text-dim); line-height: 1.55; margin: 0 0 10px 0; padding: 6px 10px; border-left: 2px solid #7a6830; }
+.gw-sp-lore { margin: 0; border-radius: 0; border-top: none; border-left: none; border-right: none; }
 
 /* ── Spearhead nav dots (bright purple, differentiated from faction dots) ── */
 /* ── Thin separator between spearhead groups within the same faction ── */

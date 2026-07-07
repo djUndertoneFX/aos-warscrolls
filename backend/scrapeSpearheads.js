@@ -16,6 +16,7 @@ const SPEARHEADS = [
   // ── ORDER ────────────────────────────────────────────────────────────────
   {
     name: 'Castelite Company',
+    lore: 'The Castelite Companies are the disciplined backbone of Sigmar\'s free cities, combining the thundering charge of Freeguild Cavaliers with the devastating firepower of the Ironweld Great Cannon. Under the sharp command of the Freeguild Cavalier-Marshal, these soldiers hold the line through iron will and tactical precision, repelling any assault on civilisation\'s borders.',
     faction: 'cities-of-sigmar',
     units: ['Freeguild Cavalier-Marshal', 'Freeguild Steelhelms', 'Freeguild Cavaliers', 'Ironweld Great Cannon'],
     battleTraits:       [{"name":"The Officar's Order","timing":"Once Per Battle Round, Start of Battle Round","text":"Declare: Pick a battle tactic card in your hand and place it face-down separately next to your other battle tactic cards. Effect: When you use the command on that card, it is not discarded but returns to your hand. The card goes back to being a normal battle tactic card, except you cannot use the command on it in the same phase it went back into your hand. If you did not use the command on the card you separated, you can still score the battle tactic on it at the end of your turn as normal. If you neither used the command nor scored the battle tactic on the card, it automatically returns to your hand at the end of your turn."}],
@@ -24,6 +25,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Fusil-Platoon',
+    lore: 'Fusil-Platoons are the long-range arm of the Freeguild, expert marksmen trained to lay down coordinated volleys that can break enemy charges before they land. Led by the formidable Fusil-Major astride an Ogor Warhulk, these hunters and artificers combine technology and tenacity to strike hard from a distance.',
     faction: 'cities-of-sigmar',
     units: ['Fusil-Major on Ogor Warhulk', 'Alchemite Warforger', 'Freeguild Fusiliers', 'Wildercorps Hunters'],
     battleTraits:       [{"name":"Fortify Position","timing":"Passive","text":"Subtract 1 from the Rend characteristic of weapons used for attacks that target friendly Castelite units if they did not use a Move ability in the same turn."}],
@@ -32,6 +34,7 @@ const SPEARHEADS = [
   },
   {
     name: "Zenestra's Zealots",
+    lore: "Pontifex Zenestra the Matriarch of the Wheel leads her Zealots with burning conviction, wielding divine authority as a weapon no less deadly than sword or spell. Her devoted Command Corps and ranks of Steelhelms fight not merely for the city but for the soul of Sigmar's empire, driven by fervent faith that borders on terrifying.",
     faction: 'cities-of-sigmar',
     units: ['Freeguild Marshal and Relic Envoy', 'Pontifex Zenestra', 'Freeguild Command Corps', 'Freeguild Steelhelms'],
     battleTraits:       [{"name":"Shadowy Spymaster / Sudden Ambush","timing":"Passive (Deployment)","text":"Your Whisperblade is not set up during the deployment phase. Instead, from the second battle round onwards, it can use Sudden Ambush (Your Movement Phase): Set up this unit within 6\" of an enemy unit and not in combat."},{"name":"Lady of the Wheel","timing":"Passive","text":"Each time a friendly model is slain by a combat attack, roll a number of dice equal to that model's Health characteristic. For each 5+, inflict 1 mortal damage on the attacking unit after the Fight ability has been resolved."}],
@@ -40,6 +43,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Heartflayer Troupe',
+    lore: 'The Heartflayer Troupes are among the most feared of Morathi-Khaine\'s instruments of war, blending the serpentine grace of Melusai with the manic ferocity of Witch Aelves and the sorcerous riders of the Doomfire Warlocks. They strike in glorious, blood-soaked coordination, each kill an act of devotion to the murder-god.',
     faction: 'daughters-of-khaine',
     units: ['Melusai Ironscale', 'Witch Aelves', 'Doomfire Warlocks', 'Blood Stalkers'],
     battleTraits:       [{"name":"Blood Rites","timing":"Passive","text":"At the start of each battle round, all friendly units gain the Blood Rites passive ability that corresponds to the current battle round number. Round 1 — Quickening Bloodlust: Add 1 to run rolls for this unit. Round 2 — Headlong Fury: Add 1 to charge rolls for this unit. Round 3 — Zealot's Rage: Add 1 to hit rolls for combat attacks made by this unit. Round 4 — Slaughterer's Strength: Add 1 to wound rolls for combat attacks made by this unit."}],
@@ -48,6 +52,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Khainite Shadow Coven',
+    lore: 'Shadow Covens operate in the darkness between cities and battlelines, assassins and killers bound to the will of a Slaughter Queen who embodies Khaine\'s most merciless aspect. The Khainite Shadowstalkers strike unseen while Sisters of Slaughter whirl in a storm of blades, and all serve the Cauldron\'s terrible blessing.',
     faction: 'daughters-of-khaine',
     units: ['Slaughter Queen on Cauldron of Blood', 'Hag Queen', 'Bloodwrack Medusa', 'Khainite Shadowstalkers', 'Sisters of Slaughter'],
     battleTraits:       [{"name":"Shadowmasked","timing":"Once Per Turn, Any Charge Phase","text":"Declare: Pick a friendly Infantry unit that is in combat and did not charge this turn to be the target. Effect: Subtract 1 from hit rolls and wound rolls for combat attacks that target that friendly unit for the rest of the turn."}],
@@ -56,6 +61,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Saga Axeband',
+    lore: 'The Saga Axebands are the fiery heart of a Fyreslayer lodge\'s war-host, warriors tattooed with ur-gold runes that blaze with the power of the slain god Grimnir. Led by a Battlesmith who preserves the lodge\'s fighting legends in steel and story, these tenacious duardin grow only more dangerous the longer a battle rages.',
     faction: 'fyreslayers',
     units: ['Battlesmith', 'Hearthguard Berzerkers', 'Vulkite Berzerkers'],
     battleTraits:       [{"name":"Awaken the Runes","timing":"Once Per Battle Round, Start of Your Turn","text":"Declare: Pick 1 of the ur-gold runes, then make an activation roll of D6. Each ur-gold rune can only be activated once per battle. Effect: On a 1-5, the rune's standard effect applies. On a 6, the rune's enhanced effect applies as well. Effects last until the start of your next turn. Rune of Fury — Standard: Add 1 to hit rolls for combat attacks made by friendly units. Enhanced: Also add 1 to the Attacks characteristic of your units' melee weapons. Rune of Searing Heat — Standard: Add 1 to the Rend characteristic of your units' melee weapons. Enhanced: Also add 1 to the Damage characteristic of your units' melee weapons. Rune of Fiery Determination — Standard: Your units have Ward (5+). Enhanced: Also add 1 to save rolls for friendly units. Rune of Relentless Zeal — Standard: Add 2\" to the Move characteristic of your units. Enhanced: Also add 2 to charge rolls for your units."}],
@@ -64,6 +70,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Akhelian Tide Guard',
+    lore: 'The Akhelian Tide Guard represents the pinnacle of Idoneth military craft — an elite formation of eel-mounted warriors who crash upon the foe like a breaking wave. Commanded by an Akhelian King who embodies the imperious authority of the deep-sea nobility, they strike with the speed and power of the ocean\'s wrath, then recede before a counterattack can land.',
     faction: 'idoneth-deepkin',
     units: ['Akhelian King', 'Akhelian Morrsarr Guard', 'Akhelian Ishlaen Guard', 'Namarti Reavers'],
     battleTraits:       [{"name":"Royal Imperative","timing":"Once Per Battle (Army), Any Combat Phase","text":"You can only use this ability in the third battle round. Effect: Pick 1 of the following effects to apply for the rest of the battle round — Into Them!: Friendly units have Strike-first. Strike Sure: Friendly units' melee weapons have Crit (Mortal)."}],
@@ -72,6 +79,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Soulraid Hunt',
+    lore: 'Soulraid Hunts are launched not for conquest but for souls — the Idoneth require the stolen spirits of others to survive, and the Isharann Soulscryer leads these grim expeditions with uncanny precision. Akhelian sharks circle overhead while Namarti Thralls surge forward, and the entire raid vanishes back into the ethersea before the survivors can mount a defence.',
     faction: 'idoneth-deepkin',
     units: ['Isharann Soulscryer', 'Akhelian Morrsarr Guard', 'Akhelian Allopex', 'Namarti Thralls'],
     battleTraits:       [{"name":"Tides of Death","timing":"Passive","text":"In each battle round, all friendly units have the Tides of Death passive ability that corresponds to the current battle round number. Round 1 — Low Tide: Subtract 1 from hit rolls for shooting attacks that target this unit. Round 2 — Flood Tide: This unit can use a Run ability and still use Shoot and/or Charge abilities later in the turn. Round 3 — High Tide: This unit has Strike-first. Round 4 — Ebb Tide: This unit can use a Retreat ability and still use Shoot and/or Charge abilities later in the turn."}],
@@ -80,6 +88,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Grundstok Trailblazers',
+    lore: 'The Grundstok Trailblazers are a self-sufficient vanguard force built around the hovering firepower of a Grundstok Gunhauler, tasked with scouting new trading routes and eliminating anything that might threaten them. Endrinriggers manage the skycraft while Grundstok Thunderers lay down disciplined volleys, and the Endrinmaster ensures the whole enterprise runs without a misfire.',
     faction: 'kharadron-overlords',
     units: ['Endrinmaster with Dirigible Suit', 'Grundstok Thunderers', 'Grundstok Gunhauler', 'Endrinriggers'],
     battleTraits:       [{"name":"Gunhauler Escort","timing":"Passive","text":"Subtract 1 from hit rolls for attacks that target friendly Kharadron Overlords Infantry units while they are wholly within 6\" of a friendly Grundstok Gunhauler."}],
@@ -88,6 +97,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Skyhammer Task Force',
+    lore: 'A Skyhammer Task Force deploys the Arkanaut Frigate as a flying assault platform, delivering companies of Arkanauts and Skywardens directly into the heart of enemy formations. The Arkanaut Admiral commands the operation with pragmatic efficiency, turning the sky itself into a weapon and the enemy\'s own territory into a landing zone.',
     faction: 'kharadron-overlords',
     units: ['Arkanaut Admiral', 'Arkanaut Company', 'Skywardens', 'Arkanaut Frigate'],
     battleTraits:       [{"name":"Ply the Skies","timing":"Reaction: You declared a non-Charge Move ability for an Arkanaut Frigate","text":"Used By: The Arkanaut Frigate that is using that Move ability. Effect: Pick a friendly Infantry unit that is wholly within the combat range of that Arkanaut Frigate and not in combat to be transported. Remove that Infantry unit from the battlefield. Then, when the Arkanaut Frigate ends its move, set up the Infantry unit on the battlefield again, wholly within the combat range of the Arkanaut Frigate and not in combat. A unit cannot use Charge abilities if it was transported in the same turn."}],
@@ -96,6 +106,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Glittering Phalanx',
+    lore: 'The Glittering Phalanx is a masterwork of Lumineth martial philosophy — Vanari Auralan Wardens holding the centre in an unbreakable line while Sentinels rain arrows from range and Bladelords seek openings for precise, lethal counterstrikes. Under the spiritual guidance of a Scinari Cathallar, their emotional unity makes them nearly unassailable.',
     faction: 'lumineth-realm-lords',
     units: ['Scinari Cathallar', 'Vanari Auralan Sentinels', 'Vanari Auralan Wardens', 'Vanari Bladelords'],
     battleTraits:       [{"name":"Facets of War","timing":"Once Per Battle Round, Start of Battle Round","text":"You must use this ability at the start of the battle round. Pick 1 Facet of War ability. That Facet of War ability can be used this battle round but the other cannot. Facets — Shining Company (Passive): Subtract 1 from hit rolls for attacks that target friendly units. Lightning Reactions (Passive): When players are alternating picking units to use a Fight ability, when it is your turn to pick a unit, you can pick 2 units instead of 1. Resolve the second Fight ability immediately after the first."},{"name":"Power of Hysh","timing":"Once Per Turn (Army), Your Hero Phase","text":"Declare: Pick a friendly unit. Effect: Roll a dice. On a 2+, until the start of your next turn, attacks made by that unit score critical hits on unmodified hit rolls of 5+."}],
@@ -104,6 +115,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Hurakan Vanguard',
+    lore: 'The Hurakan Vanguard moves with the capricious speed of the wind itself, guided by a Windmage whose mastery of Hysh\'s air currents grants the force supernatural mobility. The aelementiri Spirit of the Wind anchors their battle-plan while Windchargers race across the field to strike wherever the leeward tide carries them.',
     faction: 'lumineth-realm-lords',
     units: ['Hurakan Windmage', 'Hurakan Windchargers', 'Vanari Auralan Wardens', 'Hurakan Spirit of the Wind'],
     battleTraits:       [{"name":"Storm Brewing","timing":"Deployment Phase","text":"Declare: Pick a battlefield edge to be the target. Effect: That battlefield edge is leeward. For the rest of the battle, each time a friendly Ride the Hurricane ability is used, after that ability has been resolved, change the leeward battlefield edge to the next edge clockwise."},{"name":"Pulled by the Winds","timing":"Once Per Turn (Army), Any Movement Phase","text":"Declare: Pick a friendly unit that is not in combat to be the target. Effect: The target can move D6\" but must end that move closer to the leeward battlefield edge. It can pass through the combat ranges of enemy units but cannot end that move in combat."},{"name":"Gale Force","timing":"Once Per Turn (Army), Reaction: You declared an Attack ability","text":"Used By: The unit using that Attack ability. Effect: Add 1 to hit rolls for attacks made as part of that Attack ability if the target of that ability is closer to the leeward battlefield edge than the unit using this ability."}],
@@ -112,6 +124,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Starscale Warhost',
+    lore: 'The Starscale Warhost enacts the will of the Old Ones through the brute force of the oldest predators in the Mortal Realms. A Saurus Oldblood astride a thundering Carnosaur leads Saurus Warriors and mighty Kroxigor into battle, the great reptiles acting as extensions of the slann\'s star-written designs made flesh.',
     faction: 'seraphon',
     units: ['Saurus Oldblood on Carnosaur', 'Saurus Warriors', 'Kroxigor'],
     battleTraits:       [{"name":"Beast of the Dark Jungles","timing":"Any Combat Phase","text":"Declare: Pick your general to use this ability if they are in combat. Effect: Pick 1 of the following — Gargantuan Jaws: Pick an enemy unit in combat with your general and roll a dice. If the roll exceeds that unit's Health characteristic, 1 model in that unit is slain. Roar: Pick an enemy unit in combat with your general. Subtract D6 from that unit's control score this turn."}],
@@ -120,6 +133,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Sunblooded Prowlers',
+    lore: 'Sunblooded Prowlers are built for the patient hunt, their Hunters of Huanchi concealed in the ether until the moment to strike is perfect. The Sunblood at their head fights with cold-blooded ferocity, and the glittering terror of a Spawn of Chotec arriving from nowhere heralds doom for those who thought themselves safe.',
     faction: 'seraphon',
     units: ['Sunblood', 'Saurus Warriors', 'Hunters of Huanchi', 'Terrawings', 'Spawn of Chotec'],
     battleTraits:       [{"name":"Hidden Hunters / Chameleon Ambush","timing":"Passive (Deployment)","text":"Your 2 Hunters of Huanchi units and the Spawn of Chotec are not set up during the deployment phase. Instead, from the third battle round onwards, they can use Chameleon Ambush (Your Movement Phase): Set up this unit anywhere on the battlefield more than 6\" from all enemy units."},{"name":"Vengeance of Azyr","timing":"End of Any Turn","text":"Declare: Pick each enemy unit in combat with a friendly Saurus unit to be the targets. Effect: Roll a dice for each target. On a 4+, inflict 1 mortal damage on the target."}],
@@ -128,6 +142,7 @@ const SPEARHEADS = [
   },
   {
     name: "Yndrasta's Spearhead",
+    lore: "Yndrasta the Celestial Spear leads this strike force as Sigmar's chosen huntress, a figure of terrible divine purpose who falls upon monsters and tyrants with the fury of a thunderstorm. Annihilators crash down from the heavens in her wake while Vanquishers and a Stormstrike Chariot drive the enemy before them.",
     faction: 'stormcast-eternals',
     units: ['Yndrasta', 'Knight-Vexillor', 'Annihilators', 'Vanquishers', 'Stormstrike Chariot'],
     battleTraits:       [{"name":"Scions of the Storm / Lightning-Strike Arrival","timing":"Passive (Deployment)","text":"Yndrasta and your Annihilators unit are not set up during the deployment phase. Instead, from the third battle round onwards, they can use Lightning-Strike Arrival (Your Movement Phase): Set up this unit anywhere on the battlefield more than 6\" from all enemy units."}],
@@ -136,6 +151,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Vigilant Brotherhood',
+    lore: 'The Vigilant Brotherhood embodies the stoic, watchful aspect of the Stormcast Eternals — a sworn order pledged to guard the light of Azyr against the encroaching dark. A Lord-Vigilant patrols on Gryph-stalker while Prosecutors harry the enemy from above and Liberators hold the ground in a Sigmarite wall of shields.',
     faction: 'stormcast-eternals',
     units: ['Lord-Vigilant on Gryph-stalker', 'Lord-Veritant', 'Prosecutors', 'Liberators'],
     battleTraits:       [{"name":"Holy Orders — Shield of Azyr","timing":"Once Per Turn, Your Hero Phase","text":"Declare: Pick a friendly unit. Effect: Until the start of your next turn, that unit has Ward (5+)."},{"name":"Holy Orders — Storm Charge","timing":"Once Per Battle, Your Charge Phase","text":"Declare: Pick a friendly unit that is not in combat. Effect: That unit can use Charge abilities this turn even if it used a Run ability in the same turn."}],
@@ -144,6 +160,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Bitterbark Copse',
+    lore: 'A Bitterbark Copse is a fragment of living forest roused to fury, its Treelord a towering embodiment of the woodland realm\'s ancient anger. Branchwych and Kurnoth Hunters fight from within reach of the world\'s spirit-paths, and the whole copse can melt into the realmroots only to emerge elsewhere in an eyeblink.',
     faction: 'sylvaneth',
     units: ['Branchwych', 'Treelord', 'Kurnoth Hunters', 'Treerevenants'],
     battleTraits:       [{"name":"Ley Lines","timing":"Once Per Turn, End of Any Turn","text":"Effect: Heal (1) each friendly unit that is within 3\" of any terrain features."},{"name":"Strike and Fade","timing":"Once Per Turn, End of Any Turn","text":"Declare: Pick a friendly unit that used a Fight ability this turn and is within 3\" of any terrain features, then roll a dice. Effect: On a 2+, remove that unit from the battlefield and set it up again so that each model in the unit is within 3\" of any terrain features and more than 6\" from all enemy units."}],
@@ -152,6 +169,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Spitewing Flight',
+    lore: 'The Spitewing Flight are the swift and vengeful hunters of Alarielle\'s realm, a formation of Spiterider Lancers and Gossamid Archers who harry their quarry with relentless aerial precision. Led by an Archrevenant whose fury builds with each chord of the Song of the Hunt, they do not rest until their chosen prey is brought low.',
     faction: 'sylvaneth',
     units: ['Archrevenant', 'Gossamid Archers', 'Spiterider Lancers', 'Revenant Seekers'],
     battleTraits:       [{"name":"Target of Vengeance","timing":"Once Per Battle Round (Army), Start of Battle Round","text":"Declare: If there is no enemy quarry on the battlefield, pick an enemy unit on the battlefield to be the target. Effect: The target is the quarry for the rest of the battle."},{"name":"Song of the Hunt","timing":"Passive","text":"You gain 1 chord each time an enemy quarry is destroyed. Cumulative effects — 1 chord: Add 1 to run rolls and charge rolls for friendly units while they are within 9\" of the enemy quarry. 2 chords: Add 1 to hit rolls for friendly units' attacks while they are within 9\" of the enemy quarry. 3+ chords: Add 1 to wound rolls for friendly units' attacks while they are within 9\" of the enemy quarry."},{"name":"Airborne Cohesion","timing":"Passive","text":"Effect: Friendly units have a coherency range of 2\"."}],
@@ -161,6 +179,7 @@ const SPEARHEADS = [
   // ── CHAOS ─────────────────────────────────────────────────────────────────
   {
     name: 'Fangs of the Blood God',
+    lore: 'Karanak, the Three-Headed Hound of Vengeance, leads the Fangs of the Blood God on hunts that span reality itself. These Flesh Hounds and their daemonic kin pursue any quarry that Khorne marks for death, their hunger for slaughter growing with every scent of blood until nothing can outrun their relentless pursuit.',
     faction: 'blades-of-khorne',
     units: ['Karanak', 'Flesh Hounds', 'Claws of Karanak'],
     battleTraits:       [{"name":"The Quarry","timing":"Start of Battle Round","text":"Effect: If no enemy units are the quarry, pick an enemy unit to be the quarry (you can pick an enemy unit in reserve)."},{"name":"Blood-Drenched","timing":"Once Per Turn, End of Any Turn","text":"Declare: Pick a friendly unit that slew any enemy models using a Fight ability this turn to be the target. Effect: For the rest of the battle, the target's melee weapons have Crit (Mortal)."}],
@@ -169,6 +188,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Gore Pilgrims',
+    lore: 'Gore Pilgrims march to war as a living sacrifice to the Blood God, each death — friend or foe — feeding the tide of power that the Slaughterpriest channels in Khorne\'s name. Blood Warriors and Bloodreavers are hurled screaming into battle, and with enough blood spilled, the Mighty Skullcrushers thunder forward to finish the butchery.',
     faction: 'blades-of-khorne',
     units: ['Slaughterpriest', 'Blood Warriors', 'Bloodreavers', 'Mighty Skullcrushers'],
     battleTraits:       [{"name":"The Blood Tithe","timing":"Passive","text":"Each time a unit is destroyed during the battle, you receive 1 blood tithe point."},{"name":"Murderlust","timing":"Once Per Turn, Any Hero Phase","text":"Declare: Spend 1 blood tithe point and pick up to D3 friendly units. Effect: Each of those units can move D6\" (roll for each)."},{"name":"Heads Must Roll","timing":"Once Per Turn, Any Hero Phase","text":"Declare: Spend 3 blood tithe points and pick up to 3 friendly units. Effect: Add 1 to the Rend characteristic of those units' melee weapons until the start of your next turn."}],
@@ -177,6 +197,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Fluxblade Coven',
+    lore: 'The Fluxblade Coven dances through probability itself, the Magister on Disc of Tzeentch having glimpsed the threads of destiny and learned how to pluck them. Flamers and Screamers erupt from conjured portals while Tzaangors and Kairic Acolytes ensure that what the Great Schemer has decreed cannot be denied.',
     faction: 'disciples-of-tzeentch',
     units: ['Magister on Disc of Tzeentch', 'Flamers of Tzeentch', 'Screamers of Tzeentch', 'Tzaangors', 'Kairic Acolytes'],
     battleTraits:       [{"name":"Masters of Destiny","timing":"Once Per Battle, Start of the First Battle Round","text":"Effect: Roll 9 dice and put them to one side. These are your destiny dice. During the battle, instead of rolling 1 of the listed rolls, you can pick one of your destiny dice and use it as the roll. Once used, a destiny dice is discarded. The following rolls can be replaced: Casting rolls, Run rolls, Charge rolls, Hit rolls, Wound rolls, Save rolls (you must still modify by Rend). If you want to replace a roll that uses more than one D6, you must use the same number of destiny dice."}],
@@ -185,6 +206,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Tzaangor Warflock',
+    lore: 'The Tzaangor Warflock is an ever-mutating mass of avian beastmen guided by the foreknowledge of a Tzaangor Shaman who reads fate in the entrails of the battlefield. Enlightened riders lope ahead while Skyfires arc blazing arrows along trajectories only they can see — nothing occurs that the Shaman had not already predicted.',
     faction: 'disciples-of-tzeentch',
     units: ['Tzaangor Shaman', 'Tzaangors', 'Tzaangor Enlightened', 'Tzaangor Skyfires'],
     battleTraits:       [{"name":"Fated Arrival","timing":"Passive (Deployment)","text":"Your Tzaangor Enlightened unit is not set up during the deployment phase. Instead, from the second battle round onwards, it can use Fated Arrival (Your Movement Phase): Set up this unit wholly within friendly territory, within 1\" of a battlefield edge and more than 6\" from all enemy units."},{"name":"Predict the Future","timing":"Your Hero Phase","text":"Effect: You can look at up to 3 cards from the top of your battle tactic deck without adding them to your hand. Then, in any order, return each card face down to either the top or the bottom of your battle tactic deck."},{"name":"Cheat Destiny","timing":"Reaction: You used a command on a battle tactic card","text":"Effect: Instead of discarding that card, return it face down to the bottom of your battle tactic deck."}],
@@ -193,6 +215,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Blades of The Lurid Dream',
+    lore: 'The Blades of the Lurid Dream pursue excess in all things, the Shardspeaker\'s shadowy arts ensnaring hearts and minds while Slickblade Seekers slash through enemies in a frenzy of sensation. The Temptations of Slaanesh twist even the enemy\'s failures into victories for the Dark Prince, and the Slaangor Fiendbloods feast on whatever remains.',
     faction: 'hedonites-of-slaanesh',
     units: ['Shardspeaker of Slaanesh', 'Blissbarb Archers', 'Slickblade Seekers', 'Slaangor Fiendbloods'],
     battleTraits:       [{"name":"Temptations of Slaanesh","timing":"Passive","text":"You receive 6 temptation dice at the start of the battle round. Each time your opponent makes a failed hit roll, wound roll or save roll, you can offer them a temptation dice. If they accept, that roll is replaced with a 6. Each time your opponent accepts, you gain D6 depravity points. Each time your opponent rejects, inflict D3 mortal damage on the unit for which the roll was made. You cannot offer a temptation dice for the same enemy unit more than once per phase. At the end of the battle round, all remaining temptation dice are lost. Depravity thresholds (cumulative) — 12+ DP: Tantalising Torment: This unit can use a Run ability and still use Charge abilities later in the turn. 18+ DP: Sadistic Spite: This unit's melee weapons have Crit (Mortal). 24+ DP: Oblivious Indulgence: This unit has Ward (5+)."}],
@@ -201,6 +224,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Epicurean Revellers',
+    lore: 'The Epicurean Revellers are a daemonic cavalcade devoted to the most extravagant expressions of Slaanesh\'s appetite, led by the hypnotic Thricefold Discord whose very presence overwhelms the senses. Fiends lash with euphoria-inducing barbs, Daemonettes carve beauty from carnage, and Seekers race ahead to claim the finest kills.',
     faction: 'hedonites-of-slaanesh',
     units: ['Thricefold Discord', 'Fiends', 'Daemonettes', 'Seekers'],
     battleTraits:       [{"name":"Favour Most Fickle","timing":"Passive","text":"The following effects apply based on the number of friendly units on the battlefield (not cumulative): 5 or more units: Add 2 to the Control characteristic of friendly units. 4 units: Add 1 to hit rolls and wound rolls for friendly units' combat attacks, including attacks made with Companion weapons. 3 units: Add 1 to run rolls and charge rolls for friendly units. 2 units: Friendly units have Ward (5+). 1 unit: Add 2 to the Attacks characteristic of friendly units' melee weapons, including Companion weapons."}],
@@ -209,6 +233,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Bleak Host',
+    lore: 'The Bleak Host spreads Nurgle\'s bountiful gifts across the battlefield, each wound festering with the Plague God\'s loving attention. Pusgoyle Blightlords swoop on droning wings while Putrid Blightkings grind the enemy down, the Spoilpox Scrivener keeping meticulous record of every disease point tallied in Father Nurgle\'s name.',
     faction: 'maggotkin-of-nurgle',
     units: ['Spoilpox Scrivener', 'Pusgoyle Blightlords', 'Putrid Blightkings', 'Plaguebearers'],
     battleTraits:       [{"name":"The Infectious Hosts / Daemonic Summoning","timing":"Passive (Deployment)","text":"One of your Pusgoyle Blightlords and one of your Plaguebearers units are not set up during the deployment phase. Instead, from the third battle round onwards, they can use Daemonic Summoning (Your Movement Phase): Set up this unit anywhere on the battlefield more than 6\" from all enemy units."},{"name":"Diseased","timing":"Passive","text":"Each time an attack made by a friendly model scores a critical hit, you receive 1 disease point, to a maximum of 7."},{"name":"Nurgle's Embrace","timing":"End of Any Turn","text":"Effect: Spend any number of your disease points. For each disease point you spend, pick an enemy unit that is in combat with any of your units and roll a dice. On a 5+, inflict 1 mortal damage on that unit (you can pick the same enemy unit more than once)."}],
@@ -217,6 +242,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Bubonic Cell',
+    lore: 'A Bubonic Cell spreads corruption not through blunt force but through patient, insidious decay, the Rotbringer Sorcerer channelling Nurgle\'s endless cycle to defile the very land itself. Nurglings swarm and gnaw while a Beast of Nurgle lumbers forward with cheerful malice, and the Rotmire Creed poison everything they touch.',
     faction: 'maggotkin-of-nurgle',
     units: ['Rotbringer Sorcerer', 'Nurglings', 'Beast of Nurgle', 'Rotmire Creed'],
     battleTraits:       [{"name":"Cycle of Corruption","timing":"Passive","text":"If it is the first battle round, roll a dice to determine which Cycle ability applies (if you roll a 5 or 6, roll again). If it is not the first battle round, the next Cycle ability in the sequence is used. Cycle 1 — Numberless Pests: Subtract 1 from hit rolls for attacks that target friendly units. Cycle 2 — Plague of Misery: While enemy units are within 6\" of any friendly units, they cannot use abilities that heal or return slain models to a unit. Cycle 3 — Burgeoning Filth: Subtract 3 from the control scores of enemy units while they are in combat with any friendly units. Cycle 4 — Nauseous Revulsion: Subtract 1 from charge rolls for enemy units."}],
@@ -225,6 +251,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Gnawfeast Clawpack',
+    lore: 'The Gnawfeast Clawpack is an eruption of skaven cunning and cowardice weaponised — a Clawlord screaming orders while a Grey Seer hurls warp-lightning and a Warlock Engineer tinkers with increasingly unstable devices. Clanrats swarm in their thousands and Rat Ogors smash what remains, and if the plan fails, there are always more rats.',
     faction: 'skaven',
     units: ['Clawlord', 'Grey Seer', 'Warlock Engineer', 'Clanrats', 'Rat Ogors'],
     battleTraits:       [{"name":"The Lurking Gnawhole / Vermintide","timing":"Once Per Battle, Deployment Phase","text":"Declare: Pick a friendly unit that has not been deployed to be the target. Effect: The target unit is set up in reserve in the tunnels below. Units in the tunnels below that have not used the 'Gnawhole Ambush' ability by the end of the third battle round are destroyed. Vermintide (Your Movement Phase): Set up that unit wholly within 6\" of a corner of the battlefield and more than 9\" from all enemy units."}],
@@ -233,6 +260,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Warpspark Clawpack',
+    lore: 'The Warpspark Clawpack represents skaven ingenuity at its most dangerously erratic, the Grey Seer\'s warp-fuelled schemes backed by the raw destructive power of Stormfiends and a Warp Lightning Cannon that crackles with barely contained energy. The fact that it might kill as many friends as enemies only adds to the excitement.',
     faction: 'skaven',
     units: ['Grey Seer', 'Stormfiends', 'Warp Lightning Cannon', 'Clanrats'],
     battleTraits:       [{"name":"Always Three Clawsteps Ahead","timing":"Once Per Phase, Enemy Movement Phase","text":"Declare: Pick a friendly unit that is not in combat. Effect: That unit can use the 'Normal Move' ability as if it were your movement phase."}],
@@ -241,6 +269,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Bloodwind Legion',
+    lore: 'The Bloodwind Legion is a host of warriors who have pledged themselves to the Chaos Gods in pursuit of apotheosis — Chaos Warriors and Knights riding to war behind a Chaos Lord who has already proven himself worthy of dark blessings. Each kill on the battlefield is a plea to the Ruinous Powers for the gift of mutation and ascension.',
     faction: 'slaves-to-darkness',
     units: ['Chaos Lord', 'Chaos Chariot', 'Chaos Warriors', 'Chaos Knights'],
     battleTraits:       [{"name":"Eye of the Gods","timing":"Once Per Turn, End of Any Turn","text":"Declare: Pick a friendly unit that is contesting an objective not controlled by your opponent and is not in combat, OR a unit that destroyed an enemy unit this turn. Effect: Roll once on the Eye of the Gods table for that unit. That unit gains the Eye of the Gods passive ability that corresponds to the roll. Roll results — 1: Snubbed by the Gods: No effect. 2: Ward of Tzeentch: This unit has Ward (6+). 3: Grace of Slaanesh: Add 1 to run rolls for this unit. 4: Blessing of Nurgle: Subtract 1 from wound rolls for attacks that target this unit. 5: Fury of Khorne: Add 1 to the Rend characteristic of this unit's melee weapons. 6: Champion of Chaos: Pick any ability from the table."}],
@@ -249,6 +278,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Darkoath Raiders',
+    lore: 'The Darkoath Raiders are sworn to their dark oaths with a conviction that borders on religious mania, the Warqueen\'s word binding her Savagers, Fellriders and Marauders to acts of conquest that must be fulfilled or else face supernatural repercussions. They raid with a ferocity born of desperation and dark faith in equal measure.',
     faction: 'slaves-to-darkness',
     units: ['Darkoath Warqueen', 'Darkoath Savagers', 'Darkoath Fellriders', 'Darkoath Marauders'],
     battleTraits:       [{"name":"Oaths of Darkness","timing":"Once Per Turn (Army), Your Hero Phase","text":"Effect: You can reveal 1 battle tactic card in your hand to your opponent. If you do so, that battle tactic card becomes your oath for the rest of the turn. You can still use the command on it or attempt to score the battle tactic on it as normal. If you score the battle tactic on your oath this turn, your oath is fulfilled — instead of discarding the card, it is placed to one side but you can still use the command on it. If you use the command on your oath before it is scored, it is discarded as normal. At the end of the turn, if the oath has not been fulfilled, it ceases to be your oath."}],
@@ -258,6 +288,7 @@ const SPEARHEADS = [
   // ── DEATH ─────────────────────────────────────────────────────────────────
   {
     name: 'Carrion Retainers',
+    lore: 'In the delusion of the Abhorrant Archregent, the Carrion Retainers are a noble company of gallant knights and loyal footsoldiers serving the realm\'s most distinguished court. In terrible reality, they are ghouls and vampiric monsters who tear enemies limb from limb — their courtly bows and formal salutes masking something far more predatory.',
     faction: 'flesh-eater-courts',
     units: ['Abhorrant Archregent', 'Cryptguard', 'Morbheg Knights', 'Varghulf Courtier'],
     battleTraits:       [{"name":"Noble Deeds","timing":"Passive","text":"Each time a friendly Hero uses a Fight ability, after its attacks have been resolved, give that Hero a number of noble deeds points equal to the number of damage points allocated by that ability. Each Hero can have a maximum of 6 noble deeds points at any time."},{"name":"Feeding Frenzy","timing":"Passive","text":"Effect: Add 1 to the Attacks characteristic of melee weapons used by friendly units while they are wholly within 12\" of any friendly Heroes that have 6 noble deeds points."},{"name":"Summon Loyal Subjects","timing":"Your Movement Phase","text":"Declare: Pick a friendly Hero with any noble deeds points to use this ability. Effect: Spend noble deeds points — 1 point: pick a friendly Cryptguard unit within 9\" of this unit and return 1 model to it. 2 points: pick a friendly Morbheg Knights unit within 9\" of this unit and return 1 model to it."}],
@@ -266,6 +297,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Charnel Watch',
+    lore: 'The Charnel Watch serves the Abhorrant Gorewarden with unwavering loyalty born of madness, their perception of their own heroism shifting with each turn of the Delusion. What they believe themselves to be matters little — Crypt Horrors and Crypt Flayers are lethal regardless of which noble fantasy drives them forward.',
     faction: 'flesh-eater-courts',
     units: ['Abhorrant Gorewarden', 'Royal Beastflayers', 'Crypt Horrors', 'Crypt Flayers'],
     battleTraits:       [{"name":"Delusions and Madness","timing":"Once Per Battle Round (Army), Start of Battle Round","text":"You must use this ability at the start of each battle round. If it is the first battle round, pick a Delusion. Otherwise, make a delusion roll by rolling a D6 — on a 1-3, pick a different Delusion to the one you picked last time; on a 4+, pick the same Delusion as last time. Delusions — Great Feast: If you believe this Delusion, at end of any turn, Heal (1) each friendly unit on the battlefield. If the target is a Serfs unit, return D3 slain models to it instead. Knightly Host: While you believe this Delusion, if the unmodified charge roll for a friendly Hero or Knights unit is 8+, add 1 to hit rolls for that unit's combat attacks for the rest of the turn."}],
@@ -274,6 +306,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Cursed Shacklehorde',
+    lore: 'The Cursed Shacklehorde is bound together by chains of spectral agony and the implacable will of the Spirit Torment who controls them. Bladegheist Revenants and Dreadscythe Harridans are tormented souls who must fight on whether they wish to or not, and the Dreadblade Harrows ride ahead to ensure none escape the procession\'s reach.',
     faction: 'nighthaunt',
     units: ['Spirit Torment', 'Chainghasts', 'Bladegheist Revenants', 'Dreadscythe Harridans', 'Dreadblade Harrows'],
     battleTraits:       [{"name":"Spectral Procession / Cackling Arrival","timing":"Passive (Deployment)","text":"1 of your Bladegheist Revenants units and 1 of your Dreadscythe Harridans units start the battle in reserve. From the second battle round onwards, Cackling Arrival (Once Per Turn (Army), Your Movement Phase): Declare: Pick 1 of your units in reserve. Effect: Set up that unit anywhere on the battlefield more than 6\" from all enemy units."},{"name":"Ethereal","timing":"Passive","text":"Effect: Ignore negative modifiers to save rolls for friendly units."}],
@@ -282,6 +315,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Slasher Host',
+    lore: 'A Knight of Shrouds commands the Slasher Host like a general of a living army — except all his troops are wrathful spirits and the only orders that register are those of attack and kill. Spirit Hosts, Grimghast Reapers and Chainrasps crash forward in a Wave of Terror that cannot be stopped by conventional means.',
     faction: 'nighthaunt',
     units: ['Knight of Shrouds', 'Spirit Hosts', 'Grimghast Reapers', 'Chainrasps'],
     battleTraits:       [{"name":"Wave of Terror","timing":"Any Charge Phase","text":"Declare: Pick a friendly unit to use this ability if it charged this phase and the charge roll was 10+. Then, pick an enemy unit within 1\" of it to be the target. Effect: The target has Strike-last this turn."},{"name":"Ethereal","timing":"Passive","text":"Effect: Ignore all modifiers to save rolls for friendly units (positive and negative)."}],
@@ -290,6 +324,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Kavalos Vanguard',
+    lore: 'The Kavalos Vanguard is the spearhead of the Ossiarch Bonereapers\' inexorable advance — a swift, disciplined cavalry formation that outmanoeuvres lesser armies with mechanical precision. The Liege-Kavalos commands with cold authority, and the Kavalos Deathriders execute every order without hesitation, fear or fatigue.',
     faction: 'ossiarch-bonereapers',
     units: ['Liege-Kavalos', 'Kavalos Deathriders', 'Teratic Cohort'],
     battleTraits:       [{"name":"Calculated Feint","timing":"Passive","text":"Effect: No mortal damage is inflicted on friendly Cavalry units by Retreat abilities."},{"name":"Kavalos Lance","timing":"Once Per Turn (Army), Your Hero Phase","text":"Declare: Pick a friendly unit to be the target. Effect: For the rest of the turn, the target can pass across enemy models as if it had Fly."}],
@@ -298,6 +333,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Mortisan Elite',
+    lore: 'The Mortisan Elite are the Ossiarch Bonereapers at their most refined — arcane constructs of ossified bone animated by the Mortisan Ossifector\'s arts and driven by the relentless Nagashian imperative to collect, categorise and destroy. Immortis Guard protect, Necropolis Stalkers adapt, and Morghast Archai descend from on high.',
     faction: 'ossiarch-bonereapers',
     units: ['Mortisan Ossifector', 'Immortis Guard', 'Necropolis Stalkers', 'Morghast Archai'],
     battleTraits:       [{"name":"Heralds of Nagash / Dread Descent","timing":"Passive (Deployment)","text":"Your unit of Morghast Archai is not set up during the deployment phase. Instead, from the second battle round onwards, it can use Dread Descent (Once Per Turn (Army), Your Movement Phase): Set up this unit anywhere on the battlefield more than 6\" from all enemy units."},{"name":"Relentless Discipline","timing":"Once Per Phase (Army)","text":"Declare: Pick a friendly unit to be the target. Effect: Make a discipline roll of D6. Add 1 to the roll if the target is wholly within 12\" of your general. On a 4+, pick 1 of the effects below: Your Movement Phase — Add 2\" to the target's Move characteristic for the rest of the phase. Your Charge Phase — Add 1 to charge rolls for the target for the rest of the phase. Any Combat Phase — Add 1 to wound rolls for combat attacks made by the target for the rest of the phase. Any Combat Phase — The target has Ward (5+) for the rest of the phase."}],
@@ -306,6 +342,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Tithe-Reaper Echelon',
+    lore: 'The Tithe-Reaper Echelon marches to collect what Nagash demands — the bones of the living, rendered into tithe for the Great Necromancer\'s eternal project. A Mortisan Soulreaper oversees the harvest while Mortek Guard advance in lockstep and a Gothizzar Harvester processes the fallen on the battlefield itself.',
     faction: 'ossiarch-bonereapers',
     units: ['Mortisan Soulreaper', 'Mortek Guard', 'Kavalos Deathriders', 'Gothizzar Harvester'],
     battleTraits:       [{"name":"Reserve Contingent / Contingent Arrival","timing":"Passive (Deployment)","text":"One of your Mortek Guard units is not set up during the deployment phase. Instead, from the third battle round onwards, it can use Contingent Arrival (Your Movement Phase): Set up this unit anywhere on the battlefield wholly within 3\" of a battlefield edge and more than 6\" from all enemy units."},{"name":"Ossiarch Commands","timing":"Passive","text":"At the start of the battle round, you receive 2 Ossiarch command points. Each Ossiarch Command costs 1 Ossiarch command point to use. The same unit cannot use more than one Ossiarch Command in the same phase. At the end of the battle round, all remaining Ossiarch command points are lost."}],
@@ -314,6 +351,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Bloodcrave Hunt',
+    lore: 'The Bloodcrave Hunt is a vampire lord\'s personal retinue made manifest upon the battlefield — an expression of aristocratic predation that strikes with the speed of night and the inevitability of the grave. Blood Knights thunder ahead, Deathrattle Skeletons hold ground, and Vargheists descend from the darkness to finish the bloodletting.',
     faction: 'soulblight-gravelords',
     units: ['Vampire Lord', 'Deathrattle Skeletons', 'Blood Knights', 'Vargheists'],
     battleTraits:       [{"name":"Death's Descent / Swoop Down","timing":"Passive (Deployment)","text":"Your Vargheists unit is not set up during the deployment phase. Instead, from the third battle round onwards, it can use Swoop Down (Your Movement Phase): Set up this unit anywhere on the battlefield more than 6\" from all enemy units."},{"name":"The Hunger","timing":"Passive","text":"Each time a friendly Vampire unit uses a Fight ability, after all of its attacks have been resolved, Heal (X) that Vampire unit where X is the number of damage points allocated by those attacks."}],
@@ -322,6 +360,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Deathrattle Tomb Host',
+    lore: 'The Deathrattle Tomb Host answers the Wight King\'s ancient summons — warriors who fell in battles long forgotten, now raised to fight once more under the command of a lord who cannot be stopped by mere death. Barrow Guard and Barrow Knights march with hollow purpose, and the shambling Deathrattle Skeletons rise whenever they fall.',
     faction: 'soulblight-gravelords',
     units: ['Wight King', 'Barrow Guard', 'Barrow Knights', 'Deathrattle Skeletons'],
     battleTraits:       [{"name":"The Unquiet Dead / The Rising Dead","timing":"Passive (Deployment)","text":"One of your Deathrattle Skeletons units is not set up during the deployment phase. Instead, from the third battle round onwards, it can use The Rising Dead (Once Per Battle (Army), Your Movement Phase): Set up this unit anywhere on the battlefield wholly within 3\" of a battlefield edge and more than 6\" from all enemy units."},{"name":"Aura of Antiquity","timing":"Once Per Turn (Army), Your Combat Phase","text":"Declare: Pick an enemy unit in combat with any friendly units to be the target. Effect: Roll a dice. On a 3+, subtract 1 from the Rend characteristic of the target's melee weapons until the start of your next turn."}],
@@ -331,6 +370,7 @@ const SPEARHEADS = [
   // ── DESTRUCTION ────────────────────────────────────────────────────────────
   {
     name: 'Bad Moon Madmob',
+    lore: 'The Bad Moon Madmob surges forward under the insane light of the Bad Moon Gorkamorka, Moonclan Stabbas gibbering with excitement and Squig Hoppers bounding at random while Rockgut Troggoths lumber in from behind. The Loonboss who leads them is only marginally less deranged than the forces under his command.',
     faction: 'gloomspite-gitz',
     units: ['Loonboss', 'Moonclan Stabbas', 'Squig Hoppers', 'Rockgut Troggoths'],
     battleTraits:       [{"name":"Under the Light of the Bad Moon","timing":"Once Per Battle, Start of the First Battle Round","text":"Declare: Pick a territory (either friendly territory or enemy territory) to be under the Light of the Bad Moon. That territory remains under the Light of the Bad Moon in the first and second battle rounds. In the third and fourth battle rounds, the other territory is under the Light of the Bad Moon. While a friendly unit is wholly within the territory under the Light of the Bad Moon: Frothing Zealots: If the unit is a Moonclan Stabbas unit, add 3 to its control score. Lunar Squigs: If the unit is a Squig Hoppers unit, no mortal damage is inflicted on it when it uses Retreat abilities. Moonlit Hide: If the unit is a Rockgut Troggoths unit, add 1 to save rolls for it."},{"name":"Squigalanche","timing":"Passive (Deployment)","text":"One of your units of Squig Hoppers is not set up during the deployment phase. Instead, from the third battle round onwards, it can use Squigalanche (Your Movement Phase): Set up this unit wholly within your territory, wholly within 3\" of a battlefield edge and more than 6\" from all enemy units."}],
@@ -339,6 +379,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Snarlpack Huntaz',
+    lore: 'The Snarlpack Huntaz are the fastest of the Gloomspite Gitz forces — wolf-riders and snarling war-machines that descend on the enemy in a flurry of fangs and crude weaponry. The Snarlboss barks commands with frightening authority, and the blazing Sunsteala Wheela\'s passage makes a mockery of the enemy\'s carefully laid ambushes.',
     faction: 'gloomspite-gitz',
     units: ['Snarlboss', 'Wolfgit Retinue', 'Snarlpack Cavalry', 'Sunsteala Wheela'],
     battleTraits:       [{"name":"Fast as Frazzlegit","timing":"Passive","text":"Effect: Friendly units can use Charge abilities even if they used a Retreat ability in the same turn. In addition, no mortal damage is inflicted on friendly units by Retreat abilities."}],
@@ -347,6 +388,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Ironjawz Bigmob',
+    lore: 'An Ironjawz Bigmob is a Waaagh! given direction — barely — by a Megaboss whose only leadership quality is that he hits harder than anyone who disagrees with him. Brute Ragerz lead the charge, Ardboyz hold the centre and Brutes erupt from reserves to hit the enemy just when they think the worst is over.',
     faction: ['ironjawz', 'orruk-warclans'],
     units: ['Megaboss', 'Brute Ragerz', 'Ardboyz', 'Brutes'],
     battleTraits:       [{"name":"'Ere We Go!","timing":"Passive (Deployment)","text":"Your Brutes are not set up during the deployment phase. Instead, from the third battle round onwards, they can use 'Ere We Go! (Your Movement Phase): Set up this unit anywhere on the battlefield more than 6\" from all enemy units."},{"name":"Mighty Destroyers","timing":"Once Per Turn (Army), Any Hero Phase","text":"Declare: Pick a friendly unit that was not set up this turn to be the target. Effect: The target can move up to 3\". It can move into combat. If it was in combat at the start of the move, it must end that move in combat."}],
@@ -355,6 +397,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Swampskulka Gang',
+    lore: 'The Swampskulka Gang fights in the Kruleboyz way — sneaky, patient and absolutely willing to use every underhanded trick available to them. The Killaboss on Great Gnashtoof directs Man-skewer Boltboyz to pick apart enemies at range before the Gutrippaz wade in, and the Beast-skewer Killbow ensures nothing too large gets any ideas.',
     faction: ['kruleboyz', 'orruk-warclans'],
     units: ['Killaboss on Great Gnashtoof', 'Murknob with Belcha-banna', 'Man-skewer Boltboyz', 'Gutrippaz', 'Beast-skewer Killbow'],
     battleTraits:       [{"name":"Kruleboyz Waaagh!","timing":"Once Per Battle, Any Combat Phase","text":"Declare: Pick your general to use this ability, then pick another friendly unit wholly within 12\" of them to be the target. Effect: Your general and the target have Strike-first this phase."}],
@@ -363,6 +406,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Scrapglutt',
+    lore: 'The Scrapglutt is an Ogor warband with more Gnoblars than most, the little creatures pressed into service manning a Scraplauncher that hurls miscellaneous debris with surprising effect. Ironguts provide the fist of the force, while the Gnoblar camp followers mostly stay out of the way — which is the most anyone can hope for from them.',
     faction: 'ogor-mawtribes',
     units: ['Gnoblar Scraplauncher', 'Ironguts', 'Gnoblars'],
     battleTraits:       [{"name":"Better Late Than Never / Let's Get Stuck In","timing":"Passive (Deployment)","text":"A unit of Ironguts with 4 models is not set up during the deployment phase. Instead, in the third battle round, that unit can use Let's Get Stuck In (Your Movement Phase): Set up this unit wholly within friendly territory, wholly within 6\" of the battlefield edge, and not in combat."}],
@@ -371,6 +415,7 @@ const SPEARHEADS = [
   },
   {
     name: "Tyrant's Bellow",
+    lore: "A Tyrant's Bellow resounds across the battlefield as the Ogor warband crashes forward on the Mawpath, their endless hunger driving them to devour everything in their path. Mournfang Pack stampede ahead while Leadbelchers blast away and the Ironblaster adds its thunderous voice to the Tyrant's roaring declaration of war.",
     faction: 'ogor-mawtribes',
     units: ['Tyrant', 'Mournfang Pack', 'Ogor Gluttons', 'Leadbelchers', 'Ironblaster'],
     battleTraits:       [{"name":"On the Mawpath / Bellowing Arrival","timing":"Passive (Deployment)","text":"Your Ironblaster, Mournfang Pack and 1 unit of Ogor Gluttons are not set up during the deployment phase. Instead, from the third battle round onwards, they can use Bellowing Arrival (Your Movement Phase): Set up this unit anywhere on the battlefield, within 1\" of a battlefield edge and more than 6\" from all enemy units."}],
@@ -379,6 +424,7 @@ const SPEARHEADS = [
   },
   {
     name: 'Wallsmasher Stomp',
+    lore: 'The Wallsmasher Stomp is exactly what it sounds like — a mob of Mancrusher Gargants following the biggest of their number in the direction of whatever looks most worth smashing. Their Bullstomper leader has the vague awareness that enemies should be crushed, walls should be toppled and rocks should be thrown, and this is sufficient strategic vision.',
     faction: 'sons-of-behemat',
     units: ['Mancrusher Gargant', 'Mancrusher Mob'],
     battleTraits:       [{"name":"Bullstomper","timing":"Passive","text":"Mancrusher Mobs are led by fearsome gargants known as Bullstompers. Your general has the Hero keyword (in addition to the Monster keyword) but does not have the Reinforcements keyword or icon."},{"name":"Bellowing Roar","timing":"Any Combat Phase","text":"Declare: Pick a friendly unit to use this ability, pick an enemy unit in combat with it to be the target, then roll a dice. Effect: On a 2+, subtract 1 from hit rolls for attacks made by the target unit this phase."},{"name":"'Grab Those Rocks and Chuck 'Em!'","timing":"Your Hero Phase","text":"Declare: Pick your general to use this ability, then pick another friendly unit wholly within 12\" of them. Effect: Add 1 to the Attacks characteristic of that unit's Throwin' Rocks this turn."}],
@@ -388,6 +434,7 @@ const SPEARHEADS = [
   // ── NEW / UNRELEASED FACTIONS (may not be in DB yet) ─────────────────────
   {
     name: 'Helforge Host',
+    lore: 'The Helforge Host marches to war like a moving engine of destruction, the War Despot\'s iron will channelling daemonic power through the ranks of the Infernal Cohort. The Dominator Engine grinds forward on mechanical legs while the Tormentor Bombard rains devastation from afar, all fuelled by Hashut\'s dark gift of industry and pain.',
     faction: 'helsmiths-of-hashut',
     units: ['War Despot', 'Dominator Engine', 'Tormentor Bombard', 'Infernal Cohort'],
     battleTraits:       [{"name":"Harness Daemonic Power","timing":"Once Per Turn (Army), Your Hero Phase","text":"You must use this ability at the start of each of your hero phases. Remove all daemonic power points from each friendly unit. Then, gain a number of daemonic power points equal to the current battle round number plus 1. Allocate your daemonic power points to friendly units (each unit can have a maximum of 3 daemonic power points). All unallocated daemonic power points are then lost."}],
@@ -478,10 +525,11 @@ function run(opts = {}) {
 
   // Upsert spearhead rules into the spearheads table
   const upsert = db.prepare(`
-    INSERT INTO spearheads (name, faction_slug, battle_traits, regiment_abilities, enhancements)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO spearheads (name, faction_slug, lore_text, battle_traits, regiment_abilities, enhancements)
+    VALUES (?, ?, ?, ?, ?, ?)
     ON CONFLICT(name) DO UPDATE SET
       faction_slug = excluded.faction_slug,
+      lore_text = excluded.lore_text,
       battle_traits = excluded.battle_traits,
       regiment_abilities = excluded.regiment_abilities,
       enhancements = excluded.enhancements
@@ -491,6 +539,7 @@ function run(opts = {}) {
     upsert.run(
       sp.name,
       slug,
+      sp.lore || null,
       JSON.stringify(sp.battleTraits       || []),
       JSON.stringify(sp.regimentAbilities  || []),
       JSON.stringify(sp.enhancements       || []),

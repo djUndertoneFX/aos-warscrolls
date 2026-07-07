@@ -175,7 +175,7 @@ const TOTAL_COLS = 20;
 const WEAPONS_EXPAND_COLS = 18;
 
 export default function SpearheadPage({ headerCollapsed }) {
-  const { presumedSave, presumedWard, roundingMode, includeSaveWardInADO } = useSettings();
+  const { presumedSave, presumedWard, roundingMode, includeSaveWardInADO, showFlavorText } = useSettings();
   const { logout } = useAuth();
   const [allRows, setAllRows] = useState(null);
   const [loading, setLoading]   = useState(true);
@@ -627,6 +627,9 @@ export default function SpearheadPage({ headerCollapsed }) {
                               <p className="sp-rules-empty">No rules data available yet for {group.spearheadName}.</p>
                             ) : (
                               <>
+                                {showFlavorText && rules.lore_text && (
+                                  <p className="sp-rules-lore">{rules.lore_text}</p>
+                                )}
                                 {rules.battleTraits?.length > 0 && (
                                   <div className="sp-rules-section">
                                     <div className="sp-rules-section-hdr">Battle Traits</div>
