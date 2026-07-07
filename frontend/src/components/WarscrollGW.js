@@ -803,7 +803,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
                     {gi > 0 && <span className={isFactionBreak ? 'gw-nav-faction-sep' : 'gw-nav-sp-grp-sep'} title={grp.spearheadName} />}
                     {slides.map(s => (
                       <span key={s.key}
-                        className={`gw-nav-dot-sp${activePage?.spearheadName === grp.spearheadName && activePage?.slideKey === s.key && navIndex >= grp.startIdx && navIndex <= grp.endIdx ? ' gw-nav-dot-sp-active' : ''}`}
+                        className={`gw-nav-dot-sp${activePage?.spearheadName === grp.spearheadName && activePage?.slideKey === s.key ? ' gw-nav-dot-sp-active' : ''}`}
                         title={`${grp.spearheadName} — ${s.key === 'sp_traits' ? 'Battle Traits' : 'Regiment Abilities & Enhancements'}`}
                         onClick={() => { onJump?.(grp.startIdx); setActivePage({ factionSlug: '__sp__', spearheadName: grp.spearheadName, slideKey: s.key }); }}
                       />
