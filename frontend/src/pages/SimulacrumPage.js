@@ -524,6 +524,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
   const [hideLegends, setHideLegends]                 = useState(saved.hideLegends           ?? true);
   const [hideOtherFactions, setHideOtherFactions]     = useState(saved.hideOtherFactions     ?? false);
   const [hideScourgeOfGhyran, setHideScourgeOfGhyran] = useState(saved.hideScourgeOfGhyran   ?? false);
+  const [hideRoR, setHideRoR]                         = useState(saved.hideRoR               ?? false);
   const [showFriendly, setShowFriendly] = useState(saved.showFriendly ?? false);
   const [showEnemy, setShowEnemy]       = useState(saved.showEnemy    ?? false);
   const [sortBy, setSortBy]             = useState(saved.sortBy       ?? 'faction');
@@ -533,10 +534,10 @@ export default function SimulacrumPage({ headerCollapsed }) {
     localStorage.setItem(FILTER_KEY, JSON.stringify({
       search, faction, enemyFaction, alliance,
       isHero, isMonster, isInfantry, isCavalry, isBeast, isWarMachine, isTerrain, isManifestation,
-      hideLegends, hideOtherFactions, hideScourgeOfGhyran, showFriendly, showEnemy, sortBy, sortDir,
+      hideLegends, hideOtherFactions, hideScourgeOfGhyran, hideRoR, showFriendly, showEnemy, sortBy, sortDir,
     }));
   }, [FILTER_KEY, search, faction, enemyFaction, alliance, isHero, isMonster, isInfantry, isCavalry,
-      isBeast, isWarMachine, isTerrain, isManifestation, hideLegends, hideOtherFactions, hideScourgeOfGhyran, showFriendly, showEnemy, sortBy, sortDir]);
+      isBeast, isWarMachine, isTerrain, isManifestation, hideLegends, hideOtherFactions, hideScourgeOfGhyran, hideRoR, showFriendly, showEnemy, sortBy, sortDir]);
 
   const [filteredCounts, setFilteredCounts] = useState({});
   useEffect(() => {
@@ -601,6 +602,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
         ...(hideLegends          ? { isLegends: '0' }             : {}),
         ...(hideOtherFactions    ? { hideOtherFactions: '1' }    : {}),
         ...(hideScourgeOfGhyran  ? { hideScourgeOfGhyran: '1' }  : {}),
+        ...(hideRoR              ? { hideRoR: '1' }               : {}),
         ...(showFriendly && hasFriendlyMarks ? { showFriendly: '1' } : {}),
         ...(showEnemy    && hasEnemyMarks    ? { showEnemy: '1' }    : {}),
       };
@@ -610,7 +612,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
       if (err.response?.status === 401) setError('Session expired. Please sign out and log back in.');
       else setError('Failed to load warscrolls. Is the backend running?');
     } finally { setLoading(false); }
-  }, [search, faction, enemyFaction, alliance, sortBy, sortDir, page, isHero, isMonster, isInfantry, isCavalry, isBeast, isWarMachine, isTerrain, isManifestation, hideLegends, hideOtherFactions, hideScourgeOfGhyran, showFriendly, showEnemy, hasFriendlyMarks, hasEnemyMarks]);
+  }, [search, faction, enemyFaction, alliance, sortBy, sortDir, page, isHero, isMonster, isInfantry, isCavalry, isBeast, isWarMachine, isTerrain, isManifestation, hideLegends, hideOtherFactions, hideScourgeOfGhyran, hideRoR, showFriendly, showEnemy, hasFriendlyMarks, hasEnemyMarks]);
 
   useEffect(() => { axios.get('/api/user-units').then(res => { const map = {}; res.data.forEach(r => { map[r.warscroll_id] = { is_friendly: r.is_friendly, is_enemy: r.is_enemy }; }); setUserUnits(map); }).catch(() => {}); }, []);
   useEffect(() => { fetchFactions(); }, [fetchFactions]);
@@ -639,7 +641,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
     });
     candidates.sort((a, b) => a.dist - b.dist);
     scrollAnchorRef.current = candidates.slice(0, 5);
-  }, [search, faction, enemyFaction, alliance, isHero, isMonster, isInfantry, isCavalry, isBeast, isWarMachine, isTerrain, isManifestation, hideLegends, hideOtherFactions, hideScourgeOfGhyran, showFriendly, showEnemy, sortBy, sortDir]);
+  }, [search, faction, enemyFaction, alliance, isHero, isMonster, isInfantry, isCavalry, isBeast, isWarMachine, isTerrain, isManifestation, hideLegends, hideOtherFactions, hideScourgeOfGhyran, hideRoR, showFriendly, showEnemy, sortBy, sortDir]);
 
   useEffect(() => {
     const candidates = scrollAnchorRef.current;
@@ -893,6 +895,10 @@ export default function SimulacrumPage({ headerCollapsed }) {
             <label className="cb-item">
               <input type="checkbox" checked={hideOtherFactions} onChange={e => { setHideOtherFactions(e.target.checked); setPage(1); }} />
               <span>Other Factions</span>
+            </label>
+            <label className="cb-item">
+              <input type="checkbox" checked={hideRoR} onChange={e => { setHideRoR(e.target.checked); setPage(1); }} />
+              <span>Regiments of Renown</span>
             </label>
             <label className="cb-item">
               <input type="checkbox" checked={hideLegends} onChange={e => { setHideLegends(e.target.checked); setPage(1); }} />

@@ -377,7 +377,7 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
     page = 1, pageSize = 50,
     isHero, isMonster, isInfantry, isCavalry, isBeast, isWarMachine, isTerrain, isManifestation, isLegends,
     hideScourgeOfGhyran,
-    showFriendly, showEnemy, hideOtherFactions,
+    showFriendly, showEnemy, hideOtherFactions, hideRoR,
   } = req.query;
 
   const allowedSort = ['name', 'faction', 'grand_alliance', 'move', 'health', 'control', 'save', 'ward', 'unit_size', 'points'];
@@ -422,6 +422,7 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
   if (isManifestation   === '-1') { conditions.push('w.is_manifestation = 0'); }
   if (isLegends           === '0') { conditions.push('w.is_legends = 0'); }
   if (hideScourgeOfGhyran === '1') { conditions.push("w.name NOT LIKE 'Scourge of %'"); }
+  if (req.query.hideRoR   === '1') { conditions.push("(w.keywords IS NOT NULL AND w.keywords != '')"); }
   if (req.query.spearheadOnly === '1') { conditions.push('w.spearhead IS NOT NULL'); }
 
   if (hideOtherFactions === '1' && (faction || enemyFaction)) {
