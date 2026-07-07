@@ -583,7 +583,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
       }
     }
     setActivePage(null);
-  }, [unit?.id]); // eslint-disable-line — activePage/getSpSlides/getSlidesForSlug/factionGroups intentionally stale
+  }, [unit?.id]); // eslint-disable-line
 
   // Track last slide per spearhead so it can be restored when returning to it
   useEffect(() => {
