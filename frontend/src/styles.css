@@ -2078,9 +2078,9 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 
 .gw-modal {
   position: fixed;
-  top: 50%;
+  top: 4vh;
   left: 50%;
-  transform: translate(-50%, -50%);
+  transform: translateX(-50%);
   z-index: 1201;
   width: min(900px, 96vw);
   max-height: 92vh;
