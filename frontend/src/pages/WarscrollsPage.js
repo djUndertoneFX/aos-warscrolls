@@ -616,8 +616,8 @@ export default function WarscrollsPage({ headerCollapsed }) {
               <input type="checkbox" id="cb-scourge" checked={hideScourgeOfGhyran} onChange={e => { setHideScourgeOfGhyran(e.target.checked); setPage(1); }} />
               <span>Scourge</span>
             </label>
-            <label className={`cb-item${!faction ? ' cb-disabled' : ''}`} title={!faction ? 'Select a faction first' : ''}>
-              <input type="checkbox" id="cb-other-factions" checked={hideOtherFactions} disabled={!faction} onChange={e => { setHideOtherFactions(e.target.checked); setPage(1); }} />
+            <label className="cb-item">
+              <input type="checkbox" id="cb-other-factions" checked={hideOtherFactions} onChange={e => { setHideOtherFactions(e.target.checked); setPage(1); }} />
               <span>Other Factions</span>
             </label>
             <label className="cb-item">
