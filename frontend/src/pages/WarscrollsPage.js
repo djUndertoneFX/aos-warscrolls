@@ -257,7 +257,9 @@ export default function WarscrollsPage({ headerCollapsed }) {
 
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 9999;
-  const navigateToFirstRef = useRef(false);
+  const pendingNavUnitId = useRef(null); // id to restore on next data load, or 'first'
+  const savedFriendlyUnitId = useRef(null);
+  const savedEnemyUnitId = useRef(null);
 
   // Debounced search
   const [searchInput, setSearchInput] = useState(saved.search ?? '');
@@ -385,12 +387,15 @@ export default function WarscrollsPage({ headerCollapsed }) {
     }
   }, [data]);
 
-  // When data refreshes after a filter swap, navigate to the first unit if needed
+  // When data refreshes after a filter swap, restore the saved unit or fall back to first
   useEffect(() => {
-    if (!navigateToFirstRef.current) return;
-    navigateToFirstRef.current = false;
+    if (pendingNavUnitId.current === null) return;
+    const targetId = pendingNavUnitId.current;
+    pendingNavUnitId.current = null;
     const rows = data?.data ?? [];
-    if (rows.length > 0) setDetailUnit(rows[0]);
+    if (!rows.length) return;
+    const found = targetId !== 'first' ? rows.find(r => r.id === targetId) : null;
+    setDetailUnit(found ?? rows[0]);
   }, [data]);
 
   useEffect(() => {
@@ -938,9 +943,23 @@ export default function WarscrollsPage({ headerCollapsed }) {
           }
         }}
         {...(hasFriendlyMarks && hasEnemyMarks ? {
-          onSwapFriendlyEnemy: () => { navigateToFirstRef.current = true; setShowFriendly(e => !e); setShowEnemy(f => !f); setPage(1); },
-          onShowFriendlyOnly:  () => { navigateToFirstRef.current = true; setShowFriendly(true);  setShowEnemy(false); setPage(1); },
-          onShowEnemyOnly:     () => { navigateToFirstRef.current = true; setShowFriendly(false); setShowEnemy(true);  setPage(1); },
+          onSwapFriendlyEnemy: () => {
+            const id = detailUnit?.id ?? null;
+            if (showFriendly && !showEnemy) { savedFriendlyUnitId.current = id; pendingNavUnitId.current = savedEnemyUnitId.current ?? 'first'; }
+            else if (showEnemy && !showFriendly) { savedEnemyUnitId.current = id; pendingNavUnitId.current = savedFriendlyUnitId.current ?? 'first'; }
+            else { pendingNavUnitId.current = 'first'; }
+            setShowFriendly(e => !e); setShowEnemy(f => !f); setPage(1);
+          },
+          onShowFriendlyOnly: () => {
+            savedEnemyUnitId.current = detailUnit?.id ?? null;
+            pendingNavUnitId.current = savedFriendlyUnitId.current ?? 'first';
+            setShowFriendly(true); setShowEnemy(false); setPage(1);
+          },
+          onShowEnemyOnly: () => {
+            savedFriendlyUnitId.current = detailUnit?.id ?? null;
+            pendingNavUnitId.current = savedEnemyUnitId.current ?? 'first';
+            setShowFriendly(false); setShowEnemy(true); setPage(1);
+          },
         } : {})}
       />
       );

@@ -320,11 +320,16 @@ export default function SpearheadPage({ headerCollapsed }) {
 
   const allUnits = useMemo(() => visibleGroups.flatMap(g => g.units.map(u => ({ ...u, _spName: g.spearheadName }))), [visibleGroups]);
 
-  // Navigate the warscroll viewer to the first unit of a named spearhead
+  // Remember the last-viewed unit per spearhead so switching back restores it
+  const lastUnitPerSpearhead = useRef({});
+
   const jumpToSpearhead = useCallback((spName) => {
     if (!spName) return;
     const g = groups.find(gr => gr.spearheadName === spName);
-    if (g?.units[0]) setDetailUnit({ ...g.units[0], _spName: g.spearheadName });
+    if (!g) return;
+    const savedId = lastUnitPerSpearhead.current[spName];
+    const target = savedId ? g.units.find(u => u.id === savedId) : null;
+    setDetailUnit({ ...(target ?? g.units[0]), _spName: g.spearheadName });
   }, [groups]);
 
   const mkBox = str => {
@@ -811,18 +816,20 @@ export default function SpearheadPage({ headerCollapsed }) {
           allSpearheadRulesMap={spearheadRules}
           {...(yourSpearhead && opponentSpearhead ? {
             onSwapFriendlyEnemy: () => {
-              // Determine which spearhead we're switching TO before swapping booleans
+              if (detailUnit?._spName) lastUnitPerSpearhead.current[detailUnit._spName] = detailUnit.id;
               const targetSp = showFriendly && !showEnemy ? opponentSpearhead
                              : showEnemy && !showFriendly ? yourSpearhead
-                             : null; // both shown — swap booleans only
+                             : null;
               swapSpearheads();
               if (targetSp) jumpToSpearhead(targetSp);
             },
             onShowFriendlyOnly: () => {
+              if (detailUnit?._spName) lastUnitPerSpearhead.current[detailUnit._spName] = detailUnit.id;
               setShowFriendly(true); setShowEnemy(false);
               jumpToSpearhead(yourSpearhead);
             },
             onShowEnemyOnly: () => {
+              if (detailUnit?._spName) lastUnitPerSpearhead.current[detailUnit._spName] = detailUnit.id;
               setShowFriendly(false); setShowEnemy(true);
               jumpToSpearhead(opponentSpearhead);
             },

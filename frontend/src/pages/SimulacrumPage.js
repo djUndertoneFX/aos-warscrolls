@@ -560,7 +560,9 @@ export default function SimulacrumPage({ headerCollapsed }) {
   const [thumbHover, setThumbHover] = useState(null);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 9999;
-  const navigateToFirstRef = useRef(false);
+  const pendingNavUnitId = useRef(null);
+  const savedFriendlyUnitId = useRef(null);
+  const savedEnemyUnitId = useRef(null);
 
   const [searchInput, setSearchInput] = useState(saved.search ?? '');
   useEffect(() => {
@@ -655,10 +657,13 @@ export default function SimulacrumPage({ headerCollapsed }) {
   }, [data]);
 
   useEffect(() => {
-    if (!navigateToFirstRef.current) return;
-    navigateToFirstRef.current = false;
+    if (pendingNavUnitId.current === null) return;
+    const targetId = pendingNavUnitId.current;
+    pendingNavUnitId.current = null;
     const rows = data?.data ?? [];
-    if (rows.length > 0) setDetailUnit(rows[0]);
+    if (!rows.length) return;
+    const found = targetId !== 'first' ? rows.find(r => r.id === targetId) : null;
+    setDetailUnit(found ?? rows[0]);
   }, [data]);
 
   const handleSort = (col, e, reset = false) => {
@@ -1155,9 +1160,23 @@ export default function SimulacrumPage({ headerCollapsed }) {
           onNext={() => { if (idx < rows.length - 1) setDetailUnit(rows[idx + 1]); }}
           onJump={i => setDetailUnit(rows[i])}
           {...(hasFriendlyMarks && hasEnemyMarks ? {
-            onSwapFriendlyEnemy: () => { navigateToFirstRef.current = true; setShowFriendly(e => !e); setShowEnemy(f => !f); setPage(1); },
-            onShowFriendlyOnly:  () => { navigateToFirstRef.current = true; setShowFriendly(true);  setShowEnemy(false); setPage(1); },
-            onShowEnemyOnly:     () => { navigateToFirstRef.current = true; setShowFriendly(false); setShowEnemy(true);  setPage(1); },
+            onSwapFriendlyEnemy: () => {
+              const id = detailUnit?.id ?? null;
+              if (showFriendly && !showEnemy) { savedFriendlyUnitId.current = id; pendingNavUnitId.current = savedEnemyUnitId.current ?? 'first'; }
+              else if (showEnemy && !showFriendly) { savedEnemyUnitId.current = id; pendingNavUnitId.current = savedFriendlyUnitId.current ?? 'first'; }
+              else { pendingNavUnitId.current = 'first'; }
+              setShowFriendly(e => !e); setShowEnemy(f => !f); setPage(1);
+            },
+            onShowFriendlyOnly: () => {
+              savedEnemyUnitId.current = detailUnit?.id ?? null;
+              pendingNavUnitId.current = savedFriendlyUnitId.current ?? 'first';
+              setShowFriendly(true); setShowEnemy(false); setPage(1);
+            },
+            onShowEnemyOnly: () => {
+              savedFriendlyUnitId.current = detailUnit?.id ?? null;
+              pendingNavUnitId.current = savedEnemyUnitId.current ?? 'first';
+              setShowFriendly(false); setShowEnemy(true); setPage(1);
+            },
           } : {})}
         />
       );
