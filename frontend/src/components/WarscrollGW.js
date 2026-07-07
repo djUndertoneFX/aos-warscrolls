@@ -461,9 +461,9 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
     if (!rules) return [];
     const slides = [];
     if ((rules.battleTraits ?? []).length > 0)
-      slides.push({ key: 'sp_traits', isSpearhead: true, data: rules.battleTraits, lore_text: rules.lore_text ?? null });
+      slides.push({ key: 'sp_traits', isSpearhead: true, data: rules.battleTraits });
     if ((rules.regimentAbilities ?? []).length > 0 || (rules.enhancements ?? []).length > 0)
-      slides.push({ key: 'sp_regiment', isSpearhead: true, regimentAbilities: rules.regimentAbilities ?? [], enhancements: rules.enhancements ?? [], lore_text: rules.lore_text ?? null });
+      slides.push({ key: 'sp_regiment', isSpearhead: true, regimentAbilities: rules.regimentAbilities ?? [], enhancements: rules.enhancements ?? [] });
     return slides;
   }, [allSpearheadRulesMap, spearheadData]);
 
@@ -964,9 +964,6 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
                     <div className="gw-spearhead-slide-name">{spName}</div>
                     <div className="gw-spearhead-slide-title">{title.toUpperCase()}</div>
                   </div>
-                  {showFlavorText && slide.lore_text && (
-                    <div className="gw-flavor-text gw-sp-lore"><p>{slide.lore_text}</p></div>
-                  )}
                   <div className="gw-faction-slide-body">
                     <div className="gw-sp-filter-bar">
                       <button
@@ -1009,9 +1006,6 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
                   <div className="gw-spearhead-slide-name">{spName}</div>
                   <div className="gw-spearhead-slide-title">{title.toUpperCase()}</div>
                 </div>
-                {showFlavorText && slide.lore_text && (
-                  <div className="gw-flavor-text gw-sp-lore"><p>{slide.lore_text}</p></div>
-                )}
                 <div className="gw-faction-slide-body">
                   <div className="gw-sp-filter-bar">
                     <button

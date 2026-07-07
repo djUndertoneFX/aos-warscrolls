@@ -55,7 +55,7 @@ function parseAbilityText(text) {
   return parts;
 }
 
-function SpRulesCard({ t }) {
+function SpRulesCard({ t, showFlavorText }) {
   const s = spPhaseStyle(t.timing);
   const parts = parseAbilityText(t.text);
   return (
@@ -67,6 +67,9 @@ function SpRulesCard({ t }) {
       )}
       <div className="sp-rules-card-body">
         <div className="sp-rules-card-name">{t.name}</div>
+        {showFlavorText && t.lore_text && (
+          <p className="sp-rules-lore">{t.lore_text}</p>
+        )}
         <div className="sp-rules-card-text">
           {parts.map((part, i) => (
             <div key={i} className="sp-ability-para">
@@ -627,14 +630,11 @@ export default function SpearheadPage({ headerCollapsed }) {
                               <p className="sp-rules-empty">No rules data available yet for {group.spearheadName}.</p>
                             ) : (
                               <>
-                                {showFlavorText && rules.lore_text && (
-                                  <p className="sp-rules-lore">{rules.lore_text}</p>
-                                )}
                                 {rules.battleTraits?.length > 0 && (
                                   <div className="sp-rules-section">
                                     <div className="sp-rules-section-hdr">Battle Traits</div>
                                     <div className="sp-rules-cards">
-                                      {rules.battleTraits.map((t, i) => <SpRulesCard key={i} t={t} />)}
+                                      {rules.battleTraits.map((t, i) => <SpRulesCard key={i} t={t} showFlavorText={showFlavorText} />)}
                                     </div>
                                   </div>
                                 )}
@@ -642,7 +642,7 @@ export default function SpearheadPage({ headerCollapsed }) {
                                   <div className="sp-rules-section">
                                     <div className="sp-rules-section-hdr">Regiment Abilities</div>
                                     <div className="sp-rules-cards">
-                                      {rules.regimentAbilities.map((t, i) => <SpRulesCard key={i} t={t} />)}
+                                      {rules.regimentAbilities.map((t, i) => <SpRulesCard key={i} t={t} showFlavorText={showFlavorText} />)}
                                     </div>
                                   </div>
                                 )}
@@ -650,7 +650,7 @@ export default function SpearheadPage({ headerCollapsed }) {
                                   <div className="sp-rules-section">
                                     <div className="sp-rules-section-hdr">Enhancements</div>
                                     <div className="sp-rules-cards">
-                                      {rules.enhancements.map((t, i) => <SpRulesCard key={i} t={t} />)}
+                                      {rules.enhancements.map((t, i) => <SpRulesCard key={i} t={t} showFlavorText={showFlavorText} />)}
                                     </div>
                                   </div>
                                 )}
