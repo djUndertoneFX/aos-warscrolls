@@ -49,21 +49,22 @@ function TransparentImage({ src, alt, className, onError }) {
   return <canvas ref={canvasRef} className={className} aria-label={alt} />;
 }
 
-// ── Phase colour mapping ─────────────────────────────────────────────────────
+// ── Phase colour mapping (GW canonical AoS 4e colors) ────────────────────────
 const PHASE_PRESETS = [
-  { keys: ['passive'],              style: { hdrBg: '#3d2a0e', hdrTxt: '#f0dc88', border: '#8a6428' } },
-  { keys: ['any combat', 'combat'], style: { hdrBg: '#6a0c0c', hdrTxt: '#fde8e0', border: '#c03030' } },
-  { keys: ['hero phase'],           style: { hdrBg: '#9a802e', hdrTxt: '#ffffff', border: '#c8a840' } },
-  { keys: ['movement', 'move phase'],style:{ hdrBg: '#0a3e28', hdrTxt: '#b8f0d8', border: '#1a7850' } },
-  { keys: ['shooting'],             style: { hdrBg: '#0a2850', hdrTxt: '#c0d8f8', border: '#2858b8' } },
-  { keys: ['once per battle round', 'start of battle round'], style: { hdrBg: '#1a3040', hdrTxt: '#90c8e0', border: '#2878a8' } },
-  { keys: ['once per turn'],        style: { hdrBg: '#182838', hdrTxt: '#80b8d0', border: '#205878' } },
-  { keys: ['once per battle'],      style: { hdrBg: '#480838', hdrTxt: '#f0c8e8', border: '#901870' } },
-  { keys: ['deployment'],           style: { hdrBg: '#200c50', hdrTxt: '#d0c8f8', border: '#5040b0' } },
-  { keys: ['end of battle', 'end of turn'], style: { hdrBg: '#181818', hdrTxt: '#b8b8b8', border: '#484848' } },
-  { keys: ['reaction', 'any phase'],style: { hdrBg: '#183828', hdrTxt: '#c0f0e0', border: '#2a7050' } },
+  { keys: ['passive'],                                          style: { hdrBg: '#3a3220', hdrTxt: '#e8d898', border: '#7a6830' } },
+  { keys: ['hero phase'],                                       style: { hdrBg: '#7a6010', hdrTxt: '#ffffff', border: '#c8a020' } },
+  { keys: ['movement', 'move phase'],                           style: { hdrBg: '#0e4020', hdrTxt: '#a0f0b8', border: '#208848' } },
+  { keys: ['shooting'],                                         style: { hdrBg: '#0c2a60', hdrTxt: '#b8d8ff', border: '#2060c8' } },
+  { keys: ['charge'],                                           style: { hdrBg: '#6a2c00', hdrTxt: '#ffd898', border: '#c86010' } },
+  { keys: ['any combat', 'combat'],                             style: { hdrBg: '#6a0808', hdrTxt: '#ffd8d8', border: '#c02020' } },
+  { keys: ['once per battle round', 'start of battle round'],   style: { hdrBg: '#0a3040', hdrTxt: '#88d8f0', border: '#1878b0' } },
+  { keys: ['once per turn'],                                    style: { hdrBg: '#082838', hdrTxt: '#70b8d0', border: '#106880' } },
+  { keys: ['once per battle'],                                  style: { hdrBg: '#500848', hdrTxt: '#f0b8e8', border: '#a01888' } },
+  { keys: ['deployment'],                                       style: { hdrBg: '#280858', hdrTxt: '#c8b8f8', border: '#6040c0' } },
+  { keys: ['end of battle', 'end of turn', 'end of any turn'],  style: { hdrBg: '#202020', hdrTxt: '#c0c0c0', border: '#505050' } },
+  { keys: ['reaction', 'any phase'],                            style: { hdrBg: '#1a3830', hdrTxt: '#b0f0d8', border: '#307858' } },
 ];
-const PHASE_DEFAULT = { hdrBg: '#242018', hdrTxt: '#d0d0b8', border: '#585838' };
+const PHASE_DEFAULT = { hdrBg: '#282010', hdrTxt: '#d0c8a0', border: '#504830' };
 
 function getPhaseStyle(timing) {
   if (!timing) return PHASE_PRESETS[0].style;
@@ -946,7 +947,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
                     {ra.length > 0 && (
                       <>
                         <div className="gw-sp-section-hdr">Regiment Abilities</div>
-                        <div className="gw-abilities-grid">
+                        <div className="gw-abilities-grid gw-sp-grid-2col">
                           {ra.map((ab, i) => renderAbilityCard(ab, i))}
                         </div>
                       </>
@@ -955,7 +956,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
                       <>
                         <div className="gw-sp-section-sep" />
                         <div className="gw-sp-section-hdr">Enhancements</div>
-                        <div className="gw-abilities-grid">
+                        <div className="gw-abilities-grid gw-sp-grid-2col">
                           {en.map((ab, i) => renderAbilityCard(ab, `e${i}`))}
                         </div>
                       </>

@@ -6,19 +6,20 @@ import { useSettings } from '../SettingsContext';
 import { useAuth } from '../AuthContext';
 import { calcWeaponADO, resolveWeaponLoadout } from '../awoCalc';
 
-// Phase colour lookup (mirrors WarscrollGW PHASE_PRESETS)
+// Phase colour lookup — GW canonical AoS 4e colors (mirrors WarscrollGW PHASE_PRESETS)
 const SP_PHASE_PRESETS = [
-  { keys: ['passive'],                               style: { bg: '#3d2a0e', txt: '#f0dc88', border: '#8a6428' } },
-  { keys: ['any combat', 'combat'],                  style: { bg: '#6a0c0c', txt: '#fde8e0', border: '#c03030' } },
-  { keys: ['hero phase'],                            style: { bg: '#9a802e', txt: '#ffffff', border: '#c8a840' } },
-  { keys: ['movement', 'move phase'],                style: { bg: '#0a3e28', txt: '#b8f0d8', border: '#1a7850' } },
-  { keys: ['shooting'],                              style: { bg: '#0a2850', txt: '#c0d8f8', border: '#2858b8' } },
-  { keys: ['once per battle round', 'start of battle round'], style: { bg: '#1a3040', txt: '#90c8e0', border: '#2878a8' } },
-  { keys: ['once per turn'],                         style: { bg: '#182838', txt: '#80b8d0', border: '#205878' } },
-  { keys: ['once per battle'],                       style: { bg: '#480838', txt: '#f0c8e8', border: '#901870' } },
-  { keys: ['deployment'],                            style: { bg: '#200c50', txt: '#d0c8f8', border: '#5040b0' } },
-  { keys: ['end of battle', 'end of turn'],          style: { bg: '#181818', txt: '#b8b8b8', border: '#484848' } },
-  { keys: ['reaction', 'any phase'],                 style: { bg: '#183828', txt: '#c0f0e0', border: '#2a7050' } },
+  { keys: ['passive'],                                          style: { bg: '#3a3220', txt: '#e8d898', border: '#7a6830' } },
+  { keys: ['hero phase'],                                       style: { bg: '#7a6010', txt: '#ffffff', border: '#c8a020' } },
+  { keys: ['movement', 'move phase'],                           style: { bg: '#0e4020', txt: '#a0f0b8', border: '#208848' } },
+  { keys: ['shooting'],                                         style: { bg: '#0c2a60', txt: '#b8d8ff', border: '#2060c8' } },
+  { keys: ['charge'],                                           style: { bg: '#6a2c00', txt: '#ffd898', border: '#c86010' } },
+  { keys: ['any combat', 'combat'],                             style: { bg: '#6a0808', txt: '#ffd8d8', border: '#c02020' } },
+  { keys: ['once per battle round', 'start of battle round'],   style: { bg: '#0a3040', txt: '#88d8f0', border: '#1878b0' } },
+  { keys: ['once per turn'],                                    style: { bg: '#082838', txt: '#70b8d0', border: '#106880' } },
+  { keys: ['once per battle'],                                  style: { bg: '#500848', txt: '#f0b8e8', border: '#a01888' } },
+  { keys: ['deployment'],                                       style: { bg: '#280858', txt: '#c8b8f8', border: '#6040c0' } },
+  { keys: ['end of battle', 'end of turn', 'end of any turn'],  style: { bg: '#202020', txt: '#c0c0c0', border: '#505050' } },
+  { keys: ['reaction', 'any phase'],                            style: { bg: '#1a3830', txt: '#b0f0d8', border: '#307858' } },
 ];
 function spPhaseStyle(timing) {
   if (!timing) return SP_PHASE_PRESETS[0].style;
@@ -26,7 +27,7 @@ function spPhaseStyle(timing) {
   for (const { keys, style } of SP_PHASE_PRESETS) {
     if (keys.some(k => t.includes(k))) return style;
   }
-  return { bg: '#242018', txt: '#d0d0b8', border: '#585838' };
+  return { bg: '#282010', txt: '#d0c8a0', border: '#504830' };
 }
 
 function SpRulesCard({ t }) {
