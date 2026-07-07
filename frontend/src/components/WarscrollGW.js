@@ -432,8 +432,9 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
   const [spSlideSelectedAbs, setSpSlideSelectedAbs] = useState(new Set());
   const [spSlideFilterSelected, setSpSlideFilterSelected] = useState(false);
 
-  // Last slide visited per spearhead — persists across unit/side switches
+  // Last slide visited per spearhead — restored only when switching to a different spearhead
   const lastSpSlide = useRef({}); // spName → slideKey
+  const prevUnitSpName = useRef(null); // tracks previous spearhead name to detect side-switches
 
   // Per-faction rules cache (populated for all slugs in navList)
   const rulesCache = useRef(new Map());
@@ -554,34 +555,36 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
   }, [navIndex, activePage, navTotal, loadedSlugs, spearheadNavGroups]); // eslint-disable-line
 
   // When unit changes, restore the last slide they were on for this spearhead (or carry
-  // the current slide type across to the new spearhead if it exists there too).
-  // activePage in this closure is the value *before* the unit changed — that's intentional.
+  // When unit changes: restore last slide only when switching spearheads (side-swap).
+  // Left/right nav within the same spearhead always returns to the unit warscroll view.
   useEffect(() => {
     const newSpName = unit?._spName ?? (unit?.spearhead || '').split('|')[0].trim();
-    if (newSpName) {
-      const savedKey = lastSpSlide.current[newSpName];   // per-spearhead memory
-      const carryKey = activePage?.slideKey;             // current slide type (pre-switch)
-      const targetKey = savedKey ?? carryKey;
-      if (targetKey) {
+    const spNameChanged = newSpName !== prevUnitSpName.current;
+    prevUnitSpName.current = newSpName;
+
+    if (newSpName && spNameChanged) {
+      // Switching to a different spearhead — restore slide if we've been here before
+      const savedKey = lastSpSlide.current[newSpName];
+      if (savedKey) {
         const spSlides = getSpSlides(newSpName);
-        const valid = spSlides.find(s => s.key === targetKey);
+        const valid = spSlides.find(s => s.key === savedKey);
         if (valid) {
-          setActivePage({ factionSlug: '__sp__', spearheadName: newSpName, slideKey: targetKey });
+          setActivePage({ factionSlug: '__sp__', spearheadName: newSpName, slideKey: savedKey });
           return;
         }
-        // Try same slide key in the new faction's rule pages (purple bullet pages)
         const fSlug = unit?.faction_slug;
         if (fSlug) {
           const fSlides = getSlidesForSlug(fSlug);
-          const fValid = fSlides.find(s => s.key === targetKey);
+          const fValid = fSlides.find(s => s.key === savedKey);
           if (fValid) {
             const grp = factionGroups.find(g => g.faction_slug === fSlug);
-            setActivePage({ factionSlug: fSlug, slideKey: targetKey, groupStartIdx: grp?.startIdx ?? 0 });
+            setActivePage({ factionSlug: fSlug, slideKey: savedKey, groupStartIdx: grp?.startIdx ?? 0 });
             return;
           }
         }
       }
     }
+    // Same spearhead (left/right nav) or no saved slide: show unit warscroll
     setActivePage(null);
   }, [unit?.id]); // eslint-disable-line
 
