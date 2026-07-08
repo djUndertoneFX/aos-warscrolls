@@ -603,6 +603,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
             </label>
           </div>
           <div className="cb-group cb-group-center">
+            <div className="cb-group-header">Filter:</div>
             <TriCheckbox value={isHero}          onChange={v => { setIsHero(v);          setPage(1); }} label="Heroes"         />
             <TriCheckbox value={isInfantry}      onChange={v => { setIsInfantry(v);      setPage(1); }} label="Infantry"       />
             <TriCheckbox value={isCavalry}       onChange={v => { setIsCavalry(v);       setPage(1); }} label="Cavalry"        />
