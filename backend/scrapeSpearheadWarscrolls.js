@@ -170,6 +170,8 @@ function isAbilityName(name) {
   if (name.length < 3) return false;
   if ((name.match(/[A-Z]/g) || []).length < 2) return false;
   if (/^\d/.test(name)) return false;
+  // Reject PDF noise: "KEYWORDS KEYWORDS SOMENAME" from two-column warscroll keyword sections
+  if (/\bKEYWORDS?\b/.test(name.toUpperCase())) return false;
   // Single-word fragments that are common timing/section words
   const words = name.trim().split(/\s+/);
   const TIMING_WORDS = new Set(['ANY','YOUR','ONCE','PER','TURN','PHASE','ARMY','PASSIVE','START','END','OF','THE','A','AN','IN','AT']);
@@ -262,6 +264,12 @@ function parseAbilities(text) {
 
 // ─── Unit → ability matching ──────────────────────────────────────────────────
 
+// Normalize an ability name for loose comparison: strip spaces, hyphens, apostrophes.
+// PDF letter-spacing collapse often produces "BIOVOLTAICBARRIER" from "BIOVOLTAIC BARRIER".
+function normAbilityName(s) {
+  return s.toUpperCase().replace(/[\s\-''’]/g, '');
+}
+
 // Score how likely an ability belongs to a given unit.
 // Higher = more confident.
 function scoreAbilityForUnit(ability, unit) {
@@ -270,10 +278,12 @@ function scoreAbilityForUnit(ability, unit) {
   const abilityFullText = [ability.name, ability.lore_text, ability.declare, ability.effect]
     .join(' ').toUpperCase();
 
-  // Name matches a regular ability for this unit (+15)
+  // Name matches a regular ability for this unit — compare normalized to handle
+  // letter-spacing collapse producing "BIOVOLTAICBARRIER" vs "BIOVOLTAIC BARRIER" (+15)
   const regularAbilities = JSON.parse(unit.abilities || '[]');
+  const abilityNorm = normAbilityName(ability.name);
   for (const ra of regularAbilities) {
-    if (ra.name && ra.name.toUpperCase() === ability.name.toUpperCase()) {
+    if (ra.name && normAbilityName(ra.name) === abilityNorm) {
       score += 15;
       break;
     }
@@ -283,8 +293,7 @@ function scoreAbilityForUnit(ability, unit) {
   const unitNameNorm = unit.name.toUpperCase();
   if (abilityFullText.includes(unitNameNorm)) score += 8;
 
-  // Unit keyword appears in "friendly X unit" pattern in ability text (+3)
-  // e.g. "friendly CAVALRY unit" matches cavalry unit
+  // Unit keyword appears in ability text (+2 per keyword)
   const keywords = (unit.keywords || '').toUpperCase().split(',').map(k => k.trim()).filter(Boolean);
   for (const kw of keywords) {
     if (kw.length > 3 && abilityFullText.includes(kw)) score += 2;
@@ -312,9 +321,16 @@ function assignAbilitiesToUnits(abilities, units) {
 
     // Minimum score threshold: if nothing matches, skip
     if (bestUnit && bestScore > 0) {
+      // If the name matched a regular ability (normalized), use the properly-spaced
+      // canonical name from the regular warscroll (fixes "BIOVOLTAICBARRIER" → "BIOVOLTAIC BARRIER")
+      const regularAbilities = JSON.parse(bestUnit.abilities || '[]');
+      const abilityNorm = normAbilityName(ability.name);
+      const matched = regularAbilities.find(ra => ra.name && normAbilityName(ra.name) === abilityNorm);
+      if (matched && matched.name !== ability.name) {
+        ability.name = matched.name;
+      }
       assignments.get(bestUnit.id).push(ability);
     } else {
-      // Log unassigned abilities
       console.log(`    ⚠ unassigned: "${ability.name}" (score 0)`);
     }
   }
@@ -427,20 +443,16 @@ async function run() {
     await sleep(600);
   }
 
-  // Write to DB
-  console.log('\n\nWriting to database...');
+  // Write to DB (v2 column — kept separate so old data is preserved for comparison)
+  const TARGET_COL = 'spearhead_abilities_v2';
+  console.log(`\n\nWriting to database (${TARGET_COL})...`);
   let updated = 0;
   for (const [unitId, spAbilities] of unitSpAbilities.entries()) {
     if (Object.keys(spAbilities).length === 0) continue;
 
-    // Merge with any existing data
-    const row = db.prepare('SELECT spearhead_abilities FROM warscrolls WHERE id=?').get(unitId);
-    let existing = {};
-    try { if (row?.spearhead_abilities) existing = JSON.parse(row.spearhead_abilities); } catch {}
-
-    const merged = { ...existing, ...spAbilities };
-    db.prepare('UPDATE warscrolls SET spearhead_abilities=? WHERE id=?')
-      .run(JSON.stringify(merged), unitId);
+    // Merge with any existing v2 data (start fresh each run since v2 is the clean column)
+    db.prepare(`UPDATE warscrolls SET ${TARGET_COL}=? WHERE id=?`)
+      .run(JSON.stringify(spAbilities), unitId);
     updated++;
   }
 
