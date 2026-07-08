@@ -53,10 +53,20 @@ async function downloadPdfText(url) {
 // (We strip spaces between uppercase letters entirely; word boundaries are lost
 //  but the result is good enough for substring matching.)
 function collapseCaps(text) {
-  let t = text;
+  // Normalize curly/smart apostrophes to straight apostrophe so regex classes match uniformly
+  let t = text.replace(/[‘’‚‛]/g, "'");
   for (let i = 0; i < 10; i++) {
     const prev = t;
     t = t.replace(/([A-Z']) ([A-Z'])/g, '$1$2');
+    if (t === prev) break;
+  }
+  // Normalize multiple spaces to single (word boundaries leave double-spaces after collapse)
+  t = t.replace(/ {2,}/g, ' ');
+  // Join consecutive all-caps words split across lines — PDFs often put each word of a
+  // multi-word ability name on its own line: "RAIDER'S\nRESOLVE:" → "RAIDER'S RESOLVE:"
+  for (let i = 0; i < 5; i++) {
+    const prev = t;
+    t = t.replace(/([A-Z][A-Z'\-–]+)\n([A-Z][A-Z'\-–])/g, '$1 $2');
     if (t === prev) break;
   }
   return t;
@@ -136,7 +146,9 @@ const TIMING_RE = new RegExp(
 // Ability name pattern: ALL CAPS, at least 3 chars, followed by ": "
 // We apply it to the collapsed-caps text.
 // Use (?<![a-z]) instead of \b so apostrophes inside names don't create false boundaries.
-const ABILITY_NAME_RE = /(?<![a-z])([A-Z][A-Z'''\-–()\/]{2,}[A-Z])\s*:/g;
+// Allow multi-word all-caps names: "RAIDER'S RESOLVE:", "CREST OF THE WAVE:"
+// Each word must be all-caps (A-Z plus apostrophe/hyphen). Only a single literal space between words.
+const ABILITY_NAME_RE = /(?<![a-z])([A-Z][A-Z'''\-–()\/]*(?:[ ][A-Z][A-Z'''\-–()\/]*)*)\s*:/g;
 
 // Strings that look like ability names but aren't
 const NOT_ABILITY_WORDS = [
@@ -153,13 +165,15 @@ const NOT_ABILITY_WORDS = [
 const NOT_ABILITY = new Set(NOT_ABILITY_WORDS);
 
 function isAbilityName(name) {
-  const upper = name.toUpperCase().replace(/[\s'-]/g, '');
+  const upper = name.toUpperCase().replace(/[\s'''\-]/g, '');
   if (NOT_ABILITY.has(upper)) return false;
   if (name.length < 3) return false;
   if ((name.match(/[A-Z]/g) || []).length < 2) return false;
   if (/^\d/.test(name)) return false;
-  // Fragments caused by mid-word apostrophe splits (e.g. "RESOLVE" from "RAIDER'S RESOLVE")
-  // will be caught by the scoring system failing to assign them
+  // Single-word fragments that are common timing/section words
+  const words = name.trim().split(/\s+/);
+  const TIMING_WORDS = new Set(['ANY','YOUR','ONCE','PER','TURN','PHASE','ARMY','PASSIVE','START','END','OF','THE','A','AN','IN','AT']);
+  if (words.every(w => TIMING_WORDS.has(w.toUpperCase()))) return false;
   return true;
 }
 
@@ -182,7 +196,9 @@ function parseAbilities(text) {
   let m;
   ABILITY_NAME_RE.lastIndex = 0;
   while ((m = ABILITY_NAME_RE.exec(collapsed)) !== null) {
-    const name = m[1].trim();
+    // Post-process: reinsert space where a possessive apostrophe was collapsed with the next word
+    // e.g. "RAIDERS'RESOLVE" → "RAIDERS' RESOLVE"
+    let name = m[1].trim().replace(/([A-Z]['''])([A-Z])/g, '$1 $2');
     if (!isAbilityName(name)) continue;
     matches.push({ name, start: m.index, bodyStart: m.index + m[0].length });
   }
