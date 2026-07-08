@@ -369,6 +369,27 @@ export default function SpearheadPage({ headerCollapsed }) {
     setDetailUnit({ ...(target ?? g.units[0]), _spName: g.spearheadName });
   }, [groups]);
 
+  // Global PageUp/PageDown: switch friendly/enemy even when no warscroll is open
+  useEffect(() => {
+    if (!yourSpearhead || !opponentSpearhead) return;
+    const h = e => {
+      if (e.key === 'PageUp') {
+        e.preventDefault();
+        if (detailUnit?._spName) lastUnitPerSpearhead.current[detailUnit._spName] = detailUnit.id;
+        setShowFriendly(true); setShowEnemy(false);
+        jumpToSpearhead(yourSpearhead);
+      }
+      if (e.key === 'PageDown') {
+        e.preventDefault();
+        if (detailUnit?._spName) lastUnitPerSpearhead.current[detailUnit._spName] = detailUnit.id;
+        setShowFriendly(false); setShowEnemy(true);
+        jumpToSpearhead(opponentSpearhead);
+      }
+    };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [yourSpearhead, opponentSpearhead, detailUnit, jumpToSpearhead]); // eslint-disable-line
+
   const mkBox = str => {
     const [title, ...rest] = str.split('\n');
     return <div className="ado-tip-box"><div className="ado-tip-title">{title}</div><div className="ado-tip-body">{rest.join('\n').trim()}</div></div>;
