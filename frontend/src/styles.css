@@ -1008,13 +1008,12 @@ input, select {
 }
 .cb-group-left  { justify-content: flex-start; margin-right: auto; }
 .cb-group-header {
-  width: 100%;
   font-size: 0.82rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-dim);
-  margin-bottom: -0.25rem;
+  white-space: nowrap;
 }
 .btn-both-toggle {
   background: var(--bg-card);
