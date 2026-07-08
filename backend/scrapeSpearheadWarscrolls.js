@@ -443,8 +443,8 @@ async function run() {
     await sleep(600);
   }
 
-  // Write to DB (v2 column — kept separate so old data is preserved for comparison)
-  const TARGET_COL = 'spearhead_abilities_v2';
+  // Write to DB
+  const TARGET_COL = 'spearhead_abilities';
   console.log(`\n\nWriting to database (${TARGET_COL})...`);
   let updated = 0;
   for (const [unitId, spAbilities] of unitSpAbilities.entries()) {

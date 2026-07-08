@@ -130,6 +130,7 @@ function initDb() {
   try { db.exec('ALTER TABLE warscrolls ADD COLUMN options_text TEXT DEFAULT NULL'); } catch {}
   try { db.exec('ALTER TABLE warscrolls ADD COLUMN spearhead TEXT DEFAULT NULL'); } catch {}
   try { db.exec('ALTER TABLE warscrolls ADD COLUMN spearhead_abilities TEXT DEFAULT NULL'); } catch {}
+  try { db.exec('ALTER TABLE warscrolls ADD COLUMN spearhead_abilities_v2 TEXT DEFAULT NULL'); } catch {}
 
   // Spearhead rules table (battle traits, regiment abilities, enhancements)
   db.exec(`
