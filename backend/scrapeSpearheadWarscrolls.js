@@ -141,6 +141,28 @@ const TIMING_RE = new RegExp(
   'i'
 );
 
+// ─── Text cleaning helpers ────────────────────────────────────────────────────
+
+// When an ability body runs into the next unit's stat block ("SAVE SAVE CONTROL CONTROL..."),
+// truncate at that point. Two consecutive identical stat words = start of stat header.
+const STAT_BLEED_RE = /\b(?:SAVE|CONTROL|HEALTH|MOVE)\s+(?:SAVE|CONTROL|HEALTH|MOVE)\b/;
+
+function cleanBodyText(text) {
+  const m = STAT_BLEED_RE.exec(text);
+  if (m) return text.slice(0, m.index).trim();
+  return text;
+}
+
+// Fix common PDF ligature artifacts that survive collapseCaps
+function fixLigatures(text) {
+  return text
+    .replace(/\bE ect\s*:/gi, 'Effect:')
+    .replace(/\bEect\s*:/gi, 'Effect:');
+}
+
+// Bullets that are clearly stat-block or warscroll junk, not real ability bullets
+const JUNK_BULLET_RE = /\b(?:SAVE|CONTROL|HEALTH|SPEARHEAD|WARSCROLL|KEYWORDS|MELEEW|RANGEDW)\b/i;
+
 // ─── Ability extraction ───────────────────────────────────────────────────────
 
 // Ability name pattern: ALL CAPS, at least 3 chars, followed by ": "
@@ -208,7 +230,7 @@ function parseAbilities(text) {
   for (let i = 0; i < matches.length; i++) {
     const { name, bodyStart } = matches[i];
     const bodyEnd = i + 1 < matches.length ? matches[i + 1].start : collapsed.length;
-    const rawBody = norm(collapsed.slice(bodyStart, bodyEnd));
+    const rawBody = cleanBodyText(fixLigatures(norm(collapsed.slice(bodyStart, bodyEnd))));
 
     // Extract timing
     let timing = '';
@@ -227,24 +249,28 @@ function parseAbilities(text) {
     const declareIdx = body.search(/\bDeclare\s*:/i);
     const effectIdx  = body.search(/\bEffect\s*:/i);
 
+    const clean = s => cleanBodyText(fixLigatures(norm(s)));
     if (declareIdx !== -1 && effectIdx !== -1) {
-      lore_text = norm(body.slice(0, declareIdx));
-      declare   = norm(body.slice(declareIdx + 8, effectIdx));
-      effect    = norm(body.slice(effectIdx + 7));
+      lore_text = clean(body.slice(0, declareIdx));
+      declare   = clean(body.slice(declareIdx + 8, effectIdx));
+      effect    = clean(body.slice(effectIdx + 7));
     } else if (effectIdx !== -1) {
-      lore_text = norm(body.slice(0, effectIdx));
-      effect    = norm(body.slice(effectIdx + 7));
+      lore_text = clean(body.slice(0, effectIdx));
+      effect    = clean(body.slice(effectIdx + 7));
     } else if (declareIdx !== -1) {
-      lore_text = norm(body.slice(0, declareIdx));
-      declare   = norm(body.slice(declareIdx + 8));
+      lore_text = clean(body.slice(0, declareIdx));
+      declare   = clean(body.slice(declareIdx + 8));
     } else {
-      effect = body;
+      effect = clean(body);
     }
 
-    // Pull bullet points
+    // Pull bullet points, filtering out stat-block and warscroll junk
     const bulletRe = /[•·]\s*([^\n•·]+)/g;
     let bm;
-    while ((bm = bulletRe.exec(effect)) !== null) bullets.push(bm[1].trim());
+    while ((bm = bulletRe.exec(effect)) !== null) {
+      const b = bm[1].trim();
+      if (b.length <= 150 && !JUNK_BULLET_RE.test(b)) bullets.push(b);
+    }
     if (bullets.length) effect = effect.replace(/[•·]\s*[^\n•·]+/g, '').trim();
 
     if (!name || (!effect && !declare && !lore_text)) continue;
