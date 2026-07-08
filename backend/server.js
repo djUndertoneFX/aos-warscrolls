@@ -798,7 +798,9 @@ app.get('/api/stats', requireAuth, (req, res) => {
     const byAlliance = db.prepare(`
       SELECT grand_alliance, COUNT(*) as count FROM warscrolls GROUP BY grand_alliance
     `).all();
-    res.json({ total, byAlliance });
+    const maxScrapedAt = db.prepare('SELECT MAX(scraped_at) as ts FROM warscrolls').get().ts;
+    const spAbilitiesCount = (() => { try { return db.prepare('SELECT COUNT(*) as n FROM warscrolls WHERE spearhead_abilities IS NOT NULL').get().n; } catch { return -1; } })();
+    res.json({ total, byAlliance, maxScrapedAt, spAbilitiesCount });
   } finally {
     db.close();
   }
