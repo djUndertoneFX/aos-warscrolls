@@ -28,7 +28,7 @@ function SettingsPanel({ onClose }) {
   const {
     showFlavorText, presumedSave, presumedWard, roundingMode, includeSaveWardInADO,
     showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore,
-    linkPageSelections,
+    linkPageSelections, useSpearheadAbilities,
     setSetting,
   } = useSettings();
   const ref = useRef(null);
@@ -90,6 +90,12 @@ function SettingsPanel({ onClose }) {
           {WARD_OPTIONS.map(v => <option key={v} value={v}>{v === '-' ? '—' : `${v}+`}</option>)}
         </select>
       </div>
+      <div className="settings-panel-title settings-panel-title--sub">Spearhead</div>
+      <label className="settings-cb-row">
+        <input type="checkbox" checked={useSpearheadAbilities}
+          onChange={e => setSetting('useSpearheadAbilities', e.target.checked)} />
+        <span>PDF Scraped Spearhead Warscroll</span>
+      </label>
       <div className="settings-field-row settings-field-row--col">
         <span className="settings-field-lbl">ADO Rounding</span>
         <label className="settings-radio-row" title="Each phase (hits, wounds, saves) rounds to a whole number before feeding the next. Mirrors how dice actually work at the table — discrete results, not fractions.">

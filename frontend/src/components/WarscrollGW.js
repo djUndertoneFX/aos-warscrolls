@@ -412,9 +412,18 @@ function getPrimaryType(u) {
 
 export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onFilterApply, factions = [], navIndex, navList, spearheadData, allSpearheadRulesMap, onSwapFriendlyEnemy, onShowFriendlyOnly, onShowEnemyOnly }) {
   const navTotal = navList ? navList.length : 0;
-  const { showFlavorText, showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore } = useSettings();
+  const { showFlavorText, showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore, useSpearheadAbilities } = useSettings();
   const weapons   = React.useMemo(() => { try { return JSON.parse(unit.weapons   || '[]'); } catch { return []; } }, [unit]);
-  const abilities = React.useMemo(() => { try { return JSON.parse(unit.abilities || '[]'); } catch { return []; } }, [unit]);
+  const spName = unit?._spName;
+  const abilities = React.useMemo(() => {
+    try {
+      if (useSpearheadAbilities && spName && unit?.spearhead_abilities) {
+        const spMap = JSON.parse(unit.spearhead_abilities);
+        if (spMap[spName] && spMap[spName].length > 0) return spMap[spName];
+      }
+      return JSON.parse(unit.abilities || '[]');
+    } catch { return []; }
+  }, [unit, useSpearheadAbilities, spName]); // eslint-disable-line
   const [imageUrl, setImageUrl] = useState(null);
   const modalRef = useRef(null);
   const dotsRef      = useRef(null);
@@ -1146,7 +1155,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
                         onContextMenu={e => { e.preventDefault(); const f = factions.find(fc => fc.faction === unit.faction); f && onFilterApply('faction', f.faction_slug, true); }}
                       >{unit.faction.toUpperCase()}</span>{' '}
                     </>
-                  ) : (unit.faction ? ' ' + unit.faction.toUpperCase() + ' ' : ' ')}<span className="gw-header-warscroll-label">WARSCROLL ·</span>
+                  ) : (unit.faction ? ' ' + unit.faction.toUpperCase() + ' ' : ' ')}<span className="gw-header-warscroll-label">{spName ? 'SPEARHEAD WARSCROLL ·' : 'WARSCROLL ·'}</span>
                 </div>
                 <div className="gw-header-name">{unit.name}</div>
               </div>

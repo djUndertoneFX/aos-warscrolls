@@ -22,6 +22,7 @@ export function SettingsProvider({ children }) {
   const [showSpellLore,         setShowSpellLore]         = useState(() => loadSetting('aos-fi-spell-lore',         false));
   const [showManifestationLore, setShowManifestationLore] = useState(() => loadSetting('aos-fi-manifestation-lore', false));
   const [linkPageSelections,    setLinkPageSelections]    = useState(() => loadSetting('aos-setting-link-pages', false));
+  const [useSpearheadAbilities, setUseSpearheadAbilities] = useState(() => loadSetting('aos-setting-sp-abilities', true));
 
   const setSetting = (key, value) => {
     const persist = (k, v) => localStorage.setItem(k, JSON.stringify(v));
@@ -39,6 +40,7 @@ export function SettingsProvider({ children }) {
       case 'showSpellLore':         setShowSpellLore(value);         persist('aos-fi-spell-lore', value);             break;
       case 'showManifestationLore': setShowManifestationLore(value); persist('aos-fi-manifestation-lore', value);     break;
       case 'linkPageSelections':    setLinkPageSelections(value);    persist('aos-setting-link-pages', value);         break;
+      case 'useSpearheadAbilities': setUseSpearheadAbilities(value); persist('aos-setting-sp-abilities', value);       break;
       default: break;
     }
   };
@@ -47,7 +49,7 @@ export function SettingsProvider({ children }) {
     <SettingsContext.Provider value={{
       showFlavorText, calculateDynamicADO, presumedSave, presumedWard, roundingMode, includeSaveWardInADO,
       showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore,
-      linkPageSelections,
+      linkPageSelections, useSpearheadAbilities,
       setSetting,
     }}>
       {children}
