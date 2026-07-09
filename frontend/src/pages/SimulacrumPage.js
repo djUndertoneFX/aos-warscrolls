@@ -1009,20 +1009,24 @@ export default function SimulacrumPage({ headerCollapsed }) {
               </tr>
             </thead>
             <tbody>
-              {/* ADO-R, ADO-M, ADO% sorts are client-side */}
+              {/* ADO-R, ADO-M, ADO% sorts are client-side.
+                  Units with no value ('—' in the cell, null here) always sort last, in either direction. */}
               {['ado_ranged','ado_melee','ado_pct'].includes(sortBy) && data?.data && (() => {
                 data.data.sort((a, b) => {
                   const getVals = row => {
                     const ws = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
                     const sv = includeSaveWardInADO ? (presumedSave ?? 5) : 7; const wd = includeSaveWardInADO ? (presumedWard ?? null) : null;
                     const rw = resolveWeaponLoadout(ws, row.options_text, row.unit_size, sv, wd, roundingMode) ?? ws;
-                    const aR = sumADO(rw.filter(w => w.type === 'ranged'), row.unit_size, sv, wd, roundingMode) ?? 0;
-                    const aM = sumADO(rw.filter(w => w.type === 'melee'),  row.unit_size, sv, wd, roundingMode) ?? 0;
+                    const aR = sumADO(rw.filter(w => w.type === 'ranged'), row.unit_size, sv, wd, roundingMode);
+                    const aM = sumADO(rw.filter(w => w.type === 'melee'),  row.unit_size, sv, wd, roundingMode);
                     if (sortBy === 'ado_ranged') return aR;
                     if (sortBy === 'ado_melee')  return aM;
-                    return row.points ? (aR + aM) / row.points : -1;
+                    return (aR !== null || aM !== null) && row.points ? ((aR ?? 0) + (aM ?? 0)) / row.points : null;
                   };
                   const vA = getVals(a), vB = getVals(b);
+                  if (vA === null && vB === null) return 0;
+                  if (vA === null) return 1;
+                  if (vB === null) return -1;
                   return sortDir === 'asc' ? vA - vB : vB - vA;
                 });
                 return null;
