@@ -410,7 +410,7 @@ function getPrimaryType(u) {
   return 'Other';
 }
 
-export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onFilterApply, factions = [], navIndex, navList, spearheadData, allSpearheadRulesMap, onSwapFriendlyEnemy, onShowFriendlyOnly, onShowEnemyOnly }) {
+export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onFilterApply, factions = [], navIndex, navList, sortBy, spearheadData, allSpearheadRulesMap, onSwapFriendlyEnemy, onShowFriendlyOnly, onShowEnemyOnly }) {
   const navTotal = navList ? navList.length : 0;
   const { showFlavorText, showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore, useSpearheadAbilities } = useSettings();
   const weapons   = React.useMemo(() => { try { return JSON.parse(unit.weapons   || '[]'); } catch { return []; } }, [unit]);
@@ -501,7 +501,10 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
   }, [navList, isSpMode]);
 
   // Build slides for a given faction slug from the cache
+  // Purple faction-rule slides only make sense when browsing in faction-sorted order —
+  // any other sort scatters units from the same faction, so suppress the slides there.
   const getSlidesForSlug = useCallback((slug) => {
+    if (sortBy !== 'faction') return [];
     const rules = rulesCache.current.get(slug);
     if (!rules) return [];
     const spellPrayerData = [...(rules.spell_lore ?? []), ...(rules.prayer_lore ?? [])];
@@ -513,11 +516,11 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
       { key: 'formations',         enabled: showBattleFormations,  data: rules.formations ?? [] },
       { key: 'traits',             enabled: showBattleTraits,      data: rules.traits ?? [] },
     ].filter(s => s.enabled && s.data.length > 0);
-  }, [loadedSlugs, showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore]); // eslint-disable-line
+  }, [loadedSlugs, sortBy, showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore]); // eslint-disable-line
 
-  // Fetch rules for every unique faction slug in navList (skip in spearhead mode)
+  // Fetch rules for every unique faction slug in navList (skip in spearhead mode, or when not faction-sorted)
   useEffect(() => {
-    if (isSpMode || !navList?.length) return;
+    if (isSpMode || !navList?.length || sortBy !== 'faction') return;
     const slugs = [...new Set(navList.map(u => u.faction_slug).filter(Boolean))];
     slugs.forEach(slug => {
       if (rulesCache.current.has(slug)) return;

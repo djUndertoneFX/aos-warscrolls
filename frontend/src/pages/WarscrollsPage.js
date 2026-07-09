@@ -928,6 +928,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
         factions={factions}
         navIndex={idx}
         navList={rows}
+        sortBy={sortBy}
         onClose={() => setDetailUnit(null)}
         onPrev={() => { if (idx > 0) setDetailUnit(rows[idx - 1]); }}
         onNext={() => { if (idx < rows.length - 1) setDetailUnit(rows[idx + 1]); }}
