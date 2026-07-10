@@ -614,20 +614,22 @@ export default function PathToGloryPage({ headerCollapsed }) {
         <div className="ptg-actions">
           <RosterDropdown label="My Roster" />
           <div className="ptg-action-stack">
-            <button
-              className={`ptg-action-btn${ptgView === 'recruit' ? ' ptg-action-active' : ''}`}
-              onClick={() => { setPtgView('recruit'); setShowRecruitWizard(true); }}
-            >
-              Recruit Your Forces
-            </button>
+            <div className="ptg-action-row">
+              <button
+                className={`ptg-action-btn${ptgView === 'recruit' ? ' ptg-action-active' : ''}`}
+                onClick={() => { setPtgView('recruit'); setShowRecruitWizard(true); }}
+              >
+                Recruit Your Forces
+              </button>
+              <span className="ptg-action-arrow">›</span>
+              <button className={`ptg-action-btn${ptgView === 'battle' ? ' ptg-action-active' : ''}`} onClick={() => setPtgView('battle')}>
+                Face Thy Enemies
+              </button>
+            </div>
             <button className="ptg-action-btn ptg-action-btn-secondary" onClick={() => {}}>
               Level Up!
             </button>
           </div>
-          <span className="ptg-action-arrow">›</span>
-          <button className={`ptg-action-btn${ptgView === 'battle' ? ' ptg-action-active' : ''}`} onClick={() => setPtgView('battle')}>
-            Face Thy Enemies
-          </button>
           <RosterDropdown label="Enemy Roster" />
         </div>
         {data && (

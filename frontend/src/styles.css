@@ -616,7 +616,13 @@ input, select {
 .ptg-action-stack {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 0.3rem;
+}
+.ptg-action-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 .ptg-action-btn-secondary {
   font-size: 0.62rem;
@@ -2252,7 +2258,7 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   left: 50%;
   transform: translateX(-50%);
   z-index: 1201;
-  width: min(760px, 96vw);
+  width: min(880px, 96vw);
   max-height: 92vh;
   overflow-y: auto;
   background: #1a1614;
@@ -2398,7 +2404,7 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 .ptg-doc-thumb {
   display: flex;
   flex-direction: column;
-  width: 130px;
+  width: 110px;
   background: rgba(0,0,0,0.25);
   border: 1px solid rgba(200,168,64,0.3);
   border-radius: 4px;
@@ -2411,32 +2417,62 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 .ptg-doc-thumb.ptg-doc-thumb-active { border-color: #c8a840; box-shadow: 0 0 0 1px #c8a840; }
 .ptg-doc-thumb-header {
   font-family: 'Cinzel', serif;
-  font-size: 0.6rem;
-  letter-spacing: 0.03em;
+  font-size: 0.56rem;
+  letter-spacing: 0.02em;
   color: #c8a840;
   text-align: center;
-  padding: 0.35rem 0.3rem;
+  padding: 0.3rem 0.25rem;
   border-bottom: 1px solid rgba(200,168,64,0.25);
   background: rgba(200,168,64,0.06);
 }
-.ptg-doc-thumb-preview {
-  padding: 0.55rem 0.65rem;
+.ptg-doc-thumb-img-wrap {
+  padding: 0.4rem;
+  background: rgba(0,0,0,0.15);
+}
+.ptg-doc-thumb-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border: 1px solid rgba(200,168,64,0.2);
+  border-radius: 2px;
+}
+
+/* ── Presentation toggle (Image vs Replica) ── */
+.ptg-present-toggle {
+  display: flex;
+  margin-left: auto;
+  border: 1px solid rgba(200,168,64,0.4);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.ptg-present-toggle button {
+  font-family: 'Cinzel', serif;
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  color: var(--text-dim, #8a8578);
+  background: transparent;
+  border: none;
+  padding: 0.35rem 0.7rem;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.ptg-present-toggle button + button { border-left: 1px solid rgba(200,168,64,0.4); }
+.ptg-present-toggle button:hover { color: #d8cca8; }
+.ptg-present-toggle button.ptg-present-active { background: #c8a840; color: #1a1614; }
+
+.ptg-doc-image-view {
   display: flex;
   flex-direction: column;
-  gap: 0.32rem;
+  align-items: center;
+  gap: 1rem;
+  max-height: 62vh;
+  overflow-y: auto;
 }
-.ptg-doc-thumb-line {
-  height: 4px;
-  border-radius: 2px;
-  background: rgba(216,204,168,0.18);
+.ptg-doc-image-view img {
+  max-width: 100%;
+  border: 1px solid rgba(200,168,64,0.3);
+  border-radius: 3px;
 }
-.ptg-doc-thumb-line.ptg-doc-thumb-line-title {
-  height: 6px;
-  width: 85%;
-  background: rgba(200,168,64,0.4);
-  border-radius: 1px;
-}
-.ptg-doc-thumb-line.short { width: 55%; }
 
 .ptg-doc-editor-header {
   display: flex;
@@ -2523,7 +2559,134 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   font-size: 0.75rem;
 }
 .ptg-oob-row-remove:hover { border-color: #c8a840; background: rgba(200,168,64,0.1); }
-.ptg-oob-add-btn { margin-top: 0.5rem; }
+.ptg-oob-add-btn { margin-top: 0.5rem; margin-bottom: 1rem; }
+
+/* ── Warlord Warscroll replica ── */
+.ptg-warscroll-table-block { margin-bottom: 1.25rem; }
+.ptg-warscroll-table-title {
+  font-family: 'Cinzel', serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  color: #c8a840;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+}
+.ptg-warscroll-table-head, .ptg-warscroll-table-row {
+  display: grid;
+  grid-template-columns: 2fr repeat(5, 0.7fr) auto;
+  gap: 0.4rem;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+.ptg-warscroll-table-head span {
+  font-family: 'Cinzel', serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.03em;
+  color: var(--text-dim, #8a8578);
+  text-transform: uppercase;
+}
+.ptg-warscroll-table-row input {
+  box-sizing: border-box;
+  width: 100%;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(200,168,64,0.4);
+  border-radius: 3px;
+  padding: 0.35rem 0.45rem;
+  color: #d8cca8;
+  font-family: 'Palatino Linotype', Palatino, Georgia, serif;
+  font-size: 0.8rem;
+}
+.ptg-warscroll-table-row input:focus { outline: none; border-color: #c8a840; }
+
+/* ── Path to Glory Roster replica ── */
+.ptg-roster-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+.ptg-arcane-tome-title {
+  font-family: 'Cinzel', serif;
+  font-size: 1rem;
+  color: #c8a840;
+  text-align: center;
+  margin: 1.25rem 0 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(200,168,64,0.25);
+}
+.ptg-arcane-tome-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+.ptg-arcane-tome-col-header {
+  font-family: 'Cinzel', serif;
+  font-size: 0.68rem;
+  letter-spacing: 0.03em;
+  color: var(--text-dim, #8a8578);
+  text-align: center;
+  margin-bottom: 0.4rem;
+}
+.ptg-arcane-tome-col input {
+  box-sizing: border-box;
+  width: 100%;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(200,168,64,0.3);
+  border-radius: 3px;
+  padding: 0.35rem 0.5rem;
+  margin-bottom: 0.35rem;
+  color: #d8cca8;
+  font-family: 'Palatino Linotype', Palatino, Georgia, serif;
+  font-size: 0.78rem;
+}
+.ptg-arcane-tome-col input:focus { outline: none; border-color: #c8a840; }
+
+/* ── Order of Battle / Army Roster replica ── */
+.ptg-oob-warlord-block, .ptg-oob-unit-block, .ptg-regiment-block {
+  background: rgba(0,0,0,0.15);
+  border: 1px solid rgba(200,168,64,0.25);
+  border-radius: 4px;
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.ptg-oob-warlord-title, .ptg-oob-units-title {
+  font-family: 'Cinzel', serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  color: #c8a840;
+  text-transform: uppercase;
+  margin-bottom: 0.6rem;
+}
+.ptg-oob-units-title { margin-top: 1rem; }
+.ptg-oob-warlord-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.ptg-oob-warlord-grid input, .ptg-oob-warlord-grid select {
+  box-sizing: border-box;
+  width: 100%;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(200,168,64,0.4);
+  border-radius: 3px;
+  padding: 0.4rem 0.55rem;
+  color: #d8cca8;
+  font-family: 'Palatino Linotype', Palatino, Georgia, serif;
+  font-size: 0.8rem;
+}
+.ptg-oob-warlord-grid input:focus, .ptg-oob-warlord-grid select:focus { outline: none; border-color: #c8a840; }
+.ptg-regiment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: 'Cinzel', serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
+  color: #c8a840;
+  text-transform: uppercase;
+  margin-bottom: 0.6rem;
+}
 
 .ptg-wizard-nav {
   display: flex;
