@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import axios from 'axios';
 import WarscrollGW from '../components/WarscrollGW';
+import ImageLightbox from '../components/ImageLightbox';
 import { simulateBattle } from '../simulation/engine';
 import { useSettings } from '../SettingsContext';
 import { useAuth } from '../AuthContext';
@@ -560,6 +561,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
   const [userUnits, setUserUnits] = useState({});
   const [expandedIds, setExpandedIds] = useState(new Set());
   const [detailUnit, setDetailUnit] = useState(null);
+  const [lightboxUnit, setLightboxUnit] = useState(null);
   const [thumbHover, setThumbHover] = useState(null);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 9999;
@@ -1065,7 +1067,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
                       </td>
                       <td><span className="row-expand-hint">{isExpanded ? '▲' : '▼'}</span></td>
                       <td className="col-name" onClick={e => { e.stopPropagation(); setDetailUnit(row); }}><span className="unit-name-link">{row.name}</span></td>
-                      <td className="col-thumb">
+                      <td className="col-thumb" onClick={e => { e.stopPropagation(); setThumbHover(null); setLightboxUnit(row); }}>
                         <img src={`${axios.defaults.baseURL || ''}/api/unit-image/${row.id}`} alt="" className="thumb-img" loading="lazy"
                           onMouseEnter={e => setThumbHover({ id: row.id, x: e.clientX, y: e.clientY })}
                           onMouseMove={e => setThumbHover(h => h ? { ...h, x: e.clientX, y: e.clientY } : h)}
@@ -1162,6 +1164,20 @@ export default function SimulacrumPage({ headerCollapsed }) {
     </div>
 
     {showRitualError && <RitualErrorModal onClose={() => { setShowRitualError(false); setStage(1); }} />}
+    {lightboxUnit && (() => {
+      const rows = data?.data ?? [];
+      const idx = rows.findIndex(u => u.id === lightboxUnit.id);
+      return (
+        <ImageLightbox
+          unit={lightboxUnit}
+          navList={rows}
+          navIndex={idx}
+          onClose={() => setLightboxUnit(null)}
+          onPrev={() => { if (idx > 0) setLightboxUnit(rows[idx - 1]); }}
+          onNext={() => { if (idx < rows.length - 1) setLightboxUnit(rows[idx + 1]); }}
+        />
+      );
+    })()}
     {detailUnit && (() => {
       const rows = data?.data ?? [];
       const idx = rows.findIndex(u => u.id === detailUnit.id);

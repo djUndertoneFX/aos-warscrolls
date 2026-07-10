@@ -2119,6 +2119,73 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 }
 .gw-close:hover { background: rgba(200,168,64,0.18); border-color: #c8a840; }
 
+/* ── Image lightbox (thumbnail click on Warscrolls/Simulacrum tables) ── */
+.img-lightbox {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1201;
+  max-width: 92vw;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.img-lightbox-img {
+  max-width: 90vw;
+  max-height: 80vh;
+  object-fit: contain;
+  border: 2px solid #c8a840;
+  outline: 5px solid #0c0a08;
+  outline-offset: -7px;
+  box-shadow: 0 0 0 7px #0c0a08, 0 12px 50px rgba(0,0,0,0.85);
+  border-radius: 2px;
+  background: #1a1614;
+}
+.img-lightbox-noimg {
+  width: 300px;
+  max-width: 80vw;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #d8cca8;
+  border: 2px solid #c8a840;
+  outline: 5px solid #0c0a08;
+  outline-offset: -7px;
+  box-shadow: 0 0 0 7px #0c0a08, 0 12px 50px rgba(0,0,0,0.85);
+  background: #1a1614;
+  font-family: 'Palatino Linotype', Palatino, Georgia, serif;
+}
+.img-lightbox-caption {
+  margin-top: 14px;
+  color: #d8cca8;
+  font-family: 'Cinzel', serif;
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+.img-lightbox-arrow {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1202;
+  background: rgba(12,10,8,0.7);
+  border: 1px solid rgba(200,168,64,0.4);
+  color: #c8a840;
+  font-size: 2.5rem;
+  line-height: 1;
+  width: 52px;
+  height: 64px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.12s, border-color 0.12s;
+}
+.img-lightbox-arrow:hover { background: rgba(200,168,64,0.18); border-color: #c8a840; }
+.img-lightbox-arrow-left { left: 16px; }
+.img-lightbox-arrow-right { right: 16px; }
+
 /* ── Nav dots (page indicator) ── */
 .gw-nav-dots {
   background: #0c0a08;

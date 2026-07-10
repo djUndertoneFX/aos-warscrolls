@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import axios from 'axios';
 import WarscrollGW from '../components/WarscrollGW';
+import ImageLightbox from '../components/ImageLightbox';
 import { useSettings } from '../SettingsContext';
 import { useAuth } from '../AuthContext';
 import { calcWeaponADO, resolveWeaponLoadout } from '../awoCalc';
@@ -252,6 +253,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
   const [expandedIds, setExpandedIds] = useState(new Set());
   const [fullExpandedIds, setFullExpandedIds] = useState(new Set());
   const [detailUnit, setDetailUnit] = useState(null);
+  const [lightboxUnit, setLightboxUnit] = useState(null);
   const [thumbHover, setThumbHover] = useState(null); // { id, x, y }
   const tableWrapperRef = useRef(null);
   const scrollAnchorRef = useRef(null);
@@ -786,7 +788,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
                         <td className="col-name" onClick={e => { e.stopPropagation(); setDetailUnit(row); }}>
                           <span className="unit-name-link">{row.name}</span>
                         </td>
-                        <td className="col-thumb">
+                        <td className="col-thumb" onClick={e => { e.stopPropagation(); setThumbHover(null); setLightboxUnit(row); }}>
                           <img
                             src={`${axios.defaults.baseURL || ''}/api/unit-image/${row.id}`}
                             alt=""
@@ -922,6 +924,21 @@ export default function WarscrollsPage({ headerCollapsed }) {
         </>
       )}
     </div>
+
+    {lightboxUnit && (() => {
+      const rows = data?.data ?? [];
+      const idx = rows.findIndex(u => u.id === lightboxUnit.id);
+      return (
+        <ImageLightbox
+          unit={lightboxUnit}
+          navList={rows}
+          navIndex={idx}
+          onClose={() => setLightboxUnit(null)}
+          onPrev={() => { if (idx > 0) setLightboxUnit(rows[idx - 1]); }}
+          onNext={() => { if (idx < rows.length - 1) setLightboxUnit(rows[idx + 1]); }}
+        />
+      );
+    })()}
 
     {detailUnit && (() => {
       const rows = data?.data ?? [];
