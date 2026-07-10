@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import axios from 'axios';
 import WarscrollGW from '../components/WarscrollGW';
 import ImageLightbox, { nameSlug } from '../components/ImageLightbox';
+import PathToGloryWizard from '../components/PathToGloryWizard';
 import { useSettings } from '../SettingsContext';
 import { useAuth } from '../AuthContext';
 import { calcWeaponADO, resolveWeaponLoadout } from '../awoCalc';
@@ -222,6 +223,7 @@ export default function PathToGloryPage({ headerCollapsed }) {
   const { presumedSave, presumedWard, roundingMode, includeSaveWardInADO } = useSettings();
   const { logout } = useAuth();
   const [ptgView, setPtgView] = useState('recruit'); // 'recruit' | 'battle' — stub for now, no behavior wired yet
+  const [showRecruitWizard, setShowRecruitWizard] = useState(false);
   const [data, setData]           = useState(null);
   const [factions, setFactions]   = useState([]);
   const [loading, setLoading]     = useState(true);
@@ -414,6 +416,21 @@ export default function PathToGloryPage({ headerCollapsed }) {
     }
   }, [userUnits]);
 
+  // Right-click on the Friendly/Enemy filter checkbox: clear all marks in that column
+  const clearFlagColumn = useCallback(async (flag) => {
+    const prev = userUnits;
+    setUserUnits(u => {
+      const next = {};
+      for (const [id, v] of Object.entries(u)) next[id] = { ...v, [flag]: 0 };
+      return next;
+    });
+    try {
+      await axios.post('/api/user-units/clear-flag', { flag });
+    } catch {
+      setUserUnits(prev);
+    }
+  }, [userUnits]);
+
   useEffect(() => { fetchFactions(); }, [fetchFactions]);
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -596,9 +613,17 @@ export default function PathToGloryPage({ headerCollapsed }) {
         </div>
         <div className="ptg-actions">
           <RosterDropdown label="My Roster" />
-          <button className={`ptg-action-btn${ptgView === 'recruit' ? ' ptg-action-active' : ''}`} onClick={() => setPtgView('recruit')}>
-            Recruit Your Forces
-          </button>
+          <div className="ptg-action-stack">
+            <button
+              className={`ptg-action-btn${ptgView === 'recruit' ? ' ptg-action-active' : ''}`}
+              onClick={() => { setPtgView('recruit'); setShowRecruitWizard(true); }}
+            >
+              Recruit Your Forces
+            </button>
+            <button className="ptg-action-btn ptg-action-btn-secondary" onClick={() => {}}>
+              Level Up!
+            </button>
+          </div>
           <span className="ptg-action-arrow">›</span>
           <button className={`ptg-action-btn${ptgView === 'battle' ? ' ptg-action-active' : ''}`} onClick={() => setPtgView('battle')}>
             Face Thy Enemies
@@ -659,7 +684,7 @@ export default function PathToGloryPage({ headerCollapsed }) {
 
         <div className="filter-checkboxes">
           <div className="cb-group cb-group-left">
-            <label className="cb-item">
+            <label className="cb-item" onContextMenu={e => { e.preventDefault(); clearFlagColumn('is_friendly'); }} title="Left-click to filter · Right-click to clear all Friendly marks">
               <input type="checkbox" id="cb-friendly" checked={showFriendly} onChange={e => { setShowFriendly(e.target.checked); setPage(1); }} />
               <span style={{color:'var(--friendly-color)'}}>Friendly</span>
             </label>
@@ -670,7 +695,7 @@ export default function PathToGloryPage({ headerCollapsed }) {
                 setShowFriendly(showEnemy); setShowEnemy(showFriendly); setPage(1);
               }}
             >⇔</button>
-            <label className="cb-item">
+            <label className="cb-item" onContextMenu={e => { e.preventDefault(); clearFlagColumn('is_enemy'); }} title="Left-click to filter · Right-click to clear all Enemy marks">
               <input type="checkbox" id="cb-enemy" checked={showEnemy} onChange={e => { setShowEnemy(e.target.checked); setPage(1); }} />
               <span style={{color:'var(--enemy-color)'}}>Enemy</span>
             </label>
@@ -995,6 +1020,8 @@ export default function PathToGloryPage({ headerCollapsed }) {
         </>
       )}
     </div>
+
+    {showRecruitWizard && <PathToGloryWizard onClose={() => setShowRecruitWizard(false)} />}
 
     {lightboxUnit && (() => {
       const rows = data?.data ?? [];

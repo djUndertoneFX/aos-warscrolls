@@ -590,6 +590,7 @@ input, select {
   align-items: center;
   gap: 0.5rem;
   font-family: 'Cinzel', serif;
+  flex-shrink: 0;
 }
 .ptg-action-btn {
   font-family: 'Cinzel', serif;
@@ -601,6 +602,8 @@ input, select {
   border-radius: 3px;
   padding: 0.25rem 0.6rem;
   cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
   transition: color 0.2s, border-color 0.2s, background 0.2s;
 }
 .ptg-action-btn:hover { color: var(--gold-light); border-color: var(--border-gold); }
@@ -609,6 +612,16 @@ input, select {
   font-size: 0.82rem;
   border-color: var(--border-gold);
   background: rgba(201,168,76,0.08);
+}
+.ptg-action-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.ptg-action-btn-secondary {
+  font-size: 0.62rem;
+  padding: 0.15rem 0.6rem;
+  opacity: 0.8;
 }
 .ptg-action-arrow {
   color: #444;
@@ -2231,6 +2244,117 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 .img-lightbox-arrow:hover { background: rgba(200,168,64,0.18); border-color: #c8a840; }
 .img-lightbox-arrow-left { left: 16px; }
 .img-lightbox-arrow-right { right: 16px; }
+
+/* ── Path to Glory: Recruit Your Forces wizard ── */
+.ptg-wizard {
+  position: fixed;
+  top: 4vh;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1201;
+  width: min(760px, 96vw);
+  max-height: 92vh;
+  overflow-y: auto;
+  background: #1a1614;
+  border: 2px solid #c8a840;
+  outline: 5px solid #0c0a08;
+  outline-offset: -7px;
+  box-shadow: 0 0 0 7px #0c0a08, 0 12px 50px rgba(0,0,0,0.85);
+  font-family: 'Palatino Linotype', Palatino, Georgia, serif;
+  color: #d8cca8;
+  padding: 1.5rem;
+}
+.ptg-wizard-header {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+.ptg-wizard-title {
+  font-family: 'Cinzel', serif;
+  font-size: 1.3rem;
+  color: #c8a840;
+  letter-spacing: 0.05em;
+}
+.ptg-wizard-steps {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem;
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid rgba(200,168,64,0.25);
+}
+.ptg-wizard-step {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: 'Cinzel', serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.03em;
+  color: var(--text-dim, #8a8578);
+  background: transparent;
+  border: 1px solid rgba(200,168,64,0.25);
+  border-radius: 3px;
+  padding: 0.3rem 0.5rem;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+.ptg-wizard-step:hover { color: #e0d4a8; border-color: #c8a840; }
+.ptg-wizard-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  font-size: 0.6rem;
+}
+.ptg-wizard-step-done { color: #8fae7a; border-color: rgba(143,174,122,0.4); }
+.ptg-wizard-step-active {
+  color: #1a1614;
+  background: #c8a840;
+  border-color: #c8a840;
+}
+.ptg-wizard-step-active .ptg-wizard-step-num { border-color: #1a1614; }
+.ptg-wizard-body {
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.6rem;
+}
+.ptg-wizard-body-title {
+  font-family: 'Cinzel', serif;
+  font-size: 1.1rem;
+  color: #d8cca8;
+}
+.ptg-wizard-body-placeholder {
+  color: var(--text-dim, #8a8578);
+  font-style: italic;
+}
+.ptg-wizard-nav {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(200,168,64,0.25);
+}
+.ptg-wizard-nav-btn {
+  font-family: 'Cinzel', serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  color: #c8a840;
+  background: transparent;
+  border: 1px solid rgba(200,168,64,0.4);
+  border-radius: 3px;
+  padding: 0.4rem 1rem;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.ptg-wizard-nav-btn:hover:not(:disabled) { background: rgba(200,168,64,0.18); border-color: #c8a840; }
+.ptg-wizard-nav-btn:disabled { opacity: 0.35; cursor: default; }
 
 /* ── Nav dots (page indicator) ── */
 .gw-nav-dots {

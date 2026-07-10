@@ -350,6 +350,24 @@ app.get('/api/user-units', requireAuth, (req, res) => {
   }
 });
 
+// POST /api/user-units/clear-flag — bulk-clear either the friendly or enemy
+// marks across every unit for this user (right-click on the Friendly/Enemy
+// filter checkbox triggers this from the frontend). Must be registered before
+// the /:warscrollId route below, or Express matches "clear-flag" as an id.
+app.post('/api/user-units/clear-flag', requireAuth, (req, res) => {
+  const { flag } = req.body;
+  if (flag !== 'is_friendly' && flag !== 'is_enemy') {
+    return res.status(400).json({ error: 'Invalid flag' });
+  }
+  const db = getDb();
+  try {
+    db.prepare(`UPDATE user_units SET ${flag} = 0 WHERE user_id = ?`).run(req.user.id);
+    res.json({ ok: true });
+  } finally {
+    db.close();
+  }
+});
+
 // POST /api/user-units/:warscrollId — set friendly/enemy flags
 app.post('/api/user-units/:warscrollId', requireAuth, (req, res) => {
   const { is_friendly, is_enemy } = req.body;

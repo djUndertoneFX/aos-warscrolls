@@ -384,6 +384,21 @@ export default function WarscrollsPage({ headerCollapsed }) {
     }
   }, [userUnits]);
 
+  // Right-click on the Friendly/Enemy filter checkbox: clear all marks in that column
+  const clearFlagColumn = useCallback(async (flag) => {
+    const prev = userUnits;
+    setUserUnits(u => {
+      const next = {};
+      for (const [id, v] of Object.entries(u)) next[id] = { ...v, [flag]: 0 };
+      return next;
+    });
+    try {
+      await axios.post('/api/user-units/clear-flag', { flag });
+    } catch {
+      setUserUnits(prev);
+    }
+  }, [userUnits]);
+
   useEffect(() => { fetchFactions(); }, [fetchFactions]);
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -618,7 +633,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
 
         <div className="filter-checkboxes">
           <div className="cb-group cb-group-left">
-            <label className="cb-item">
+            <label className="cb-item" onContextMenu={e => { e.preventDefault(); clearFlagColumn('is_friendly'); }} title="Left-click to filter · Right-click to clear all Friendly marks">
               <input type="checkbox" id="cb-friendly" checked={showFriendly} onChange={e => { setShowFriendly(e.target.checked); setPage(1); }} />
               <span style={{color:'var(--friendly-color)'}}>Friendly</span>
             </label>
@@ -629,7 +644,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
                 setShowFriendly(showEnemy); setShowEnemy(showFriendly); setPage(1);
               }}
             >⇔</button>
-            <label className="cb-item">
+            <label className="cb-item" onContextMenu={e => { e.preventDefault(); clearFlagColumn('is_enemy'); }} title="Left-click to filter · Right-click to clear all Enemy marks">
               <input type="checkbox" id="cb-enemy" checked={showEnemy} onChange={e => { setShowEnemy(e.target.checked); setPage(1); }} />
               <span style={{color:'var(--enemy-color)'}}>Enemy</span>
             </label>
