@@ -62,8 +62,8 @@ function DocThumb({ doc, active, onClick }) {
 function PresentToggle({ mode, onChange }) {
   return (
     <div className="ptg-present-toggle">
-      <button className={mode === 'image' ? 'ptg-present-active' : ''} onClick={() => onChange('image')}>Image</button>
-      <button className={mode === 'replica' ? 'ptg-present-active' : ''} onClick={() => onChange('replica')}>Replica</button>
+      <button className={mode === 'image' ? 'ptg-present-active' : ''} onClick={() => onChange('image')}>Officiant</button>
+      <button className={mode === 'replica' ? 'ptg-present-active' : ''} onClick={() => onChange('replica')}>Non Corporeal</button>
     </div>
   );
 }
@@ -80,7 +80,7 @@ function useRowList(initial = []) {
 
 const STORAGE_KEY = 'aos-ptg-recruit-wizard';
 
-export default function PathToGloryWizard({ onClose }) {
+export default function PathToGloryWizard({ onClose, factions = [] }) {
   // Read once per mount — resumes wherever the user left off last time they
   // opened this wizard (localStorage persists it across close/reopen).
   const saved = (() => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; } })();
@@ -94,6 +94,9 @@ export default function PathToGloryWizard({ onClose }) {
   // ── Step 0: Campaign ──
   const [campaign, setCampaign] = useState(() => saved.campaign ?? null);
   const [customCampaignName, setCustomCampaignName] = useState(() => saved.customCampaignName ?? '');
+
+  // ── Step 1: Faction ──
+  const [selectedFaction, setSelectedFaction] = useState(() => saved.selectedFaction ?? null);
 
   // ── Warlord Warscroll ──
   const [warlordName, setWarlordName] = useState(() => saved.warlordName ?? '');
@@ -176,7 +179,7 @@ export default function PathToGloryWizard({ onClose }) {
   // Persist the whole wizard on every change, so closing and reopening resumes here.
   useEffect(() => {
     const snapshot = {
-      step, activeDoc, presentMode, campaign, customCampaignName,
+      step, activeDoc, presentMode, campaign, customCampaignName, selectedFaction,
       warlordName, warlordKeywords, rangedWeapons, meleeWeapons,
       armyName, realmOfOrigin, faction, battleFormation, gloryPoints,
       currentQuest, questPoints, questNotes, questsCompleted, background, notableEvents,
@@ -186,7 +189,7 @@ export default function PathToGloryWizard({ onClose }) {
     };
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot)); } catch {}
   }, [
-    step, activeDoc, presentMode, campaign, customCampaignName,
+    step, activeDoc, presentMode, campaign, customCampaignName, selectedFaction,
     warlordName, warlordKeywords, rangedWeapons, meleeWeapons,
     armyName, realmOfOrigin, faction, battleFormation, gloryPoints,
     currentQuest, questPoints, questNotes, questsCompleted, background, notableEvents,
@@ -238,6 +241,11 @@ export default function PathToGloryWizard({ onClose }) {
   const campaignLabel = campaign === 'custom'
     ? (customCampaignName.trim() || 'Foreign War of Aggression')
     : CAMPAIGNS.find(c => c.key === campaign)?.name;
+
+  const ALLIANCE_ORDER = ['Order', 'Chaos', 'Death', 'Destruction'];
+  const factionsByAlliance = ALLIANCE_ORDER
+    .map(alliance => ({ alliance, list: factions.filter(f => f.grand_alliance === alliance) }))
+    .filter(g => g.list.length > 0);
 
   return (
     <>
@@ -491,6 +499,25 @@ export default function PathToGloryWizard({ onClose }) {
                     />
                   )}
                 </>
+              ) : step === 1 ? (
+                <div className="ptg-faction-groups">
+                  {factionsByAlliance.map(g => (
+                    <div className="ptg-faction-group" key={g.alliance}>
+                      <div className={`ptg-faction-group-header alliance-${g.alliance}`}>{g.alliance}</div>
+                      <div className="ptg-faction-badges">
+                        {g.list.map(f => (
+                          <button
+                            key={f.faction_slug}
+                            className={`ptg-faction-badge alliance-${g.alliance}${selectedFaction === f.faction_slug ? ' ptg-faction-badge-selected' : ''}`}
+                            onClick={() => { setSelectedFaction(f.faction_slug); setStep(s => Math.min(STEPS.length - 1, s + 1)); }}
+                          >
+                            {f.faction}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : (
                 <div className="ptg-wizard-body-placeholder">Coming soon.</div>
               )}

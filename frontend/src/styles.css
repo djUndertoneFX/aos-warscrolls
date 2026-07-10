@@ -2273,7 +2273,7 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 .ptg-wizard-banner {
   text-align: center;
   font-family: 'Cinzel', serif;
-  font-size: 1rem;
+  font-size: 1.7rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #8a7638;
@@ -2406,6 +2406,34 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 }
 .ptg-campaign-name-input:focus { outline: none; border-color: #c8a840; }
 
+/* ── Recruit wizard: Pick your Faction (Step 2) ── */
+.ptg-faction-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+}
+.ptg-faction-group-header {
+  display: inline-block;
+  margin-bottom: 0.5rem;
+}
+.ptg-faction-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.ptg-faction-badge {
+  font-family: 'Cinzel', serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  padding: 0.4rem 0.75rem;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+.ptg-faction-badge:hover { transform: translateY(-1px); }
+.ptg-faction-badge-selected { box-shadow: 0 0 0 2px currentColor; }
+
 /* ── Path to Glory wizard: document tray (Hero Warscroll / Order of Battle / Army Roster) ── */
 .ptg-doc-tray {
   display: flex;
@@ -2511,6 +2539,7 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   letter-spacing: 0.04em;
   color: var(--text-dim, #8a8578);
   text-transform: uppercase;
+  text-align: center;
 }
 .ptg-field input, .ptg-field textarea {
   width: 100%;

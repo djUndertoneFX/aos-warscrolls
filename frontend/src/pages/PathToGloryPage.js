@@ -1023,7 +1023,7 @@ export default function PathToGloryPage({ headerCollapsed }) {
       )}
     </div>
 
-    {showRecruitWizard && <PathToGloryWizard onClose={() => setShowRecruitWizard(false)} />}
+    {showRecruitWizard && <PathToGloryWizard factions={factions} onClose={() => setShowRecruitWizard(false)} />}
 
     {lightboxUnit && (() => {
       const rows = data?.data ?? [];
