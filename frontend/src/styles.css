@@ -2387,6 +2387,144 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   font-size: 0.85rem;
 }
 .ptg-campaign-name-input:focus { outline: none; border-color: #c8a840; }
+
+/* ── Path to Glory wizard: document tray (Hero Warscroll / Order of Battle / Army Roster) ── */
+.ptg-doc-tray {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.ptg-doc-thumb {
+  display: flex;
+  flex-direction: column;
+  width: 130px;
+  background: rgba(0,0,0,0.25);
+  border: 1px solid rgba(200,168,64,0.3);
+  border-radius: 4px;
+  cursor: pointer;
+  overflow: hidden;
+  padding: 0;
+  transition: border-color 0.15s, background 0.15s, transform 0.15s;
+}
+.ptg-doc-thumb:hover { border-color: #c8a840; background: rgba(200,168,64,0.08); transform: translateY(-2px); }
+.ptg-doc-thumb.ptg-doc-thumb-active { border-color: #c8a840; box-shadow: 0 0 0 1px #c8a840; }
+.ptg-doc-thumb-header {
+  font-family: 'Cinzel', serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.03em;
+  color: #c8a840;
+  text-align: center;
+  padding: 0.35rem 0.3rem;
+  border-bottom: 1px solid rgba(200,168,64,0.25);
+  background: rgba(200,168,64,0.06);
+}
+.ptg-doc-thumb-preview {
+  padding: 0.55rem 0.65rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.32rem;
+}
+.ptg-doc-thumb-line {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(216,204,168,0.18);
+}
+.ptg-doc-thumb-line.ptg-doc-thumb-line-title {
+  height: 6px;
+  width: 85%;
+  background: rgba(200,168,64,0.4);
+  border-radius: 1px;
+}
+.ptg-doc-thumb-line.short { width: 55%; }
+
+.ptg-doc-editor-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(200,168,64,0.25);
+}
+.ptg-doc-editor-title {
+  font-family: 'Cinzel', serif;
+  font-size: 1.05rem;
+  color: #c8a840;
+}
+.ptg-doc-editor-body { min-height: 260px; }
+
+.ptg-field { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 0.9rem; }
+.ptg-field label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  color: var(--text-dim, #8a8578);
+  text-transform: uppercase;
+}
+.ptg-field input, .ptg-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(200,168,64,0.4);
+  border-radius: 3px;
+  padding: 0.45rem 0.6rem;
+  color: #d8cca8;
+  font-family: 'Palatino Linotype', Palatino, Georgia, serif;
+  font-size: 0.85rem;
+  resize: vertical;
+}
+.ptg-field input:focus, .ptg-field textarea:focus { outline: none; border-color: #c8a840; }
+
+.ptg-readonly-pill {
+  display: inline-block;
+  align-self: flex-start;
+  background: rgba(200,168,64,0.1);
+  border: 1px solid rgba(200,168,64,0.3);
+  border-radius: 3px;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.8rem;
+  color: #d8cca8;
+}
+
+.ptg-oob-cap {
+  font-size: 0.8rem;
+  color: var(--text-dim, #8a8578);
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(200,168,64,0.2);
+}
+.ptg-oob-over { color: #c86a4a; font-weight: 700; }
+.ptg-oob-empty {
+  color: var(--text-dim, #8a8578);
+  font-style: italic;
+  text-align: center;
+  padding: 1.5rem 0;
+}
+.ptg-oob-row { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; align-items: center; }
+.ptg-oob-row input {
+  flex: 1;
+  box-sizing: border-box;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(200,168,64,0.4);
+  border-radius: 3px;
+  padding: 0.4rem 0.55rem;
+  color: #d8cca8;
+  font-family: 'Palatino Linotype', Palatino, Georgia, serif;
+  font-size: 0.85rem;
+}
+.ptg-oob-row input:focus { outline: none; border-color: #c8a840; }
+.ptg-oob-row-remove {
+  background: transparent;
+  border: 1px solid rgba(200,168,64,0.3);
+  color: #c8a840;
+  border-radius: 3px;
+  cursor: pointer;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.75rem;
+}
+.ptg-oob-row-remove:hover { border-color: #c8a840; background: rgba(200,168,64,0.1); }
+.ptg-oob-add-btn { margin-top: 0.5rem; }
+
 .ptg-wizard-nav {
   display: flex;
   justify-content: space-between;
