@@ -78,58 +78,65 @@ function useRowList(initial = []) {
   return [rows, add, update, remove, setRows];
 }
 
+const STORAGE_KEY = 'aos-ptg-recruit-wizard';
+
 export default function PathToGloryWizard({ onClose }) {
-  const [step, setStep] = useState(0);
-  const [activeDoc, setActiveDoc] = useState(null); // null | 'warlord' | 'roster' | 'oob' | 'army'
-  const [presentMode, setPresentMode] = useState('replica'); // 'image' | 'replica'
+  // Read once per mount — resumes wherever the user left off last time they
+  // opened this wizard (localStorage persists it across close/reopen).
+  const saved = (() => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; } })();
+  const [isEditingExisting] = useState(() => Object.keys(saved).length > 0);
+
+  const [step, setStep] = useState(() => saved.step ?? 0);
+  const [activeDoc, setActiveDoc] = useState(() => saved.activeDoc ?? null); // null | 'warlord' | 'roster' | 'oob' | 'army'
+  const [presentMode, setPresentMode] = useState(() => saved.presentMode ?? 'replica'); // 'image' | 'replica'
   const modalRef = useRef(null);
 
   // ── Step 0: Campaign ──
-  const [campaign, setCampaign] = useState(null);
-  const [customCampaignName, setCustomCampaignName] = useState('');
+  const [campaign, setCampaign] = useState(() => saved.campaign ?? null);
+  const [customCampaignName, setCustomCampaignName] = useState(() => saved.customCampaignName ?? '');
 
   // ── Warlord Warscroll ──
-  const [warlordName, setWarlordName] = useState('');
-  const [warlordKeywords, setWarlordKeywords] = useState('');
-  const [rangedWeapons, addRanged, updateRanged, removeRanged] = useRowList([]);
-  const [meleeWeapons, addMelee, updateMelee, removeMelee] = useRowList([]);
+  const [warlordName, setWarlordName] = useState(() => saved.warlordName ?? '');
+  const [warlordKeywords, setWarlordKeywords] = useState(() => saved.warlordKeywords ?? '');
+  const [rangedWeapons, addRanged, updateRanged, removeRanged] = useRowList(saved.rangedWeapons ?? []);
+  const [meleeWeapons, addMelee, updateMelee, removeMelee] = useRowList(saved.meleeWeapons ?? []);
 
   // ── Path to Glory Roster ──
-  const [armyName, setArmyName] = useState('');
-  const [realmOfOrigin, setRealmOfOrigin] = useState('');
-  const [faction, setFaction] = useState('');
-  const [battleFormation, setBattleFormation] = useState('');
-  const [gloryPoints, setGloryPoints] = useState('0');
-  const [currentQuest, setCurrentQuest] = useState('');
-  const [questPoints, setQuestPoints] = useState('');
-  const [questNotes, setQuestNotes] = useState('');
-  const [questsCompleted, setQuestsCompleted] = useState('');
-  const [background, setBackground] = useState('');
-  const [notableEvents, setNotableEvents] = useState('');
-  const [spellLore, setSpellLore] = useState(Array(6).fill(''));
-  const [prayerLore, setPrayerLore] = useState(Array(6).fill(''));
-  const [manifestationLore, setManifestationLore] = useState(Array(6).fill(''));
+  const [armyName, setArmyName] = useState(() => saved.armyName ?? '');
+  const [realmOfOrigin, setRealmOfOrigin] = useState(() => saved.realmOfOrigin ?? '');
+  const [faction, setFaction] = useState(() => saved.faction ?? '');
+  const [battleFormation, setBattleFormation] = useState(() => saved.battleFormation ?? '');
+  const [gloryPoints, setGloryPoints] = useState(() => saved.gloryPoints ?? '0');
+  const [currentQuest, setCurrentQuest] = useState(() => saved.currentQuest ?? '');
+  const [questPoints, setQuestPoints] = useState(() => saved.questPoints ?? '');
+  const [questNotes, setQuestNotes] = useState(() => saved.questNotes ?? '');
+  const [questsCompleted, setQuestsCompleted] = useState(() => saved.questsCompleted ?? '');
+  const [background, setBackground] = useState(() => saved.background ?? '');
+  const [notableEvents, setNotableEvents] = useState(() => saved.notableEvents ?? '');
+  const [spellLore, setSpellLore] = useState(() => saved.spellLore ?? Array(6).fill(''));
+  const [prayerLore, setPrayerLore] = useState(() => saved.prayerLore ?? Array(6).fill(''));
+  const [manifestationLore, setManifestationLore] = useState(() => saved.manifestationLore ?? Array(6).fill(''));
   const setLoreRow = (setter) => (i, value) => setter(rows => rows.map((r, ri) => ri === i ? value : r));
 
   // ── Order of Battle ──
-  const [warlordWarscroll, setWarlordWarscroll] = useState('');
-  const [warlordRank, setWarlordRank] = useState('Aspiring');
-  const [warlordRenown, setWarlordRenown] = useState('5');
-  const [warlordEnhancements, setWarlordEnhancements] = useState('');
-  const [warlordPath, setWarlordPath] = useState(null);
-  const [warlordPathAbility, setWarlordPathAbility] = useState('');
-  const [oobUnits, addOobUnit, updateOobUnit, removeOobUnit] = useRowList([]);
+  const [warlordWarscroll, setWarlordWarscroll] = useState(() => saved.warlordWarscroll ?? '');
+  const [warlordRank, setWarlordRank] = useState(() => saved.warlordRank ?? 'Aspiring');
+  const [warlordRenown, setWarlordRenown] = useState(() => saved.warlordRenown ?? '5');
+  const [warlordEnhancements, setWarlordEnhancements] = useState(() => saved.warlordEnhancements ?? '');
+  const [warlordPath, setWarlordPath] = useState(() => saved.warlordPath ?? null);
+  const [warlordPathAbility, setWarlordPathAbility] = useState(() => saved.warlordPathAbility ?? '');
+  const [oobUnits, addOobUnit, updateOobUnit, removeOobUnit] = useRowList(saved.oobUnits ?? []);
   const oobTotalPoints = oobUnits.reduce((sum, u) => sum + (parseInt(u.points, 10) || 0), 0);
 
   // ── Army Roster ──
-  const [commander, setCommander] = useState('');
-  const [armyRosterName, setArmyRosterName] = useState('');
-  const [pointsLimit, setPointsLimit] = useState('');
-  const [armyRosterFaction, setArmyRosterFaction] = useState('');
-  const [armyRosterFormation, setArmyRosterFormation] = useState('');
-  const [regiments, setRegiments] = useState([{ id: 'r1', units: [] }]);
-  const [auxUnits, addAuxUnit, updateAuxUnit, removeAuxUnit] = useRowList([]);
-  const [armyNotes, setArmyNotes] = useState('');
+  const [commander, setCommander] = useState(() => saved.commander ?? '');
+  const [armyRosterName, setArmyRosterName] = useState(() => saved.armyRosterName ?? '');
+  const [pointsLimit, setPointsLimit] = useState(() => saved.pointsLimit ?? '');
+  const [armyRosterFaction, setArmyRosterFaction] = useState(() => saved.armyRosterFaction ?? '');
+  const [armyRosterFormation, setArmyRosterFormation] = useState(() => saved.armyRosterFormation ?? '');
+  const [regiments, setRegiments] = useState(() => saved.regiments ?? [{ id: 'r1', units: [] }]);
+  const [auxUnits, addAuxUnit, updateAuxUnit, removeAuxUnit] = useRowList(saved.auxUnits ?? []);
+  const [armyNotes, setArmyNotes] = useState(() => saved.armyNotes ?? '');
 
   const addRegiment = () => setRegiments(rs => [...rs, { id: `${Date.now()}-${rs.length}`, units: [] }]);
   const removeRegiment = rid => setRegiments(rs => rs.filter(r => r.id !== rid));
@@ -165,6 +172,28 @@ export default function PathToGloryWizard({ onClose }) {
     document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
   }, [onClose]);
+
+  // Persist the whole wizard on every change, so closing and reopening resumes here.
+  useEffect(() => {
+    const snapshot = {
+      step, activeDoc, presentMode, campaign, customCampaignName,
+      warlordName, warlordKeywords, rangedWeapons, meleeWeapons,
+      armyName, realmOfOrigin, faction, battleFormation, gloryPoints,
+      currentQuest, questPoints, questNotes, questsCompleted, background, notableEvents,
+      spellLore, prayerLore, manifestationLore,
+      warlordWarscroll, warlordRank, warlordRenown, warlordEnhancements, warlordPath, warlordPathAbility, oobUnits,
+      commander, armyRosterName, pointsLimit, armyRosterFaction, armyRosterFormation, regiments, auxUnits, armyNotes,
+    };
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot)); } catch {}
+  }, [
+    step, activeDoc, presentMode, campaign, customCampaignName,
+    warlordName, warlordKeywords, rangedWeapons, meleeWeapons,
+    armyName, realmOfOrigin, faction, battleFormation, gloryPoints,
+    currentQuest, questPoints, questNotes, questsCompleted, background, notableEvents,
+    spellLore, prayerLore, manifestationLore,
+    warlordWarscroll, warlordRank, warlordRenown, warlordEnhancements, warlordPath, warlordPathAbility, oobUnits,
+    commander, armyRosterName, pointsLimit, armyRosterFaction, armyRosterFormation, regiments, auxUnits, armyNotes,
+  ]);
 
   const renderWeaponTable = (title, rows, add, update, remove, hasRange) => (
     <div className="ptg-warscroll-table-block">
@@ -213,7 +242,7 @@ export default function PathToGloryWizard({ onClose }) {
   return (
     <>
       <div className="gw-overlay" />
-      <div className="ptg-wizard" ref={modalRef} role="dialog" aria-modal="true" aria-label="Recruit Your Forces">
+      <div className="ptg-wizard" ref={modalRef} role="dialog" aria-modal="true" aria-label={isEditingExisting ? 'Present the Troops!' : 'Recruit Your Forces'}>
         <button className="gw-close" onClick={onClose} title="Close (Esc)">✕</button>
 
         <div className="ptg-wizard-banner">
@@ -221,7 +250,7 @@ export default function PathToGloryWizard({ onClose }) {
         </div>
 
         <div className="ptg-wizard-header">
-          <div className="ptg-wizard-title">Recruit Your Forces</div>
+          <div className="ptg-wizard-title">{isEditingExisting ? 'Present the Troops!' : 'Recruit Your Forces'}</div>
         </div>
 
         <div className="ptg-doc-tray">
