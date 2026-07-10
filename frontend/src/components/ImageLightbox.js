@@ -1,6 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 
+// Mirrors backend/server.js nameSlug() — units resolve to the same image file when
+// their slugs match, even if the raw name text differs slightly (punctuation, case,
+// stray whitespace) between faction entries. Used to dedupe cross-faction units
+// (e.g. Kragnos) by actual image identity rather than exact name-string equality.
+export function nameSlug(name) {
+  return (name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
 export default function ImageLightbox({ unit, hasPrev, hasNext, onClose, onPrev, onNext }) {
   const modalRef = useRef(null);
   const [imgError, setImgError] = useState(false);

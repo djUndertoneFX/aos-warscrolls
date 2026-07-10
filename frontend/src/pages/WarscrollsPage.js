@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import axios from 'axios';
 import WarscrollGW from '../components/WarscrollGW';
-import ImageLightbox from '../components/ImageLightbox';
+import ImageLightbox, { nameSlug } from '../components/ImageLightbox';
 import { useSettings } from '../SettingsContext';
 import { useAuth } from '../AuthContext';
 import { calcWeaponADO, resolveWeaponLoadout } from '../awoCalc';
@@ -356,14 +356,17 @@ export default function WarscrollsPage({ headerCollapsed }) {
   }, [data]);
 
   // Units the lightbox may land on: has a resolvable image, and is the first
-  // occurrence of its name in the current list (skips repeated cross-faction units).
+  // occurrence of its image slug in the current list (skips repeated cross-faction
+  // units like Kragnos — deduped by image identity, not raw name-string equality,
+  // since faction entries can have slightly different name text but the same image).
   const lightboxPlayableIds = React.useMemo(() => {
     const rows = data?.data ?? [];
-    const seenNames = new Set();
+    const seenSlugs = new Set();
     const ids = new Set();
     for (const r of rows) {
-      if (seenNames.has(r.name)) continue;
-      seenNames.add(r.name);
+      const slug = nameSlug(r.name);
+      if (seenSlugs.has(slug)) continue;
+      seenSlugs.add(slug);
       if (imgExistIds && !imgExistIds.has(r.id)) continue;
       ids.add(r.id);
     }
