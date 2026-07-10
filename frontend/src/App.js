@@ -121,7 +121,7 @@ function Navbar({ headerCollapsed, onToggleCollapse }) {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const isWarscrolls = location.pathname === '/warscrolls' || location.pathname === '/simulacrum' || location.pathname === '/spearhead';
+  const isWarscrolls = location.pathname === '/warscrolls' || location.pathname === '/simulacrum' || location.pathname === '/spearhead' || location.pathname === '/path-to-glory';
   if (!user) return null;
   return (
     <>

@@ -189,9 +189,39 @@ function makeAdoKTooltip(includeSaveWard, save, ward) {
   return `Average Damage Output Efficiency\n  (ADO-R + ADO-M) ÷ Points × 1000, ${context}. Higher = more damage per point. Sort descending for best-value units.`;
 }
 
+// Stub roster picker — "store, recall, remove" a saved Path to Glory roster.
+// Not wired to any persistence yet; UI only.
+function RosterDropdown({ label }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return (
+    <div className="faction-dropdown ptg-roster-dropdown" ref={ref}>
+      <button className="faction-dropdown-trigger" onClick={() => setOpen(o => !o)}>
+        <span>{label}</span>
+        <span className="faction-dropdown-arrow">{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div className="faction-dropdown-menu">
+          <div className="faction-dropdown-item ptg-roster-empty">No saved rosters yet</div>
+          <div className="faction-dropdown-item ptg-roster-action" onMouseDown={() => setOpen(false)}>+ Save Current Roster</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function PathToGloryPage({ headerCollapsed }) {
   const { presumedSave, presumedWard, roundingMode, includeSaveWardInADO } = useSettings();
   const { logout } = useAuth();
+  const [ptgView, setPtgView] = useState('recruit'); // 'recruit' | 'battle' — stub for now, no behavior wired yet
   const [data, setData]           = useState(null);
   const [factions, setFactions]   = useState([]);
   const [loading, setLoading]     = useState(true);
@@ -563,6 +593,17 @@ export default function PathToGloryPage({ headerCollapsed }) {
         <div className="page-title">
           Path to Glory
           <span>Age of Sigmar 4th Edition</span>
+        </div>
+        <div className="ptg-actions">
+          <RosterDropdown label="My Roster" />
+          <button className={`ptg-action-btn${ptgView === 'recruit' ? ' ptg-action-active' : ''}`} onClick={() => setPtgView('recruit')}>
+            Recruit Your Forces
+          </button>
+          <span className="ptg-action-arrow">›</span>
+          <button className={`ptg-action-btn${ptgView === 'battle' ? ' ptg-action-active' : ''}`} onClick={() => setPtgView('battle')}>
+            Face Thy Enemies
+          </button>
+          <RosterDropdown label="Enemy Roster" />
         </div>
         {data && (
           <div className="unit-count">
