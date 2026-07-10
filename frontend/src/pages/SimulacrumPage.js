@@ -508,6 +508,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
   const [factions, setFactions]   = useState([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState('');
+  const [imgExistIds, setImgExistIds] = useState(null); // Set of unit ids with a resolvable image, for the lightbox's skip-nav
 
   const FILTER_KEY = linkPageSelections ? 'aos-filters' : 'aos-sim-filters';
   const saved = (() => { try { return JSON.parse(localStorage.getItem(FILTER_KEY)) || {}; } catch { return {}; } })();
@@ -621,6 +622,32 @@ export default function SimulacrumPage({ headerCollapsed }) {
   useEffect(() => { axios.get('/api/user-units').then(res => { const map = {}; res.data.forEach(r => { map[r.warscroll_id] = { is_friendly: r.is_friendly, is_enemy: r.is_enemy }; }); setUserUnits(map); }).catch(() => {}); }, []);
   useEffect(() => { fetchFactions(); }, [fetchFactions]);
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Bulk-check which units in the current result set have a resolvable image,
+  // so the image lightbox can skip units with no image (and duplicate images
+  // like cross-faction units such as Kragnos) while paging with the arrows.
+  useEffect(() => {
+    if (!data?.data?.length) return;
+    setImgExistIds(null);
+    axios.post('/api/unit-images-exist', { ids: data.data.map(r => r.id) })
+      .then(res => setImgExistIds(new Set(res.data.ids)))
+      .catch(() => setImgExistIds(null));
+  }, [data]);
+
+  // Units the lightbox may land on: has a resolvable image, and is the first
+  // occurrence of its name in the current list (skips repeated cross-faction units).
+  const lightboxPlayableIds = React.useMemo(() => {
+    const rows = data?.data ?? [];
+    const seenNames = new Set();
+    const ids = new Set();
+    for (const r of rows) {
+      if (seenNames.has(r.name)) continue;
+      seenNames.add(r.name);
+      if (imgExistIds && !imgExistIds.has(r.id)) continue;
+      ids.add(r.id);
+    }
+    return ids;
+  }, [data, imgExistIds]);
 
   const toggleFlag = useCallback(async (warscrollId, flag) => {
     const current = userUnits[warscrollId] || { is_friendly: 0, is_enemy: 0 };
@@ -1167,14 +1194,22 @@ export default function SimulacrumPage({ headerCollapsed }) {
     {lightboxUnit && (() => {
       const rows = data?.data ?? [];
       const idx = rows.findIndex(u => u.id === lightboxUnit.id);
+      const findPlayable = dir => {
+        for (let i = idx + dir; i >= 0 && i < rows.length; i += dir) {
+          if (lightboxPlayableIds.has(rows[i].id)) return rows[i];
+        }
+        return null;
+      };
+      const prevUnit = findPlayable(-1);
+      const nextUnit = findPlayable(1);
       return (
         <ImageLightbox
           unit={lightboxUnit}
-          navList={rows}
-          navIndex={idx}
+          hasPrev={!!prevUnit}
+          hasNext={!!nextUnit}
           onClose={() => setLightboxUnit(null)}
-          onPrev={() => { if (idx > 0) setLightboxUnit(rows[idx - 1]); }}
-          onNext={() => { if (idx < rows.length - 1) setLightboxUnit(rows[idx + 1]); }}
+          onPrev={() => prevUnit && setLightboxUnit(prevUnit)}
+          onNext={() => nextUnit && setLightboxUnit(nextUnit)}
         />
       );
     })()}

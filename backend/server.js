@@ -596,6 +596,19 @@ app.get('/api/unit-image/:id', (req, res) => {
   }
 });
 
+// POST /api/unit-images-exist — bulk check which of the given ids have a resolvable
+// image, so the frontend image lightbox can skip units with no image while paging.
+app.post('/api/unit-images-exist', requireAuth, (req, res) => {
+  const ids = Array.isArray(req.body?.ids) ? req.body.ids.map(Number).filter(Boolean) : [];
+  const db = getDb();
+  try {
+    const existing = ids.filter(id => resolveImagePaths(id, db).length > 0);
+    res.json({ ids: existing });
+  } finally {
+    db.close();
+  }
+});
+
 // POST /api/admin/rescrape — trigger a full warscroll rescrape; protected by UPLOAD_SECRET
 app.post('/api/admin/rescrape', (req, res) => {
   const secret = process.env.UPLOAD_SECRET;

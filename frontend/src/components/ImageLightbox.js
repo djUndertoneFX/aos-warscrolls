@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 
-export default function ImageLightbox({ unit, navList, navIndex, onClose, onPrev, onNext }) {
+export default function ImageLightbox({ unit, hasPrev, hasNext, onClose, onPrev, onNext }) {
   const modalRef = useRef(null);
   const [imgError, setImgError] = useState(false);
 
@@ -28,9 +28,6 @@ export default function ImageLightbox({ unit, navList, navIndex, onClose, onPrev
   }, [onClose]);
 
   if (!unit) return null;
-
-  const hasPrev = navList && navIndex > 0;
-  const hasNext = navList && navIndex < navList.length - 1;
 
   return (
     <>
