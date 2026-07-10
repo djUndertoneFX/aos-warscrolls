@@ -32,26 +32,28 @@ export default function ImageLightbox({ unit, hasPrev, hasNext, onClose, onPrev,
   return (
     <>
       <div className="gw-overlay" />
-      {hasPrev && (
-        <button className="img-lightbox-arrow img-lightbox-arrow-left" onClick={onPrev} title="Previous (←)">‹</button>
-      )}
-      {hasNext && (
-        <button className="img-lightbox-arrow img-lightbox-arrow-right" onClick={onNext} title="Next (→)">›</button>
-      )}
-      <div className="img-lightbox" ref={modalRef} role="dialog" aria-modal="true" aria-label={unit.name}>
-        <button className="gw-close" onClick={onClose} title="Close (Esc)">✕</button>
-        {imgError ? (
-          <div className="img-lightbox-noimg">No image available</div>
-        ) : (
-          <img
-            key={unit.id}
-            src={`${axios.defaults.baseURL || ''}/api/unit-image/${unit.id}`}
-            alt={unit.name}
-            className="img-lightbox-img"
-            onError={() => setImgError(true)}
-          />
+      <div ref={modalRef}>
+        {hasPrev && (
+          <button className="img-lightbox-arrow img-lightbox-arrow-left" onClick={onPrev} title="Previous (←)">‹</button>
         )}
-        <div className="img-lightbox-caption">{unit.name}</div>
+        {hasNext && (
+          <button className="img-lightbox-arrow img-lightbox-arrow-right" onClick={onNext} title="Next (→)">›</button>
+        )}
+        <div className="img-lightbox" role="dialog" aria-modal="true" aria-label={unit.name}>
+          <button className="gw-close" onClick={onClose} title="Close (Esc)">✕</button>
+          {imgError ? (
+            <div className="img-lightbox-noimg">No image available</div>
+          ) : (
+            <img
+              key={unit.id}
+              src={`${axios.defaults.baseURL || ''}/api/unit-image/${unit.id}`}
+              alt={unit.name}
+              className="img-lightbox-img"
+              onError={() => setImgError(true)}
+            />
+          )}
+          <div className="img-lightbox-caption">{unit.name}</div>
+        </div>
       </div>
     </>
   );
