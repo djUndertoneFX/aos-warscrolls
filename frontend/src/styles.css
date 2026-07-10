@@ -2334,6 +2334,59 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   color: var(--text-dim, #8a8578);
   font-style: italic;
 }
+.ptg-campaign-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+.ptg-campaign-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  text-align: left;
+  font-family: 'Palatino Linotype', Palatino, Georgia, serif;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid rgba(200,168,64,0.25);
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  color: #d8cca8;
+  transition: border-color 0.15s, background 0.15s;
+}
+.ptg-campaign-card:hover:not(:disabled) { border-color: #c8a840; background: rgba(200,168,64,0.08); }
+.ptg-campaign-card.ptg-campaign-selected { border-color: #c8a840; background: rgba(200,168,64,0.14); }
+.ptg-campaign-card:disabled { cursor: default; opacity: 0.5; }
+.ptg-campaign-name {
+  font-family: 'Cinzel', serif;
+  font-size: 0.95rem;
+  color: #c8a840;
+}
+.ptg-campaign-desc {
+  font-size: 0.78rem;
+  color: var(--text-dim, #8a8578);
+  line-height: 1.4;
+}
+.ptg-campaign-soon {
+  font-family: 'Cinzel', serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.05em;
+  color: #666;
+  margin-top: 0.2rem;
+}
+.ptg-campaign-name-input {
+  margin-top: 0.75rem;
+  width: 100%;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(200,168,64,0.4);
+  border-radius: 3px;
+  padding: 0.5rem 0.7rem;
+  color: #d8cca8;
+  font-family: 'Palatino Linotype', Palatino, Georgia, serif;
+  font-size: 0.85rem;
+}
+.ptg-campaign-name-input:focus { outline: none; border-color: #c8a840; }
 .ptg-wizard-nav {
   display: flex;
   justify-content: space-between;

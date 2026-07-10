@@ -12,8 +12,19 @@ const STEPS = [
   'Prepare for Battle',
 ];
 
+// GW currently publishes 3 Path to Glory battlepacks — only Ascension's core
+// rules are implemented so far, so the other two are shown but disabled.
+const CAMPAIGNS = [
+  { key: 'ascension',    name: 'Ascension',                 desc: 'The core Path to Glory campaign — forge your warlord’s rise to legend.', available: true },
+  { key: 'ravaged-coast', name: 'Ravaged Coast',             desc: 'A narrative Path to Glory battlepack.', available: false },
+  { key: 'blighted-wilds', name: 'Blighted Wilds',           desc: 'A narrative Path to Glory battlepack.', available: false },
+  { key: 'custom',        name: 'Foreign War of Aggression', desc: 'A custom, homebrew campaign of your own design.', available: true, custom: true },
+];
+
 export default function PathToGloryWizard({ onClose }) {
   const [step, setStep] = useState(0);
+  const [campaign, setCampaign] = useState(null);
+  const [customCampaignName, setCustomCampaignName] = useState('');
   const modalRef = useRef(null);
 
   useEffect(() => {
@@ -61,7 +72,35 @@ export default function PathToGloryWizard({ onClose }) {
 
         <div className="ptg-wizard-body">
           <div className="ptg-wizard-body-title">{step}. {STEPS[step]}</div>
-          <div className="ptg-wizard-body-placeholder">Coming soon.</div>
+          {step === 0 ? (
+            <>
+              <div className="ptg-campaign-grid">
+                {CAMPAIGNS.map(c => (
+                  <button
+                    key={c.key}
+                    className={`ptg-campaign-card${campaign === c.key ? ' ptg-campaign-selected' : ''}`}
+                    disabled={!c.available}
+                    onClick={() => setCampaign(c.key)}
+                  >
+                    <div className="ptg-campaign-name">{c.name}</div>
+                    <div className="ptg-campaign-desc">{c.desc}</div>
+                    {!c.available && <div className="ptg-campaign-soon">Coming Soon</div>}
+                  </button>
+                ))}
+              </div>
+              {campaign === 'custom' && (
+                <input
+                  className="ptg-campaign-name-input"
+                  type="text"
+                  placeholder="Name your campaign…"
+                  value={customCampaignName}
+                  onChange={e => setCustomCampaignName(e.target.value)}
+                />
+              )}
+            </>
+          ) : (
+            <div className="ptg-wizard-body-placeholder">Coming soon.</div>
+          )}
         </div>
 
         <div className="ptg-wizard-nav">
