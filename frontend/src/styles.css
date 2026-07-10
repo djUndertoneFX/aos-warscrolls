@@ -2407,32 +2407,34 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 .ptg-campaign-name-input:focus { outline: none; border-color: #c8a840; }
 
 /* ── Recruit wizard: Pick your Faction (Step 2) ── */
-.ptg-faction-groups {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+.ptg-faction-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.6rem;
   width: 100%;
 }
-.ptg-faction-group-header {
-  display: inline-block;
-  margin-bottom: 0.5rem;
-}
-.ptg-faction-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
 .ptg-faction-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
   font-family: 'Cinzel', serif;
-  font-size: 0.72rem;
-  letter-spacing: 0.03em;
-  padding: 0.4rem 0.75rem;
-  border-radius: 3px;
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  line-height: 1.25;
+  padding: 0.6rem 0.5rem;
+  min-height: 3.4rem;
+  border-radius: 4px;
   cursor: pointer;
-  transition: transform 0.12s, box-shadow 0.12s;
+  box-shadow: 0 2px 3px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);
+  transition: transform 0.12s, box-shadow 0.12s, background 0.12s;
 }
-.ptg-faction-badge:hover { transform: translateY(-1px); }
-.ptg-faction-badge-selected { box-shadow: 0 0 0 2px currentColor; }
+.ptg-faction-badge:hover { transform: translateY(-2px); box-shadow: 0 4px 7px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08); }
+.ptg-faction-badge-selected { box-shadow: 0 0 0 2px currentColor, 0 2px 4px rgba(0,0,0,0.35); }
+.ptg-faction-badge.alliance-Order       { background: rgba(42,90,139,0.35);  color: #8cc2f0; border: 1px solid rgba(106,172,219,0.55); }
+.ptg-faction-badge.alliance-Chaos       { background: rgba(139,26,26,0.35); color: #f0a0a0; border: 1px solid rgba(224,128,128,0.55); }
+.ptg-faction-badge.alliance-Death       { background: rgba(74,26,107,0.35); color: #d0a8f0; border: 1px solid rgba(176,128,208,0.55); }
+.ptg-faction-badge.alliance-Destruction { background: rgba(42,107,26,0.35); color: #a0e090; border: 1px solid rgba(128,192,112,0.55); }
 
 /* ── Path to Glory wizard: document tray (Hero Warscroll / Order of Battle / Army Roster) ── */
 .ptg-doc-tray {

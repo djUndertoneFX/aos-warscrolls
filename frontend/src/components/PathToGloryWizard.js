@@ -500,22 +500,15 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                   )}
                 </>
               ) : step === 1 ? (
-                <div className="ptg-faction-groups">
-                  {factionsByAlliance.map(g => (
-                    <div className="ptg-faction-group" key={g.alliance}>
-                      <div className={`ptg-faction-group-header alliance-${g.alliance}`}>{g.alliance}</div>
-                      <div className="ptg-faction-badges">
-                        {g.list.map(f => (
-                          <button
-                            key={f.faction_slug}
-                            className={`ptg-faction-badge alliance-${g.alliance}${selectedFaction === f.faction_slug ? ' ptg-faction-badge-selected' : ''}`}
-                            onClick={() => { setSelectedFaction(f.faction_slug); setStep(s => Math.min(STEPS.length - 1, s + 1)); }}
-                          >
-                            {f.faction}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                <div className="ptg-faction-grid">
+                  {factionsByAlliance.flatMap(g => g.list).map(f => (
+                    <button
+                      key={f.faction_slug}
+                      className={`ptg-faction-badge alliance-${f.grand_alliance}${selectedFaction === f.faction_slug ? ' ptg-faction-badge-selected' : ''}`}
+                      onClick={() => { setSelectedFaction(f.faction_slug); setStep(s => Math.min(STEPS.length - 1, s + 1)); }}
+                    >
+                      {f.faction}
+                    </button>
                   ))}
                 </div>
               ) : (
