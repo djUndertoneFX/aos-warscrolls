@@ -112,6 +112,7 @@ export default function PathToGloryWizard({ onClose }) {
   const setLoreRow = (setter) => (i, value) => setter(rows => rows.map((r, ri) => ri === i ? value : r));
 
   // ── Order of Battle ──
+  const [warlordWarscroll, setWarlordWarscroll] = useState('');
   const [warlordRank, setWarlordRank] = useState('Aspiring');
   const [warlordRenown, setWarlordRenown] = useState('5');
   const [warlordEnhancements, setWarlordEnhancements] = useState('');
@@ -133,7 +134,7 @@ export default function PathToGloryWizard({ onClose }) {
   const addRegiment = () => setRegiments(rs => [...rs, { id: `${Date.now()}-${rs.length}`, units: [] }]);
   const removeRegiment = rid => setRegiments(rs => rs.filter(r => r.id !== rid));
   const addRegimentUnit = rid => setRegiments(rs => rs.map(r => r.id === rid
-    ? { ...r, units: [...r.units, { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, name: '', size: '', points: '' }] }
+    ? { ...r, units: [...r.units, { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, name: '', size: '', notes: '', points: '' }] }
     : r));
   const updateRegimentUnit = (rid, uid, field, value) => setRegiments(rs => rs.map(r => r.id === rid
     ? { ...r, units: r.units.map(u => u.id === uid ? { ...u, [field]: value } : u) }
@@ -165,23 +166,32 @@ export default function PathToGloryWizard({ onClose }) {
     return () => document.removeEventListener('mousedown', h);
   }, [onClose]);
 
-  const renderWeaponTable = (title, rows, add, update, remove) => (
+  const renderWeaponTable = (title, rows, add, update, remove, hasRange) => (
     <div className="ptg-warscroll-table-block">
       <div className="ptg-warscroll-table-title">{title}</div>
       {rows.length > 0 && (
-        <div className="ptg-warscroll-table">
+        <div className={`ptg-warscroll-table${hasRange ? ' ptg-warscroll-table-ranged' : ''}`}>
           <div className="ptg-warscroll-table-head">
-            <span>Name</span><span>Atk</span><span>Hit</span><span>Wnd</span><span>Rnd</span><span>Dmg</span><span />
+            <span>Weapon</span>
+            {hasRange && <span>Rng</span>}
+            <span>Atk</span><span>Hit</span><span>Wnd</span><span>Rnd</span><span>Dmg</span><span />
           </div>
           {rows.map(r => (
             <div className="ptg-warscroll-table-row" key={r.id}>
               <input value={r.name || ''} onChange={e => update(r.id, 'name', e.target.value)} placeholder="Weapon" />
+              {hasRange && <input value={r.rng || ''} onChange={e => update(r.id, 'rng', e.target.value)} />}
               <input value={r.atk || ''} onChange={e => update(r.id, 'atk', e.target.value)} />
               <input value={r.hit || ''} onChange={e => update(r.id, 'hit', e.target.value)} />
               <input value={r.wnd || ''} onChange={e => update(r.id, 'wnd', e.target.value)} />
               <input value={r.rnd || ''} onChange={e => update(r.id, 'rnd', e.target.value)} />
               <input value={r.dmg || ''} onChange={e => update(r.id, 'dmg', e.target.value)} />
               <button className="ptg-oob-row-remove" onClick={() => remove(r.id)} title="Remove weapon">✕</button>
+              <input
+                className="ptg-warscroll-table-abilities"
+                value={r.abilities || ''}
+                onChange={e => update(r.id, 'abilities', e.target.value)}
+                placeholder="Weapon Abilities"
+              />
             </div>
           ))}
         </div>
@@ -196,11 +206,19 @@ export default function PathToGloryWizard({ onClose }) {
     </div>
   );
 
+  const campaignLabel = campaign === 'custom'
+    ? (customCampaignName.trim() || 'Foreign War of Aggression')
+    : CAMPAIGNS.find(c => c.key === campaign)?.name;
+
   return (
     <>
       <div className="gw-overlay" />
       <div className="ptg-wizard" ref={modalRef} role="dialog" aria-modal="true" aria-label="Recruit Your Forces">
         <button className="gw-close" onClick={onClose} title="Close (Esc)">✕</button>
+
+        <div className="ptg-wizard-banner">
+          Path to Glory!{campaignLabel && <span className="ptg-wizard-banner-campaign"> — {campaignLabel}</span>}
+        </div>
 
         <div className="ptg-wizard-header">
           <div className="ptg-wizard-title">Recruit Your Forces</div>
@@ -217,7 +235,7 @@ export default function PathToGloryWizard({ onClose }) {
           return (
             <>
               <div className="ptg-doc-editor-header">
-                <button className="ptg-wizard-nav-btn" onClick={() => setActiveDoc(null)}>‹ Back to Wizard</button>
+                <button className="ptg-wizard-nav-btn" onClick={() => setActiveDoc(null)}>‹ Back to War Room</button>
                 <div className="ptg-doc-editor-title">{doc.title}</div>
                 <PresentToggle mode={presentMode} onChange={setPresentMode} />
               </div>
@@ -231,8 +249,8 @@ export default function PathToGloryWizard({ onClose }) {
                           <label>Warlord Name</label>
                           <input type="text" value={warlordName} onChange={e => setWarlordName(e.target.value)} placeholder="e.g. Iladrien the Bright" />
                         </div>
-                        {renderWeaponTable('Ranged Weapons', rangedWeapons, addRanged, updateRanged, removeRanged)}
-                        {renderWeaponTable('Melee Weapons', meleeWeapons, addMelee, updateMelee, removeMelee)}
+                        {renderWeaponTable('Ranged Weapons', rangedWeapons, addRanged, updateRanged, removeRanged, true)}
+                        {renderWeaponTable('Melee Weapons', meleeWeapons, addMelee, updateMelee, removeMelee, false)}
                         <div className="ptg-field">
                           <label>Keywords</label>
                           <input type="text" value={warlordKeywords} onChange={e => setWarlordKeywords(e.target.value)} placeholder="HERO, INFANTRY, …" />
@@ -242,21 +260,30 @@ export default function PathToGloryWizard({ onClose }) {
 
                     {activeDoc === 'roster' && (
                       <>
-                        <div className="ptg-roster-grid">
-                          <div className="ptg-field"><label>Army Name</label><input type="text" value={armyName} onChange={e => setArmyName(e.target.value)} placeholder="e.g. The Sundered Vanguard" /></div>
-                          <div className="ptg-field"><label>Realm of Origin</label><input type="text" value={realmOfOrigin} onChange={e => setRealmOfOrigin(e.target.value)} placeholder="e.g. Hysh" /></div>
-                          <div className="ptg-field"><label>Faction</label><input type="text" value={faction} onChange={e => setFaction(e.target.value)} /></div>
-                          <div className="ptg-field"><label>Battle Formation</label><input type="text" value={battleFormation} onChange={e => setBattleFormation(e.target.value)} /></div>
-                          <div className="ptg-field"><label>Glory Points</label><input type="text" value={gloryPoints} onChange={e => setGloryPoints(e.target.value)} /></div>
+                        <div className="ptg-roster-header-grid">
+                          <div className="ptg-field ptg-roster-heraldry"><label>Heraldry</label><div className="ptg-heraldry-box" /></div>
+                          <div className="ptg-field ptg-roster-armyname"><label>Army Name</label><input type="text" value={armyName} onChange={e => setArmyName(e.target.value)} placeholder="e.g. The Sundered Vanguard" /></div>
+                          <div className="ptg-field ptg-roster-realm"><label>Realm of Origin</label><input type="text" value={realmOfOrigin} onChange={e => setRealmOfOrigin(e.target.value)} placeholder="e.g. Hysh" /></div>
+                          <div className="ptg-field ptg-roster-glory"><label>Glory Points</label><input type="text" value={gloryPoints} onChange={e => setGloryPoints(e.target.value)} /></div>
+                          <div className="ptg-field ptg-roster-faction"><label>Faction</label><input type="text" value={faction} onChange={e => setFaction(e.target.value)} /></div>
+                          <div className="ptg-field ptg-roster-formation"><label>Battle Formation</label><input type="text" value={battleFormation} onChange={e => setBattleFormation(e.target.value)} /></div>
                         </div>
-                        <div className="ptg-roster-grid">
-                          <div className="ptg-field"><label>Current Quest</label><input type="text" value={currentQuest} onChange={e => setCurrentQuest(e.target.value)} /></div>
-                          <div className="ptg-field"><label>Quest Points</label><input type="text" value={questPoints} onChange={e => setQuestPoints(e.target.value)} /></div>
-                          <div className="ptg-field"><label>Notes</label><input type="text" value={questNotes} onChange={e => setQuestNotes(e.target.value)} /></div>
-                          <div className="ptg-field"><label>Quests Completed</label><input type="text" value={questsCompleted} onChange={e => setQuestsCompleted(e.target.value)} /></div>
+
+                        <div className="ptg-roster-lower-grid">
+                          <div className="ptg-quest-log-block">
+                            <div className="ptg-quest-log-title">Quest Log</div>
+                            <div className="ptg-quest-log-grid">
+                              <div className="ptg-field"><label>Current Quest</label><input type="text" value={currentQuest} onChange={e => setCurrentQuest(e.target.value)} /></div>
+                              <div className="ptg-field"><label>Quest Points</label><input type="text" value={questPoints} onChange={e => setQuestPoints(e.target.value)} /></div>
+                              <div className="ptg-field"><label>Notes</label><input type="text" value={questNotes} onChange={e => setQuestNotes(e.target.value)} /></div>
+                              <div className="ptg-field"><label>Quests Completed</label><input type="text" value={questsCompleted} onChange={e => setQuestsCompleted(e.target.value)} /></div>
+                            </div>
+                          </div>
+                          <div className="ptg-roster-side-stack">
+                            <div className="ptg-field"><label>Background</label><textarea rows={4} value={background} onChange={e => setBackground(e.target.value)} /></div>
+                            <div className="ptg-field"><label>Notable Events</label><textarea rows={4} value={notableEvents} onChange={e => setNotableEvents(e.target.value)} /></div>
+                          </div>
                         </div>
-                        <div className="ptg-field"><label>Background</label><textarea rows={2} value={background} onChange={e => setBackground(e.target.value)} /></div>
-                        <div className="ptg-field"><label>Notable Events</label><textarea rows={2} value={notableEvents} onChange={e => setNotableEvents(e.target.value)} /></div>
 
                         <div className="ptg-arcane-tome-title">Arcane Tome</div>
                         <div className="ptg-arcane-tome-grid">
@@ -283,18 +310,22 @@ export default function PathToGloryWizard({ onClose }) {
 
                         <div className="ptg-oob-warlord-block">
                           <div className="ptg-oob-warlord-title">Warlord</div>
-                          <div className="ptg-oob-warlord-grid">
-                            <input placeholder="Name" value={warlordName} onChange={e => setWarlordName(e.target.value)} />
-                            <input placeholder="Rank" value={warlordRank} onChange={e => setWarlordRank(e.target.value)} />
-                            <input placeholder="Renown" value={warlordRenown} onChange={e => setWarlordRenown(e.target.value)} />
+                          <div className="ptg-oob-row-grid-4">
+                            <div className="ptg-field"><label>Name</label><input value={warlordName} onChange={e => setWarlordName(e.target.value)} /></div>
+                            <div className="ptg-field"><label>Warscroll</label><input value={warlordWarscroll} onChange={e => setWarlordWarscroll(e.target.value)} /></div>
+                            <div className="ptg-field"><label>Rank</label><input value={warlordRank} onChange={e => setWarlordRank(e.target.value)} /></div>
+                            <div className="ptg-field"><label>Renown</label><input value={warlordRenown} onChange={e => setWarlordRenown(e.target.value)} /></div>
                           </div>
-                          <div className="ptg-oob-warlord-grid">
-                            <input placeholder="Enhancements" value={warlordEnhancements} onChange={e => setWarlordEnhancements(e.target.value)} />
-                            <select value={warlordPath || ''} onChange={e => setWarlordPath(e.target.value || null)}>
-                              <option value="">Path…</option>
-                              {PATHS.map(p => <option key={p.key} value={p.key}>{p.name}</option>)}
-                            </select>
-                            <input placeholder="Path Abilities" value={warlordPathAbility} onChange={e => setWarlordPathAbility(e.target.value)} />
+                          <div className="ptg-oob-row-grid-3">
+                            <div className="ptg-field"><label>Enhancements</label><input value={warlordEnhancements} onChange={e => setWarlordEnhancements(e.target.value)} /></div>
+                            <div className="ptg-field">
+                              <label>Path</label>
+                              <select value={warlordPath || ''} onChange={e => setWarlordPath(e.target.value || null)}>
+                                <option value="">…</option>
+                                {PATHS.map(p => <option key={p.key} value={p.key}>{p.name}</option>)}
+                              </select>
+                            </div>
+                            <div className="ptg-field"><label>Path Abilities</label><input value={warlordPathAbility} onChange={e => setWarlordPathAbility(e.target.value)} /></div>
                           </div>
                         </div>
 
@@ -302,31 +333,38 @@ export default function PathToGloryWizard({ onClose }) {
                         {oobUnits.length === 0 && <div className="ptg-oob-empty">No units added yet.</div>}
                         {oobUnits.map(u => (
                           <div className="ptg-oob-unit-block" key={u.id}>
-                            <div className="ptg-oob-warlord-grid">
-                              <input placeholder="Unit Name" value={u.name || ''} onChange={e => updateOobUnit(u.id, 'name', e.target.value)} />
-                              <input placeholder="Rank" value={u.rank || ''} onChange={e => updateOobUnit(u.id, 'rank', e.target.value)} />
-                              <input placeholder="Renown" value={u.renown || ''} onChange={e => updateOobUnit(u.id, 'renown', e.target.value)} />
-                              <input placeholder="Pts" value={u.points || ''} onChange={e => updateOobUnit(u.id, 'points', e.target.value)} style={{ maxWidth: '70px' }} />
-                              <button className="ptg-oob-row-remove" onClick={() => removeOobUnit(u.id)} title="Remove unit">✕</button>
+                            <div className="ptg-oob-row-grid-4">
+                              <div className="ptg-field"><label>Unit Name</label><input value={u.name || ''} onChange={e => updateOobUnit(u.id, 'name', e.target.value)} /></div>
+                              <div className="ptg-field"><label>Warscroll</label><input value={u.warscroll || ''} onChange={e => updateOobUnit(u.id, 'warscroll', e.target.value)} /></div>
+                              <div className="ptg-field"><label>Rank</label><input value={u.rank || ''} onChange={e => updateOobUnit(u.id, 'rank', e.target.value)} /></div>
+                              <div className="ptg-field">
+                                <label>Renown</label>
+                                <div className="ptg-oob-renown-row">
+                                  <input value={u.renown || ''} onChange={e => updateOobUnit(u.id, 'renown', e.target.value)} />
+                                  <button className="ptg-oob-row-remove" onClick={() => removeOobUnit(u.id)} title="Remove unit">✕</button>
+                                </div>
+                              </div>
                             </div>
-                            <div className="ptg-oob-warlord-grid">
-                              <input placeholder="Enhancements" value={u.enhancements || ''} onChange={e => updateOobUnit(u.id, 'enhancements', e.target.value)} />
-                              <input placeholder="Path Abilities" value={u.pathAbility || ''} onChange={e => updateOobUnit(u.id, 'pathAbility', e.target.value)} style={{ gridColumn: 'span 2' }} />
+                            <div className="ptg-oob-row-grid-3b">
+                              <div className="ptg-field"><label>Enhancements</label><input value={u.enhancements || ''} onChange={e => updateOobUnit(u.id, 'enhancements', e.target.value)} /></div>
+                              <div className="ptg-field"><label>Path Abilities</label><input value={u.pathAbility || ''} onChange={e => updateOobUnit(u.id, 'pathAbility', e.target.value)} /></div>
+                              <div className="ptg-field"><label>Reinforced?</label><input value={u.reinforced || ''} onChange={e => updateOobUnit(u.id, 'reinforced', e.target.value)} /></div>
                             </div>
+                            <div className="ptg-field ptg-oob-pts-field"><label>Pts</label><input value={u.points || ''} onChange={e => updateOobUnit(u.id, 'points', e.target.value)} style={{ maxWidth: '90px' }} /></div>
                           </div>
                         ))}
-                        <button className="ptg-wizard-nav-btn ptg-oob-add-btn" onClick={() => addOobUnit({ name: '', rank: 'Aspiring', renown: '0', points: '', enhancements: '', pathAbility: '' })}>+ Add Unit</button>
+                        <button className="ptg-wizard-nav-btn ptg-oob-add-btn" onClick={() => addOobUnit({ name: '', warscroll: '', rank: 'Aspiring', renown: '0', points: '', enhancements: '', pathAbility: '', reinforced: '' })}>+ Add Unit</button>
                       </>
                     )}
 
                     {activeDoc === 'army' && (
                       <>
-                        <div className="ptg-roster-grid">
-                          <div className="ptg-field"><label>Commander</label><input type="text" value={commander} onChange={e => setCommander(e.target.value)} /></div>
-                          <div className="ptg-field"><label>Army Name</label><input type="text" value={armyRosterName} onChange={e => setArmyRosterName(e.target.value)} /></div>
-                          <div className="ptg-field"><label>Points Limit</label><input type="text" value={pointsLimit} onChange={e => setPointsLimit(e.target.value)} /></div>
-                          <div className="ptg-field"><label>Faction</label><input type="text" value={armyRosterFaction} onChange={e => setArmyRosterFaction(e.target.value)} /></div>
-                          <div className="ptg-field"><label>Battle Formation</label><input type="text" value={armyRosterFormation} onChange={e => setArmyRosterFormation(e.target.value)} /></div>
+                        <div className="ptg-army-header-grid">
+                          <div className="ptg-field ptg-army-commander"><label>Commander</label><input type="text" value={commander} onChange={e => setCommander(e.target.value)} /></div>
+                          <div className="ptg-field ptg-army-name"><label>Army Name</label><input type="text" value={armyRosterName} onChange={e => setArmyRosterName(e.target.value)} /></div>
+                          <div className="ptg-field ptg-army-points-limit"><label>Points Limit</label><input type="text" value={pointsLimit} onChange={e => setPointsLimit(e.target.value)} /></div>
+                          <div className="ptg-field ptg-army-faction"><label>Faction</label><input type="text" value={armyRosterFaction} onChange={e => setArmyRosterFaction(e.target.value)} /></div>
+                          <div className="ptg-field ptg-army-formation"><label>Battle Formation</label><input type="text" value={armyRosterFormation} onChange={e => setArmyRosterFormation(e.target.value)} /></div>
                         </div>
 
                         {regiments.map((r, ri) => (
@@ -335,11 +373,15 @@ export default function PathToGloryWizard({ onClose }) {
                               <span>{ri === 0 ? "General's Regiment 1" : `Regiment ${ri + 1}`}</span>
                               {regiments.length > 1 && <button className="ptg-oob-row-remove" onClick={() => removeRegiment(r.id)} title="Remove regiment">✕</button>}
                             </div>
+                            <div className="ptg-regiment-table-head">
+                              <span>Warscroll Name</span><span>Size</span><span>Notes</span><span>Points</span><span />
+                            </div>
                             {r.units.map(u => (
-                              <div className="ptg-oob-row" key={u.id}>
+                              <div className="ptg-regiment-table-row" key={u.id}>
                                 <input placeholder="Warscroll Name" value={u.name || ''} onChange={e => updateRegimentUnit(r.id, u.id, 'name', e.target.value)} />
-                                <input placeholder="Size" value={u.size || ''} onChange={e => updateRegimentUnit(r.id, u.id, 'size', e.target.value)} style={{ maxWidth: '70px' }} />
-                                <input placeholder="Pts" value={u.points || ''} onChange={e => updateRegimentUnit(r.id, u.id, 'points', e.target.value)} style={{ maxWidth: '70px' }} />
+                                <input placeholder="Size" value={u.size || ''} onChange={e => updateRegimentUnit(r.id, u.id, 'size', e.target.value)} />
+                                <input placeholder="Notes" value={u.notes || ''} onChange={e => updateRegimentUnit(r.id, u.id, 'notes', e.target.value)} />
+                                <input placeholder="Pts" value={u.points || ''} onChange={e => updateRegimentUnit(r.id, u.id, 'points', e.target.value)} />
                                 <button className="ptg-oob-row-remove" onClick={() => removeRegimentUnit(r.id, u.id)} title="Remove unit">✕</button>
                               </div>
                             ))}
@@ -351,15 +393,19 @@ export default function PathToGloryWizard({ onClose }) {
 
                         <div className="ptg-regiment-block">
                           <div className="ptg-regiment-header"><span>Auxiliary Units</span></div>
+                          <div className="ptg-regiment-table-head">
+                            <span>Warscroll Name</span><span>Size</span><span>Notes</span><span>Points</span><span />
+                          </div>
                           {auxUnits.map(u => (
-                            <div className="ptg-oob-row" key={u.id}>
+                            <div className="ptg-regiment-table-row" key={u.id}>
                               <input placeholder="Warscroll Name" value={u.name || ''} onChange={e => updateAuxUnit(u.id, 'name', e.target.value)} />
-                              <input placeholder="Size" value={u.size || ''} onChange={e => updateAuxUnit(u.id, 'size', e.target.value)} style={{ maxWidth: '70px' }} />
-                              <input placeholder="Pts" value={u.points || ''} onChange={e => updateAuxUnit(u.id, 'points', e.target.value)} style={{ maxWidth: '70px' }} />
+                              <input placeholder="Size" value={u.size || ''} onChange={e => updateAuxUnit(u.id, 'size', e.target.value)} />
+                              <input placeholder="Notes" value={u.notes || ''} onChange={e => updateAuxUnit(u.id, 'notes', e.target.value)} />
+                              <input placeholder="Pts" value={u.points || ''} onChange={e => updateAuxUnit(u.id, 'points', e.target.value)} />
                               <button className="ptg-oob-row-remove" onClick={() => removeAuxUnit(u.id)} title="Remove unit">✕</button>
                             </div>
                           ))}
-                          <button className="ptg-wizard-nav-btn ptg-oob-add-btn" onClick={() => addAuxUnit({ name: '', size: '', points: '' })}>+ Add Unit</button>
+                          <button className="ptg-wizard-nav-btn ptg-oob-add-btn" onClick={() => addAuxUnit({ name: '', size: '', notes: '', points: '' })}>+ Add Unit</button>
                         </div>
                         <div className="ptg-oob-cap">Auxiliary Units Total: {auxTotal}pts</div>
                         <div className="ptg-oob-cap"><strong>Units Total: {armyUnitsTotal}pts</strong></div>
@@ -398,7 +444,7 @@ export default function PathToGloryWizard({ onClose }) {
                         key={c.key}
                         className={`ptg-campaign-card${campaign === c.key ? ' ptg-campaign-selected' : ''}`}
                         disabled={!c.available}
-                        onClick={() => setCampaign(c.key)}
+                        onClick={() => { setCampaign(c.key); setStep(s => Math.min(STEPS.length - 1, s + 1)); }}
                       >
                         <div className="ptg-campaign-name">{c.name}</div>
                         <div className="ptg-campaign-desc">{c.desc}</div>
