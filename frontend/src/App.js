@@ -9,6 +9,7 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 import WarscrollsPage from './pages/WarscrollsPage';
 import SimulacrumPage from './pages/SimulacrumPage';
 import SpearheadPage from './pages/SpearheadPage';
+import PathToGloryPage from './pages/PathToGloryPage';
 import './styles.css';
 
 const NAV_PAGES = [
@@ -16,7 +17,7 @@ const NAV_PAGES = [
   { label: 'Army Builder',       path: '/army-builder',    soon: true },
   { label: 'Simulacrum',         path: '/simulacrum' },
   { label: 'Spearhead',          path: '/spearhead' },
-  { label: 'Path to Glory',      path: '/path-to-glory',   soon: true },
+  { label: 'Path to Glory',      path: '/path-to-glory' },
   { label: 'Consult the Oracle', path: '/consult-oracle',  soon: true },
   { label: 'Comparitator',       path: '/comparitator',    soon: true },
 ];
@@ -218,7 +219,7 @@ function AppRoutes() {
         <Route path="/army-builder"  element={<ProtectedRoute><ComingSoon title="Army Builder" /></ProtectedRoute>} />
         <Route path="/simulacrum"    element={<ProtectedRoute><SimulacrumPage headerCollapsed={headerCollapsed} /></ProtectedRoute>} />
         <Route path="/spearhead"     element={<ProtectedRoute><SpearheadPage headerCollapsed={headerCollapsed} /></ProtectedRoute>} />
-        <Route path="/path-to-glory"  element={<ProtectedRoute><ComingSoon title="Path to Glory" /></ProtectedRoute>} />
+        <Route path="/path-to-glory"  element={<ProtectedRoute><PathToGloryPage headerCollapsed={headerCollapsed} /></ProtectedRoute>} />
         <Route path="/consult-oracle" element={<ProtectedRoute><ComingSoon title="Consult the Oracle" /></ProtectedRoute>} />
         <Route path="/comparitator"   element={<ProtectedRoute><ComingSoon title="Comparitator" /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to={user ? "/warscrolls" : "/login"} />} />
