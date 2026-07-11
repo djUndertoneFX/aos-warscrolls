@@ -631,6 +631,20 @@ export default function PathToGloryPage({ headerCollapsed }) {
             </button>
           </div>
           <RosterDropdown label="Enemy Roster" />
+          <div className="ptg-actions-divider" />
+          {/* "Battle Buddy" — takes your roster + the enemy roster (if any) and acts as
+              both a quick-reference for every unit's warscroll (Path to Glory-aware) and
+              a per-phase advisor stepping through each unit's available abilities. Same
+              concept will be reused on the future Army Builder page. Stubbed for now. */}
+          <div className="ptg-do-battle-section">
+            <button
+              className="ptg-action-btn ptg-do-battle-btn"
+              disabled
+              title="Coming soon — a Path to Glory-aware quick reference and per-phase ability advisor for your army and the enemy's."
+            >
+              Do Battle!!!
+            </button>
+          </div>
         </div>
         {data && (
           <div className="unit-count">

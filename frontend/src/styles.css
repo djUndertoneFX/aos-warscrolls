@@ -634,6 +634,21 @@ input, select {
   font-size: 0.9rem;
   line-height: 1;
 }
+.ptg-actions-divider {
+  width: 1px;
+  align-self: stretch;
+  background: rgba(200,168,64,0.25);
+  margin: 0 0.25rem;
+}
+.ptg-do-battle-section { display: flex; align-items: center; }
+.ptg-do-battle-btn {
+  font-size: 0.85rem;
+  padding: 0.4rem 1rem;
+  color: #555;
+  border-color: rgba(120,120,120,0.35);
+  cursor: not-allowed;
+}
+.ptg-do-battle-btn:hover { color: #555; border-color: rgba(120,120,120,0.35); background: transparent; }
 .ptg-roster-dropdown .faction-dropdown-trigger {
   font-size: 0.72rem;
   padding: 0.25rem 0.6rem;
