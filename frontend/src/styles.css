@@ -638,9 +638,14 @@ input, select {
   width: 1px;
   align-self: stretch;
   background: rgba(200,168,64,0.25);
-  margin: 0 0.25rem;
+  margin: 0 0.75rem;
 }
-.ptg-do-battle-section { display: flex; align-items: center; }
+.ptg-do-battle-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 11rem;
+}
 .ptg-do-battle-btn {
   font-size: 0.85rem;
   padding: 0.4rem 1rem;
