@@ -34,6 +34,21 @@ const PATHS = [
     desc: 'With an unshakable faith to guide them, this warlord has been chosen by their patron deity for a greater purpose (or so they claim!).' },
 ];
 
+// Explicit [row, col] placement (1-indexed) for the faction grid on a 6-col x
+// 4-row layout — Order fills a 3x3 block top-left, Chaos a 3x2 block
+// top-right, Death a 1x4 strip bottom-left, Destruction the remaining
+// L-shaped 5 cells toward the bottom-right. A perfect 4-way rectangle split
+// isn't possible for these exact counts (9/6/4/5 — the ratios conflict), so
+// Destruction's block is the one that isn't a clean rectangle. If the
+// per-alliance faction count ever changes, entries beyond this map fall
+// back to normal grid auto-flow rather than breaking.
+const FACTION_GRID_POSITIONS = {
+  Order:       [[1,1],[1,2],[1,3],[2,1],[2,2],[2,3],[3,1],[3,2],[3,3]],
+  Chaos:       [[1,4],[1,5],[1,6],[2,4],[2,5],[2,6]],
+  Destruction: [[3,4],[3,5],[3,6],[4,5],[4,6]],
+  Death:       [[4,1],[4,2],[4,3],[4,4]],
+};
+
 // The 4 documents a Path to Glory roster is built from. `images` point at
 // scans of the official GW sheets (extracted from the PDFs the user
 // provided) — used both for the tray thumbnail and the "Image" presentation.
@@ -501,15 +516,19 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                 </>
               ) : step === 1 ? (
                 <div className="ptg-faction-grid">
-                  {factionsByAlliance.flatMap(g => g.list).map(f => (
-                    <button
-                      key={f.faction_slug}
-                      className={`ptg-faction-badge alliance-${f.grand_alliance}${selectedFaction === f.faction_slug ? ' ptg-faction-badge-selected' : ''}`}
-                      onClick={() => { setSelectedFaction(f.faction_slug); setStep(s => Math.min(STEPS.length - 1, s + 1)); }}
-                    >
-                      {f.faction}
-                    </button>
-                  ))}
+                  {factionsByAlliance.flatMap(g => g.list.map((f, i) => {
+                    const pos = FACTION_GRID_POSITIONS[g.alliance]?.[i];
+                    return (
+                      <button
+                        key={f.faction_slug}
+                        className={`ptg-faction-badge alliance-${f.grand_alliance}${selectedFaction === f.faction_slug ? ' ptg-faction-badge-selected' : ''}`}
+                        style={pos ? { gridRow: pos[0], gridColumn: pos[1] } : undefined}
+                        onClick={() => { setSelectedFaction(f.faction_slug); setStep(s => Math.min(STEPS.length - 1, s + 1)); }}
+                      >
+                        {f.faction}
+                      </button>
+                    );
+                  }))}
                 </div>
               ) : (
                 <div className="ptg-wizard-body-placeholder">Coming soon.</div>
