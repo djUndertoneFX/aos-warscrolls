@@ -2402,6 +2402,48 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   padding-bottom: 0.75rem;
   border-bottom: 1px solid rgba(200,168,64,0.3);
 }
+.ptg-warlord-substeps {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.3rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px dashed rgba(200,168,64,0.2);
+}
+.ptg-warlord-substep {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-family: 'Cinzel', serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.02em;
+  color: var(--text-dim, #8a8578);
+  background: transparent;
+  border: 1px solid rgba(200,168,64,0.2);
+  border-radius: 3px;
+  padding: 0.25rem 0.45rem;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+.ptg-warlord-substep:hover { color: #e0d4a8; border-color: #c8a840; }
+.ptg-warlord-substep-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  font-size: 0.55rem;
+}
+.ptg-warlord-substep-done { color: #8fae7a; border-color: rgba(143,174,122,0.4); }
+.ptg-warlord-substep-active {
+  color: #1a1614;
+  background: #c8a840;
+  border-color: #c8a840;
+}
+.ptg-warlord-substep-active .ptg-warlord-substep-num { border-color: #1a1614; }
 .ptg-campaign-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2769,6 +2811,12 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   line-height: 1.45;
   color: var(--parchment, #d8cca8);
 }
+.ptg-realm-tooltip-stone {
+  margin-top: 0.4rem;
+  font-size: 0.72rem;
+  color: var(--text-dim, #8a8578);
+}
+.ptg-realm-tooltip-stone strong { color: #c8a840; }
 .ptg-faction-pulldown-menu {
   display: grid;
   grid-template-columns: 1fr 1fr;

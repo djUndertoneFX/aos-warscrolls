@@ -6,21 +6,21 @@ import axios from 'axios';
 // We don't have a book excerpt describing each realm to draw authentic
 // flavor text from; if one gets photographed, swap these in.
 const REALMS = [
-  { key: 'aqshy',  name: 'Aqshy',  epithet: 'the Realm of Fire',
+  { key: 'aqshy',  name: 'Aqshy',  epithet: 'the Realm of Fire', realmstone: 'Emberstone',
     desc: 'A realm of ceaseless war and raw aggression, its skies choked with ash and its rivers running molten. Aqshy grants strength and fury to those who call it home.' },
-  { key: 'chamon', name: 'Chamon', epithet: 'the Realm of Metal',
+  { key: 'chamon', name: 'Chamon', epithet: 'the Realm of Metal', realmstone: 'Chamonite',
     desc: 'A realm of alchemy and artifice, where mountains of gold and seas of mercury reshape reality itself. Its magic favours makers of war-engines and wielders of arcane technology.' },
-  { key: 'ghur',   name: 'Ghur',   epithet: 'the Realm of Beasts',
+  { key: 'ghur',   name: 'Ghur',   epithet: 'the Realm of Beasts', realmstone: 'Amberbone',
     desc: 'A savage wilderness realm of monstrous beasts and endless hunts, where only the strong survive and predator and prey are locked in eternal struggle.' },
-  { key: 'ghyran', name: 'Ghyran', epithet: 'the Realm of Life',
+  { key: 'ghyran', name: 'Ghyran', epithet: 'the Realm of Life', realmstone: 'Cyclestone',
     desc: 'A verdant realm of overwhelming growth and rebirth, its jungles and swamps teeming with life — though also with the rot and pestilence that feed on it.' },
-  { key: 'hysh',   name: 'Hysh',   epithet: 'the Realm of Light',
+  { key: 'hysh',   name: 'Hysh',   epithet: 'the Realm of Light', realmstone: 'Aetherquartz',
     desc: 'A realm of order, knowledge, and illumination, where the light of civilisation battles endlessly against encroaching darkness and the perils of hubris.' },
-  { key: 'shyish', name: 'Shyish', epithet: 'the Realm of Death',
+  { key: 'shyish', name: 'Shyish', epithet: 'the Realm of Death', realmstone: 'Grave-sand',
     desc: 'A realm of ancient ruins and endless twilight, where time itself runs strangely and the dead do not always stay buried.' },
-  { key: 'ulgu',   name: 'Ulgu',   epithet: 'the Realm of Shadow',
+  { key: 'ulgu',   name: 'Ulgu',   epithet: 'the Realm of Shadow', realmstone: 'Falsestone',
     desc: 'A realm of deception and mist-shrouded illusion, where nothing is quite as it seems and shadow conceals both refuge and ambush.' },
-  { key: 'azyr',   name: 'Azyr',   epithet: 'the Realm of Heavens',
+  { key: 'azyr',   name: 'Azyr',   epithet: 'the Realm of Heavens', realmstone: 'Celestium',
     desc: 'The celestial realm of Sigmar and his Stormcast Eternals, a bastion of order among the stars from which the God-King directs the reconquest of the Mortal Realms.' },
 ];
 
@@ -51,6 +51,26 @@ const CAMPAIGNS = [
 // Roster's Points Limit field when that campaign is picked.
 const CAMPAIGN_POINTS_LIMITS = {
   ascension: '1000',
+};
+
+// Per-faction Warlord-creation step sequences from that faction's battletome
+// "Path to Glory: The Anvil of Apotheosis" section. Only Idoneth Deepkin is
+// sourced so far (given directly by the user, 2026-07-11 — not photographed,
+// just the step titles, no mechanical details yet beyond "fill out the
+// warscroll"). Stormcast Eternals is known to have 7 steps but we don't have
+// their names yet. Every other faction has none — those fall back to the
+// plain single-panel Warlord Warscroll form.
+const WARLORD_STEPS_BY_FACTION = {
+  'idoneth-deepkin': [
+    'Set a Destiny Point Limit',
+    'Fill out the starting Warscroll',
+    'Choose an Archetype',
+    'Choose a Companion',
+    "Pick your hero's origin and/or flaw",
+    'Choose a Battle Mount',
+    'Pick any Battle Mount upgrade',
+    'Pick any other upgrades',
+  ],
 };
 
 // The 4 Warlord Paths (core rules pgs 256-261) — Mage/Devout are restricted
@@ -167,6 +187,7 @@ function RealmDropdown({ value, customValue, onChange, onCustomChange }) {
             <div className="ptg-realm-tooltip">
               <div className="ptg-realm-tooltip-title">{shown.name}, <em>{shown.epithet}</em></div>
               <div className="ptg-realm-tooltip-desc">{shown.desc}</div>
+              <div className="ptg-realm-tooltip-stone">Realmstone: <strong>{shown.realmstone}</strong></div>
             </div>
           )}
         </div>
@@ -283,6 +304,9 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
 
   // ── Step 1: Faction ──
   const [selectedFaction, setSelectedFaction] = useState(() => saved.selectedFaction ?? null);
+
+  // ── Step 2: Pick your Warlord (faction-specific sub-steps, when known) ──
+  const [warlordSubStep, setWarlordSubStep] = useState(() => saved.warlordSubStep ?? 0);
 
   // ── Warlord Warscroll ──
   const [warlordName, setWarlordName] = useState(() => saved.warlordName ?? '');
@@ -417,7 +441,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   // Persist the whole wizard on every change, so closing and reopening resumes here.
   useEffect(() => {
     const snapshot = {
-      step, activeDoc, presentMode, campaign, customCampaignName, selectedFaction,
+      step, activeDoc, presentMode, campaign, customCampaignName, selectedFaction, warlordSubStep,
       warlordName, warlordKeywords, rangedWeapons, meleeWeapons,
       armyName, heraldryImage, realmOfOrigin, customRealmName, faction, battleFormation, gloryPoints, gloryRounds,
       currentQuest, questPoints, questNotes, questsCompleted, background, notableEvents,
@@ -427,7 +451,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     };
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot)); } catch {}
   }, [
-    step, activeDoc, presentMode, campaign, customCampaignName, selectedFaction,
+    step, activeDoc, presentMode, campaign, customCampaignName, selectedFaction, warlordSubStep,
     warlordName, warlordKeywords, rangedWeapons, meleeWeapons,
     armyName, heraldryImage, realmOfOrigin, customRealmName, faction, battleFormation, gloryPoints, gloryRounds,
     currentQuest, questPoints, questNotes, questsCompleted, background, notableEvents,
@@ -501,6 +525,8 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   const factionsByAlliance = ALLIANCE_ORDER
     .map(alliance => ({ alliance, list: factions.filter(f => f.grand_alliance === alliance) }))
     .filter(g => g.list.length > 0);
+
+  const warlordSteps = WARLORD_STEPS_BY_FACTION[effectiveFactionSlug];
 
   return (
     <>
@@ -809,8 +835,41 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                 </div>
               ) : step === 2 ? (
                 <div className="ptg-step-warlord">
-                  <div className="ptg-step-warlord-title">Warlord Warscroll</div>
-                  {renderWarlordForm()}
+                  {warlordSteps ? (
+                    <>
+                      <div className="ptg-warlord-substeps">
+                        {warlordSteps.map((label, i) => (
+                          <button
+                            key={i}
+                            className={`ptg-warlord-substep${i === warlordSubStep ? ' ptg-warlord-substep-active' : ''}${i < warlordSubStep ? ' ptg-warlord-substep-done' : ''}`}
+                            onClick={() => setWarlordSubStep(i)}
+                          >
+                            <span className="ptg-warlord-substep-num">{i + 1}</span>
+                            <span>{label}</span>
+                          </button>
+                        ))}
+                      </div>
+                      <div className="ptg-step-warlord-title">{warlordSubStep + 1}. {warlordSteps[warlordSubStep]}</div>
+                      {warlordSubStep === 1 ? renderWarlordForm() : (
+                        <div className="ptg-wizard-body-placeholder">
+                          Coming soon — needs the Anvil of Apotheosis text for this faction.
+                        </div>
+                      )}
+                      <div className="ptg-wizard-nav">
+                        <button className="ptg-wizard-nav-btn" onClick={() => setWarlordSubStep(s => Math.max(0, s - 1))} disabled={warlordSubStep === 0}>
+                          ‹ Back
+                        </button>
+                        <button className="ptg-wizard-nav-btn" onClick={() => setWarlordSubStep(s => Math.min(warlordSteps.length - 1, s + 1))} disabled={warlordSubStep === warlordSteps.length - 1}>
+                          Next ›
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="ptg-step-warlord-title">Warlord Warscroll</div>
+                      {renderWarlordForm()}
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="ptg-wizard-body-placeholder">Coming soon.</div>
