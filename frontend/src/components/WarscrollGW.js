@@ -282,7 +282,7 @@ function WeaponSection({ weapons, type, unitSize }) {
 }
 
 // ── Ability card ─────────────────────────────────────────────────────────────
-function AbilityCard({ ab, keywords }) {
+export function AbilityCard({ ab, keywords }) {
   const { showFlavorText } = useSettings();
   const ps      = getPhaseStyle(ab.timing);
   const bullets = Array.isArray(ab.bullets) ? ab.bullets : [];

@@ -1053,6 +1053,23 @@ input, select {
   max-height: 60vh;
   overflow-y: auto;
 }
+/* Two-column layout for faction pulldowns, so the whole faction list is
+   visible at once instead of requiring a scroll — used site-wide anywhere
+   a faction picker appears (Warscrolls/Simulacrum/Path to Glory filters,
+   the Recruit wizard's Roster faction field). */
+.faction-dropdown-menu-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 0.25rem;
+  width: max(100%, 420px);
+  max-height: none;
+  overflow-y: visible;
+}
+.faction-dropdown-menu-2col .faction-dropdown-item-all { grid-column: 1 / -1; }
+/* For dropdowns anchored near the right edge of the page (e.g. "Enemy
+   Faction"), open the menu leftward off the trigger's right edge instead
+   of overflowing past the viewport. */
+.faction-dropdown-menu-right { left: auto; right: 0; }
 .faction-dropdown-item {
   padding: 0.35rem 0.8rem;
   cursor: pointer;
@@ -2792,7 +2809,7 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 }
 
 /* ── Realm / Faction / Formation pulldowns ── */
-.ptg-realm-menu, .ptg-faction-pulldown-menu { padding-bottom: 0.3rem; }
+.ptg-realm-menu { padding-bottom: 0.3rem; }
 .ptg-realm-tooltip {
   margin: 0.4rem 0.6rem 0.3rem;
   padding: 0.5rem 0.6rem;
@@ -2817,15 +2834,25 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   color: var(--text-dim, #8a8578);
 }
 .ptg-realm-tooltip-stone strong { color: #c8a840; }
-.ptg-faction-pulldown-menu {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0 0.25rem;
-  width: max(100%, 420px);
-  max-height: none;
-  overflow-y: visible;
-}
 
+/* Battle Formation hover preview — pops out to the right of the dropdown,
+   styled as a real ability card (same as WarscrollGW's phase-banner cards)
+   instead of being appended inside the scrollable option list. */
+.ptg-formation-popup {
+  position: absolute;
+  top: 0;
+  left: calc(100% + 0.7rem);
+  width: 300px;
+  z-index: 250;
+}
+.ptg-formation-popup .gw-ability-card { box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+.ptg-formation-popup-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: #c8a840;
+  margin-bottom: 0.35rem;
+}
 /* ── Glory Points / Round ── */
 .ptg-roster-glory input {
   text-align: center;

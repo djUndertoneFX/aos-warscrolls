@@ -122,7 +122,7 @@ function TypeTags({ row, onFilter }) {
   );
 }
 
-function FactionDropdown({ factions, value, onChange, liveCount }) {
+function FactionDropdown({ factions, value, onChange, liveCount, align }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const selected = factions.find(f => f.faction_slug === value);
@@ -145,8 +145,8 @@ function FactionDropdown({ factions, value, onChange, liveCount }) {
         <span className="faction-dropdown-arrow">{open ? '▲' : '▼'}</span>
       </button>
       {open && (
-        <div className="faction-dropdown-menu">
-          <div className={`faction-dropdown-item${value === '' ? ' selected' : ''}`} onMouseDown={() => pick('')}>
+        <div className={`faction-dropdown-menu faction-dropdown-menu-2col${align === 'right' ? ' faction-dropdown-menu-right' : ''}`}>
+          <div className={`faction-dropdown-item faction-dropdown-item-all${value === '' ? ' selected' : ''}`} onMouseDown={() => pick('')}>
             All Factions
           </div>
           {factions.map(f => (
@@ -628,6 +628,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
             value={enemyFaction}
             onChange={v => { setEnemyFaction(v); setPage(1); }}
             liveCount={enemyFaction ? (faction ? filteredCounts[enemyFaction] : data?.total) : undefined}
+            align="right"
           />
         </div>
 

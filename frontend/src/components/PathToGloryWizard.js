@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import { AbilityCard } from './WarscrollGW';
+
+function parseFormationBullets(raw) {
+  try { return JSON.parse(raw || '[]'); } catch { return []; }
+}
 
 // The 8 Mortal Realms. Descriptions below are general, widely-known setting
 // lore written for this UI — NOT verbatim text quoted from a GW rulebook.
@@ -219,7 +224,7 @@ function FactionPulldown({ factions, value, onChange }) {
         <span className="faction-dropdown-arrow">{open ? '▲' : '▼'}</span>
       </button>
       {open && (
-        <div className="faction-dropdown-menu ptg-faction-pulldown-menu">
+        <div className="faction-dropdown-menu faction-dropdown-menu-2col">
           {factions.map(f => (
             <div
               key={f.faction_slug}
@@ -251,7 +256,7 @@ function FormationDropdown({ formations, value, onChange, loading }) {
         <span className="faction-dropdown-arrow">{open ? '▲' : '▼'}</span>
       </button>
       {open && (
-        <div className="faction-dropdown-menu ptg-realm-menu">
+        <div className="faction-dropdown-menu">
           {formations.map(f => (
             <div
               key={f.id}
@@ -263,12 +268,12 @@ function FormationDropdown({ formations, value, onChange, loading }) {
               {f.formation_name}
             </div>
           ))}
-          {shown && (
-            <div className="ptg-realm-tooltip">
-              <div className="ptg-realm-tooltip-title">{shown.formation_name}{shown.name ? ` — ${shown.name}` : ''}</div>
-              <div className="ptg-realm-tooltip-desc">{shown.effect}</div>
-            </div>
-          )}
+        </div>
+      )}
+      {open && shown && (
+        <div className="ptg-formation-popup">
+          <div className="ptg-formation-popup-label">{shown.formation_name}</div>
+          <AbilityCard ab={{ ...shown, bullets: parseFormationBullets(shown.bullets) }} keywords={[]} />
         </div>
       )}
     </div>
