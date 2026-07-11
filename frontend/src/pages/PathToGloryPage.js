@@ -612,25 +612,27 @@ export default function PathToGloryPage({ headerCollapsed }) {
           <span>Age of Sigmar 4th Edition</span>
         </div>
         <div className="ptg-actions">
-          <RosterDropdown label="My Roster" />
-          <div className="ptg-action-stack">
-            <div className="ptg-action-row">
-              <button
-                className={`ptg-action-btn${ptgView === 'recruit' ? ' ptg-action-active' : ''}`}
-                onClick={() => { setPtgView('recruit'); setShowRecruitWizard(true); }}
-              >
-                Recruit Your Forces
-              </button>
-              <span className="ptg-action-arrow">›</span>
-              <button className={`ptg-action-btn${ptgView === 'battle' ? ' ptg-action-active' : ''}`} onClick={() => setPtgView('battle')}>
-                Face Thy Enemies
+          <div className="ptg-actions-left">
+            <RosterDropdown label="My Roster" />
+            <div className="ptg-action-stack">
+              <div className="ptg-action-row">
+                <button
+                  className={`ptg-action-btn${ptgView === 'recruit' ? ' ptg-action-active' : ''}`}
+                  onClick={() => { setPtgView('recruit'); setShowRecruitWizard(true); }}
+                >
+                  Recruit Your Forces
+                </button>
+                <span className="ptg-action-arrow">›</span>
+                <button className={`ptg-action-btn${ptgView === 'battle' ? ' ptg-action-active' : ''}`} onClick={() => setPtgView('battle')}>
+                  Face Thy Enemies
+                </button>
+              </div>
+              <button className="ptg-action-btn ptg-action-btn-secondary" onClick={() => {}}>
+                Level Up!
               </button>
             </div>
-            <button className="ptg-action-btn ptg-action-btn-secondary" onClick={() => {}}>
-              Level Up!
-            </button>
+            <RosterDropdown label="Enemy Roster" />
           </div>
-          <RosterDropdown label="Enemy Roster" />
           <div className="ptg-actions-divider" />
           {/* "Battle Buddy" — takes your roster + the enemy roster (if any) and acts as
               both a quick-reference for every unit's warscroll (Path to Glory-aware) and
