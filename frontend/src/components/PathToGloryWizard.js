@@ -45,6 +45,14 @@ const CAMPAIGNS = [
   { key: 'custom',        name: 'Foreign War of Aggression', desc: 'A custom, homebrew campaign of your own design.', available: true, custom: true },
 ];
 
+// Starting points limit per campaign, per the core rules (Ascension: pg 237,
+// "combined points value... cannot exceed 1000 points"). Add entries here
+// once Ravaged Coast/Blighted Wilds limits are known — auto-fills the Army
+// Roster's Points Limit field when that campaign is picked.
+const CAMPAIGN_POINTS_LIMITS = {
+  ascension: '1000',
+};
+
 // The 4 Warlord Paths (core rules pgs 256-261) — Mage/Devout are restricted
 // to Wizard/Priest warlords respectively.
 const PATHS = [
@@ -462,6 +470,23 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     </div>
   );
 
+  // Shared between the Warlord Warscroll doc editor and the "Pick your
+  // Warlord" wizard step, so filling it out in either place stays in sync.
+  const renderWarlordForm = () => (
+    <>
+      <div className="ptg-field">
+        <label>Warlord Name</label>
+        <input type="text" value={warlordName} onChange={e => setWarlordName(e.target.value)} placeholder="e.g. Iladrien the Bright" />
+      </div>
+      {renderWeaponTable('Ranged Weapons', rangedWeapons, addRanged, updateRanged, removeRanged, true)}
+      {renderWeaponTable('Melee Weapons', meleeWeapons, addMelee, updateMelee, removeMelee, false)}
+      <div className="ptg-field">
+        <label>Keywords</label>
+        <input type="text" value={warlordKeywords} onChange={e => setWarlordKeywords(e.target.value)} placeholder="HERO, INFANTRY, …" />
+      </div>
+    </>
+  );
+
   const renderImageView = doc => (
     <div className="ptg-doc-image-view">
       {doc.images.map(src => <img key={src} src={src} alt={doc.title} />)}
@@ -510,20 +535,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
               <div className="ptg-doc-editor-body">
                 {presentMode === 'image' ? renderImageView(doc) : (
                   <>
-                    {activeDoc === 'warlord' && (
-                      <>
-                        <div className="ptg-field">
-                          <label>Warlord Name</label>
-                          <input type="text" value={warlordName} onChange={e => setWarlordName(e.target.value)} placeholder="e.g. Iladrien the Bright" />
-                        </div>
-                        {renderWeaponTable('Ranged Weapons', rangedWeapons, addRanged, updateRanged, removeRanged, true)}
-                        {renderWeaponTable('Melee Weapons', meleeWeapons, addMelee, updateMelee, removeMelee, false)}
-                        <div className="ptg-field">
-                          <label>Keywords</label>
-                          <input type="text" value={warlordKeywords} onChange={e => setWarlordKeywords(e.target.value)} placeholder="HERO, INFANTRY, …" />
-                        </div>
-                      </>
-                    )}
+                    {activeDoc === 'warlord' && renderWarlordForm()}
 
                     {activeDoc === 'roster' && (
                       <>
@@ -757,7 +769,11 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                         key={c.key}
                         className={`ptg-campaign-card${campaign === c.key ? ' ptg-campaign-selected' : ''}`}
                         disabled={!c.available}
-                        onClick={() => { setCampaign(c.key); setStep(s => Math.min(STEPS.length - 1, s + 1)); }}
+                        onClick={() => {
+                          setCampaign(c.key);
+                          if (CAMPAIGN_POINTS_LIMITS[c.key]) setPointsLimit(CAMPAIGN_POINTS_LIMITS[c.key]);
+                          setStep(s => Math.min(STEPS.length - 1, s + 1));
+                        }}
                       >
                         <div className="ptg-campaign-name">{c.name}</div>
                         <div className="ptg-campaign-desc">{c.desc}</div>
@@ -790,6 +806,11 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                       </button>
                     );
                   }))}
+                </div>
+              ) : step === 2 ? (
+                <div className="ptg-step-warlord">
+                  <div className="ptg-step-warlord-title">Warlord Warscroll</div>
+                  {renderWarlordForm()}
                 </div>
               ) : (
                 <div className="ptg-wizard-body-placeholder">Coming soon.</div>

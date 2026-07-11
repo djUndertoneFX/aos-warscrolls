@@ -2372,6 +2372,26 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   color: var(--text-dim, #8a8578);
   font-style: italic;
 }
+.ptg-step-warlord {
+  width: 100%;
+  background: rgba(0,0,0,0.18);
+  border: 2px solid #c8a840;
+  outline: 5px solid #0c0a08;
+  outline-offset: -7px;
+  box-shadow: 0 0 0 7px #0c0a08, 0 8px 30px rgba(0,0,0,0.5);
+  border-radius: 3px;
+  padding: 1.5rem 1.75rem;
+}
+.ptg-step-warlord-title {
+  font-family: 'Cinzel', serif;
+  font-size: 1.4rem;
+  letter-spacing: 0.05em;
+  color: #c8a840;
+  text-align: center;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(200,168,64,0.3);
+}
 .ptg-campaign-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2959,7 +2979,7 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 .ptg-army-points-limit { grid-column: 3; grid-row: 1 / 3; display: flex; flex-direction: column; }
 .ptg-army-faction      { grid-column: 1; grid-row: 2; }
 .ptg-army-formation    { grid-column: 2; grid-row: 2; }
-.ptg-army-points-limit input { flex: 1; }
+.ptg-army-points-limit input { flex: 1; text-align: center; font-size: 1.3rem; font-family: 'Cinzel', serif; font-weight: 700; }
 
 .ptg-wizard-nav {
   display: flex;
