@@ -2258,7 +2258,7 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   left: 50%;
   transform: translateX(-50%);
   z-index: 1201;
-  width: min(880px, 96vw);
+  width: min(980px, 96vw);
   max-height: 92vh;
   overflow-y: auto;
   background: #1a1614;
@@ -2665,7 +2665,7 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 }
 .ptg-roster-header-grid {
   display: grid;
-  grid-template-columns: 0.85fr 1.15fr 1.15fr 1fr;
+  grid-template-columns: 0.8fr 1.05fr 1.05fr 0.8fr 1.3fr;
   grid-template-rows: auto auto;
   gap: 0.75rem;
   margin-bottom: 1rem;
@@ -2674,6 +2674,7 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 .ptg-roster-armyname  { grid-column: 2; grid-row: 1; }
 .ptg-roster-realm     { grid-column: 3; grid-row: 1; }
 .ptg-roster-glory     { grid-column: 4; grid-row: 1 / 3; display: flex; flex-direction: column; }
+.ptg-roster-rounds    { grid-column: 5; grid-row: 1 / 3; display: flex; flex-direction: column; }
 .ptg-roster-faction   { grid-column: 2; grid-row: 2; }
 .ptg-roster-formation { grid-column: 3; grid-row: 2; }
 .ptg-roster-heraldry input, .ptg-roster-glory input, .ptg-heraldry-box { flex: 1; }
@@ -2681,7 +2682,96 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   border: 1px dashed rgba(200,168,64,0.35);
   border-radius: 3px;
   background: rgba(0,0,0,0.15);
+  background-size: cover;
+  background-position: center;
   min-height: 60px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+.ptg-heraldry-box:hover { border-color: #c8a840; background-color: rgba(200,168,64,0.08); }
+.ptg-heraldry-hint {
+  font-size: 0.62rem;
+  color: var(--text-dim, #8a8578);
+  line-height: 1.4;
+}
+
+/* ── Realm / Faction / Formation pulldowns ── */
+.ptg-realm-menu, .ptg-faction-pulldown-menu { padding-bottom: 0.3rem; }
+.ptg-realm-tooltip {
+  margin: 0.4rem 0.6rem 0.3rem;
+  padding: 0.5rem 0.6rem;
+  border-top: 1px solid rgba(200,168,64,0.25);
+  padding-top: 0.6rem;
+}
+.ptg-realm-tooltip-title {
+  font-family: 'Cinzel', serif;
+  font-size: 0.72rem;
+  color: #c8a840;
+  margin-bottom: 0.3rem;
+}
+.ptg-realm-tooltip-title em { font-style: italic; color: var(--text-dim, #8a8578); }
+.ptg-realm-tooltip-desc {
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--parchment, #d8cca8);
+}
+.ptg-faction-pulldown-menu {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 0.25rem;
+  width: max(100%, 420px);
+  max-height: none;
+  overflow-y: visible;
+}
+
+/* ── Glory Points / Round ── */
+.ptg-roster-glory input {
+  text-align: center;
+  font-family: 'Cinzel', serif;
+  font-size: 2.1rem;
+  font-weight: 700;
+}
+.ptg-glory-rounds {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border: 1px dashed rgba(200,168,64,0.35);
+  border-radius: 3px;
+  padding: 0.4rem;
+  gap: 0.3rem;
+  overflow-y: auto;
+}
+.ptg-glory-round-row { display: flex; align-items: center; gap: 0.35rem; }
+.ptg-glory-round-num {
+  font-family: 'Cinzel', serif;
+  font-size: 0.62rem;
+  color: var(--text-dim, #8a8578);
+  width: 1.6rem;
+  flex-shrink: 0;
+}
+.ptg-glory-round-row input {
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(200,168,64,0.4);
+  border-radius: 3px;
+  padding: 0.3rem 0.4rem;
+  color: #d8cca8;
+  font-family: 'Palatino Linotype', Palatino, Georgia, serif;
+  font-size: 0.8rem;
+}
+.ptg-glory-rounds-total {
+  margin-top: auto;
+  padding-top: 0.4rem;
+  border-top: 1px solid rgba(200,168,64,0.25);
+  font-size: 0.72rem;
+  color: var(--text-dim, #8a8578);
+  text-align: center;
 }
 .ptg-roster-lower-grid {
   display: grid;

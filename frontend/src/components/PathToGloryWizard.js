@@ -1,4 +1,28 @@
 import React, { useState, useEffect, useRef } from 'react';
+import axios from 'axios';
+
+// The 8 Mortal Realms. Descriptions below are general, widely-known setting
+// lore written for this UI — NOT verbatim text quoted from a GW rulebook.
+// We don't have a book excerpt describing each realm to draw authentic
+// flavor text from; if one gets photographed, swap these in.
+const REALMS = [
+  { key: 'aqshy',  name: 'Aqshy',  epithet: 'the Realm of Fire',
+    desc: 'A realm of ceaseless war and raw aggression, its skies choked with ash and its rivers running molten. Aqshy grants strength and fury to those who call it home.' },
+  { key: 'chamon', name: 'Chamon', epithet: 'the Realm of Metal',
+    desc: 'A realm of alchemy and artifice, where mountains of gold and seas of mercury reshape reality itself. Its magic favours makers of war-engines and wielders of arcane technology.' },
+  { key: 'ghur',   name: 'Ghur',   epithet: 'the Realm of Beasts',
+    desc: 'A savage wilderness realm of monstrous beasts and endless hunts, where only the strong survive and predator and prey are locked in eternal struggle.' },
+  { key: 'ghyran', name: 'Ghyran', epithet: 'the Realm of Life',
+    desc: 'A verdant realm of overwhelming growth and rebirth, its jungles and swamps teeming with life — though also with the rot and pestilence that feed on it.' },
+  { key: 'hysh',   name: 'Hysh',   epithet: 'the Realm of Light',
+    desc: 'A realm of order, knowledge, and illumination, where the light of civilisation battles endlessly against encroaching darkness and the perils of hubris.' },
+  { key: 'shyish', name: 'Shyish', epithet: 'the Realm of Death',
+    desc: 'A realm of ancient ruins and endless twilight, where time itself runs strangely and the dead do not always stay buried.' },
+  { key: 'ulgu',   name: 'Ulgu',   epithet: 'the Realm of Shadow',
+    desc: 'A realm of deception and mist-shrouded illusion, where nothing is quite as it seems and shadow conceals both refuge and ambush.' },
+  { key: 'azyr',   name: 'Azyr',   epithet: 'the Realm of Heavens',
+    desc: 'The celestial realm of Sigmar and his Stormcast Eternals, a bastion of order among the stars from which the God-King directs the reconquest of the Mortal Realms.' },
+];
 
 const STEPS = [
   'Select your Campaign',
@@ -83,6 +107,145 @@ function PresentToggle({ mode, onChange }) {
   );
 }
 
+// Closes a dropdown on outside click; shared by the Realm/Faction/Formation pulldowns below.
+function useCloseOnOutsideClick(ref, open, onClose) {
+  useEffect(() => {
+    if (!open) return;
+    const h = e => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [open, ref, onClose]);
+}
+
+// Realm of Origin — the 8 Mortal Realms plus a free-text "Custom" option.
+// Hovering an option shows its summary/flavor text in a footer panel.
+function RealmDropdown({ value, customValue, onChange, onCustomChange }) {
+  const [open, setOpen] = useState(false);
+  const [hovered, setHovered] = useState(null);
+  const ref = useRef(null);
+  useCloseOnOutsideClick(ref, open, () => { setOpen(false); setHovered(null); });
+
+  const selectedRealm = REALMS.find(r => r.key === value);
+  const label = value === 'custom' ? (customValue.trim() || 'Custom…') : (selectedRealm ? selectedRealm.name : 'Select a realm…');
+  const shown = REALMS.find(r => r.key === (hovered || value));
+
+  return (
+    <div className="faction-dropdown" ref={ref}>
+      <button type="button" className="faction-dropdown-trigger" onClick={() => setOpen(o => !o)}>
+        <span>{label}</span>
+        <span className="faction-dropdown-arrow">{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div className="faction-dropdown-menu ptg-realm-menu">
+          {REALMS.map(r => (
+            <div
+              key={r.key}
+              className={`faction-dropdown-item${value === r.key ? ' selected' : ''}`}
+              onMouseEnter={() => setHovered(r.key)}
+              onMouseLeave={() => setHovered(null)}
+              onMouseDown={() => { onChange(r.key); setOpen(false); setHovered(null); }}
+            >
+              {r.name}
+            </div>
+          ))}
+          <div
+            className={`faction-dropdown-item${value === 'custom' ? ' selected' : ''}`}
+            onMouseEnter={() => setHovered(null)}
+            onMouseDown={() => { onChange('custom'); setOpen(false); setHovered(null); }}
+          >
+            Custom…
+          </div>
+          {shown && (
+            <div className="ptg-realm-tooltip">
+              <div className="ptg-realm-tooltip-title">{shown.name}, <em>{shown.epithet}</em></div>
+              <div className="ptg-realm-tooltip-desc">{shown.desc}</div>
+            </div>
+          )}
+        </div>
+      )}
+      {value === 'custom' && (
+        <input
+          className="ptg-campaign-name-input"
+          type="text"
+          placeholder="Name your realm…"
+          value={customValue}
+          onChange={e => onCustomChange(e.target.value)}
+        />
+      )}
+    </div>
+  );
+}
+
+// Faction picker for the Path to Glory Roster — a two-column pulldown so all
+// ~24 factions are visible at once, no scrolling required.
+function FactionPulldown({ factions, value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useCloseOnOutsideClick(ref, open, () => setOpen(false));
+  const selected = factions.find(f => f.faction_slug === value);
+  return (
+    <div className="faction-dropdown" ref={ref}>
+      <button type="button" className="faction-dropdown-trigger" onClick={() => setOpen(o => !o)}>
+        <span>{selected ? selected.faction : 'Select a faction…'}</span>
+        <span className="faction-dropdown-arrow">{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div className="faction-dropdown-menu ptg-faction-pulldown-menu">
+          {factions.map(f => (
+            <div
+              key={f.faction_slug}
+              className={`faction-dropdown-item${value === f.faction_slug ? ' selected' : ''}`}
+              onMouseDown={() => { onChange(f.faction_slug); setOpen(false); }}
+            >
+              {f.faction}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Battle Formation picker — populated from that faction's actual battle
+// formations once a faction is known; hovering an option shows its ability.
+function FormationDropdown({ formations, value, onChange, loading }) {
+  const [open, setOpen] = useState(false);
+  const [hovered, setHovered] = useState(null);
+  const ref = useRef(null);
+  useCloseOnOutsideClick(ref, open, () => { setOpen(false); setHovered(null); });
+  const selected = formations.find(f => f.formation_name === value);
+  const shown = formations.find(f => f.formation_name === (hovered || value));
+  return (
+    <div className="faction-dropdown" ref={ref}>
+      <button type="button" className="faction-dropdown-trigger" onClick={() => setOpen(o => !o)} disabled={loading}>
+        <span>{loading ? 'Loading…' : (selected ? selected.formation_name : (formations.length ? 'Select a formation…' : 'No formations found'))}</span>
+        <span className="faction-dropdown-arrow">{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div className="faction-dropdown-menu ptg-realm-menu">
+          {formations.map(f => (
+            <div
+              key={f.id}
+              className={`faction-dropdown-item${value === f.formation_name ? ' selected' : ''}`}
+              onMouseEnter={() => setHovered(f.formation_name)}
+              onMouseLeave={() => setHovered(null)}
+              onMouseDown={() => { onChange(f.formation_name); setOpen(false); setHovered(null); }}
+            >
+              {f.formation_name}
+            </div>
+          ))}
+          {shown && (
+            <div className="ptg-realm-tooltip">
+              <div className="ptg-realm-tooltip-title">{shown.formation_name}{shown.name ? ` — ${shown.name}` : ''}</div>
+              <div className="ptg-realm-tooltip-desc">{shown.effect}</div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Generic "list of editable rows" state helper — used for weapon tables,
 // Order of Battle units, and Army Roster unit rows.
 function useRowList(initial = []) {
@@ -121,10 +284,13 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
 
   // ── Path to Glory Roster ──
   const [armyName, setArmyName] = useState(() => saved.armyName ?? '');
+  const [heraldryImage, setHeraldryImage] = useState(() => saved.heraldryImage ?? null);
   const [realmOfOrigin, setRealmOfOrigin] = useState(() => saved.realmOfOrigin ?? '');
+  const [customRealmName, setCustomRealmName] = useState(() => saved.customRealmName ?? '');
   const [faction, setFaction] = useState(() => saved.faction ?? '');
   const [battleFormation, setBattleFormation] = useState(() => saved.battleFormation ?? '');
   const [gloryPoints, setGloryPoints] = useState(() => saved.gloryPoints ?? '0');
+  const [gloryRounds, addGloryRound, updateGloryRoundRow, removeGloryRound] = useRowList(saved.gloryRounds ?? []);
   const [currentQuest, setCurrentQuest] = useState(() => saved.currentQuest ?? '');
   const [questPoints, setQuestPoints] = useState(() => saved.questPoints ?? '');
   const [questNotes, setQuestNotes] = useState(() => saved.questNotes ?? '');
@@ -135,6 +301,55 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   const [prayerLore, setPrayerLore] = useState(() => saved.prayerLore ?? Array(6).fill(''));
   const [manifestationLore, setManifestationLore] = useState(() => saved.manifestationLore ?? Array(6).fill(''));
   const setLoreRow = (setter) => (i, value) => setter(rows => rows.map((r, ri) => ri === i ? value : r));
+
+  // Effective faction slug driving the Roster's Faction dropdown default and
+  // the Battle Formation lookup: explicit Roster pick wins, else fall back
+  // to whatever was chosen back in Step 2.
+  const effectiveFactionSlug = faction || selectedFaction || '';
+
+  // Adding/editing a round's glory points ADDS the delta to the running
+  // total (not overwrite), so manual spending between rounds is preserved.
+  const gloryRoundsSum = gloryRounds.reduce((sum, r) => sum + (parseInt(r.value, 10) || 0), 0);
+  const prevGloryRoundsSumRef = useRef(gloryRoundsSum);
+  useEffect(() => {
+    const delta = gloryRoundsSum - prevGloryRoundsSumRef.current;
+    if (delta !== 0) setGloryPoints(gp => String((parseInt(gp, 10) || 0) + delta));
+    prevGloryRoundsSumRef.current = gloryRoundsSum;
+  }, [gloryRoundsSum]);
+
+  // Battle formations for the currently-known faction (Roster's "Battle
+  // Formation" field becomes a dropdown of these once a faction is set).
+  const [formations, setFormations] = useState([]);
+  const [formationsLoading, setFormationsLoading] = useState(false);
+  useEffect(() => {
+    if (!effectiveFactionSlug) { setFormations([]); return; }
+    setFormationsLoading(true);
+    axios.get(`/api/faction-rules/${effectiveFactionSlug}`)
+      .then(res => setFormations(res.data.formations ?? []))
+      .catch(() => setFormations([]))
+      .finally(() => setFormationsLoading(false));
+  }, [effectiveFactionSlug]);
+
+  const heraldryInputRef = useRef(null);
+  const handleHeraldryFile = (file) => {
+    if (!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new window.Image();
+      img.onload = () => {
+        const maxDim = 300;
+        let { width, height } = img;
+        if (width > height) { if (width > maxDim) { height = Math.round(height * maxDim / width); width = maxDim; } }
+        else { if (height > maxDim) { width = Math.round(width * maxDim / height); height = maxDim; } }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        setHeraldryImage(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
 
   // ── Order of Battle ──
   const [warlordWarscroll, setWarlordWarscroll] = useState(() => saved.warlordWarscroll ?? '');
@@ -196,7 +411,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     const snapshot = {
       step, activeDoc, presentMode, campaign, customCampaignName, selectedFaction,
       warlordName, warlordKeywords, rangedWeapons, meleeWeapons,
-      armyName, realmOfOrigin, faction, battleFormation, gloryPoints,
+      armyName, heraldryImage, realmOfOrigin, customRealmName, faction, battleFormation, gloryPoints, gloryRounds,
       currentQuest, questPoints, questNotes, questsCompleted, background, notableEvents,
       spellLore, prayerLore, manifestationLore,
       warlordWarscroll, warlordRank, warlordRenown, warlordEnhancements, warlordPath, warlordPathAbility, oobUnits,
@@ -206,7 +421,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   }, [
     step, activeDoc, presentMode, campaign, customCampaignName, selectedFaction,
     warlordName, warlordKeywords, rangedWeapons, meleeWeapons,
-    armyName, realmOfOrigin, faction, battleFormation, gloryPoints,
+    armyName, heraldryImage, realmOfOrigin, customRealmName, faction, battleFormation, gloryPoints, gloryRounds,
     currentQuest, questPoints, questNotes, questsCompleted, background, notableEvents,
     spellLore, prayerLore, manifestationLore,
     warlordWarscroll, warlordRank, warlordRenown, warlordEnhancements, warlordPath, warlordPathAbility, oobUnits,
@@ -313,12 +528,58 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                     {activeDoc === 'roster' && (
                       <>
                         <div className="ptg-roster-header-grid">
-                          <div className="ptg-field ptg-roster-heraldry"><label>Heraldry</label><div className="ptg-heraldry-box" /></div>
+                          <div className="ptg-field ptg-roster-heraldry">
+                            <label>Heraldry</label>
+                            <div
+                              className="ptg-heraldry-box"
+                              onDragOver={e => e.preventDefault()}
+                              onDrop={e => { e.preventDefault(); handleHeraldryFile(e.dataTransfer.files[0]); }}
+                              onClick={() => heraldryInputRef.current?.click()}
+                              style={heraldryImage ? { backgroundImage: `url(${heraldryImage})` } : undefined}
+                              title="Click or drag an image here"
+                            >
+                              {!heraldryImage && <span className="ptg-heraldry-hint">Drop image<br />or click</span>}
+                              <input
+                                ref={heraldryInputRef}
+                                type="file"
+                                accept="image/*"
+                                style={{ display: 'none' }}
+                                onChange={e => handleHeraldryFile(e.target.files[0])}
+                              />
+                            </div>
+                          </div>
                           <div className="ptg-field ptg-roster-armyname"><label>Army Name</label><input type="text" value={armyName} onChange={e => setArmyName(e.target.value)} placeholder="e.g. The Sundered Vanguard" /></div>
-                          <div className="ptg-field ptg-roster-realm"><label>Realm of Origin</label><input type="text" value={realmOfOrigin} onChange={e => setRealmOfOrigin(e.target.value)} placeholder="e.g. Hysh" /></div>
+                          <div className="ptg-field ptg-roster-realm">
+                            <label>Realm of Origin</label>
+                            <RealmDropdown value={realmOfOrigin} customValue={customRealmName} onChange={setRealmOfOrigin} onCustomChange={setCustomRealmName} />
+                          </div>
                           <div className="ptg-field ptg-roster-glory"><label>Glory Points</label><input type="text" value={gloryPoints} onChange={e => setGloryPoints(e.target.value)} /></div>
-                          <div className="ptg-field ptg-roster-faction"><label>Faction</label><input type="text" value={faction} onChange={e => setFaction(e.target.value)} /></div>
-                          <div className="ptg-field ptg-roster-formation"><label>Battle Formation</label><input type="text" value={battleFormation} onChange={e => setBattleFormation(e.target.value)} /></div>
+                          <div className="ptg-field ptg-roster-rounds">
+                            <label>Glory Points / Round</label>
+                            <div className="ptg-glory-rounds">
+                              {gloryRounds.map((r, i) => (
+                                <div className="ptg-glory-round-row" key={r.id}>
+                                  <span className="ptg-glory-round-num">R{i + 1}</span>
+                                  <input value={r.value || ''} onChange={e => updateGloryRoundRow(r.id, 'value', e.target.value)} />
+                                  <button className="ptg-oob-row-remove" onClick={() => removeGloryRound(r.id)} title="Remove round">✕</button>
+                                </div>
+                              ))}
+                              <button className="ptg-wizard-nav-btn ptg-oob-add-btn" onClick={() => addGloryRound({ value: '' })}>+ Round</button>
+                              <div className="ptg-glory-rounds-total">Total Earned: {gloryRoundsSum}</div>
+                            </div>
+                          </div>
+                          <div className="ptg-field ptg-roster-faction">
+                            <label>Faction</label>
+                            <FactionPulldown factions={factions} value={effectiveFactionSlug} onChange={setFaction} />
+                          </div>
+                          <div className="ptg-field ptg-roster-formation">
+                            <label>Battle Formation</label>
+                            {effectiveFactionSlug ? (
+                              <FormationDropdown formations={formations} value={battleFormation} onChange={setBattleFormation} loading={formationsLoading} />
+                            ) : (
+                              <input type="text" value={battleFormation} onChange={e => setBattleFormation(e.target.value)} placeholder="Pick a faction first…" />
+                            )}
+                          </div>
                         </div>
 
                         <div className="ptg-roster-lower-grid">
