@@ -444,6 +444,17 @@ input, select {
   background: rgba(0,0,0,0.55);
 }
 .form-group input::placeholder { color: var(--text-dim); }
+/* Password fields use a bullet placeholder ("••••••••") purely as a hint
+   that this is a password field — at full opacity it reads as if a
+   password were already typed in. Fade it, and hide it entirely on focus
+   (rather than only once a value/autofill is present) so there's never a
+   moment where an empty, focused field looks pre-filled. */
+.form-group input[type="password"]::placeholder {
+  color: var(--text-dim);
+  opacity: 0.4;
+  transition: opacity 0.15s ease;
+}
+.form-group input[type="password"]:focus::placeholder { opacity: 0; }
 
 .btn-primary {
   background: linear-gradient(135deg, var(--gold-dark) 0%, var(--gold) 100%);
