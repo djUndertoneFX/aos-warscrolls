@@ -192,7 +192,10 @@ function makeAdoKTooltip(includeSaveWard, save, ward) {
 
 // Stub roster picker — "store, recall, remove" a saved Path to Glory roster.
 // Not wired to any persistence yet; UI only.
-function RosterDropdown({ label }) {
+// Shared saved-roster pulldown — used for both "My Roster" and "Enemy
+// Roster" since a build isn't intrinsically one or the other, just
+// whichever slot picks it. Same list, same actions, in both places.
+function RosterDropdown({ label, rosters, onLoad, onDuplicate, onDelete, onStartFromScratch, onSaveCurrent }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -211,8 +214,32 @@ function RosterDropdown({ label }) {
       </button>
       {open && (
         <div className="faction-dropdown-menu">
-          <div className="faction-dropdown-item ptg-roster-empty">No saved rosters yet</div>
-          <div className="faction-dropdown-item ptg-roster-action" onMouseDown={() => setOpen(false)}>+ Save Current Roster</div>
+          {rosters.length === 0 ? (
+            <div className="faction-dropdown-item ptg-roster-empty">No saved rosters yet</div>
+          ) : rosters.map(r => (
+            <div
+              key={r.id}
+              className="faction-dropdown-item ptg-roster-item"
+              onMouseDown={() => { onLoad(r.id); setOpen(false); }}
+              title={`Load "${r.name}"`}
+            >
+              <span className="ptg-roster-item-name">{r.name}{r.faction_name ? ` — ${r.faction_name}` : ''}</span>
+              <span className="ptg-roster-item-icons">
+                <button
+                  className="ptg-roster-icon-btn"
+                  title="Duplicate this roster"
+                  onMouseDown={e => { e.stopPropagation(); onDuplicate(r.id); }}
+                >⧉</button>
+                <button
+                  className="ptg-roster-icon-btn ptg-roster-icon-btn-danger"
+                  title="Delete this roster"
+                  onMouseDown={e => { e.stopPropagation(); onDelete(r.id); }}
+                >✕</button>
+              </span>
+            </div>
+          ))}
+          <div className="faction-dropdown-item ptg-roster-action" onMouseDown={() => { setOpen(false); onSaveCurrent(); }}>+ Save Current Roster</div>
+          <div className="faction-dropdown-item ptg-roster-action ptg-roster-action-reset" onMouseDown={() => { setOpen(false); onStartFromScratch(); }}>Start from Scratch</div>
         </div>
       )}
     </div>
@@ -224,6 +251,53 @@ export default function PathToGloryPage({ headerCollapsed }) {
   const { logout } = useAuth();
   const [ptgView, setPtgView] = useState('recruit'); // 'recruit' | 'battle' — stub for now, no behavior wired yet
   const [showRecruitWizard, setShowRecruitWizard] = useState(false);
+  const RECRUIT_WIZARD_KEY = 'aos-ptg-recruit-wizard';
+
+  // ── Saved Path to Glory rosters (shared list for both My/Enemy Roster dropdowns) ──
+  const [ptgRosters, setPtgRosters] = useState([]);
+  // Bumping this remounts <PathToGloryWizard>, forcing it to re-read localStorage
+  // from scratch — used both for "Start from Scratch" and for loading a saved roster.
+  const [wizardResetKey, setWizardResetKey] = useState(0);
+  const fetchPtgRosters = () => axios.get('/api/ptg-rosters').then(res => setPtgRosters(res.data)).catch(() => {});
+  useEffect(() => { fetchPtgRosters(); }, []);
+
+  const handleLoadRoster = async (id) => {
+    try {
+      const res = await axios.get(`/api/ptg-rosters/${id}`);
+      localStorage.setItem(RECRUIT_WIZARD_KEY, JSON.stringify(res.data.data));
+      setWizardResetKey(k => k + 1);
+      setPtgView('recruit');
+      setShowRecruitWizard(true);
+    } catch { /* roster fetch failed — leave current wizard state untouched */ }
+  };
+  const handleDuplicateRoster = async (id) => {
+    try { await axios.post(`/api/ptg-rosters/${id}/duplicate`); fetchPtgRosters(); } catch { /* ignore */ }
+  };
+  const handleDeleteRoster = async (id) => {
+    if (!window.confirm('Delete this saved roster? This cannot be undone.')) return;
+    try { await axios.delete(`/api/ptg-rosters/${id}`); fetchPtgRosters(); } catch { /* ignore */ }
+  };
+  const handleStartFromScratch = () => {
+    if (!window.confirm('Start from scratch? This wipes the wizard\'s current progress (any unsaved changes will be lost).')) return;
+    localStorage.removeItem(RECRUIT_WIZARD_KEY);
+    setWizardResetKey(k => k + 1);
+    setPtgView('recruit');
+    setShowRecruitWizard(true);
+  };
+  const handleSaveCurrentRoster = async () => {
+    const raw = localStorage.getItem(RECRUIT_WIZARD_KEY);
+    if (!raw) { window.alert('Nothing to save yet — open Recruit Your Forces first.'); return; }
+    let data; try { data = JSON.parse(raw); } catch { return; }
+    const name = window.prompt('Name this roster:', data.armyName || data.warlordName || 'My Roster');
+    if (!name) return;
+    const factionSlug = data.faction || data.selectedFaction || null;
+    const factionObj = factions.find(f => f.faction_slug === factionSlug);
+    try {
+      await axios.post('/api/ptg-rosters', { name, faction_slug: factionSlug, faction_name: factionObj ? factionObj.faction : null, data });
+      fetchPtgRosters();
+    } catch { /* ignore */ }
+  };
+
   const [data, setData]           = useState(null);
   const [factions, setFactions]   = useState([]);
   const [loading, setLoading]     = useState(true);
@@ -619,7 +693,15 @@ export default function PathToGloryPage({ headerCollapsed }) {
         </div>
 
         <div className="ptg-header-section ptg-header-rosters">
-          <RosterDropdown label="My Roster" />
+          <RosterDropdown
+            label="My Roster"
+            rosters={ptgRosters}
+            onLoad={handleLoadRoster}
+            onDuplicate={handleDuplicateRoster}
+            onDelete={handleDeleteRoster}
+            onStartFromScratch={handleStartFromScratch}
+            onSaveCurrent={handleSaveCurrentRoster}
+          />
           <div className="ptg-action-row">
             <button
               className={`ptg-action-btn${ptgView === 'recruit' ? ' ptg-action-active' : ''}`}
@@ -632,7 +714,15 @@ export default function PathToGloryPage({ headerCollapsed }) {
               Face Thy Enemies
             </button>
           </div>
-          <RosterDropdown label="Enemy Roster" />
+          <RosterDropdown
+            label="Enemy Roster"
+            rosters={ptgRosters}
+            onLoad={handleLoadRoster}
+            onDuplicate={handleDuplicateRoster}
+            onDelete={handleDeleteRoster}
+            onStartFromScratch={handleStartFromScratch}
+            onSaveCurrent={handleSaveCurrentRoster}
+          />
         </div>
 
         {/* "Battle Buddy" — takes your roster + the enemy roster (if any) and acts as
@@ -1041,7 +1131,7 @@ export default function PathToGloryPage({ headerCollapsed }) {
       )}
     </div>
 
-    {showRecruitWizard && <PathToGloryWizard factions={factions} onClose={() => setShowRecruitWizard(false)} />}
+    {showRecruitWizard && <PathToGloryWizard key={wizardResetKey} factions={factions} onClose={() => setShowRecruitWizard(false)} />}
 
     {lightboxUnit && (() => {
       const rows = data?.data ?? [];

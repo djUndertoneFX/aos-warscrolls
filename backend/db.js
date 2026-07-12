@@ -182,6 +182,31 @@ function initDb() {
   try { db.exec('ALTER TABLE faction_battle_traits ADD COLUMN lore_text TEXT DEFAULT NULL'); } catch {}
   try { db.exec('ALTER TABLE faction_battle_formations ADD COLUMN lore_text TEXT DEFAULT NULL'); } catch {}
   try { db.exec('ALTER TABLE faction_extra_rules ADD COLUMN lore_text TEXT DEFAULT NULL'); } catch {}
+  // Starting-warscroll data (Anvil of Apotheosis Step 2) — only the concrete
+  // values the source actually provides (weapon profile + keywords). Move/
+  // Health/Save/Control have no fixed starting value in the source: they're
+  // built up entirely through later Destiny Point purchases, so there's
+  // nothing real to store/autofill for those.
+  try { db.exec('ALTER TABLE faction_apotheosis_steps ADD COLUMN starting_weapon TEXT DEFAULT NULL'); } catch {}
+  try { db.exec('ALTER TABLE faction_apotheosis_steps ADD COLUMN starting_keywords TEXT DEFAULT NULL'); } catch {}
+
+  // Saved Path to Glory rosters — one shared pool per user, selectable from
+  // either the "My Roster" or "Enemy Roster" dropdown (a build isn't
+  // intrinsically "mine" or "the enemy's", just whichever slot picks it).
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS ptg_rosters (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      faction_slug TEXT,
+      faction_name TEXT,
+      data TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_ptg_rosters_user ON ptg_rosters(user_id);
+  `);
 
   db.close();
   console.log('Database initialized.');

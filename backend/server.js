@@ -765,7 +765,7 @@ app.get('/api/apotheosis/:slug', requireAuth, (req, res) => {
   try {
     const slug = req.params.slug;
     const steps = db.prepare(
-      'SELECT step_number, step_title, intro_text FROM faction_apotheosis_steps WHERE faction_slug = ? ORDER BY step_number'
+      'SELECT step_number, step_title, intro_text, starting_weapon, starting_keywords FROM faction_apotheosis_steps WHERE faction_slug = ? ORDER BY step_number'
     ).all(slug);
     const options = db.prepare(
       'SELECT step_number, option_group, name, cost, timing, declare, effect, bullets, keywords, lore_text, sort_order FROM faction_apotheosis_options WHERE faction_slug = ? ORDER BY step_number, sort_order'
@@ -773,9 +773,99 @@ app.get('/api/apotheosis/:slug', requireAuth, (req, res) => {
     res.json({
       steps: steps.map(s => ({
         ...s,
+        starting_weapon: s.starting_weapon ? JSON.parse(s.starting_weapon) : null,
+        starting_keywords: s.starting_keywords ? JSON.parse(s.starting_keywords) : null,
         options: options.filter(o => o.step_number === s.step_number),
       })),
     });
+  } finally {
+    db.close();
+  }
+});
+
+// ── Path to Glory saved rosters ──────────────────────────────────────────
+// One shared pool per user — a saved build isn't intrinsically "mine" or
+// "the enemy's", it's just whichever roster dropdown picks it. `data` is
+// the wizard's full localStorage-shaped state blob, opaque to the server.
+
+// GET /api/ptg-rosters — lightweight list (no `data` blob) for the roster dropdowns
+app.get('/api/ptg-rosters', requireAuth, (req, res) => {
+  const db = getDb();
+  try {
+    const rows = db.prepare(
+      'SELECT id, name, faction_slug, faction_name, updated_at FROM ptg_rosters WHERE user_id = ? ORDER BY updated_at DESC'
+    ).all(req.user.id);
+    res.json(rows);
+  } finally {
+    db.close();
+  }
+});
+
+// GET /api/ptg-rosters/:id — full record, including the state blob, for loading into the wizard
+app.get('/api/ptg-rosters/:id', requireAuth, (req, res) => {
+  const db = getDb();
+  try {
+    const row = db.prepare('SELECT * FROM ptg_rosters WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+    if (!row) return res.status(404).json({ error: 'Roster not found' });
+    res.json({ ...row, data: JSON.parse(row.data) });
+  } finally {
+    db.close();
+  }
+});
+
+// POST /api/ptg-rosters — save a new roster
+app.post('/api/ptg-rosters', requireAuth, (req, res) => {
+  const { name, faction_slug, faction_name, data } = req.body;
+  if (!name || !data) return res.status(400).json({ error: 'name and data are required' });
+  const db = getDb();
+  try {
+    const info = db.prepare(
+      'INSERT INTO ptg_rosters (user_id, name, faction_slug, faction_name, data) VALUES (?, ?, ?, ?, ?)'
+    ).run(req.user.id, name, faction_slug || null, faction_name || null, JSON.stringify(data));
+    res.json({ id: info.lastInsertRowid });
+  } finally {
+    db.close();
+  }
+});
+
+// PUT /api/ptg-rosters/:id — overwrite an existing saved roster (re-saving the same build)
+app.put('/api/ptg-rosters/:id', requireAuth, (req, res) => {
+  const { name, faction_slug, faction_name, data } = req.body;
+  const db = getDb();
+  try {
+    const existing = db.prepare('SELECT id FROM ptg_rosters WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+    if (!existing) return res.status(404).json({ error: 'Roster not found' });
+    db.prepare(
+      `UPDATE ptg_rosters SET name = ?, faction_slug = ?, faction_name = ?, data = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+    ).run(name, faction_slug || null, faction_name || null, JSON.stringify(data), req.params.id);
+    res.json({ ok: true });
+  } finally {
+    db.close();
+  }
+});
+
+// POST /api/ptg-rosters/:id/duplicate — clone a saved roster so the user can branch off variants
+app.post('/api/ptg-rosters/:id/duplicate', requireAuth, (req, res) => {
+  const db = getDb();
+  try {
+    const row = db.prepare('SELECT * FROM ptg_rosters WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+    if (!row) return res.status(404).json({ error: 'Roster not found' });
+    const info = db.prepare(
+      'INSERT INTO ptg_rosters (user_id, name, faction_slug, faction_name, data) VALUES (?, ?, ?, ?, ?)'
+    ).run(req.user.id, `${row.name} (Copy)`, row.faction_slug, row.faction_name, row.data);
+    res.json({ id: info.lastInsertRowid });
+  } finally {
+    db.close();
+  }
+});
+
+// DELETE /api/ptg-rosters/:id
+app.delete('/api/ptg-rosters/:id', requireAuth, (req, res) => {
+  const db = getDb();
+  try {
+    const info = db.prepare('DELETE FROM ptg_rosters WHERE id = ? AND user_id = ?').run(req.params.id, req.user.id);
+    if (info.changes === 0) return res.status(404).json({ error: 'Roster not found' });
+    res.json({ ok: true });
   } finally {
     db.close();
   }

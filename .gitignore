@@ -21,6 +21,10 @@ backend/warhammer-debug.png
 # Build output
 frontend/build/
 
+# SQLite WAL journal files (transient — warscrolls.db itself is tracked)
+backend/warscrolls.db-shm
+backend/warscrolls.db-wal
+
 # OS files
 .DS_Store
 Thumbs.db

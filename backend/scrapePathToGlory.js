@@ -18,6 +18,41 @@ function ownRows($, $table) {
   return $table.find('tr').filter((_, tr) => $(tr).closest('table').get(0) === $table.get(0));
 }
 
+// Step 2 ("Fill Out The Starting Warscroll") shows a real blank warscroll
+// datasheet — Move/Wounds/Save/Bravery(Control) are literal asterisk-icon
+// placeholders in the source (there's no fixed starting value for those;
+// they're entirely built up via later Destiny Point purchases), but the
+// starting weapon profile and keyword list ARE concrete fixed data.
+function parseStartingWeapon($, stepBlock) {
+  const $table = $(stepBlock).find('table.wTable').first();
+  if (!$table.length) return null;
+  const headerRow = ownRows($, $table).filter((_, tr) => $(tr).hasClass('wsHeaderRow')).first();
+  const isRanged = /RANGED WEAPONS/i.test(headerRow.text());
+  const statKeys = headerRow.children('td.wsHeaderCell').map((_, td) => normalizeText($(td).text()).toLowerCase()).get();
+  let best = null;
+  $table.find('tbody.bkg').children('tr.wsDataRow').each((_, tr) => {
+    const cells = $(tr).children('td');
+    if (!best || cells.length > $(best).children('td').length) best = tr;
+  });
+  if (!best) return null;
+  const $cells = $(best).children('td');
+  const cells = $cells.map((_, td) => normalizeText($(td).text())).get();
+  const $nameCell = $cells.eq(2).clone();
+  $nameCell.find('br').replaceWith(' — ');
+  const name = normalizeText($nameCell.text());
+  if (!name) return null;
+  const stats = cells.slice(3);
+  const weapon = { name, type: isRanged ? 'ranged' : 'melee' };
+  statKeys.forEach((key, i) => { if (key) weapon[key] = stats[i] || ''; });
+  return weapon;
+}
+
+function parseStartingKeywords($, stepBlock) {
+  const text = $(stepBlock).find('.wsKeywordLine1, .wsKeywordLine2')
+    .map((_, td) => normalizeText($(td).text())).get().join(', ');
+  return text.split(',').map(k => normalizeText(k)).filter(Boolean);
+}
+
 // Pull the "-2DP" / "0DP" / "+4DP" cost badge out of a cloned subtree,
 // removing it so it doesn't pollute subsequent plain-text extraction.
 function extractCost($scope) {
@@ -295,7 +330,15 @@ function parseApotheosisHtml(html, faction) {
 
   const flush = () => {
     if (!current) return;
-    steps.push({ step_number: current.step_number, step_title: current.step_title, intro_text: current.intro_text });
+    const isStartingWarscroll = /fill out the starting warscroll/i.test(current.step_title);
+    const $blocks = $(current.blocks);
+    steps.push({
+      step_number: current.step_number,
+      step_title: current.step_title,
+      intro_text: current.intro_text,
+      starting_weapon: isStartingWarscroll ? parseStartingWeapon($, $blocks) : null,
+      starting_keywords: isStartingWarscroll ? parseStartingKeywords($, $blocks) : null,
+    });
     const parsed = parseStepContent($, current.blocks).map((o, i) => ({
       ...o,
       step_number: current.step_number,
@@ -348,8 +391,8 @@ async function scrapeAllApotheosis(targetSlug = null) {
   }
 
   const insertStep = db.prepare(`
-    INSERT INTO faction_apotheosis_steps (faction_slug, faction_name, step_number, step_title, intro_text)
-    VALUES (@faction_slug, @faction_name, @step_number, @step_title, @intro_text)
+    INSERT INTO faction_apotheosis_steps (faction_slug, faction_name, step_number, step_title, intro_text, starting_weapon, starting_keywords)
+    VALUES (@faction_slug, @faction_name, @step_number, @step_title, @intro_text, @starting_weapon, @starting_keywords)
   `);
   const insertOption = db.prepare(`
     INSERT INTO faction_apotheosis_options
@@ -369,7 +412,13 @@ async function scrapeAllApotheosis(targetSlug = null) {
 
     factionsWithData++;
     db.transaction(() => {
-      for (const s of steps) insertStep.run({ faction_slug: faction.slug, faction_name: faction.name, ...s });
+      for (const s of steps) insertStep.run({
+        faction_slug: faction.slug,
+        faction_name: faction.name,
+        ...s,
+        starting_weapon: s.starting_weapon ? JSON.stringify(s.starting_weapon) : null,
+        starting_keywords: s.starting_keywords ? JSON.stringify(s.starting_keywords) : null,
+      });
       for (const o of options) insertOption.run({
         ...o,
         option_group: o.option_group || null,

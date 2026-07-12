@@ -672,6 +672,36 @@ input, select {
   color: var(--gold);
   border-top: 1px solid var(--border);
 }
+.ptg-roster-action-reset { color: var(--text-dim); }
+.ptg-roster-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.ptg-roster-item-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ptg-roster-item-icons {
+  display: flex;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+.ptg-roster-icon-btn {
+  background: transparent;
+  border: 1px solid rgba(200,168,64,0.3);
+  border-radius: 3px;
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  line-height: 1;
+  padding: 0.15rem 0.35rem;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.ptg-roster-icon-btn:hover { color: var(--gold-light); border-color: var(--border-gold); background: rgba(200,168,64,0.1); }
+.ptg-roster-icon-btn-danger:hover { color: #e07070; border-color: rgba(224,112,112,0.5); background: rgba(224,112,112,0.1); }
 
 .sim-model-counts {
   display: flex;
@@ -2413,6 +2443,23 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   padding-bottom: 0.75rem;
   border-bottom: 1px solid rgba(200,168,64,0.3);
 }
+/* "Train your Warlord" 2-panel layout: left = the sub-step wizard flow
+   (as before), right = the Warlord Warscroll docked permanently so it's
+   visible while making choices, instead of swapping views. */
+.ptg-step-warlord-split {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+}
+.ptg-step-warlord-left { flex: 1 1 55%; min-width: 0; }
+.ptg-step-warlord-right {
+  flex: 1 1 45%;
+  min-width: 0;
+  position: sticky;
+  top: 0;
+  border-left: 1px solid rgba(200,168,64,0.25);
+  padding-left: 1.5rem;
+}
 .ptg-warlord-substeps {
   display: flex;
   flex-wrap: wrap;
@@ -2628,16 +2675,23 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 }
 .ptg-progressive-img-full.ptg-progressive-img-loaded { opacity: 1; }
 
+/* 94x122 ≈ the true page scan's 1524:1985 aspect ratio (closest match to
+   the requested 94px width). Thumb files are generated at 3x that (282x366,
+   see frontend/public/ptg/) so they stay sharp on retina displays. */
 .ptg-doc-thumb-img {
   display: block;
-  width: 100%;
+  width: 94px;
+  height: 122px;
   overflow: hidden;
   border: 1px solid rgba(200,168,64,0.2);
   border-radius: 2px;
 }
 .ptg-doc-thumb-img .ptg-progressive-img-micro {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: cover;
 }
 
 /* ── Presentation toggle (Image vs Replica) ── */
@@ -2702,6 +2756,12 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 .ptg-doc-editor-body { min-height: 260px; }
 
 .ptg-field { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 0.9rem; }
+.ptg-warlord-characteristics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.6rem;
+}
+.ptg-warlord-characteristics .ptg-field input { text-align: center; }
 .ptg-field label {
   font-family: 'Cinzel', serif;
   font-size: 0.62rem;

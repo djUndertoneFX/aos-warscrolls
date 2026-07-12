@@ -32,7 +32,7 @@ const REALMS = [
 const STEPS = [
   'Select your Campaign',
   'Pick your Faction',
-  'Pick your Warlord',
+  'Train your Warlord',
   'Pick your Warlord Path',
   'Add your Starting units',
   'Add your Enhancements',
@@ -104,23 +104,36 @@ const DOC_MICRO = {
   army2:   'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABIMDRANCxIQDhAUExIVGywdGxgYGzYnKSAsQDlEQz85Pj1HUGZXR0thTT0+WXlaYWltcnNyRVV9hnxvhWZwcm7/2wBDARMUFBsXGzQdHTRuST5Jbm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm7/wAARCAAfABgDASIAAhEBAxEB/8QAGAAAAwEBAAAAAAAAAAAAAAAAAAMEAgb/xAAlEAACAgECBQUBAAAAAAAAAAABAgARAwQhEhMxUXEFFDJhkYH/xAAVAQEBAAAAAAAAAAAAAAAAAAAAAf/EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/AOpTVINTlwjHbITvfiabKWNFFrzJlysNZmDBVTiNNQvoI1SC1q1/wSCTX6NXyc0AhqoizX5CWZBbpfS+0ICEzZPeZldiMYY1+CNXhJtSTFEoGdnGzmxtAZUX4krfYQGarIVUHiO28JB6hq15JCu5P3CEf//Z',
 };
 
+// Single-pixel average color per scanned page — paints instantly via plain
+// CSS (no image decode at all), shown behind the blur-up micro placeholder
+// so there's never a blank box even before that ~400-byte data URI resolves.
+const DOC_AVG_COLOR = {
+  warlord: '#d3d5ce',
+  roster:  '#cdcdc4',
+  oob:     '#d1d3cc',
+  army1:   '#d1d2cc',
+  army2:   '#d1d2cb',
+};
+
 // The 4 documents a Path to Glory roster is built from. `images` point at
 // scans of the official GW sheets (extracted from the PDFs the user
 // provided) — used both for the tray thumbnail and the "Image" presentation.
 // `micro`/`thumbMicro` are the blur-up placeholders above.
 const DOCS = [
-  { key: 'warlord', title: 'Warlord Warscroll', images: [{ src: '/ptg/warlord-warscroll.jpg', micro: DOC_MICRO.warlord }], thumb: '/ptg/warlord-warscroll-thumb.jpg', thumbMicro: DOC_MICRO.warlord },
-  { key: 'roster',  title: 'Path to Glory Roster', images: [{ src: '/ptg/ptg-roster.jpg', micro: DOC_MICRO.roster }], thumb: '/ptg/ptg-roster-thumb.jpg', thumbMicro: DOC_MICRO.roster },
-  { key: 'oob',     title: 'Order of Battle', images: [{ src: '/ptg/order-of-battle.jpg', micro: DOC_MICRO.oob }], thumb: '/ptg/order-of-battle-thumb.jpg', thumbMicro: DOC_MICRO.oob },
-  { key: 'army',    title: 'Army Roster', images: [{ src: '/ptg/army-roster-1.jpg', micro: DOC_MICRO.army1 }, { src: '/ptg/army-roster-2.jpg', micro: DOC_MICRO.army2 }], thumb: '/ptg/army-roster-1-thumb.jpg', thumbMicro: DOC_MICRO.army1 },
+  { key: 'warlord', title: 'Warlord Warscroll', images: [{ src: '/ptg/warlord-warscroll.jpg', micro: DOC_MICRO.warlord, avgColor: DOC_AVG_COLOR.warlord }], thumb: '/ptg/warlord-warscroll-thumb.jpg', thumbMicro: DOC_MICRO.warlord, avgColor: DOC_AVG_COLOR.warlord },
+  { key: 'roster',  title: 'Path to Glory Roster', images: [{ src: '/ptg/ptg-roster.jpg', micro: DOC_MICRO.roster, avgColor: DOC_AVG_COLOR.roster }], thumb: '/ptg/ptg-roster-thumb.jpg', thumbMicro: DOC_MICRO.roster, avgColor: DOC_AVG_COLOR.roster },
+  { key: 'oob',     title: 'Order of Battle', images: [{ src: '/ptg/order-of-battle.jpg', micro: DOC_MICRO.oob, avgColor: DOC_AVG_COLOR.oob }], thumb: '/ptg/order-of-battle-thumb.jpg', thumbMicro: DOC_MICRO.oob, avgColor: DOC_AVG_COLOR.oob },
+  { key: 'army',    title: 'Army Roster', images: [{ src: '/ptg/army-roster-1.jpg', micro: DOC_MICRO.army1, avgColor: DOC_AVG_COLOR.army1 }, { src: '/ptg/army-roster-2.jpg', micro: DOC_MICRO.army2, avgColor: DOC_AVG_COLOR.army2 }], thumb: '/ptg/army-roster-1-thumb.jpg', thumbMicro: DOC_MICRO.army1, avgColor: DOC_AVG_COLOR.army1 },
 ];
 
-// Blur-up progressive image: shows the tiny inline `micro` placeholder
-// immediately, fades in the real `src` once it finishes loading.
-function ProgressiveImg({ src, micro, alt, className }) {
+// Blur-up progressive image: an average-color fill paints instantly (plain
+// CSS, no decode), the tiny inline `micro` placeholder swaps in as soon as
+// it decodes (still ~instant, no network), then fades to the real `src`
+// once that finishes loading.
+function ProgressiveImg({ src, micro, avgColor, alt, className }) {
   const [loaded, setLoaded] = useState(false);
   return (
-    <span className={`ptg-progressive-img${className ? ' ' + className : ''}`}>
+    <span className={`ptg-progressive-img${className ? ' ' + className : ''}`} style={avgColor ? { backgroundColor: avgColor } : undefined}>
       <img src={micro} alt="" aria-hidden="true" className="ptg-progressive-img-micro" />
       <img
         src={src}
@@ -141,7 +154,7 @@ function DocThumb({ doc, active, onClick }) {
     >
       <div className="ptg-doc-thumb-header">{doc.title}</div>
       <div className="ptg-doc-thumb-img-wrap">
-        <ProgressiveImg src={doc.thumb} micro={doc.thumbMicro} alt={doc.title} className="ptg-doc-thumb-img" />
+        <ProgressiveImg src={doc.thumb} micro={doc.thumbMicro} avgColor={doc.avgColor} alt={doc.title} className="ptg-doc-thumb-img" />
       </div>
     </button>
   );
@@ -332,8 +345,24 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   // ── Warlord Warscroll ──
   const [warlordName, setWarlordName] = useState(() => saved.warlordName ?? '');
   const [warlordKeywords, setWarlordKeywords] = useState(() => saved.warlordKeywords ?? '');
-  const [rangedWeapons, addRanged, updateRanged, removeRanged] = useRowList(saved.rangedWeapons ?? []);
-  const [meleeWeapons, addMelee, updateMelee, removeMelee] = useRowList(saved.meleeWeapons ?? []);
+  const [rangedWeapons, addRanged, updateRanged, removeRanged, setRangedWeapons] = useRowList(saved.rangedWeapons ?? []);
+  const [meleeWeapons, addMelee, updateMelee, removeMelee, setMeleeWeapons] = useRowList(saved.meleeWeapons ?? []);
+  // Move/Health/Save/Control have no fixed "starting" value in the source —
+  // the Anvil of Apotheosis is built entirely from Destiny Point purchases
+  // across later steps, so these stay blank/editable rather than autofilled
+  // (matches how the physical paper form works: you pencil these in as you buy them).
+  const [warlordMove, setWarlordMove] = useState(() => saved.warlordMove ?? '');
+  const [warlordHealth, setWarlordHealth] = useState(() => saved.warlordHealth ?? '');
+  const [warlordSave, setWarlordSave] = useState(() => saved.warlordSave ?? '');
+  const [warlordControl, setWarlordControl] = useState(() => saved.warlordControl ?? '');
+
+  // Per-faction snapshots of the warlord fields above (+ sub-step position),
+  // keyed by faction slug — so switching faction A → B → back to A restores
+  // exactly where you left off on A, instead of either re-running the
+  // auto-fill (clobbering edits) or leaving B's leftover data in place.
+  // A faction with no snapshot yet gets auto-filled fresh the first time.
+  const [warlordSnapshotsByFaction, setWarlordSnapshotsByFaction] = useState(() => saved.warlordSnapshotsByFaction ?? {});
+  const prevSelectedFactionRef = useRef(selectedFaction);
 
   // ── Path to Glory Roster ──
   const [armyName, setArmyName] = useState(() => saved.armyName ?? '');
@@ -386,7 +415,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   // Path to Glory "Anvil of Apotheosis" warlord-creation steps, scraped
   // per-faction (only ~18 of 24 factions currently publish this — it's tied
   // to that faction's AoS 4e battletome). Empty array means unsourced;
-  // "Pick your Warlord" falls back to the plain Warlord Warscroll form.
+  // "Train your Warlord" falls back to the plain Warlord Warscroll form.
   const [apotheosisSteps, setApotheosisSteps] = useState([]);
   const [apotheosisLoading, setApotheosisLoading] = useState(false);
   useEffect(() => {
@@ -397,6 +426,67 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
       .catch(() => setApotheosisSteps([]))
       .finally(() => setApotheosisLoading(false));
   }, [effectiveFactionSlug]);
+
+  // Fires only on a genuine change of Step 1's faction pick (not on every
+  // render, and not on re-clicking the same faction — the ref comparison
+  // below is what distinguishes those). Snapshots the warlord fields we're
+  // leaving behind under the OLD faction, then either restores a prior
+  // snapshot for the NEW faction (if we've visited it before this session)
+  // or, for a genuinely new faction, resets to blank and auto-fills the
+  // starting weapon/keywords/temp name from the source data.
+  useEffect(() => {
+    const prevFaction = prevSelectedFactionRef.current;
+    const changed = prevFaction !== selectedFaction;
+
+    if (changed && prevFaction) {
+      const leaving = { warlordName, warlordKeywords, rangedWeapons, meleeWeapons, warlordMove, warlordHealth, warlordSave, warlordControl, warlordSubStep };
+      setWarlordSnapshotsByFaction(prev => ({ ...prev, [prevFaction]: leaving }));
+    }
+    prevSelectedFactionRef.current = selectedFaction;
+
+    if (!changed || !selectedFaction) return;
+
+    const existing = warlordSnapshotsByFaction[selectedFaction];
+    if (existing) {
+      setWarlordName(existing.warlordName ?? '');
+      setWarlordKeywords(existing.warlordKeywords ?? '');
+      setRangedWeapons(existing.rangedWeapons ?? []);
+      setMeleeWeapons(existing.meleeWeapons ?? []);
+      setWarlordMove(existing.warlordMove ?? '');
+      setWarlordHealth(existing.warlordHealth ?? '');
+      setWarlordSave(existing.warlordSave ?? '');
+      setWarlordControl(existing.warlordControl ?? '');
+      setWarlordSubStep(existing.warlordSubStep ?? 0);
+      return;
+    }
+
+    // Never visited this faction before — clean slate, then auto-fill from
+    // whatever concrete starting data the source actually provides.
+    let cancelled = false;
+    setWarlordName('');
+    setWarlordKeywords('');
+    setRangedWeapons([]);
+    setMeleeWeapons([]);
+    setWarlordMove('');
+    setWarlordHealth('');
+    setWarlordSave('');
+    setWarlordControl('');
+    setWarlordSubStep(0);
+    axios.get(`/api/apotheosis/${selectedFaction}`).then(res => {
+      if (cancelled) return;
+      const steps = res.data.steps ?? [];
+      const step2 = steps.find(s => /fill out the starting warscroll/i.test(s.step_title));
+      if (step2?.starting_weapon) {
+        const w = step2.starting_weapon;
+        const row = { name: w.name, rng: w.rng || '', atk: w.atk || '', hit: w.hit || '', wnd: w.wnd || '', rnd: w.rnd || '', dmg: w.dmg || '' };
+        if (w.type === 'ranged') addRanged(row); else addMelee(row);
+      }
+      if (step2?.starting_keywords?.length) setWarlordKeywords(step2.starting_keywords.join(', '));
+      const factionObj = factions.find(f => f.faction_slug === selectedFaction);
+      setWarlordName(`${factionObj ? factionObj.faction : selectedFaction} Hero`);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [selectedFaction]); // eslint-disable-line
 
   const heraldryInputRef = useRef(null);
   const handleHeraldryFile = (file) => {
@@ -479,6 +569,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     const snapshot = {
       step, activeDoc, presentMode, campaign, customCampaignName, selectedFaction, warlordSubStep,
       warlordName, warlordKeywords, rangedWeapons, meleeWeapons,
+      warlordMove, warlordHealth, warlordSave, warlordControl, warlordSnapshotsByFaction,
       armyName, heraldryImage, realmOfOrigin, customRealmName, faction, battleFormation, gloryPoints, gloryRounds,
       currentQuest, questPoints, questNotes, questsCompleted, background, notableEvents,
       spellLore, prayerLore, manifestationLore,
@@ -489,6 +580,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   }, [
     step, activeDoc, presentMode, campaign, customCampaignName, selectedFaction, warlordSubStep,
     warlordName, warlordKeywords, rangedWeapons, meleeWeapons,
+    warlordMove, warlordHealth, warlordSave, warlordControl, warlordSnapshotsByFaction,
     armyName, heraldryImage, realmOfOrigin, customRealmName, faction, battleFormation, gloryPoints, gloryRounds,
     currentQuest, questPoints, questNotes, questsCompleted, background, notableEvents,
     spellLore, prayerLore, manifestationLore,
@@ -537,6 +629,15 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
       <div className="ptg-field">
         <label>Warlord Name</label>
         <input type="text" value={warlordName} onChange={e => setWarlordName(e.target.value)} placeholder="e.g. Iladrien the Bright" />
+      </div>
+      {/* Move/Health/Save/Control have no fixed starting value — Anvil of
+          Apotheosis builds them entirely from later Destiny Point purchases,
+          so these are blank/editable, same as on the physical paper form. */}
+      <div className="ptg-warlord-characteristics">
+        <div className="ptg-field"><label>Move</label><input type="text" value={warlordMove} onChange={e => setWarlordMove(e.target.value)} placeholder="—" /></div>
+        <div className="ptg-field"><label>Health</label><input type="text" value={warlordHealth} onChange={e => setWarlordHealth(e.target.value)} placeholder="—" /></div>
+        <div className="ptg-field"><label>Save</label><input type="text" value={warlordSave} onChange={e => setWarlordSave(e.target.value)} placeholder="—" /></div>
+        <div className="ptg-field"><label>Control</label><input type="text" value={warlordControl} onChange={e => setWarlordControl(e.target.value)} placeholder="—" /></div>
       </div>
       {renderWeaponTable('Ranged Weapons', rangedWeapons, addRanged, updateRanged, removeRanged, true)}
       {renderWeaponTable('Melee Weapons', meleeWeapons, addMelee, updateMelee, removeMelee, false)}
@@ -588,7 +689,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   const renderImageView = doc => (
     <div className="ptg-doc-image-view">
       {doc.images.map(img => (
-        <ProgressiveImg key={img.src} src={img.src} micro={img.micro} alt={doc.title} className="ptg-doc-full-img" />
+        <ProgressiveImg key={img.src} src={img.src} micro={img.micro} avgColor={img.avgColor} alt={doc.title} className="ptg-doc-full-img" />
       ))}
     </div>
   );
@@ -910,42 +1011,47 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                   }))}
                 </div>
               ) : step === 2 ? (
-                <div className="ptg-step-warlord">
-                  {warlordSteps ? (
-                    <>
-                      <div className="ptg-warlord-substeps">
-                        {warlordSteps.map((label, i) => (
-                          <button
-                            key={i}
-                            className={`ptg-warlord-substep${i === warlordSubStep ? ' ptg-warlord-substep-active' : ''}${i < warlordSubStep ? ' ptg-warlord-substep-done' : ''}`}
-                            onClick={() => setWarlordSubStep(i)}
-                          >
-                            <span className="ptg-warlord-substep-num">{i + 1}</span>
-                            <span>{label}</span>
+                <div className="ptg-step-warlord ptg-step-warlord-split">
+                  <div className="ptg-step-warlord-left">
+                    {warlordSteps ? (
+                      <>
+                        <div className="ptg-warlord-substeps">
+                          {warlordSteps.map((label, i) => (
+                            <button
+                              key={i}
+                              className={`ptg-warlord-substep${i === warlordSubStep ? ' ptg-warlord-substep-active' : ''}${i < warlordSubStep ? ' ptg-warlord-substep-done' : ''}`}
+                              onClick={() => setWarlordSubStep(i)}
+                            >
+                              <span className="ptg-warlord-substep-num">{i + 1}</span>
+                              <span>{label}</span>
+                            </button>
+                          ))}
+                        </div>
+                        <div className="ptg-step-warlord-title">{warlordSubStep + 1}. {warlordSteps[warlordSubStep]}</div>
+                        {/^fill out the starting warscroll$/i.test(warlordSteps[warlordSubStep] || '')
+                          ? <div className="ptg-wizard-body-placeholder">Your starting warscroll is shown to the right — the weapon and keywords are filled in automatically; Move/Health/Save/Control have no fixed starting value and are built up entirely from the choices in later steps.</div>
+                          : (apotheosisLoading
+                            ? <div className="ptg-wizard-body-placeholder">Loading…</div>
+                            : renderApotheosisStep(apotheosisSteps[warlordSubStep]))}
+                        <div className="ptg-wizard-nav">
+                          <button className="ptg-wizard-nav-btn" onClick={() => setWarlordSubStep(s => Math.max(0, s - 1))} disabled={warlordSubStep === 0}>
+                            ‹ Back
                           </button>
-                        ))}
+                          <button className="ptg-wizard-nav-btn" onClick={() => setWarlordSubStep(s => Math.min(warlordSteps.length - 1, s + 1))} disabled={warlordSubStep === warlordSteps.length - 1}>
+                            Next ›
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="ptg-wizard-body-placeholder">
+                        {apotheosisLoading ? 'Loading…' : 'No Anvil of Apotheosis data sourced for this faction yet — fill out the warscroll to the right directly.'}
                       </div>
-                      <div className="ptg-step-warlord-title">{warlordSubStep + 1}. {warlordSteps[warlordSubStep]}</div>
-                      {/^fill out the starting warscroll$/i.test(warlordSteps[warlordSubStep] || '')
-                        ? renderWarlordForm()
-                        : (apotheosisLoading
-                          ? <div className="ptg-wizard-body-placeholder">Loading…</div>
-                          : renderApotheosisStep(apotheosisSteps[warlordSubStep]))}
-                      <div className="ptg-wizard-nav">
-                        <button className="ptg-wizard-nav-btn" onClick={() => setWarlordSubStep(s => Math.max(0, s - 1))} disabled={warlordSubStep === 0}>
-                          ‹ Back
-                        </button>
-                        <button className="ptg-wizard-nav-btn" onClick={() => setWarlordSubStep(s => Math.min(warlordSteps.length - 1, s + 1))} disabled={warlordSubStep === warlordSteps.length - 1}>
-                          Next ›
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="ptg-step-warlord-title">Warlord Warscroll</div>
-                      {renderWarlordForm()}
-                    </>
-                  )}
+                    )}
+                  </div>
+                  <div className="ptg-step-warlord-right">
+                    <div className="ptg-step-warlord-title">Warlord Warscroll</div>
+                    {renderWarlordForm()}
+                  </div>
                 </div>
               ) : (
                 <div className="ptg-wizard-body-placeholder">Coming soon.</div>
