@@ -117,6 +117,39 @@ function initDb() {
 
     CREATE INDEX IF NOT EXISTS idx_extra_rules_faction ON faction_extra_rules(faction_slug);
     CREATE INDEX IF NOT EXISTS idx_extra_rules_section ON faction_extra_rules(faction_slug, section);
+
+    -- Path to Glory: Anvil of Apotheosis (per-faction warlord-creation steps).
+    -- Only ~18 of 24 factions currently publish this (4e battletome-dependent).
+    CREATE TABLE IF NOT EXISTS faction_apotheosis_steps (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      faction_slug TEXT NOT NULL,
+      faction_name TEXT NOT NULL,
+      step_number INTEGER NOT NULL,
+      step_title TEXT NOT NULL,
+      intro_text TEXT,
+      scraped_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS faction_apotheosis_options (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      faction_slug TEXT NOT NULL,
+      faction_name TEXT NOT NULL,
+      step_number INTEGER NOT NULL,
+      option_group TEXT,
+      name TEXT NOT NULL,
+      cost TEXT,
+      timing TEXT,
+      declare TEXT,
+      effect TEXT,
+      bullets TEXT,
+      keywords TEXT,
+      lore_text TEXT,
+      sort_order INTEGER DEFAULT 0,
+      scraped_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_apotheosis_steps_faction ON faction_apotheosis_steps(faction_slug);
+    CREATE INDEX IF NOT EXISTS idx_apotheosis_options_faction ON faction_apotheosis_options(faction_slug, step_number);
   `);
 
   // Safe migrations — ALTER TABLE is a no-op if the column already exists

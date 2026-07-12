@@ -58,25 +58,11 @@ const CAMPAIGN_POINTS_LIMITS = {
   ascension: '1000',
 };
 
-// Per-faction Warlord-creation step sequences from that faction's battletome
-// "Path to Glory: The Anvil of Apotheosis" section. Only Idoneth Deepkin is
-// sourced so far (given directly by the user, 2026-07-11 — not photographed,
-// just the step titles, no mechanical details yet beyond "fill out the
-// warscroll"). Stormcast Eternals is known to have 7 steps but we don't have
-// their names yet. Every other faction has none — those fall back to the
-// plain single-panel Warlord Warscroll form.
-const WARLORD_STEPS_BY_FACTION = {
-  'idoneth-deepkin': [
-    'Set a Destiny Point Limit',
-    'Fill out the starting Warscroll',
-    'Choose an Archetype',
-    'Choose a Companion',
-    "Pick your hero's origin and/or flaw",
-    'Choose a Battle Mount',
-    'Pick any Battle Mount upgrade',
-    'Pick any other upgrades',
-  ],
-};
+// Per-faction Warlord-creation steps ("Path to Glory: The Anvil of
+// Apotheosis") are fetched live from /api/apotheosis/:slug — scraped from
+// each faction's own battletome section (backend/scrapePathToGlory.js).
+// ~18 of 24 factions currently publish this (AoS 4e battletome-dependent);
+// the rest fall back to the plain single-panel Warlord Warscroll form.
 
 // The 4 Warlord Paths (core rules pgs 256-261) — Mage/Devout are restricted
 // to Wizard/Priest warlords respectively.
@@ -397,6 +383,21 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
       .finally(() => setFormationsLoading(false));
   }, [effectiveFactionSlug]);
 
+  // Path to Glory "Anvil of Apotheosis" warlord-creation steps, scraped
+  // per-faction (only ~18 of 24 factions currently publish this — it's tied
+  // to that faction's AoS 4e battletome). Empty array means unsourced;
+  // "Pick your Warlord" falls back to the plain Warlord Warscroll form.
+  const [apotheosisSteps, setApotheosisSteps] = useState([]);
+  const [apotheosisLoading, setApotheosisLoading] = useState(false);
+  useEffect(() => {
+    if (!effectiveFactionSlug) { setApotheosisSteps([]); return; }
+    setApotheosisLoading(true);
+    axios.get(`/api/apotheosis/${effectiveFactionSlug}`)
+      .then(res => setApotheosisSteps(res.data.steps ?? []))
+      .catch(() => setApotheosisSteps([]))
+      .finally(() => setApotheosisLoading(false));
+  }, [effectiveFactionSlug]);
+
   const heraldryInputRef = useRef(null);
   const handleHeraldryFile = (file) => {
     if (!file || !file.type.startsWith('image/')) return;
@@ -546,6 +547,44 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     </>
   );
 
+  // One "Anvil of Apotheosis" step's content — an intro line plus its
+  // options rendered as ability cards (reusing AbilityCard so cost badges,
+  // phase-colored timing banners, and Declare/Effect all look identical to
+  // every other rules text on the site, whether the option is a full
+  // ability-shaped Origin/Flaw or a plain name+cost+effect upgrade row).
+  const renderApotheosisStep = stepData => (
+    <>
+      {stepData.intro_text && <p className="ptg-apotheosis-intro">{stepData.intro_text}</p>}
+      {stepData.options.length === 0 ? (
+        <div className="ptg-wizard-body-placeholder">No selectable options for this step — see the intro text above.</div>
+      ) : (
+        (() => {
+          const groups = [];
+          const byGroup = {};
+          for (const opt of stepData.options) {
+            const key = opt.option_group || '';
+            if (!byGroup[key]) { byGroup[key] = { group: opt.option_group, items: [] }; groups.push(byGroup[key]); }
+            byGroup[key].items.push(opt);
+          }
+          return groups.map((g, gi) => (
+            <div key={gi} className="ptg-apotheosis-group">
+              {g.group && <div className="ptg-apotheosis-group-title">{g.group}</div>}
+              <div className="ptg-apotheosis-options-grid">
+                {g.items.map((opt, oi) => (
+                  <AbilityCard
+                    key={oi}
+                    ab={{ ...opt, bullets: Array.isArray(opt.bullets) ? opt.bullets : JSON.parse(opt.bullets || '[]') }}
+                    keywords={Array.isArray(opt.keywords) ? opt.keywords : JSON.parse(opt.keywords || '[]')}
+                  />
+                ))}
+              </div>
+            </div>
+          ));
+        })()
+      )}
+    </>
+  );
+
   const renderImageView = doc => (
     <div className="ptg-doc-image-view">
       {doc.images.map(img => (
@@ -563,7 +602,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     .map(alliance => ({ alliance, list: factions.filter(f => f.grand_alliance === alliance) }))
     .filter(g => g.list.length > 0);
 
-  const warlordSteps = WARLORD_STEPS_BY_FACTION[effectiveFactionSlug];
+  const warlordSteps = apotheosisSteps.length ? apotheosisSteps.map(s => s.step_title) : null;
 
   return (
     <>
@@ -887,11 +926,11 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                         ))}
                       </div>
                       <div className="ptg-step-warlord-title">{warlordSubStep + 1}. {warlordSteps[warlordSubStep]}</div>
-                      {warlordSubStep === 1 ? renderWarlordForm() : (
-                        <div className="ptg-wizard-body-placeholder">
-                          Coming soon — needs the Anvil of Apotheosis text for this faction.
-                        </div>
-                      )}
+                      {/^fill out the starting warscroll$/i.test(warlordSteps[warlordSubStep] || '')
+                        ? renderWarlordForm()
+                        : (apotheosisLoading
+                          ? <div className="ptg-wizard-body-placeholder">Loading…</div>
+                          : renderApotheosisStep(apotheosisSteps[warlordSubStep]))}
                       <div className="ptg-wizard-nav">
                         <button className="ptg-wizard-nav-btn" onClick={() => setWarlordSubStep(s => Math.max(0, s - 1))} disabled={warlordSubStep === 0}>
                           ‹ Back

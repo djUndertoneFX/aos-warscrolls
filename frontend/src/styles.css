@@ -2472,6 +2472,29 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   border-color: #c8a840;
 }
 .ptg-warlord-substep-active .ptg-warlord-substep-num { border-color: #1a1614; }
+
+/* ── Anvil of Apotheosis step content (options rendered as AbilityCards) ── */
+.ptg-apotheosis-intro {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--parchment, #d8cca8);
+  margin: 0 0 0.9rem;
+}
+.ptg-apotheosis-group + .ptg-apotheosis-group { margin-top: 1rem; }
+.ptg-apotheosis-group-title {
+  font-family: 'Cinzel', serif;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  color: #c8a840;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(200,168,64,0.25);
+  padding-bottom: 0.25rem;
+}
+.ptg-apotheosis-options-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.6rem;
+}
 .ptg-campaign-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -3481,6 +3504,26 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   color: #c8bc98;
   line-height: 1.2;
   margin-bottom: 2px;
+}
+/* Path to Glory destiny-point cost badge, e.g. "-2DP" (spend, red) or
+   "+4DP" (flaw refund, green) — matches the source's own dp-badge colors. */
+.gw-ability-cost {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 1px 7px;
+  border-radius: 3px;
+  font-family: Arial, sans-serif;
+  font-size: 0.62rem;
+  font-weight: 700;
+  vertical-align: middle;
+  background: rgba(140,30,30,0.35);
+  color: #ffb8b8;
+  border: 1px solid rgba(200,80,80,0.4);
+}
+.gw-ability-cost-refund {
+  background: rgba(30,110,50,0.35);
+  color: #b8f0c8;
+  border-color: rgba(80,180,100,0.4);
 }
 .gw-ability-lore {
   font-style: italic;

@@ -757,6 +757,30 @@ app.get('/api/faction-rules/:slug', requireAuth, (req, res) => {
   }
 });
 
+// GET /api/apotheosis/:slug — Path to Glory "Anvil of Apotheosis" warlord-
+// creation steps for one faction. Empty steps array means this faction has
+// no such section published on the source yet (battletome-dependent, AoS 4e-only).
+app.get('/api/apotheosis/:slug', requireAuth, (req, res) => {
+  const db = getDb();
+  try {
+    const slug = req.params.slug;
+    const steps = db.prepare(
+      'SELECT step_number, step_title, intro_text FROM faction_apotheosis_steps WHERE faction_slug = ? ORDER BY step_number'
+    ).all(slug);
+    const options = db.prepare(
+      'SELECT step_number, option_group, name, cost, timing, declare, effect, bullets, keywords, lore_text, sort_order FROM faction_apotheosis_options WHERE faction_slug = ? ORDER BY step_number, sort_order'
+    ).all(slug);
+    res.json({
+      steps: steps.map(s => ({
+        ...s,
+        options: options.filter(o => o.step_number === s.step_number),
+      })),
+    });
+  } finally {
+    db.close();
+  }
+});
+
 // PUT /api/spearhead-image/:name — upload cover art for a spearhead (protected)
 app.put('/api/spearhead-image/:name', (req, res) => {
   if (req.headers['x-upload-secret'] !== process.env.UPLOAD_SECRET) return res.status(403).json({ error: 'Forbidden' });

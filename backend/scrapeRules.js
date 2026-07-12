@@ -56,9 +56,12 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function parseAbilityBlock($, block) {
-  // Skip nested blocks
-  if ($(block).parents('.BreakInsideAvoid').length > 0) return null;
+function parseAbilityBlock($, block, skipNestGuard = false) {
+  // Skip nested blocks. Callers that already bound their own top-level-card
+  // search to a local scope (rather than the whole page) pass skipNestGuard
+  // — otherwise this unbounded check rejects every card that merely has
+  // unrelated BreakInsideAvoid ancestors further up the page.
+  if (!skipNestGuard && $(block).parents('.BreakInsideAvoid').length > 0) return null;
 
   const abBody = $(block).find('.abBody').first();
   if (!abBody.length) return null;
@@ -305,4 +308,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { scrapeAllRules };
+module.exports = { scrapeAllRules, FACTIONS, BASE_URL, normalizeText, parseAbilityBlock };
