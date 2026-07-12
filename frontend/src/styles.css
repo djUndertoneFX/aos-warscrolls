@@ -2581,12 +2581,46 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   padding: 0.4rem;
   background: rgba(0,0,0,0.15);
 }
-.ptg-doc-thumb-img {
-  width: 100%;
-  height: auto;
+/* ── Blur-up progressive image (instant tiny placeholder → real image) ──
+   The micro placeholder stays in normal flow (a real <img> with its own
+   24x31 intrinsic ratio) so it sizes the box exactly the way a bare <img>
+   always did — including shrinking correctly inside flex/max-height
+   scroll panes. The full-res image is an absolutely-positioned overlay
+   that fades in on top once loaded. No overflow:hidden here: inside a
+   flex column with max-height, `overflow` other than visible zeroes out
+   the item's automatic minimum size, letting flex-shrink crush it well
+   past its content height instead of scrolling like a plain <img> would. */
+.ptg-progressive-img {
+  position: relative;
+  display: inline-block;
+  vertical-align: top;
+}
+.ptg-progressive-img-micro {
   display: block;
+  filter: blur(9px);
+  transform: scale(1.12);
+}
+.ptg-progressive-img-full {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.ptg-progressive-img-full.ptg-progressive-img-loaded { opacity: 1; }
+
+.ptg-doc-thumb-img {
+  display: block;
+  width: 100%;
+  overflow: hidden;
   border: 1px solid rgba(200,168,64,0.2);
   border-radius: 2px;
+}
+.ptg-doc-thumb-img .ptg-progressive-img-micro {
+  width: 100%;
+  height: auto;
 }
 
 /* ── Presentation toggle (Image vs Replica) ── */
@@ -2620,10 +2654,16 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   max-height: 62vh;
   overflow-y: auto;
 }
-.ptg-doc-image-view img {
+.ptg-doc-full-img {
   max-width: 100%;
   border: 1px solid rgba(200,168,64,0.3);
   border-radius: 3px;
+}
+.ptg-doc-full-img .ptg-progressive-img-micro {
+  display: block;
+  width: 1200px;
+  max-width: 100%;
+  height: auto;
 }
 
 .ptg-doc-editor-header {

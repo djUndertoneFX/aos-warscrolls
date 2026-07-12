@@ -106,15 +106,45 @@ const FACTION_GRID_POSITIONS = {
   Death:       [[4,1],[4,2],[4,3],[4,4]],
 };
 
+// Tiny (24px-wide, ~400-byte) blur-up placeholders for the 5 scanned page
+// images below, inlined as data URIs so they paint instantly with zero
+// network round-trip — swapped for the real image once it finishes loading,
+// instead of showing a blank box while the 15KB-600KB JPEG is in flight.
+const DOC_MICRO = {
+  warlord: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABIMDRANCxIQDhAUExIVGywdGxgYGzYnKSAsQDlEQz85Pj1HUGZXR0thTT0+WXlaYWltcnNyRVV9hnxvhWZwcm7/2wBDARMUFBsXGzQdHTRuST5Jbm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm7/wAARCAAfABgDASIAAhEBAxEB/8QAGAAAAwEBAAAAAAAAAAAAAAAAAAMEBQL/xAAmEAABBAAEBgMBAAAAAAAAAAABAAIDEQQSIUEFEzEzUXEUgZEi/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAH/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwDfgeyP+OY1pB3GyobiACanZ+KeDNqBJlHjqmAyX3a+lAwYjmTsYJWOzHpSFw2/kR2/Nr4Qg64aLa7XfZUhtXr9LC4Xi5xIXiVohrt8vW/a1BiXEZszfxA6aw9ntCnfOXvYXOFNN0AUIP/Z',
+  roster:  'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABIMDRANCxIQDhAUExIVGywdGxgYGzYnKSAsQDlEQz85Pj1HUGZXR0thTT0+WXlaYWltcnNyRVV9hnxvhWZwcm7/2wBDARMUFBsXGzQdHTRuST5Jbm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm7/wAARCAAfABgDASIAAhEBAxEB/8QAGgAAAgIDAAAAAAAAAAAAAAAAAAQDBQECBv/EACkQAAIBAwMCBAcAAAAAAAAAAAECAwAREgQhMTJBBQZhwRNCUXGS0eH/xAAVAQEBAAAAAAAAAAAAAAAAAAAAAf/EABURAQEAAAAAAAAAAAAAAAAAAAAB/9oADAMBAAIRAxEAPwDoNEItOGQK5yYtc2PNMiZw23T9hel4Y9g1gSRyRf3qRxj8i/h/aglkYah4gBIhVw1wRY87H0oqCFmMqC1hfstqKBHwppJkkZXOGZFsiOPanUjlzzza4PGZ/VUvl7XINI5YkAuSNvqSauo9XGy8nf0qVW2p+IYw2QUBh0k3orE2piaIgXO47UUR/9k=',
+  oob:     'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABIMDRANCxIQDhAUExIVGywdGxgYGzYnKSAsQDlEQz85Pj1HUGZXR0thTT0+WXlaYWltcnNyRVV9hnxvhWZwcm7/2wBDARMUFBsXGzQdHTRuST5Jbm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm7/wAARCAAfABgDASIAAhEBAxEB/8QAGQAAAgMBAAAAAAAAAAAAAAAAAAECAwQG/8QAJBAAAQMDBAEFAAAAAAAAAAAAAQACEQMSIQQTMUFxBVGRofD/xAAVAQEBAAAAAAAAAAAAAAAAAAAAAf/EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/AOt3KbHPbaZB5hVuq3YJNvvaFXaG6qpUE3HGTP1wpbjpm75GFBk11M1HRAjGe58IWp7i6rTaTieIQgQw9/lIfpUTUaHOcZhxlLeaOygNQ+wtMxCFk9R1dMUXQXTGEIj/2Q==',
+  army1:   'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABIMDRANCxIQDhAUExIVGywdGxgYGzYnKSAsQDlEQz85Pj1HUGZXR0thTT0+WXlaYWltcnNyRVV9hnxvhWZwcm7/2wBDARMUFBsXGzQdHTRuST5Jbm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm7/wAARCAAfABgDASIAAhEBAxEB/8QAGAAAAwEBAAAAAAAAAAAAAAAAAAMEBQH/xAAnEAACAQEHAgcAAAAAAAAAAAABAgADBBESEyEiMQVRFCMyQWGBkf/EABUBAQEAAAAAAAAAAAAAAAAAAAAB/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8A37Jl2VWVVxYnLbn7x/imW43rr8iJsdZCzUssFl9yZTiJIGXT/JAM5tLUtuABw16vzzpCdJAqIBTUa8gwgQ2E+a4FNRzvA5lQXf6vqZnTLSCCzE4dds0FqobmAMBrX5qEd+0ItqqM6kX3CED/2Q==',
+  army2:   'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABIMDRANCxIQDhAUExIVGywdGxgYGzYnKSAsQDlEQz85Pj1HUGZXR0thTT0+WXlaYWltcnNyRVV9hnxvhWZwcm7/2wBDARMUFBsXGzQdHTRuST5Jbm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm7/wAARCAAfABgDASIAAhEBAxEB/8QAGAAAAwEBAAAAAAAAAAAAAAAAAAMEAgb/xAAlEAACAgECBQUBAAAAAAAAAAABAgARAwQhEhMxUXEFFDJhkYH/xAAVAQEBAAAAAAAAAAAAAAAAAAAAAf/EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/AOpTVINTlwjHbITvfiabKWNFFrzJlysNZmDBVTiNNQvoI1SC1q1/wSCTX6NXyc0AhqoizX5CWZBbpfS+0ICEzZPeZldiMYY1+CNXhJtSTFEoGdnGzmxtAZUX4krfYQGarIVUHiO28JB6hq15JCu5P3CEf//Z',
+};
+
 // The 4 documents a Path to Glory roster is built from. `images` point at
 // scans of the official GW sheets (extracted from the PDFs the user
 // provided) — used both for the tray thumbnail and the "Image" presentation.
+// `micro`/`thumbMicro` are the blur-up placeholders above.
 const DOCS = [
-  { key: 'warlord', title: 'Warlord Warscroll', images: ['/ptg/warlord-warscroll.jpg'], thumb: '/ptg/warlord-warscroll-thumb.jpg' },
-  { key: 'roster',  title: 'Path to Glory Roster', images: ['/ptg/ptg-roster.jpg'], thumb: '/ptg/ptg-roster-thumb.jpg' },
-  { key: 'oob',     title: 'Order of Battle', images: ['/ptg/order-of-battle.jpg'], thumb: '/ptg/order-of-battle-thumb.jpg' },
-  { key: 'army',    title: 'Army Roster', images: ['/ptg/army-roster-1.jpg', '/ptg/army-roster-2.jpg'], thumb: '/ptg/army-roster-1-thumb.jpg' },
+  { key: 'warlord', title: 'Warlord Warscroll', images: [{ src: '/ptg/warlord-warscroll.jpg', micro: DOC_MICRO.warlord }], thumb: '/ptg/warlord-warscroll-thumb.jpg', thumbMicro: DOC_MICRO.warlord },
+  { key: 'roster',  title: 'Path to Glory Roster', images: [{ src: '/ptg/ptg-roster.jpg', micro: DOC_MICRO.roster }], thumb: '/ptg/ptg-roster-thumb.jpg', thumbMicro: DOC_MICRO.roster },
+  { key: 'oob',     title: 'Order of Battle', images: [{ src: '/ptg/order-of-battle.jpg', micro: DOC_MICRO.oob }], thumb: '/ptg/order-of-battle-thumb.jpg', thumbMicro: DOC_MICRO.oob },
+  { key: 'army',    title: 'Army Roster', images: [{ src: '/ptg/army-roster-1.jpg', micro: DOC_MICRO.army1 }, { src: '/ptg/army-roster-2.jpg', micro: DOC_MICRO.army2 }], thumb: '/ptg/army-roster-1-thumb.jpg', thumbMicro: DOC_MICRO.army1 },
 ];
+
+// Blur-up progressive image: shows the tiny inline `micro` placeholder
+// immediately, fades in the real `src` once it finishes loading.
+function ProgressiveImg({ src, micro, alt, className }) {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    <span className={`ptg-progressive-img${className ? ' ' + className : ''}`}>
+      <img src={micro} alt="" aria-hidden="true" className="ptg-progressive-img-micro" />
+      <img
+        src={src}
+        alt={alt}
+        className={`ptg-progressive-img-full${loaded ? ' ptg-progressive-img-loaded' : ''}`}
+        onLoad={() => setLoaded(true)}
+      />
+    </span>
+  );
+}
 
 function DocThumb({ doc, active, onClick }) {
   return (
@@ -125,7 +155,7 @@ function DocThumb({ doc, active, onClick }) {
     >
       <div className="ptg-doc-thumb-header">{doc.title}</div>
       <div className="ptg-doc-thumb-img-wrap">
-        <img src={doc.thumb} alt={doc.title} className="ptg-doc-thumb-img" />
+        <ProgressiveImg src={doc.thumb} micro={doc.thumbMicro} alt={doc.title} className="ptg-doc-thumb-img" />
       </div>
     </button>
   );
@@ -518,7 +548,9 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
 
   const renderImageView = doc => (
     <div className="ptg-doc-image-view">
-      {doc.images.map(src => <img key={src} src={src} alt={doc.title} />)}
+      {doc.images.map(img => (
+        <ProgressiveImg key={img.src} src={img.src} micro={img.micro} alt={doc.title} className="ptg-doc-full-img" />
+      ))}
     </div>
   );
 
