@@ -596,22 +596,24 @@ input, select {
 .sim-battle-wrapper { flex: unset; }
 
 /* ── Path to Glory ── */
-.ptg-actions {
+/* Path to Glory page header: 5 horizontal sections — title (left-justified),
+   Level Up!, the roster/recruit cluster, Do Battle!!! (all 3 center-justified
+   within their own section), and the unit count (right-justified). Level Up
+   and Do Battle are single buttons, so their sections just size to content;
+   the roster/recruit cluster (by far the widest content) takes whatever
+   space is left, so it never overflows into its neighbors. */
+.ptg-page-header { gap: 1rem; }
+.ptg-page-header .page-title,
+.ptg-page-header .unit-count { flex: 0 0 auto; white-space: nowrap; }
+.ptg-header-section {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
+  justify-content: center;
   font-family: 'Cinzel', serif;
-  flex-grow: 1;
-  flex-shrink: 0;
-  flex-basis: auto;
 }
-.ptg-actions-left {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-shrink: 0;
-}
+.ptg-header-levelup,
+.ptg-header-dobattle { flex: 0 0 auto; }
+.ptg-header-rosters { flex: 1 1 auto; gap: 0.5rem; min-width: 0; }
 .ptg-action-btn {
   font-family: 'Cinzel', serif;
   font-size: 0.72rem;
@@ -633,12 +635,6 @@ input, select {
   border-color: var(--border-gold);
   background: rgba(201,168,76,0.08);
 }
-.ptg-action-stack {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.3rem;
-}
 .ptg-action-row {
   display: flex;
   align-items: center;
@@ -653,19 +649,6 @@ input, select {
   color: #444;
   font-size: 0.9rem;
   line-height: 1;
-}
-.ptg-actions-divider {
-  width: 1px;
-  align-self: stretch;
-  background: rgba(200,168,64,0.25);
-  margin: 0 0.75rem;
-}
-.ptg-do-battle-section {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 1 1 auto;
-  min-width: 11rem;
 }
 .ptg-do-battle-btn {
   font-size: 0.85rem;

@@ -606,48 +606,49 @@ export default function PathToGloryPage({ headerCollapsed }) {
     <div className="table-page">
       {!headerCollapsed && (
       <>
-      <div className="page-header">
+      <div className="page-header ptg-page-header">
         <div className="page-title">
           Path to Glory
           <span>Age of Sigmar 4th Edition</span>
         </div>
-        <div className="ptg-actions">
-          <div className="ptg-actions-left">
-            <RosterDropdown label="My Roster" />
-            <div className="ptg-action-stack">
-              <div className="ptg-action-row">
-                <button
-                  className={`ptg-action-btn${ptgView === 'recruit' ? ' ptg-action-active' : ''}`}
-                  onClick={() => { setPtgView('recruit'); setShowRecruitWizard(true); }}
-                >
-                  Recruit Your Forces
-                </button>
-                <span className="ptg-action-arrow">›</span>
-                <button className={`ptg-action-btn${ptgView === 'battle' ? ' ptg-action-active' : ''}`} onClick={() => setPtgView('battle')}>
-                  Face Thy Enemies
-                </button>
-              </div>
-              <button className="ptg-action-btn ptg-action-btn-secondary" onClick={() => {}}>
-                Level Up!
-              </button>
-            </div>
-            <RosterDropdown label="Enemy Roster" />
-          </div>
-          <div className="ptg-actions-divider" />
-          {/* "Battle Buddy" — takes your roster + the enemy roster (if any) and acts as
-              both a quick-reference for every unit's warscroll (Path to Glory-aware) and
-              a per-phase advisor stepping through each unit's available abilities. Same
-              concept will be reused on the future Army Builder page. Stubbed for now. */}
-          <div className="ptg-do-battle-section">
+
+        <div className="ptg-header-section ptg-header-levelup">
+          <button className="ptg-action-btn ptg-action-btn-secondary" onClick={() => {}}>
+            Level Up!
+          </button>
+        </div>
+
+        <div className="ptg-header-section ptg-header-rosters">
+          <RosterDropdown label="My Roster" />
+          <div className="ptg-action-row">
             <button
-              className="ptg-action-btn ptg-do-battle-btn"
-              disabled
-              title="Coming soon — a Path to Glory-aware quick reference and per-phase ability advisor for your army and the enemy's."
+              className={`ptg-action-btn${ptgView === 'recruit' ? ' ptg-action-active' : ''}`}
+              onClick={() => { setPtgView('recruit'); setShowRecruitWizard(true); }}
             >
-              Do Battle!!!
+              Recruit Your Forces
+            </button>
+            <span className="ptg-action-arrow">›</span>
+            <button className={`ptg-action-btn${ptgView === 'battle' ? ' ptg-action-active' : ''}`} onClick={() => setPtgView('battle')}>
+              Face Thy Enemies
             </button>
           </div>
+          <RosterDropdown label="Enemy Roster" />
         </div>
+
+        {/* "Battle Buddy" — takes your roster + the enemy roster (if any) and acts as
+            both a quick-reference for every unit's warscroll (Path to Glory-aware) and
+            a per-phase advisor stepping through each unit's available abilities. Same
+            concept will be reused on the future Army Builder page. Stubbed for now. */}
+        <div className="ptg-header-section ptg-header-dobattle">
+          <button
+            className="ptg-action-btn ptg-do-battle-btn"
+            disabled
+            title="Coming soon — a Path to Glory-aware quick reference and per-phase ability advisor for your army and the enemy's."
+          >
+            Do Battle!!!
+          </button>
+        </div>
+
         {data && (
           <div className="unit-count">
             {data.total.toLocaleString()} units found
