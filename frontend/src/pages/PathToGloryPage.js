@@ -691,13 +691,15 @@ export default function PathToGloryPage({ headerCollapsed }) {
             a per-phase advisor stepping through each unit's available abilities. Same
             concept will be reused on the future Army Builder page. Stubbed for now. */}
         <div className="ptg-header-section ptg-header-dobattle">
-          <button
-            className="ptg-action-btn ptg-do-battle-btn"
-            disabled
-            title="You must 'Recruit your forces' before you can 'Do Battle!!!' Don't get ahead of yourself!"
-          >
-            Do Battle!!!
-          </button>
+          {/* title lives on this wrapper, not the <button> — disabled elements
+              don't receive hover/pointer events, so a title on the button
+              itself never shows a tooltip (you just get the "not-allowed"
+              cursor and nothing else). */}
+          <span title="You must 'Recruit your forces' before you can 'Do Battle!!!' Don't get ahead of yourself!">
+            <button className="ptg-action-btn ptg-do-battle-btn" disabled>
+              Do Battle!!!
+            </button>
+          </span>
         </div>
 
         {/* "PTG army builder" — My Roster / Recruit Your Forces / Face Thy
