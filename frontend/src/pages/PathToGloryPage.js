@@ -694,7 +694,7 @@ export default function PathToGloryPage({ headerCollapsed }) {
           <button
             className="ptg-action-btn ptg-do-battle-btn"
             disabled
-            title="Coming soon — a Path to Glory-aware quick reference and per-phase ability advisor for your army and the enemy's."
+            title="You must 'Recruit your forces' before you can 'Do Battle!!!' Don't get ahead of yourself!"
           >
             Do Battle!!!
           </button>
