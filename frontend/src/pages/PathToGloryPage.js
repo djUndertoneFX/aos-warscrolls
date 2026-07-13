@@ -686,12 +686,6 @@ export default function PathToGloryPage({ headerCollapsed }) {
           <span>Age of Sigmar 4th Edition</span>
         </div>
 
-        <div className="ptg-header-section ptg-header-levelup">
-          <button className="ptg-action-btn ptg-action-btn-secondary" onClick={() => {}}>
-            Level Up!
-          </button>
-        </div>
-
         <div className="ptg-header-section ptg-header-rosters">
           <div className="ptg-stagger-item">
             <RosterDropdown
@@ -741,6 +735,12 @@ export default function PathToGloryPage({ headerCollapsed }) {
             title="Coming soon — a Path to Glory-aware quick reference and per-phase ability advisor for your army and the enemy's."
           >
             Do Battle!!!
+          </button>
+        </div>
+
+        <div className="ptg-header-section ptg-header-levelup">
+          <button className="ptg-action-btn ptg-action-btn-secondary" onClick={() => {}}>
+            Level Up!
           </button>
         </div>
 

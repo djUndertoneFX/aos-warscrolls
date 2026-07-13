@@ -596,14 +596,14 @@ input, select {
 .sim-battle-wrapper { flex: unset; }
 
 /* ── Path to Glory ── */
-/* Path to Glory page header: 5 columns divided by vertical bars — title
-   (left-justified), Level Up!, the roster/recruit cluster (50% wider than
-   an equal share — 1.5fr vs 1fr, the other 4 compress to fit), Do Battle!!!
-   (all 3 center-justified within their own column), and the unit count
-   (right-justified). */
+/* Path to Glory page header: 5 columns divided by vertical bars, ordered to
+   follow game flow — title (left-justified), the roster/recruit cluster
+   (50% wider than an equal share — 1.5fr vs 1fr, the other 4 compress to
+   fit), Do Battle!!!, Level Up! (both center-justified within their own
+   column), and the unit count (right-justified). */
 .ptg-page-header {
   display: grid;
-  grid-template-columns: 1fr 1fr 1.5fr 1fr 1fr;
+  grid-template-columns: 1fr 1.5fr 1fr 1fr 1fr;
   align-items: center;
   column-gap: 0;
 }
