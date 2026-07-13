@@ -686,6 +686,23 @@ export default function PathToGloryPage({ headerCollapsed }) {
           <span>Age of Sigmar 4th Edition</span>
         </div>
 
+        {/* "Battle Buddy" — takes your roster + the enemy roster (if any) and acts as
+            both a quick-reference for every unit's warscroll (Path to Glory-aware) and
+            a per-phase advisor stepping through each unit's available abilities. Same
+            concept will be reused on the future Army Builder page. Stubbed for now. */}
+        <div className="ptg-header-section ptg-header-dobattle">
+          <button
+            className="ptg-action-btn ptg-do-battle-btn"
+            disabled
+            title="Coming soon — a Path to Glory-aware quick reference and per-phase ability advisor for your army and the enemy's."
+          >
+            Do Battle!!!
+          </button>
+        </div>
+
+        {/* "PTG army builder" — My Roster / Recruit Your Forces / Face Thy
+            Enemies / Enemy Roster. The center column, given 50% of the
+            header's total width. */}
         <div className="ptg-header-section ptg-header-rosters">
           <div className="ptg-stagger-item">
             <RosterDropdown
@@ -722,20 +739,6 @@ export default function PathToGloryPage({ headerCollapsed }) {
               onSaveCurrent={handleSaveCurrentRoster}
             />
           </div>
-        </div>
-
-        {/* "Battle Buddy" — takes your roster + the enemy roster (if any) and acts as
-            both a quick-reference for every unit's warscroll (Path to Glory-aware) and
-            a per-phase advisor stepping through each unit's available abilities. Same
-            concept will be reused on the future Army Builder page. Stubbed for now. */}
-        <div className="ptg-header-section ptg-header-dobattle">
-          <button
-            className="ptg-action-btn ptg-do-battle-btn"
-            disabled
-            title="Coming soon — a Path to Glory-aware quick reference and per-phase ability advisor for your army and the enemy's."
-          >
-            Do Battle!!!
-          </button>
         </div>
 
         <div className="ptg-header-section ptg-header-levelup">
