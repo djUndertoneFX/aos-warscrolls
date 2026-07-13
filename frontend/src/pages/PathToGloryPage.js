@@ -693,36 +693,41 @@ export default function PathToGloryPage({ headerCollapsed }) {
         </div>
 
         <div className="ptg-header-section ptg-header-rosters">
-          <RosterDropdown
-            label="My Roster"
-            rosters={ptgRosters}
-            onLoad={handleLoadRoster}
-            onDuplicate={handleDuplicateRoster}
-            onDelete={handleDeleteRoster}
-            onStartFromScratch={handleStartFromScratch}
-            onSaveCurrent={handleSaveCurrentRoster}
-          />
-          <div className="ptg-action-row">
+          <div className="ptg-stagger-item">
+            <RosterDropdown
+              label="My Roster"
+              rosters={ptgRosters}
+              onLoad={handleLoadRoster}
+              onDuplicate={handleDuplicateRoster}
+              onDelete={handleDeleteRoster}
+              onStartFromScratch={handleStartFromScratch}
+              onSaveCurrent={handleSaveCurrentRoster}
+            />
+          </div>
+          <div className="ptg-stagger-item">
             <button
               className={`ptg-action-btn${ptgView === 'recruit' ? ' ptg-action-active' : ''}`}
               onClick={() => { setPtgView('recruit'); setShowRecruitWizard(true); }}
             >
               Recruit Your Forces
             </button>
-            <span className="ptg-action-arrow">›</span>
+          </div>
+          <div className="ptg-stagger-item">
             <button className={`ptg-action-btn${ptgView === 'battle' ? ' ptg-action-active' : ''}`} onClick={() => setPtgView('battle')}>
               Face Thy Enemies
             </button>
           </div>
-          <RosterDropdown
-            label="Enemy Roster"
-            rosters={ptgRosters}
-            onLoad={handleLoadRoster}
-            onDuplicate={handleDuplicateRoster}
-            onDelete={handleDeleteRoster}
-            onStartFromScratch={handleStartFromScratch}
-            onSaveCurrent={handleSaveCurrentRoster}
-          />
+          <div className="ptg-stagger-item">
+            <RosterDropdown
+              label="Enemy Roster"
+              rosters={ptgRosters}
+              onLoad={handleLoadRoster}
+              onDuplicate={handleDuplicateRoster}
+              onDelete={handleDeleteRoster}
+              onStartFromScratch={handleStartFromScratch}
+              onSaveCurrent={handleSaveCurrentRoster}
+            />
+          </div>
         </div>
 
         {/* "Battle Buddy" — takes your roster + the enemy roster (if any) and acts as

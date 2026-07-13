@@ -596,13 +596,14 @@ input, select {
 .sim-battle-wrapper { flex: unset; }
 
 /* ── Path to Glory ── */
-/* Path to Glory page header: 5 EQUAL-width columns divided by vertical bars —
-   title (left-justified), Level Up!, the roster/recruit cluster, Do Battle!!!
+/* Path to Glory page header: 5 columns divided by vertical bars — title
+   (left-justified), Level Up!, the roster/recruit cluster (50% wider than
+   an equal share — 1.5fr vs 1fr, the other 4 compress to fit), Do Battle!!!
    (all 3 center-justified within their own column), and the unit count
    (right-justified). */
 .ptg-page-header {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: 1fr 1fr 1.5fr 1fr 1fr;
   align-items: center;
   column-gap: 0;
 }
@@ -621,7 +622,11 @@ input, select {
   flex-wrap: wrap;
   font-family: 'Cinzel', serif;
 }
-.ptg-header-rosters { gap: 0.5rem; }
+.ptg-header-rosters { gap: 0.5rem; flex-wrap: nowrap; }
+/* The 4 roster/recruit items sit in a single horizontal row, staggered
+   vertically (alternating up/down) instead of stacking onto separate lines. */
+.ptg-stagger-item:nth-child(odd)  { transform: translateY(-7px); }
+.ptg-stagger-item:nth-child(even) { transform: translateY(7px); }
 .ptg-action-btn {
   font-family: 'Cinzel', serif;
   font-size: 0.72rem;
