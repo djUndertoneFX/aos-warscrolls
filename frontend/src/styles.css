@@ -624,10 +624,8 @@ input, select {
   font-family: 'Cinzel', serif;
 }
 .ptg-header-rosters { gap: 0.5rem; flex-wrap: nowrap; }
-/* The 4 roster/recruit items sit in a single horizontal row, staggered
-   vertically (alternating up/down) instead of stacking onto separate lines. */
-.ptg-stagger-item:nth-child(odd)  { transform: translateY(-7px); }
-.ptg-stagger-item:nth-child(even) { transform: translateY(7px); }
+/* The 4 roster/recruit items sit in a single horizontal row, all level —
+   .ptg-stagger-item is just a per-item wrapper now (kept for JSX structure). */
 .ptg-action-btn {
   font-family: 'Cinzel', serif;
   font-size: 0.72rem;
