@@ -3320,8 +3320,14 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 .gw-faction-slide-body {
   padding: 14px 16px;
 }
+.gw-formation-groups-2col {
+  column-count: 2;
+  column-gap: 24px;
+}
 .gw-formation-group {
   margin-bottom: 18px;
+  break-inside: avoid;
+  -webkit-column-break-inside: avoid;
 }
 .gw-formation-group-header-row {
   display: flex;
@@ -3840,6 +3846,7 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   .gw-unit-img { width: 220px; }
   .gw-abilities-grid { grid-template-columns: 1fr; }
   .gw-sp-grid-2col { grid-template-columns: 1fr; }
+  .gw-formation-groups-2col { column-count: 1; }
 
   /* Weapons table: drop ADO col, keep fixed layout so table never exceeds panel width */
   .gw-weapon-table { table-layout: fixed; }

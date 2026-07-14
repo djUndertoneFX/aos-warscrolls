@@ -400,28 +400,30 @@ function FactionFormationsSlide({ faction, grandAlliance, formations, selected, 
             title="Show only the formations you've checked"
           >{filterSelected ? 'Show All' : 'Show Selected'}</button>
         </div>
-        {visibleGroups.map((group, gi) => {
-          const isSelected = selected.has(group.name);
-          return (
-            <div key={gi} className="gw-formation-group">
-              <div className="gw-formation-group-header-row">
-                <button
-                  className={`gw-ab-checkbox${isSelected ? ' gw-ab-checkbox-on' : ''}`}
-                  onClick={() => onToggle(group.name)}
-                  title={isSelected ? 'Deselect' : 'Select (mark as in play)'}
-                >{isSelected ? '☑' : '☐'}</button>
-                {group.name !== 'General' && (
-                  <div className="gw-formation-group-header">{group.name}</div>
-                )}
+        <div className="gw-formation-groups-2col">
+          {visibleGroups.map((group, gi) => {
+            const isSelected = selected.has(group.name);
+            return (
+              <div key={gi} className="gw-formation-group">
+                <div className="gw-formation-group-header-row">
+                  <button
+                    className={`gw-ab-checkbox${isSelected ? ' gw-ab-checkbox-on' : ''}`}
+                    onClick={() => onToggle(group.name)}
+                    title={isSelected ? 'Deselect' : 'Select (mark as in play)'}
+                  >{isSelected ? '☑' : '☐'}</button>
+                  {group.name !== 'General' && (
+                    <div className="gw-formation-group-header">{group.name}</div>
+                  )}
+                </div>
+                <div className="gw-abilities-grid">
+                  {group.items.map((ab, i) => (
+                    <AbilityCard key={i} ab={{ ...ab, bullets: parseBullets(ab.bullets) }} keywords={[]} />
+                  ))}
+                </div>
               </div>
-              <div className="gw-abilities-grid gw-sp-grid-2col">
-                {group.items.map((ab, i) => (
-                  <AbilityCard key={i} ab={{ ...ab, bullets: parseBullets(ab.bullets) }} keywords={[]} />
-                ))}
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
         {filterSelected && visibleGroups.length === 0 && (
           <p style={{ color: 'var(--text-dim)', fontStyle: 'italic', padding: '1rem' }}>No selected formations to show.</p>
         )}
