@@ -3302,10 +3302,44 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 
 /* ── Faction slide (Battle Traits / Battle Formations) ── */
 .gw-faction-slide-header {
+  position: relative;
   background: #0c0a08;
   border-bottom: 2px solid #c8a840;
   padding: 18px 20px 14px;
   text-align: center;
+}
+.gw-faction-toggle-row {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  display: flex;
+  gap: 3px;
+}
+.gw-faction-toggle-btn {
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  font-family: Arial, sans-serif;
+  line-height: 1;
+  padding: 4px 5px;
+  border-radius: 3px;
+  border: 1px solid rgba(200,168,64,0.5);
+  background: rgba(200,168,64,0.12);
+  color: #e8d8a0;
+  cursor: pointer;
+}
+.gw-faction-toggle-btn:hover { background: rgba(200,168,64,0.22); }
+.gw-faction-toggle-btn-off {
+  border-color: rgba(255,255,255,0.15);
+  background: transparent;
+  color: var(--text-dim, #766e60);
+  opacity: 0.6;
+}
+.gw-faction-toggle-btn-off:hover { opacity: 0.85; }
+.gw-faction-toggle-btn-active {
+  border-color: #a064dc;
+  color: #c8a8f0;
+  box-shadow: 0 0 6px rgba(160,100,220,0.5);
 }
 .gw-faction-slide-title {
   font-size: 1.45rem;

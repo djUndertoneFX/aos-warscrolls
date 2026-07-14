@@ -343,10 +343,39 @@ function parseBullets(raw) {
   try { return JSON.parse(raw || '[]'); } catch { return []; }
 }
 
-function FactionTraitsSlide({ faction, grandAlliance, title, traits }) {
+// Mirrors the "Faction Info" checkboxes in Settings — same show/hide toggles,
+// just reachable directly from whichever purple-bullet page you're already on.
+const FACTION_INFO_TOGGLES = [
+  { key: 'traits',             setting: 'showBattleTraits',      label: 'BT',   title: 'Battle Traits' },
+  { key: 'formations',         setting: 'showBattleFormations',  label: 'BF',   title: 'Battle Formations' },
+  { key: 'heroic_traits',      setting: 'showHeroicTraits',      label: 'HT',   title: 'Heroic Traits' },
+  { key: 'artefacts',          setting: 'showArtefacts',         label: 'AoP',  title: 'Artefacts of Power' },
+  { key: 'spell_lore',         setting: 'showSpellLore',         label: 'S/PL', title: 'Spell / Prayer Lore' },
+  { key: 'manifestation_lore', setting: 'showManifestationLore', label: 'ML',   title: 'Manifestation Lore' },
+];
+
+function FactionInfoToggleRow({ activeKey }) {
+  const settings = useSettings();
+  return (
+    <div className="gw-faction-toggle-row">
+      {FACTION_INFO_TOGGLES.map(t => (
+        <button
+          key={t.key}
+          type="button"
+          className={`gw-faction-toggle-btn${settings[t.setting] ? '' : ' gw-faction-toggle-btn-off'}${activeKey === t.key ? ' gw-faction-toggle-btn-active' : ''}`}
+          onClick={() => settings.setSetting(t.setting, !settings[t.setting])}
+          title={`${t.title}${settings[t.setting] ? ' (shown — click to hide)' : ' (hidden — click to show)'}`}
+        >{t.label}</button>
+      ))}
+    </div>
+  );
+}
+
+function FactionTraitsSlide({ faction, grandAlliance, title, traits, slideKey }) {
   return (
     <div className="gw-faction-slide">
       <div className="gw-faction-slide-header">
+        <FactionInfoToggleRow activeKey={slideKey} />
         <div className="gw-header-type">
           {grandAlliance?.toUpperCase()}{grandAlliance && faction ? ' · ' : ''}{faction?.toUpperCase()}
         </div>
@@ -382,6 +411,7 @@ function FactionFormationsSlide({ faction, grandAlliance, formations, selected, 
   return (
     <div className="gw-faction-slide">
       <div className="gw-faction-slide-header">
+        <FactionInfoToggleRow activeKey="formations" />
         <div className="gw-header-type">
           {grandAlliance?.toUpperCase()}{grandAlliance && faction ? ' · ' : ''}{faction?.toUpperCase()}
         </div>
@@ -1198,7 +1228,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
               />
             );
           }
-          return <FactionTraitsSlide faction={factionName} grandAlliance={grandAlliance} title={SLIDE_TITLES[slideKey] ?? slideKey} traits={slide.data} />;
+          return <FactionTraitsSlide faction={factionName} grandAlliance={grandAlliance} title={SLIDE_TITLES[slideKey] ?? slideKey} traits={slide.data} slideKey={slideKey} />;
         })()}
 
         {/* ── Warscroll content (hidden when on a rule slide) ── */}
