@@ -363,7 +363,7 @@ function FactionTraitsSlide({ faction, grandAlliance, title, traits }) {
   );
 }
 
-function FactionFormationsSlide({ faction, grandAlliance, formations }) {
+function FactionFormationsSlide({ faction, grandAlliance, formations, selected, filterSelected, onToggle, onToggleFilter }) {
   // Group by formation_name, preserving insertion order
   const groups = [];
   const nameToGroup = {};
@@ -376,6 +376,9 @@ function FactionFormationsSlide({ faction, grandAlliance, formations }) {
     nameToGroup[gName].items.push(item);
   }
 
+  const hasSelected = selected.size > 0;
+  const visibleGroups = filterSelected ? groups.filter(g => selected.has(g.name)) : groups;
+
   return (
     <div className="gw-faction-slide">
       <div className="gw-faction-slide-header">
@@ -385,18 +388,43 @@ function FactionFormationsSlide({ faction, grandAlliance, formations }) {
         <div className="gw-faction-slide-title">BATTLE FORMATIONS</div>
       </div>
       <div className="gw-faction-slide-body">
-        {groups.map((group, gi) => (
-          <div key={gi} className="gw-formation-group">
-            {group.name !== 'General' && (
-              <div className="gw-formation-group-header">{group.name}</div>
-            )}
-            <div className="gw-abilities-grid gw-sp-grid-2col">
-              {group.items.map((ab, i) => (
-                <AbilityCard key={i} ab={{ ...ab, bullets: parseBullets(ab.bullets) }} keywords={[]} />
-              ))}
+        {/* One checkbox per formation (not per faction) — mark which
+            formations you and your opponent are actually using, then filter
+            the list down to just those. Which factions show up here at all
+            is already decided by the Friendly/Enemy unit filters upstream. */}
+        <div className="gw-sp-filter-bar">
+          <button
+            className={`gw-sp-filter-btn${filterSelected ? ' active' : ''}`}
+            onClick={onToggleFilter}
+            disabled={!hasSelected}
+            title="Show only the formations you've checked"
+          >{filterSelected ? 'Show All' : 'Show Selected'}</button>
+        </div>
+        {visibleGroups.map((group, gi) => {
+          const isSelected = selected.has(group.name);
+          return (
+            <div key={gi} className="gw-formation-group">
+              <div className="gw-formation-group-header-row">
+                <button
+                  className={`gw-ab-checkbox${isSelected ? ' gw-ab-checkbox-on' : ''}`}
+                  onClick={() => onToggle(group.name)}
+                  title={isSelected ? 'Deselect' : 'Select (mark as in play)'}
+                >{isSelected ? '☑' : '☐'}</button>
+                {group.name !== 'General' && (
+                  <div className="gw-formation-group-header">{group.name}</div>
+                )}
+              </div>
+              <div className="gw-abilities-grid gw-sp-grid-2col">
+                {group.items.map((ab, i) => (
+                  <AbilityCard key={i} ab={{ ...ab, bullets: parseBullets(ab.bullets) }} keywords={[]} />
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
+        {filterSelected && visibleGroups.length === 0 && (
+          <p style={{ color: 'var(--text-dim)', fontStyle: 'italic', padding: '1rem' }}>No selected formations to show.</p>
+        )}
       </div>
     </div>
   );
@@ -445,6 +473,13 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
   // Spearhead slide checkbox/filter state — kept at top level to avoid hook-in-conditional violation
   const [spSlideSelectedAbs, setSpSlideSelectedAbs] = useState(new Set());
   const [spSlideFilterSelected, setSpSlideFilterSelected] = useState(false);
+
+  // Battle Formation select/filter state — one shared column per faction (no
+  // separate friendly/enemy split; the Friendly/Enemy unit filters upstream
+  // already determine which factions' formation slides are reachable here).
+  // Persisted per faction slug so it survives closing/reopening the popup.
+  const [formationSelected, setFormationSelected] = useState(new Set());
+  const [formationFilterSelected, setFormationFilterSelected] = useState(false);
 
   // Last slide visited per spearhead — restored only when switching to a different spearhead
   const lastSpSlide = useRef({}); // spName → slideKey
@@ -643,6 +678,17 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
     catch { setSpSlideSelectedAbs(new Set()); }
     setSpSlideFilterSelected(localStorage.getItem(filterKey) === '1');
   }, [activePage?.slideKey, spearheadData?.spearheadName]); // eslint-disable-line
+
+  // Load Battle Formation checkbox + filter state from localStorage when the
+  // formations slide for a (possibly new) faction becomes active.
+  useEffect(() => {
+    if (!activePage || activePage.factionSlug === '__sp__' || activePage.slideKey !== 'formations') return;
+    const storageKey = `formation-selected-${activePage.factionSlug}`;
+    const filterKey  = `formation-filter-${activePage.factionSlug}`;
+    try { setFormationSelected(new Set(JSON.parse(localStorage.getItem(storageKey) || '[]'))); }
+    catch { setFormationSelected(new Set()); }
+    setFormationFilterSelected(localStorage.getItem(filterKey) === '1');
+  }, [activePage?.factionSlug, activePage?.slideKey]); // eslint-disable-line
 
   useEffect(() => {
     if (!unit?.id) return;
@@ -1123,7 +1169,32 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
           const SLIDE_TITLES = { traits: 'Battle Traits', formations: 'Battle Formations', heroic_traits: 'Heroic Traits', artefacts: 'Artefacts of Power', spell_lore: 'Spell / Prayer Lore', manifestation_lore: 'Manifestation Lore' };
 
           if (slideKey === 'formations') {
-            return <FactionFormationsSlide faction={factionName} grandAlliance={grandAlliance} formations={slide.data} />;
+            const toggleFormation = (name) => {
+              setFormationSelected(prev => {
+                const next = new Set(prev);
+                next.has(name) ? next.delete(name) : next.add(name);
+                localStorage.setItem(`formation-selected-${factionSlug}`, JSON.stringify([...next]));
+                return next;
+              });
+            };
+            const toggleFormationFilter = () => {
+              setFormationFilterSelected(prev => {
+                const next = !prev;
+                localStorage.setItem(`formation-filter-${factionSlug}`, next ? '1' : '0');
+                return next;
+              });
+            };
+            return (
+              <FactionFormationsSlide
+                faction={factionName}
+                grandAlliance={grandAlliance}
+                formations={slide.data}
+                selected={formationSelected}
+                filterSelected={formationFilterSelected}
+                onToggle={toggleFormation}
+                onToggleFilter={toggleFormationFilter}
+              />
+            );
           }
           return <FactionTraitsSlide faction={factionName} grandAlliance={grandAlliance} title={SLIDE_TITLES[slideKey] ?? slideKey} traits={slide.data} />;
         })()}

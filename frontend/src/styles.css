@@ -3323,6 +3323,15 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 .gw-formation-group {
   margin-bottom: 18px;
 }
+.gw-formation-group-header-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px solid rgba(200,168,64,0.35);
+  padding-bottom: 5px;
+  margin-bottom: 10px;
+}
+.gw-formation-group-header-row .gw-ab-checkbox { padding: 0; font-size: 1rem; }
 .gw-formation-group-header {
   font-size: 0.62rem;
   letter-spacing: 0.28em;
@@ -3330,9 +3339,6 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   text-transform: uppercase;
   font-family: Arial, sans-serif;
   font-weight: 700;
-  border-bottom: 1px solid rgba(200,168,64,0.35);
-  padding-bottom: 5px;
-  margin-bottom: 10px;
 }
 
 /* ── Top band: 3-column (wheel | centered name | right meta) ── */
