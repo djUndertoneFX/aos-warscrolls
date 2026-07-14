@@ -3860,6 +3860,9 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   .filter-checkboxes { gap: 0.5rem 1rem; }
   .table-page { padding: 1rem; }
   .navbar { padding: 0 1rem; }
+  /* The warscroll popup's friendly/enemy swap button (⇔) was hard to tap
+     accurately on iPad/iPhone — 50% larger touch target here. */
+  .gw-nav-swap-btn { font-size: 1.275rem; padding: 2px 6px; }
 }
 
 @media (max-width: 600px) {

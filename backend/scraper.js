@@ -63,7 +63,13 @@ const HOMOGLYPH_MAP = {
   // En/em dash -> hyphen
   '\u2013':'-','\u2014':'-',
 };
-function normalizeName(str) {
+// NOTE: there's a second `function normalizeName` further down (used for the
+// Lexicanum image-matching key \u2014 deliberately lowercase/alphanumeric-only).
+// JS function-declaration hoisting means that LATER one always wins for any
+// call to `normalizeName(...)` in this file, so this one needed its own name
+// to actually be reachable \u2014 used where case/punctuation must survive
+// (e.g. weapon special-rule text like "Anti-MONSTER (+1 Rend)").
+function cleanText(str) {
   return str
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')           // strip combining diacritical marks
@@ -141,10 +147,14 @@ async function scrapeFaction(faction) {
 
       $(table).find('tr.wsDataRow').not('.wsDataRow_short').each((_, row) => {
         const cells = $(row).find('td');
-        // Weapon name: first text node of cell[2]
+        // Weapon name: first text node of cell[2]. The weapon's special
+        // rules/keywords (Anti-X, Crit (Mortal), Companion, Charge (+1
+        // Damage), etc.) live in a sibling `.wsWeaponAbility` span right
+        // after a <br> in the same cell — comma-separated for multiple.
         const weaponName = $(cells[2]).contents()
           .filter((_, n) => n.type === 'text').first().text().trim();
         if (!weaponName) return;
+        const weaponAbility = cleanText($(cells[2]).find('.wsWeaponAbility').text());
 
         if (isRanged && cells.length >= 9) {
           // Some units (e.g. monsters) put all weapons in a single "ranged" table.
@@ -160,6 +170,7 @@ async function scrapeFaction(faction) {
             wound:   $(cells[6]).text().trim(),
             rend:    $(cells[7]).text().trim(),
             damage:  $(cells[8]).text().trim(),
+            ability: weaponAbility,
           });
         } else if (isMelee && cells.length >= 8) {
           weapons.push({
@@ -171,6 +182,7 @@ async function scrapeFaction(faction) {
             wound:   $(cells[5]).text().trim(),
             rend:    $(cells[6]).text().trim(),
             damage:  $(cells[7]).text().trim(),
+            ability: weaponAbility,
           });
         }
       });

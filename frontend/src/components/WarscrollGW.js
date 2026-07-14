@@ -353,7 +353,7 @@ function FactionTraitsSlide({ faction, grandAlliance, title, traits }) {
         <div className="gw-faction-slide-title">{(title ?? 'Battle Traits').toUpperCase()}</div>
       </div>
       <div className="gw-faction-slide-body">
-        <div className="gw-abilities-grid">
+        <div className="gw-abilities-grid gw-sp-grid-2col">
           {traits.map((ab, i) => (
             <AbilityCard key={i} ab={{ ...ab, bullets: parseBullets(ab.bullets) }} keywords={[]} />
           ))}
@@ -390,7 +390,7 @@ function FactionFormationsSlide({ faction, grandAlliance, formations }) {
             {group.name !== 'General' && (
               <div className="gw-formation-group-header">{group.name}</div>
             )}
-            <div className="gw-abilities-grid">
+            <div className="gw-abilities-grid gw-sp-grid-2col">
               {group.items.map((ab, i) => (
                 <AbilityCard key={i} ab={{ ...ab, bullets: parseBullets(ab.bullets) }} keywords={[]} />
               ))}
