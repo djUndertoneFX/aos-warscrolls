@@ -2267,6 +2267,82 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 }
 .gw-close:hover { background: rgba(200,168,64,0.18); border-color: #c8a840; }
 
+.gw-view-toggle {
+  position: absolute;
+  top: 8px;
+  right: 46px;
+  z-index: 10;
+  display: flex;
+  gap: 4px;
+}
+.gw-view-mode-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid rgba(200,168,64,0.4);
+  color: #c8a840;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 2px;
+  line-height: 1;
+  transition: background 0.12s, border-color 0.12s;
+}
+.gw-view-mode-btn:hover { background: rgba(200,168,64,0.18); }
+.gw-view-mode-btn-active { background: rgba(200,168,64,0.22); border-color: #c8a840; }
+.gw-view-icon { display: flex; gap: 2px; width: 16px; height: 11px; }
+.gw-view-icon i { flex: 1; border: 1px solid currentColor; border-radius: 1px; display: block; font-style: normal; }
+
+/* ── Split view: friendly + enemy panes side by side ── */
+.gw-split-view {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+}
+.gw-split-pane {
+  flex: 1 1 50%;
+  min-width: 0;
+}
+.gw-split-pane:first-child { border-right: 1px solid rgba(200,168,64,0.3); }
+.gw-split-pane-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(200,168,64,0.3);
+  background: #0c0a08;
+}
+.gw-split-pane-arrow {
+  background: transparent;
+  border: 1px solid rgba(200,168,64,0.4);
+  color: #c8a840;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 1px 8px;
+  border-radius: 2px;
+  line-height: 1.3;
+}
+.gw-split-pane-arrow:hover:not(:disabled) { background: rgba(200,168,64,0.18); }
+.gw-split-pane-arrow:disabled { opacity: 0.3; cursor: default; }
+.gw-split-pane-label {
+  font-size: 0.65rem;
+  letter-spacing: 0.24em;
+  font-family: Arial, sans-serif;
+  font-weight: 700;
+}
+.gw-split-pane-label-friendly { color: #7ab0e8; }
+.gw-split-pane-label-enemy { color: #e08a8a; }
+.gw-split-pane-body { padding: 0 4px; }
+.gw-split-pane-body .gw-top-band { flex-wrap: wrap; }
+.gw-split-pane-body .gw-abilities-row { flex-direction: column; }
+.gw-split-pane-body .gw-abilities-img-col { width: 100%; padding: 6px 10px; }
+
+@media (max-width: 900px) {
+  .gw-split-view { flex-direction: column; }
+  .gw-split-pane:first-child { border-right: none; border-bottom: 1px solid rgba(200,168,64,0.3); }
+}
+
 /* ── Image lightbox (thumbnail click on Warscrolls/Simulacrum tables) ── */
 .img-lightbox {
   position: fixed;

@@ -462,6 +462,214 @@ function FactionFormationsSlide({ faction, grandAlliance, formations, selected, 
   );
 }
 
+// ── Warscroll body (stats/weapons/abilities/keywords) ───────────────────────
+// Extracted so it can be instantiated twice side-by-side in split-pane view —
+// each instance owns its own weapons/abilities/image-url/keyword computation
+// for whichever unit it's given.
+const KW_TYPE_MAP = {
+  'HERO': 'hero', 'MONSTER': 'monster', 'INFANTRY': 'infantry',
+  'CAVALRY': 'cavalry', 'BEAST': 'beast', 'WAR MACHINE': 'warmachine',
+  'MANIFESTATION': 'manifestation',
+};
+const ROLE_KW = new Set([
+  'HERO','MONSTER','CAVALRY','INFANTRY','BEAST','UNIQUE','WAR MACHINE',
+  'FACTION TERRAIN','MANIFESTATION','CHAMPION','MUSICIAN','STANDARD BEARER',
+  'FLY','FLAMMABLE','UNDERDOG',
+]);
+
+function WarscrollBody({ unit, factions = [], onFilterApply }) {
+  const { showFlavorText, useSpearheadAbilities } = useSettings();
+  const weapons = React.useMemo(() => { try { return JSON.parse(unit.weapons || '[]'); } catch { return []; } }, [unit]);
+  const spName = unit?._spName;
+  const abilities = React.useMemo(() => {
+    try {
+      if (useSpearheadAbilities && spName && unit?.spearhead_abilities) {
+        const spMap = JSON.parse(unit.spearhead_abilities);
+        if (spMap[spName] && spMap[spName].length > 0) return spMap[spName];
+      }
+      return JSON.parse(unit.abilities || '[]');
+    } catch { return []; }
+  }, [unit, useSpearheadAbilities, spName]); // eslint-disable-line
+  const [imageUrl, setImageUrl] = useState(null);
+  useEffect(() => {
+    if (!unit?.id) return;
+    const base = axios.defaults.baseURL || '';
+    setImageUrl(`${base}/api/unit-image/${unit.id}`);
+  }, [unit?.id]);
+
+  const allKeywords = unit.keywords ? unit.keywords.split(',').map(k => k.trim()).filter(Boolean) : [];
+  const kwLine1 = [];
+  const kwLine2 = [];
+  for (const kw of allKeywords) {
+    const up = kw.toUpperCase();
+    if (ROLE_KW.has(up) || /^WIZARD(\s*\(\d+\))?$/i.test(kw) || /^PRIEST(\s*\(\d+\))?$/i.test(kw) || /^WARD\s*\(\d+\+?\)$/i.test(kw)) {
+      kwLine1.push(kw);
+    } else {
+      kwLine2.push(kw);
+    }
+  }
+
+  const hasRanged  = weapons.some(w => w.type === 'ranged');
+  const hasMelee   = weapons.some(w => w.type === 'melee');
+  const hasWeapons = hasRanged || hasMelee;
+
+  const handleKwClick = (kw, exclude, e) => {
+    if (!onFilterApply) return;
+    e.preventDefault();
+    const up = kw.replace(/\s*\(.*\)$/, '').trim().toUpperCase();
+    if (KW_TYPE_MAP[up]) {
+      onFilterApply(KW_TYPE_MAP[up], true, exclude);
+    } else {
+      const matchedFaction = factions.find(f => f.faction.toUpperCase() === up);
+      if (matchedFaction) {
+        onFilterApply('faction', matchedFaction.faction_slug, exclude);
+      } else {
+        onFilterApply('search', kw, exclude);
+      }
+    }
+  };
+
+  return (
+    <>
+      {/* Top band: wheel | centered name | right meta */}
+      <div className="gw-top-band">
+        <div className="gw-wheel-col">
+          <StatsWheel move={unit.move} health={unit.health} save={unit.save} control={unit.control} />
+          {unit.ward && (
+            <div className="gw-ward-pip">
+              <span className="gw-ward-pip-val">{unit.ward}</span>
+              <span className="gw-ward-pip-lbl">WARD</span>
+            </div>
+          )}
+        </div>
+
+        <div className="gw-header-center">
+          <div className="gw-header-type">
+            {unit.grand_alliance && onFilterApply ? (
+              <span
+                className="gw-filter-chip gw-filter-chip-alliance"
+                title="Left-click to filter by alliance · Right-click to exclude"
+                onClick={e => { onFilterApply('alliance', unit.grand_alliance, false); e.stopPropagation(); }}
+                onContextMenu={e => { e.preventDefault(); onFilterApply('alliance', unit.grand_alliance, true); }}
+              >{unit.grand_alliance.toUpperCase()}</span>
+            ) : (unit.grand_alliance ? <span>{unit.grand_alliance.toUpperCase()}</span> : null)}
+            {' '}·{unit.faction && onFilterApply ? (
+              <>
+                {' '}
+                <span
+                  className="gw-filter-chip"
+                  title="Left-click to filter by faction · Right-click to exclude"
+                  onClick={e => { const f = factions.find(fc => fc.faction === unit.faction); f && onFilterApply('faction', f.faction_slug, false); e.stopPropagation(); }}
+                  onContextMenu={e => { e.preventDefault(); const f = factions.find(fc => fc.faction === unit.faction); f && onFilterApply('faction', f.faction_slug, true); }}
+                >{unit.faction.toUpperCase()}</span>{' '}
+              </>
+            ) : (unit.faction ? ' ' + unit.faction.toUpperCase() + ' ' : ' ')}<span className="gw-header-warscroll-label">{spName ? 'SPEARHEAD WARSCROLL ·' : 'WARSCROLL ·'}</span>
+          </div>
+          <div className="gw-header-name">{unit.name}</div>
+        </div>
+
+        <div className="gw-header-right">
+          {unit.points && (
+            <div className="gw-meta-pip gw-meta-pip-pts">
+              <span className="gw-meta-pip-val">{unit.points}</span>
+              <span className="gw-meta-pip-lbl">PTS</span>
+            </div>
+          )}
+          {unit.unit_size && (
+            <div className="gw-meta-pip">
+              <span className="gw-meta-pip-val">{unit.unit_size}</span>
+              <span className="gw-meta-pip-lbl">SIZE</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {showFlavorText && unit.flavor_text && (
+        <div className="gw-flavor-text"><p>{unit.flavor_text}</p></div>
+      )}
+
+      <div className="gw-weapons-row">
+        {hasWeapons ? (
+          <>
+            {hasRanged && <WeaponSection weapons={weapons} type="ranged" unitSize={unit.unit_size} />}
+            {hasMelee  && <WeaponSection weapons={weapons} type="melee"  unitSize={unit.unit_size} />}
+          </>
+        ) : (
+          <div className="gw-no-weapons">No weapon data available.</div>
+        )}
+      </div>
+
+      {unit.options_text && (
+        <div className="gw-options-text">
+          {unit.options_text.split(/\.\s+/).map((sentence, i, arr) => (
+            <p key={i}>{i < arr.length - 1 ? sentence + '.' : sentence}</p>
+          ))}
+        </div>
+      )}
+
+      {abilities.length > 0 && (
+        <div className="gw-abilities-section">
+          <div className="gw-section-rule"><span>ABILITIES</span></div>
+          <div className="gw-abilities-row">
+            <div className="gw-abilities-grid">
+              {abilities.map((ab, i) => <AbilityCard key={i} ab={ab} keywords={allKeywords} />)}
+            </div>
+            {imageUrl && (
+              <div className="gw-abilities-img-col">
+                <TransparentImage src={imageUrl} alt={unit.name} className="gw-unit-img" />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {allKeywords.length > 0 && (
+        <div className="gw-keywords-bar">
+          <span className="gw-kw-label">KEYWORDS</span>
+          <div className="gw-kw-lines">
+            {kwLine1.length > 0 && (
+              <div className="gw-kw-line">
+                {kwLine1.map((k, i) => (
+                  <React.Fragment key={k}>
+                    {i > 0 && <span className="gw-kw-sep">·</span>}
+                    <span
+                      className={`gw-kw${onFilterApply ? ' gw-kw-clickable' : ''}`}
+                      title={onFilterApply ? 'Left-click to filter · Right-click to exclude' : undefined}
+                      onClick={onFilterApply ? e => handleKwClick(k, false, e) : undefined}
+                      onContextMenu={onFilterApply ? e => handleKwClick(k, true, e) : undefined}
+                    >{k.toUpperCase()}</span>
+                  </React.Fragment>
+                ))}
+              </div>
+            )}
+            {kwLine2.length > 0 && (
+              <div className="gw-kw-line gw-kw-line2">
+                {kwLine2.map((k, i) => (
+                  <React.Fragment key={k}>
+                    {i > 0 && <span className="gw-kw-sep">·</span>}
+                    <span
+                      className={`gw-kw${onFilterApply ? ' gw-kw-clickable' : ''}`}
+                      title={onFilterApply ? 'Left-click to filter · Right-click to exclude' : undefined}
+                      onClick={onFilterApply ? e => handleKwClick(k, false, e) : undefined}
+                      onContextMenu={onFilterApply ? e => handleKwClick(k, true, e) : undefined}
+                    >{k.toUpperCase()}</span>
+                  </React.Fragment>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {unit.url && (
+        <div className="gw-source">
+          <a href={unit.url} target="_blank" rel="noopener noreferrer">Source ↗</a>
+        </div>
+      )}
+    </>
+  );
+}
+
 // ── Main component ───────────────────────────────────────────────────────────
 function getPrimaryType(u) {
   if (u.is_hero)          return 'Hero';
@@ -475,21 +683,9 @@ function getPrimaryType(u) {
   return 'Other';
 }
 
-export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onFilterApply, factions = [], navIndex, navList, sortBy, spearheadData, allSpearheadRulesMap, onSwapFriendlyEnemy, onShowFriendlyOnly, onShowEnemyOnly }) {
+export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onFilterApply, factions = [], navIndex, navList, sortBy, spearheadData, allSpearheadRulesMap, onSwapFriendlyEnemy, onShowFriendlyOnly, onShowEnemyOnly, friendlyNavList, enemyNavList }) {
   const navTotal = navList ? navList.length : 0;
   const { showFlavorText, showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore, useSpearheadAbilities } = useSettings();
-  const weapons   = React.useMemo(() => { try { return JSON.parse(unit.weapons   || '[]'); } catch { return []; } }, [unit]);
-  const spName = unit?._spName;
-  const abilities = React.useMemo(() => {
-    try {
-      if (useSpearheadAbilities && spName && unit?.spearhead_abilities) {
-        const spMap = JSON.parse(unit.spearhead_abilities);
-        if (spMap[spName] && spMap[spName].length > 0) return spMap[spName];
-      }
-      return JSON.parse(unit.abilities || '[]');
-    } catch { return []; }
-  }, [unit, useSpearheadAbilities, spName]); // eslint-disable-line
-  const [imageUrl, setImageUrl] = useState(null);
   const modalRef = useRef(null);
   const dotsRef      = useRef(null);
   const dotsInnerRef = useRef(null);
@@ -722,12 +918,6 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
     setFormationFilterSelected(localStorage.getItem(filterKey) === '1');
   }, [activePage?.factionSlug, activePage?.slideKey]); // eslint-disable-line
 
-  useEffect(() => {
-    if (!unit?.id) return;
-    const base = axios.defaults.baseURL || '';
-    setImageUrl(`${base}/api/unit-image/${unit.id}`);
-  }, [unit?.id]);
-
   // Resolve slides for a given context (spearhead or faction slug)
   const resolveSlidesFor = useCallback((factionSlug, spName) => {
     if (factionSlug === '__sp__') return getSpSlides(spName);
@@ -909,48 +1099,21 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
     return () => document.removeEventListener('mousedown', h);
   }, [onClose]);
 
-  const allKeywords = unit.keywords ? unit.keywords.split(',').map(k => k.trim()).filter(Boolean) : [];
+  // Split-pane view: independently browse a friendly unit and an enemy unit
+  // side by side. Only offered when the parent page can supply both lists
+  // (i.e. the user has flagged at least one unit on each side).
+  const canSplit = !!(friendlyNavList?.length && enemyNavList?.length);
+  const [splitView, setSplitView] = useState(false);
+  const [splitLeftIdx, setSplitLeftIdx] = useState(0);
+  const [splitRightIdx, setSplitRightIdx] = useState(0);
 
-  const ROLE_KW = new Set([
-    'HERO','MONSTER','CAVALRY','INFANTRY','BEAST','UNIQUE','WAR MACHINE',
-    'FACTION TERRAIN','MANIFESTATION','CHAMPION','MUSICIAN','STANDARD BEARER',
-    'FLY','FLAMMABLE','UNDERDOG',
-  ]);
-  const kwLine1 = [];
-  const kwLine2 = [];
-  for (const kw of allKeywords) {
-    const up = kw.toUpperCase();
-    if (ROLE_KW.has(up) || /^WIZARD(\s*\(\d+\))?$/i.test(kw) || /^PRIEST(\s*\(\d+\))?$/i.test(kw) || /^WARD\s*\(\d+\+?\)$/i.test(kw)) {
-      kwLine1.push(kw);
-    } else {
-      kwLine2.push(kw);
-    }
-  }
-
-  const hasRanged  = weapons.some(w => w.type === 'ranged');
-  const hasMelee   = weapons.some(w => w.type === 'melee');
-  const hasWeapons = hasRanged || hasMelee;
-
-  const KW_TYPE_MAP = {
-    'HERO': 'hero', 'MONSTER': 'monster', 'INFANTRY': 'infantry',
-    'CAVALRY': 'cavalry', 'BEAST': 'beast', 'WAR MACHINE': 'warmachine',
-    'MANIFESTATION': 'manifestation',
-  };
-
-  const handleKwClick = (kw, exclude, e) => {
-    if (!onFilterApply) return;
-    e.preventDefault();
-    const up = kw.replace(/\s*\(.*\)$/, '').trim().toUpperCase();
-    if (KW_TYPE_MAP[up]) {
-      onFilterApply(KW_TYPE_MAP[up], true, exclude);
-    } else {
-      const matchedFaction = factions.find(f => f.faction.toUpperCase() === up);
-      if (matchedFaction) {
-        onFilterApply('faction', matchedFaction.faction_slug, exclude);
-      } else {
-        onFilterApply('search', kw, exclude);
-      }
-    }
+  const enterSplitView = () => {
+    if (!canSplit) return;
+    const li = friendlyNavList.findIndex(u => u.id === unit.id);
+    const ri = enemyNavList.findIndex(u => u.id === unit.id);
+    setSplitLeftIdx(li >= 0 ? li : 0);
+    setSplitRightIdx(ri >= 0 ? ri : 0);
+    setSplitView(true);
   };
 
   return (
@@ -958,10 +1121,26 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
       <div className="gw-overlay" />
       <div className="gw-modal" ref={modalRef} role="dialog" aria-modal="true" aria-label={unit.name}>
 
+        {canSplit && (
+          <div className="gw-view-toggle">
+            <button
+              type="button"
+              className={`gw-view-mode-btn${!splitView ? ' gw-view-mode-btn-active' : ''}`}
+              onClick={() => setSplitView(false)}
+              title="Single pane"
+            ><span className="gw-view-icon gw-view-icon-single"><i /></span></button>
+            <button
+              type="button"
+              className={`gw-view-mode-btn${splitView ? ' gw-view-mode-btn-active' : ''}`}
+              onClick={enterSplitView}
+              title="Split pane — friendly + enemy side by side"
+            ><span className="gw-view-icon gw-view-icon-split"><i /><i /></span></button>
+          </div>
+        )}
         <button className="gw-close" onClick={onClose} title="Close (Esc)">✕</button>
 
         {/* ── Nav dots ── */}
-        {navTotal > 0 && (
+        {!splitView && navTotal > 0 && (
           <div
             className="gw-nav-dots"
             ref={dotsRef}
@@ -1047,7 +1226,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
         )}
 
         {/* ── Slide content (spearhead or faction, replaces warscroll when active) ── */}
-        {activePage !== null && (() => {
+        {!splitView && activePage !== null && (() => {
           const { factionSlug, slideKey } = activePage;
 
           // Spearhead slides
@@ -1231,145 +1410,55 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
           return <FactionTraitsSlide faction={factionName} grandAlliance={grandAlliance} title={SLIDE_TITLES[slideKey] ?? slideKey} traits={slide.data} slideKey={slideKey} />;
         })()}
 
-        {/* ── Warscroll content (hidden when on a rule slide) ── */}
-        {activePage === null && (
-          <>
-            {/* Top band: wheel | centered name | right meta */}
-            <div className="gw-top-band">
-              <div className="gw-wheel-col">
-                <StatsWheel move={unit.move} health={unit.health} save={unit.save} control={unit.control} />
-                {unit.ward && (
-                  <div className="gw-ward-pip">
-                    <span className="gw-ward-pip-val">{unit.ward}</span>
-                    <span className="gw-ward-pip-lbl">WARD</span>
-                  </div>
-                )}
-              </div>
+        {/* ── Warscroll content (hidden when on a rule slide or in split view) ── */}
+        {!splitView && activePage === null && (
+          <WarscrollBody unit={unit} factions={factions} onFilterApply={onFilterApply} />
+        )}
 
-              <div className="gw-header-center">
-                <div className="gw-header-type">
-                  {unit.grand_alliance && onFilterApply ? (
-                    <span
-                      className="gw-filter-chip gw-filter-chip-alliance"
-                      title="Left-click to filter by alliance · Right-click to exclude"
-                      onClick={e => { onFilterApply('alliance', unit.grand_alliance, false); e.stopPropagation(); }}
-                      onContextMenu={e => { e.preventDefault(); onFilterApply('alliance', unit.grand_alliance, true); }}
-                    >{unit.grand_alliance.toUpperCase()}</span>
-                  ) : (unit.grand_alliance ? <span>{unit.grand_alliance.toUpperCase()}</span> : null)}
-                  {' '}·{unit.faction && onFilterApply ? (
-                    <>
-                      {' '}
-                      <span
-                        className="gw-filter-chip"
-                        title="Left-click to filter by faction · Right-click to exclude"
-                        onClick={e => { const f = factions.find(fc => fc.faction === unit.faction); f && onFilterApply('faction', f.faction_slug, false); e.stopPropagation(); }}
-                        onContextMenu={e => { e.preventDefault(); const f = factions.find(fc => fc.faction === unit.faction); f && onFilterApply('faction', f.faction_slug, true); }}
-                      >{unit.faction.toUpperCase()}</span>{' '}
-                    </>
-                  ) : (unit.faction ? ' ' + unit.faction.toUpperCase() + ' ' : ' ')}<span className="gw-header-warscroll-label">{spName ? 'SPEARHEAD WARSCROLL ·' : 'WARSCROLL ·'}</span>
-                </div>
-                <div className="gw-header-name">{unit.name}</div>
+        {/* ── Split view: browse a friendly unit and an enemy unit side by side ── */}
+        {splitView && (
+          <div className="gw-split-view">
+            <div className="gw-split-pane">
+              <div className="gw-split-pane-nav">
+                <button
+                  className="gw-split-pane-arrow"
+                  disabled={splitLeftIdx <= 0}
+                  onClick={() => setSplitLeftIdx(i => Math.max(0, i - 1))}
+                  title="Previous friendly unit"
+                >‹</button>
+                <span className="gw-split-pane-label gw-split-pane-label-friendly">FRIENDLY</span>
+                <button
+                  className="gw-split-pane-arrow"
+                  disabled={splitLeftIdx >= friendlyNavList.length - 1}
+                  onClick={() => setSplitLeftIdx(i => Math.min(friendlyNavList.length - 1, i + 1))}
+                  title="Next friendly unit"
+                >›</button>
               </div>
-
-              <div className="gw-header-right">
-                {unit.points && (
-                  <div className="gw-meta-pip gw-meta-pip-pts">
-                    <span className="gw-meta-pip-val">{unit.points}</span>
-                    <span className="gw-meta-pip-lbl">PTS</span>
-                  </div>
-                )}
-                {unit.unit_size && (
-                  <div className="gw-meta-pip">
-                    <span className="gw-meta-pip-val">{unit.unit_size}</span>
-                    <span className="gw-meta-pip-lbl">SIZE</span>
-                  </div>
-                )}
+              <div className="gw-split-pane-body">
+                <WarscrollBody unit={friendlyNavList[splitLeftIdx]} factions={factions} />
               </div>
             </div>
-
-            {showFlavorText && unit.flavor_text && (
-              <div className="gw-flavor-text"><p>{unit.flavor_text}</p></div>
-            )}
-
-            <div className="gw-weapons-row">
-              {hasWeapons ? (
-                <>
-                  {hasRanged && <WeaponSection weapons={weapons} type="ranged" unitSize={unit.unit_size} />}
-                  {hasMelee  && <WeaponSection weapons={weapons} type="melee"  unitSize={unit.unit_size} />}
-                </>
-              ) : (
-                <div className="gw-no-weapons">No weapon data available.</div>
-              )}
+            <div className="gw-split-pane">
+              <div className="gw-split-pane-nav">
+                <button
+                  className="gw-split-pane-arrow"
+                  disabled={splitRightIdx <= 0}
+                  onClick={() => setSplitRightIdx(i => Math.max(0, i - 1))}
+                  title="Previous enemy unit"
+                >‹</button>
+                <span className="gw-split-pane-label gw-split-pane-label-enemy">ENEMY</span>
+                <button
+                  className="gw-split-pane-arrow"
+                  disabled={splitRightIdx >= enemyNavList.length - 1}
+                  onClick={() => setSplitRightIdx(i => Math.min(enemyNavList.length - 1, i + 1))}
+                  title="Next enemy unit"
+                >›</button>
+              </div>
+              <div className="gw-split-pane-body">
+                <WarscrollBody unit={enemyNavList[splitRightIdx]} factions={factions} />
+              </div>
             </div>
-
-            {unit.options_text && (
-              <div className="gw-options-text">
-                {unit.options_text.split(/\.\s+/).map((sentence, i, arr) => (
-                  <p key={i}>{i < arr.length - 1 ? sentence + '.' : sentence}</p>
-                ))}
-              </div>
-            )}
-
-            {abilities.length > 0 && (
-              <div className="gw-abilities-section">
-                <div className="gw-section-rule"><span>ABILITIES</span></div>
-                <div className="gw-abilities-row">
-                  <div className="gw-abilities-grid">
-                    {abilities.map((ab, i) => <AbilityCard key={i} ab={ab} keywords={allKeywords} />)}
-                  </div>
-                  {imageUrl && (
-                    <div className="gw-abilities-img-col">
-                      <TransparentImage src={imageUrl} alt={unit.name} className="gw-unit-img" />
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {allKeywords.length > 0 && (
-              <div className="gw-keywords-bar">
-                <span className="gw-kw-label">KEYWORDS</span>
-                <div className="gw-kw-lines">
-                  {kwLine1.length > 0 && (
-                    <div className="gw-kw-line">
-                      {kwLine1.map((k, i) => (
-                        <React.Fragment key={k}>
-                          {i > 0 && <span className="gw-kw-sep">·</span>}
-                          <span
-                            className={`gw-kw${onFilterApply ? ' gw-kw-clickable' : ''}`}
-                            title={onFilterApply ? 'Left-click to filter · Right-click to exclude' : undefined}
-                            onClick={onFilterApply ? e => handleKwClick(k, false, e) : undefined}
-                            onContextMenu={onFilterApply ? e => handleKwClick(k, true, e) : undefined}
-                          >{k.toUpperCase()}</span>
-                        </React.Fragment>
-                      ))}
-                    </div>
-                  )}
-                  {kwLine2.length > 0 && (
-                    <div className="gw-kw-line gw-kw-line2">
-                      {kwLine2.map((k, i) => (
-                        <React.Fragment key={k}>
-                          {i > 0 && <span className="gw-kw-sep">·</span>}
-                          <span
-                            className={`gw-kw${onFilterApply ? ' gw-kw-clickable' : ''}`}
-                            title={onFilterApply ? 'Left-click to filter · Right-click to exclude' : undefined}
-                            onClick={onFilterApply ? e => handleKwClick(k, false, e) : undefined}
-                            onContextMenu={onFilterApply ? e => handleKwClick(k, true, e) : undefined}
-                          >{k.toUpperCase()}</span>
-                        </React.Fragment>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {unit.url && (
-              <div className="gw-source">
-                <a href={unit.url} target="_blank" rel="noopener noreferrer">Source ↗</a>
-              </div>
-            )}
-          </>
+          </div>
         )}
       </div>
     </>

@@ -874,6 +874,8 @@ export default function SpearheadPage({ headerCollapsed }) {
           onFilterApply={() => setDetailUnit(null)}
           spearheadData={spearheadDataForViewer}
           allSpearheadRulesMap={spearheadRules}
+          friendlyNavList={yourSpearhead ? allUnits.filter(u => u._spName === yourSpearhead) : []}
+          enemyNavList={opponentSpearhead ? allUnits.filter(u => u._spName === opponentSpearhead) : []}
           {...(yourSpearhead && opponentSpearhead ? {
             onSwapFriendlyEnemy: () => {
               if (detailUnit?._spName) lastUnitPerSpearhead.current[detailUnit._spName] = detailUnit.id;
