@@ -738,6 +738,80 @@ function useSwipeNav(ref, onPrev, onNext, enabled) {
   }, [ref, onPrev, onNext, enabled]);
 }
 
+// Auto-centers the active dot in a horizontally-scrollable dot strip and
+// masks the edges when it overflows — the same mechanic the main modal's
+// nav-dots row uses, extracted so split-pane dot strips can reuse it.
+function useDotsAutoCenter(activeIndex, itemCount) {
+  const outerRef = useRef(null);
+  const innerRef = useRef(null);
+  const [hasOverflow, setHasOverflow] = useState(false);
+  const [atStart, setAtStart] = useState(true);
+  const [atEnd, setAtEnd] = useState(false);
+  const [translate, setTranslate] = useState(0);
+
+  useEffect(() => {
+    const outer = outerRef.current;
+    const inner = innerRef.current;
+    if (!outer || !inner) return;
+    const raf = requestAnimationFrame(() => {
+      try {
+        const outerW = outer.clientWidth;
+        const innerW = inner.scrollWidth;
+        if (innerW <= outerW + 4) {
+          setHasOverflow(false);
+          setAtStart(true);
+          setAtEnd(true);
+          setTranslate((outerW - innerW) / 2);
+          return;
+        }
+        setHasOverflow(true);
+        const activeDot = inner.querySelector('.gw-nav-dot-active');
+        if (!activeDot) return;
+        const dotMid = activeDot.offsetLeft + activeDot.offsetWidth / 2;
+        const minTx  = -(innerW - outerW);
+        const tx = Math.min(0, Math.max(minTx, outerW / 2 - dotMid));
+        setTranslate(tx);
+        setAtStart(tx >= -4);
+        setAtEnd(tx <= minTx + 4);
+      } catch (_) {}
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [activeIndex, itemCount]);
+
+  return { outerRef, innerRef, hasOverflow, atStart, atEnd, translate };
+}
+
+// Flat gold-dot navigation strip for a single split-pane's unit list — same
+// visual/interaction language as the main modal's per-unit nav dots.
+function NavDotsStrip({ list, activeIndex, onJump }) {
+  const { outerRef, innerRef, hasOverflow, atStart, atEnd, translate } = useDotsAutoCenter(activeIndex, list.length);
+  return (
+    <div
+      className="gw-nav-dots gw-split-nav-dots"
+      ref={outerRef}
+      style={hasOverflow ? {
+        WebkitMaskImage: `linear-gradient(to right, transparent ${atStart ? '0%' : '8%'}, black ${atStart ? '0%' : '28%'}, black ${atEnd ? '100%' : '72%'}, transparent ${atEnd ? '100%' : '92%'})`,
+        maskImage:       `linear-gradient(to right, transparent ${atStart ? '0%' : '8%'}, black ${atStart ? '0%' : '28%'}, black ${atEnd ? '100%' : '72%'}, transparent ${atEnd ? '100%' : '92%'})`,
+      } : undefined}
+    >
+      <div
+        className="gw-nav-dots-inner"
+        ref={innerRef}
+        style={{ transform: `translateX(${translate}px)`, transition: hasOverflow ? 'transform 0.25s ease' : 'none' }}
+      >
+        {list.map((u, i) => (
+          <span
+            key={u.id ?? i}
+            className={`gw-nav-dot${i === activeIndex ? ' gw-nav-dot-active' : ''}`}
+            title={u.name}
+            onClick={() => onJump(i)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onFilterApply, factions = [], navIndex, navList, sortBy, spearheadData, allSpearheadRulesMap, onSwapFriendlyEnemy, onShowFriendlyOnly, onShowEnemyOnly, friendlyNavList, enemyNavList }) {
   const navTotal = navList ? navList.length : 0;
   const { showFlavorText, showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore, useSpearheadAbilities } = useSettings();
@@ -1138,7 +1212,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
   return (
     <>
       <div className="gw-overlay" />
-      <div className="gw-modal" ref={modalRef} role="dialog" aria-modal="true" aria-label={unit.name}>
+      <div className={`gw-modal${splitView ? ' gw-modal-split' : ''}`} ref={modalRef} role="dialog" aria-modal="true" aria-label={unit.name}>
 
         <div className="gw-view-toggle">
           <button
@@ -1439,19 +1513,8 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
           <div className="gw-split-view">
             <div className="gw-split-pane" ref={splitLeftRef}>
               <div className="gw-split-pane-nav">
-                <button
-                  className="gw-split-pane-arrow"
-                  disabled={splitLeftIdx <= 0}
-                  onClick={splitLeftPrev}
-                  title="Previous friendly unit"
-                >‹</button>
                 <span className="gw-split-pane-label gw-split-pane-label-friendly">FRIENDLY</span>
-                <button
-                  className="gw-split-pane-arrow"
-                  disabled={splitLeftIdx >= friendlyNavList.length - 1}
-                  onClick={splitLeftNext}
-                  title="Next friendly unit"
-                >›</button>
+                <NavDotsStrip list={friendlyNavList} activeIndex={splitLeftIdx} onJump={setSplitLeftIdx} />
               </div>
               <div className="gw-split-pane-body">
                 <WarscrollBody unit={friendlyNavList[splitLeftIdx]} factions={factions} />
@@ -1459,19 +1522,8 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
             </div>
             <div className="gw-split-pane" ref={splitRightRef}>
               <div className="gw-split-pane-nav">
-                <button
-                  className="gw-split-pane-arrow"
-                  disabled={splitRightIdx <= 0}
-                  onClick={splitRightPrev}
-                  title="Previous enemy unit"
-                >‹</button>
                 <span className="gw-split-pane-label gw-split-pane-label-enemy">ENEMY</span>
-                <button
-                  className="gw-split-pane-arrow"
-                  disabled={splitRightIdx >= enemyNavList.length - 1}
-                  onClick={splitRightNext}
-                  title="Next enemy unit"
-                >›</button>
+                <NavDotsStrip list={enemyNavList} activeIndex={splitRightIdx} onJump={setSplitRightIdx} />
               </div>
               <div className="gw-split-pane-body">
                 <WarscrollBody unit={enemyNavList[splitRightIdx]} factions={factions} />

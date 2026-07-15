@@ -390,7 +390,7 @@ app.post('/api/user-units/:warscrollId', requireAuth, (req, res) => {
 // GET /api/warscrolls
 app.get('/api/warscrolls', requireAuth, (req, res) => {
   const {
-    faction, enemyFaction, alliance, search,
+    faction, enemyFaction, alliance, search, ids,
     sortBy = 'faction', sortDir = 'asc',
     page = 1, pageSize = 50,
     isHero, isMonster, isInfantry, isCavalry, isBeast, isWarMachine, isTerrain, isManifestation, isLegends,
@@ -404,6 +404,15 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
 
   const conditions = [];
   const params = [];
+
+  // Direct ID lookup — used by split-pane view to fetch full data for a
+  // specific set of flagged units, independent of faction/search/checkbox
+  // filters (which only affect what's currently displayed in the main table).
+  if (ids) {
+    const idList = String(ids).split(',').map(s => parseInt(s.trim(), 10)).filter(Number.isInteger);
+    conditions.push(idList.length > 0 ? `w.id IN (${idList.map(() => '?').join(',')})` : '1 = 0');
+    params.push(...idList);
+  }
 
   // Faction slug filter — frontend has already computed which slugs to send
   // based on whether friendly/enemy marks exist (byFaction vs byMark logic).

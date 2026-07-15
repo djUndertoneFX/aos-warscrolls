@@ -297,29 +297,63 @@ export default function WarscrollsPage({ headerCollapsed }) {
   const hasFriendlyMarks = Object.values(userUnits).some(u => u.is_friendly);
   const hasEnemyMarks    = Object.values(userUnits).some(u => u.is_enemy);
 
-  // Split-view fallback: if a side has no individually-flagged units at all,
-  // fall back to every unit of that side's currently-selected Faction/Enemy
-  // Faction dropdown, so split view still has something to show.
+  // Split-view data: an override, independent of the Friendly/Enemy checkbox
+  // filters and the main table's current search/pagination. Each side uses
+  // its flagged units (fetched by id, full data) if any exist anywhere,
+  // else falls back to every unit of that side's selected Faction/Enemy
+  // Faction dropdown — so split view always has something to show as long
+  // as either flags or a faction pick exist for that side.
+  const friendlyIds = React.useMemo(
+    () => Object.entries(userUnits).filter(([, u]) => u.is_friendly).map(([id]) => id),
+    [userUnits]
+  );
+  const enemyIds = React.useMemo(
+    () => Object.entries(userUnits).filter(([, u]) => u.is_enemy).map(([id]) => id),
+    [userUnits]
+  );
+  const [friendlyFlaggedFull, setFriendlyFlaggedFull] = useState([]);
+  const [enemyFlaggedFull, setEnemyFlaggedFull] = useState([]);
   const [friendlyFactionFallback, setFriendlyFactionFallback] = useState([]);
   const [enemyFactionFallback, setEnemyFactionFallback] = useState([]);
 
   useEffect(() => {
-    if (hasFriendlyMarks || !faction) { setFriendlyFactionFallback([]); return; }
+    if (friendlyIds.length === 0) { setFriendlyFlaggedFull([]); return; }
+    let cancelled = false;
+    axios.get('/api/warscrolls', { params: { ids: friendlyIds.join(','), pageSize: 300, sortBy: 'name' } })
+      .then(res => { if (!cancelled) setFriendlyFlaggedFull(res.data.data ?? []); })
+      .catch(() => { if (!cancelled) setFriendlyFlaggedFull([]); });
+    return () => { cancelled = true; };
+  }, [friendlyIds]);
+
+  useEffect(() => {
+    if (enemyIds.length === 0) { setEnemyFlaggedFull([]); return; }
+    let cancelled = false;
+    axios.get('/api/warscrolls', { params: { ids: enemyIds.join(','), pageSize: 300, sortBy: 'name' } })
+      .then(res => { if (!cancelled) setEnemyFlaggedFull(res.data.data ?? []); })
+      .catch(() => { if (!cancelled) setEnemyFlaggedFull([]); });
+    return () => { cancelled = true; };
+  }, [enemyIds]);
+
+  useEffect(() => {
+    if (friendlyIds.length > 0 || !faction) { setFriendlyFactionFallback([]); return; }
     let cancelled = false;
     axios.get('/api/warscrolls', { params: { faction, pageSize: 300, sortBy: 'name' } })
       .then(res => { if (!cancelled) setFriendlyFactionFallback(res.data.data ?? []); })
       .catch(() => { if (!cancelled) setFriendlyFactionFallback([]); });
     return () => { cancelled = true; };
-  }, [hasFriendlyMarks, faction]);
+  }, [friendlyIds, faction]);
 
   useEffect(() => {
-    if (hasEnemyMarks || !enemyFaction) { setEnemyFactionFallback([]); return; }
+    if (enemyIds.length > 0 || !enemyFaction) { setEnemyFactionFallback([]); return; }
     let cancelled = false;
     axios.get('/api/warscrolls', { params: { faction: enemyFaction, pageSize: 300, sortBy: 'name' } })
       .then(res => { if (!cancelled) setEnemyFactionFallback(res.data.data ?? []); })
       .catch(() => { if (!cancelled) setEnemyFactionFallback([]); });
     return () => { cancelled = true; };
-  }, [hasEnemyMarks, enemyFaction]);
+  }, [enemyIds, enemyFaction]);
+
+  const splitFriendlyNavList = friendlyIds.length > 0 ? friendlyFlaggedFull : friendlyFactionFallback;
+  const splitEnemyNavList    = enemyIds.length > 0    ? enemyFlaggedFull    : enemyFactionFallback;
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -1042,8 +1076,8 @@ export default function WarscrollsPage({ headerCollapsed }) {
         navIndex={idx}
         navList={rows}
         sortBy={sortBy}
-        friendlyNavList={hasFriendlyMarks ? rows.filter(r => userUnits[r.id]?.is_friendly) : friendlyFactionFallback}
-        enemyNavList={hasEnemyMarks ? rows.filter(r => userUnits[r.id]?.is_enemy) : enemyFactionFallback}
+        friendlyNavList={splitFriendlyNavList}
+        enemyNavList={splitEnemyNavList}
         onClose={() => setDetailUnit(null)}
         onPrev={() => { if (idx > 0) setDetailUnit(rows[idx - 1]); }}
         onNext={() => { if (idx < rows.length - 1) setDetailUnit(rows[idx + 1]); }}
