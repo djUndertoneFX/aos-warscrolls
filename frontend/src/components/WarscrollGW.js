@@ -477,7 +477,90 @@ const ROLE_KW = new Set([
   'FLY','FLAMMABLE','UNDERDOG',
 ]);
 
-function WarscrollBody({ unit, factions = [], onFilterApply }) {
+// Pure — splits a unit's comma-separated keyword string into the two display
+// lines (role/type keywords vs. flavor keywords). Shared by WarscrollBodyMain
+// (for AbilityCard's inline keyword-bolding) and WarscrollKeywordsFooter (for
+// the clickable keywords bar), which are separate components so the footer
+// can be pinned outside the scrollable body in both single- and split-pane view.
+function splitKeywordsForUnit(unit) {
+  const allKeywords = unit.keywords ? unit.keywords.split(',').map(k => k.trim()).filter(Boolean) : [];
+  const kwLine1 = [];
+  const kwLine2 = [];
+  for (const kw of allKeywords) {
+    const up = kw.toUpperCase();
+    if (ROLE_KW.has(up) || /^WIZARD(\s*\(\d+\))?$/i.test(kw) || /^PRIEST(\s*\(\d+\))?$/i.test(kw) || /^WARD\s*\(\d+\+?\)$/i.test(kw)) {
+      kwLine1.push(kw);
+    } else {
+      kwLine2.push(kw);
+    }
+  }
+  return { allKeywords, kwLine1, kwLine2 };
+}
+
+function makeKwClickHandler(factions, onFilterApply) {
+  return (kw, exclude, e) => {
+    if (!onFilterApply) return;
+    e.preventDefault();
+    const up = kw.replace(/\s*\(.*\)$/, '').trim().toUpperCase();
+    if (KW_TYPE_MAP[up]) {
+      onFilterApply(KW_TYPE_MAP[up], true, exclude);
+    } else {
+      const matchedFaction = factions.find(f => f.faction.toUpperCase() === up);
+      if (matchedFaction) {
+        onFilterApply('faction', matchedFaction.faction_slug, exclude);
+      } else {
+        onFilterApply('search', kw, exclude);
+      }
+    }
+  };
+}
+
+// Pinned footer — rendered as a flex sibling outside the scrollable body (in
+// both single-pane and split-pane layouts) so it never scrolls out of view.
+function WarscrollKeywordsFooter({ unit, factions = [], onFilterApply }) {
+  const { allKeywords, kwLine1, kwLine2 } = splitKeywordsForUnit(unit);
+  if (allKeywords.length === 0) return null;
+  const handleKwClick = makeKwClickHandler(factions, onFilterApply);
+  return (
+    <div className="gw-keywords-bar">
+      <span className="gw-kw-label">KEYWORDS</span>
+      <div className="gw-kw-lines">
+        {kwLine1.length > 0 && (
+          <div className="gw-kw-line">
+            {kwLine1.map((k, i) => (
+              <React.Fragment key={k}>
+                {i > 0 && <span className="gw-kw-sep">·</span>}
+                <span
+                  className={`gw-kw${onFilterApply ? ' gw-kw-clickable' : ''}`}
+                  title={onFilterApply ? 'Left-click to filter · Right-click to exclude' : undefined}
+                  onClick={onFilterApply ? e => handleKwClick(k, false, e) : undefined}
+                  onContextMenu={onFilterApply ? e => handleKwClick(k, true, e) : undefined}
+                >{k.toUpperCase()}</span>
+              </React.Fragment>
+            ))}
+          </div>
+        )}
+        {kwLine2.length > 0 && (
+          <div className="gw-kw-line gw-kw-line2">
+            {kwLine2.map((k, i) => (
+              <React.Fragment key={k}>
+                {i > 0 && <span className="gw-kw-sep">·</span>}
+                <span
+                  className={`gw-kw${onFilterApply ? ' gw-kw-clickable' : ''}`}
+                  title={onFilterApply ? 'Left-click to filter · Right-click to exclude' : undefined}
+                  onClick={onFilterApply ? e => handleKwClick(k, false, e) : undefined}
+                  onContextMenu={onFilterApply ? e => handleKwClick(k, true, e) : undefined}
+                >{k.toUpperCase()}</span>
+              </React.Fragment>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function WarscrollBodyMain({ unit, factions = [], onFilterApply }) {
   const { showFlavorText, useSpearheadAbilities } = useSettings();
   const weapons = React.useMemo(() => { try { return JSON.parse(unit.weapons || '[]'); } catch { return []; } }, [unit]);
   const spName = unit?._spName;
@@ -497,37 +580,11 @@ function WarscrollBody({ unit, factions = [], onFilterApply }) {
     setImageUrl(`${base}/api/unit-image/${unit.id}`);
   }, [unit?.id]);
 
-  const allKeywords = unit.keywords ? unit.keywords.split(',').map(k => k.trim()).filter(Boolean) : [];
-  const kwLine1 = [];
-  const kwLine2 = [];
-  for (const kw of allKeywords) {
-    const up = kw.toUpperCase();
-    if (ROLE_KW.has(up) || /^WIZARD(\s*\(\d+\))?$/i.test(kw) || /^PRIEST(\s*\(\d+\))?$/i.test(kw) || /^WARD\s*\(\d+\+?\)$/i.test(kw)) {
-      kwLine1.push(kw);
-    } else {
-      kwLine2.push(kw);
-    }
-  }
+  const { allKeywords } = splitKeywordsForUnit(unit);
 
   const hasRanged  = weapons.some(w => w.type === 'ranged');
   const hasMelee   = weapons.some(w => w.type === 'melee');
   const hasWeapons = hasRanged || hasMelee;
-
-  const handleKwClick = (kw, exclude, e) => {
-    if (!onFilterApply) return;
-    e.preventDefault();
-    const up = kw.replace(/\s*\(.*\)$/, '').trim().toUpperCase();
-    if (KW_TYPE_MAP[up]) {
-      onFilterApply(KW_TYPE_MAP[up], true, exclude);
-    } else {
-      const matchedFaction = factions.find(f => f.faction.toUpperCase() === up);
-      if (matchedFaction) {
-        onFilterApply('faction', matchedFaction.faction_slug, exclude);
-      } else {
-        onFilterApply('search', kw, exclude);
-      }
-    }
-  };
 
   return (
     <>
@@ -623,44 +680,6 @@ function WarscrollBody({ unit, factions = [], onFilterApply }) {
         </div>
       )}
 
-      {allKeywords.length > 0 && (
-        <div className="gw-keywords-bar">
-          <span className="gw-kw-label">KEYWORDS</span>
-          <div className="gw-kw-lines">
-            {kwLine1.length > 0 && (
-              <div className="gw-kw-line">
-                {kwLine1.map((k, i) => (
-                  <React.Fragment key={k}>
-                    {i > 0 && <span className="gw-kw-sep">·</span>}
-                    <span
-                      className={`gw-kw${onFilterApply ? ' gw-kw-clickable' : ''}`}
-                      title={onFilterApply ? 'Left-click to filter · Right-click to exclude' : undefined}
-                      onClick={onFilterApply ? e => handleKwClick(k, false, e) : undefined}
-                      onContextMenu={onFilterApply ? e => handleKwClick(k, true, e) : undefined}
-                    >{k.toUpperCase()}</span>
-                  </React.Fragment>
-                ))}
-              </div>
-            )}
-            {kwLine2.length > 0 && (
-              <div className="gw-kw-line gw-kw-line2">
-                {kwLine2.map((k, i) => (
-                  <React.Fragment key={k}>
-                    {i > 0 && <span className="gw-kw-sep">·</span>}
-                    <span
-                      className={`gw-kw${onFilterApply ? ' gw-kw-clickable' : ''}`}
-                      title={onFilterApply ? 'Left-click to filter · Right-click to exclude' : undefined}
-                      onClick={onFilterApply ? e => handleKwClick(k, false, e) : undefined}
-                      onContextMenu={onFilterApply ? e => handleKwClick(k, true, e) : undefined}
-                    >{k.toUpperCase()}</span>
-                  </React.Fragment>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       {unit.url && (
         <div className="gw-source">
           <a href={unit.url} target="_blank" rel="noopener noreferrer">Source ↗</a>
@@ -741,7 +760,7 @@ function useSwipeNav(ref, onPrev, onNext, enabled) {
 // Auto-centers the active dot in a horizontally-scrollable dot strip and
 // masks the edges when it overflows — the same mechanic the main modal's
 // nav-dots row uses, extracted so split-pane dot strips can reuse it.
-function useDotsAutoCenter(activeIndex, itemCount) {
+function useDotsAutoCenter(activeIndex, itemCount, extraKey) {
   const outerRef = useRef(null);
   const innerRef = useRef(null);
   const [hasOverflow, setHasOverflow] = useState(false);
@@ -765,7 +784,7 @@ function useDotsAutoCenter(activeIndex, itemCount) {
           return;
         }
         setHasOverflow(true);
-        const activeDot = inner.querySelector('.gw-nav-dot-active');
+        const activeDot = inner.querySelector('.gw-nav-dot-active, .gw-nav-dot-faction-active');
         if (!activeDot) return;
         const dotMid = activeDot.offsetLeft + activeDot.offsetWidth / 2;
         const minTx  = -(innerW - outerW);
@@ -776,37 +795,157 @@ function useDotsAutoCenter(activeIndex, itemCount) {
       } catch (_) {}
     });
     return () => cancelAnimationFrame(raf);
-  }, [activeIndex, itemCount]);
+  }, [activeIndex, itemCount, extraKey]);
 
   return { outerRef, innerRef, hasOverflow, atStart, atEnd, translate };
 }
 
-// Flat gold-dot navigation strip for a single split-pane's unit list — same
-// visual/interaction language as the main modal's per-unit nav dots.
-function NavDotsStrip({ list, activeIndex, onJump }) {
-  const { outerRef, innerRef, hasOverflow, atStart, atEnd, translate } = useDotsAutoCenter(activeIndex, list.length);
+const SPLIT_SLIDE_LABELS = { traits: 'Battle Traits', formations: 'Battle Formations', heroic_traits: 'Heroic Traits', artefacts: 'Artefacts of Power', spell_lore: 'Spell / Prayer Lore', manifestation_lore: 'Manifestation Lore' };
+
+// Battle Formations' checkbox/filter selection, keyed by faction slug and
+// persisted to localStorage — same scheme the main single-pane view uses,
+// but instantiated independently per split pane so left/right formation
+// pages (which may be different factions) never clobber each other.
+function useFormationSelection(factionSlug) {
+  const [selected, setSelected] = useState(new Set());
+  const [filterSelected, setFilterSelected] = useState(false);
+
+  useEffect(() => {
+    if (!factionSlug) { setSelected(new Set()); setFilterSelected(false); return; }
+    try { setSelected(new Set(JSON.parse(localStorage.getItem(`formation-selected-${factionSlug}`) || '[]'))); }
+    catch { setSelected(new Set()); }
+    setFilterSelected(localStorage.getItem(`formation-filter-${factionSlug}`) === '1');
+  }, [factionSlug]);
+
+  const toggle = useCallback((name) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(name) ? next.delete(name) : next.add(name);
+      if (factionSlug) localStorage.setItem(`formation-selected-${factionSlug}`, JSON.stringify([...next]));
+      return next;
+    });
+  }, [factionSlug]);
+
+  const toggleFilter = useCallback(() => {
+    setFilterSelected(prev => {
+      const next = !prev;
+      if (factionSlug) localStorage.setItem(`formation-filter-${factionSlug}`, next ? '1' : '0');
+      return next;
+    });
+  }, [factionSlug]);
+
+  return { selected, filterSelected, toggle, toggleFilter };
+}
+
+// One side of the split-pane view: gold unit dots + purple faction-info dots
+// (Battle Traits/Formations/etc.), a scrollable body, and a pinned keywords
+// footer — the same nav-dot language and page types as the single-pane view,
+// scoped to just this side's own unit list.
+function SplitPane({ label, labelClass, list, activeIdx, setActiveIdx, onPrev, onNext, factions, paneRef, isFocused, onFocus, getSlidesForSlug }) {
+  const [activeSlide, setActiveSlide] = useState(null); // { factionSlug, groupStartIdx, slideKey } | null
+
+  const factionGroups = React.useMemo(() => {
+    const groups = [];
+    for (let i = 0; i < list.length; i++) {
+      const u = list[i];
+      const last = groups[groups.length - 1];
+      if (last && last.faction_slug === u.faction_slug) last.endIdx = i;
+      else groups.push({ faction_slug: u.faction_slug, faction: u.faction, grand_alliance: u.grand_alliance, startIdx: i, endIdx: i });
+    }
+    return groups;
+  }, [list]);
+
+  const formationState = useFormationSelection(activeSlide?.slideKey === 'formations' ? activeSlide.factionSlug : null);
+
+  useSwipeNav(paneRef, onPrev, onNext, true);
+
+  const activeKey = activeSlide ? `slide:${activeSlide.factionSlug}:${activeSlide.slideKey}` : `unit:${activeIdx}`;
+  const { outerRef, innerRef, hasOverflow, atStart, atEnd, translate } = useDotsAutoCenter(activeIdx, list.length, activeKey);
+
+  const jumpUnit = (i) => { setActiveSlide(null); setActiveIdx(i); onFocus(); };
+  const jumpSlide = (factionSlug, groupStartIdx, slideKey) => { setActiveSlide({ factionSlug, groupStartIdx, slideKey }); onFocus(); };
+
+  const unit = list[activeIdx];
+  const activeGroup = activeSlide ? factionGroups.find(g => g.startIdx === activeSlide.groupStartIdx) : null;
+  const activeSlideDef = activeSlide ? getSlidesForSlug(activeSlide.factionSlug).find(s => s.key === activeSlide.slideKey) : null;
+
   return (
-    <div
-      className="gw-nav-dots gw-split-nav-dots"
-      ref={outerRef}
-      style={hasOverflow ? {
-        WebkitMaskImage: `linear-gradient(to right, transparent ${atStart ? '0%' : '8%'}, black ${atStart ? '0%' : '28%'}, black ${atEnd ? '100%' : '72%'}, transparent ${atEnd ? '100%' : '92%'})`,
-        maskImage:       `linear-gradient(to right, transparent ${atStart ? '0%' : '8%'}, black ${atStart ? '0%' : '28%'}, black ${atEnd ? '100%' : '72%'}, transparent ${atEnd ? '100%' : '92%'})`,
-      } : undefined}
-    >
-      <div
-        className="gw-nav-dots-inner"
-        ref={innerRef}
-        style={{ transform: `translateX(${translate}px)`, transition: hasOverflow ? 'transform 0.25s ease' : 'none' }}
-      >
-        {list.map((u, i) => (
-          <span
-            key={u.id ?? i}
-            className={`gw-nav-dot${i === activeIndex ? ' gw-nav-dot-active' : ''}`}
-            title={u.name}
-            onClick={() => onJump(i)}
-          />
-        ))}
+    <div className={`gw-split-pane${isFocused ? ' gw-split-pane-focused' : ''}`} ref={paneRef} onMouseDown={onFocus}>
+      <div className="gw-split-pane-nav">
+        <span className={`gw-split-pane-label ${labelClass}`}>{label}</span>
+        <div
+          className="gw-nav-dots gw-split-nav-dots"
+          ref={outerRef}
+          style={hasOverflow ? {
+            WebkitMaskImage: `linear-gradient(to right, transparent ${atStart ? '0%' : '8%'}, black ${atStart ? '0%' : '28%'}, black ${atEnd ? '100%' : '72%'}, transparent ${atEnd ? '100%' : '92%'})`,
+            maskImage:       `linear-gradient(to right, transparent ${atStart ? '0%' : '8%'}, black ${atStart ? '0%' : '28%'}, black ${atEnd ? '100%' : '72%'}, transparent ${atEnd ? '100%' : '92%'})`,
+          } : undefined}
+        >
+          <div
+            className="gw-nav-dots-inner"
+            ref={innerRef}
+            style={{ transform: `translateX(${translate}px)`, transition: hasOverflow ? 'transform 0.25s ease' : 'none' }}
+          >
+            {factionGroups.map((group, gi) => {
+              const slides = getSlidesForSlug(group.faction_slug);
+              return (
+                <React.Fragment key={group.faction_slug + '-' + gi}>
+                  {gi > 0 && <span className="gw-nav-faction-sep" title={group.faction} />}
+                  {slides.map(s => (
+                    <span key={s.key}
+                      className={`gw-nav-dot-faction${activeSlide?.groupStartIdx === group.startIdx && activeSlide?.slideKey === s.key ? ' gw-nav-dot-faction-active' : ''}`}
+                      title={`${group.faction} — ${SPLIT_SLIDE_LABELS[s.key] ?? s.key}`}
+                      onClick={() => jumpSlide(group.faction_slug, group.startIdx, s.key)}
+                    />
+                  ))}
+                  {slides.length > 0 && <span className="gw-nav-sep" />}
+                  {list.slice(group.startIdx, group.endIdx + 1).map((u2, localI) => {
+                    const i = group.startIdx + localI;
+                    return (
+                      <span key={u2.id ?? i}
+                        className={`gw-nav-dot${!activeSlide && i === activeIdx ? ' gw-nav-dot-active' : ''}`}
+                        title={u2.name}
+                        onClick={() => jumpUnit(i)}
+                      />
+                    );
+                  })}
+                </React.Fragment>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+      <div className="gw-split-pane-body">
+        {activeSlide && activeSlideDef ? (
+          <div className="gw-split-pane-scroll">
+            {activeSlide.slideKey === 'formations' ? (
+              <FactionFormationsSlide
+                faction={activeGroup?.faction ?? activeSlide.factionSlug}
+                grandAlliance={activeGroup?.grand_alliance ?? ''}
+                formations={activeSlideDef.data}
+                selected={formationState.selected}
+                filterSelected={formationState.filterSelected}
+                onToggle={formationState.toggle}
+                onToggleFilter={formationState.toggleFilter}
+              />
+            ) : (
+              <FactionTraitsSlide
+                faction={activeGroup?.faction ?? activeSlide.factionSlug}
+                grandAlliance={activeGroup?.grand_alliance ?? ''}
+                title={SPLIT_SLIDE_LABELS[activeSlide.slideKey] ?? activeSlide.slideKey}
+                traits={activeSlideDef.data}
+                slideKey={activeSlide.slideKey}
+              />
+            )}
+          </div>
+        ) : unit ? (
+          <>
+            <div className="gw-split-pane-scroll">
+              <WarscrollBodyMain unit={unit} factions={factions} />
+            </div>
+            <WarscrollKeywordsFooter unit={unit} factions={factions} />
+          </>
+        ) : null}
       </div>
     </div>
   );
@@ -816,6 +955,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
   const navTotal = navList ? navList.length : 0;
   const { showFlavorText, showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore, useSpearheadAbilities } = useSettings();
   const modalRef = useRef(null);
+  const scrollRef = useRef(null); // the actual scrolling element (.gw-modal-scroll), single-pane mode only
   const dotsRef      = useRef(null);
   const dotsInnerRef = useRef(null);
   const [dotsAtStart,    setDotsAtStart]    = useState(true);
@@ -915,6 +1055,23 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
     ].filter(s => s.enabled && s.data.length > 0);
   }, [loadedSlugs, sortBy, showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore]); // eslint-disable-line
 
+  // Same as getSlidesForSlug but without the sortBy==='faction' gate — split
+  // panes always show purple faction-info dots for their own list, regardless
+  // of what the main modal/table is currently sorted by.
+  const getSlidesForSlugAlways = useCallback((slug) => {
+    const rules = rulesCache.current.get(slug);
+    if (!rules) return [];
+    const spellPrayerData = [...(rules.spell_lore ?? []), ...(rules.prayer_lore ?? [])];
+    return [
+      { key: 'manifestation_lore', enabled: showManifestationLore, data: rules.manifestation_lore ?? [] },
+      { key: 'spell_lore',         enabled: showSpellLore,         data: spellPrayerData },
+      { key: 'artefacts',          enabled: showArtefacts,         data: rules.artefacts ?? [] },
+      { key: 'heroic_traits',      enabled: showHeroicTraits,      data: rules.heroic_traits ?? [] },
+      { key: 'formations',         enabled: showBattleFormations,  data: rules.formations ?? [] },
+      { key: 'traits',             enabled: showBattleTraits,      data: rules.traits ?? [] },
+    ].filter(s => s.enabled && s.data.length > 0);
+  }, [loadedSlugs, showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore]); // eslint-disable-line
+
   // Fetch rules for every unique faction slug in navList (skip in spearhead mode, or when not faction-sorted)
   useEffect(() => {
     if (isSpMode || !navList?.length || sortBy !== 'faction') return;
@@ -934,6 +1091,25 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
         });
     });
   }, [navList, spearheadData]);
+
+  // Same fetch, but for the split-pane friendly/enemy lists — independent of
+  // sortBy/isSpMode, since split panes always want their own purple dots.
+  useEffect(() => {
+    const slugs = [...new Set([...(friendlyNavList || []), ...(enemyNavList || [])].map(u => u.faction_slug).filter(Boolean))];
+    slugs.forEach(slug => {
+      if (rulesCache.current.has(slug)) return;
+      rulesCache.current.set(slug, null);
+      axios.get(`/api/faction-rules/${slug}`)
+        .then(r => {
+          rulesCache.current.set(slug, r.data);
+          setLoadedSlugs(prev => new Set([...prev, slug]));
+        })
+        .catch(() => {
+          rulesCache.current.set(slug, { traits: [], formations: [] });
+          setLoadedSlugs(prev => new Set([...prev, slug]));
+        });
+    });
+  }, [friendlyNavList, enemyNavList]);
 
   useEffect(() => {
     const outer = dotsRef.current;
@@ -1022,7 +1198,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
 
   // Scroll to top when switching slides or units
   useEffect(() => {
-    if (modalRef.current) modalRef.current.scrollTop = 0;
+    if (scrollRef.current) scrollRef.current.scrollTop = 0;
   }, [activePage, unit?.id]);
 
   // Load spearhead slide checkbox + filter state from localStorage when slide changes
@@ -1141,28 +1317,19 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
     onNext?.();
   }, [activePage, navIndex, factionGroups, currentGroupIdx, isSpMode, spearheadNavGroups, getSpSlides, resolveSlidesFor, getSlidesForSlug, onNext, onJump]);
 
-  // Keyboard: Escape=close, ←=prev, →=next, PageUp=friendly only, PageDown=enemy only
-  useEffect(() => {
-    const h = e => {
-      if (e.key === 'Escape')      onClose();
-      if (e.key === 'ArrowLeft')  { e.preventDefault(); handlePrev(); }
-      if (e.key === 'ArrowRight') { e.preventDefault(); handleNext(); }
-      if (e.key === 'PageUp')     { e.preventDefault(); onShowFriendlyOnly?.(); }
-      if (e.key === 'PageDown')   { e.preventDefault(); onShowEnemyOnly?.(); }
-    };
-    window.addEventListener('keydown', h);
-    return () => window.removeEventListener('keydown', h);
-  }, [onClose, handlePrev, handleNext, onShowFriendlyOnly, onShowEnemyOnly]);
-
   // Split-pane view: independently browse a friendly unit and an enemy unit
   // side by side. Only offered when the parent page can supply both lists
-  // (i.e. the user has flagged at least one unit on each side).
+  // (i.e. the user has flagged at least one unit on each side, or a Faction/
+  // Enemy Faction is selected as a fallback — see parent pages).
   const canSplit = !!(friendlyNavList?.length && enemyNavList?.length);
   const [splitView, setSplitView] = useState(false);
   const [splitLeftIdx, setSplitLeftIdx] = useState(0);
   const [splitRightIdx, setSplitRightIdx] = useState(0);
   const splitLeftRef  = useRef(null);
   const splitRightRef = useRef(null);
+  // Which pane the Left/Right arrow-key hotkeys apply to. Defaults to
+  // whichever side the unit being viewed belonged to before splitting.
+  const [focusedPane, setFocusedPane] = useState('left');
 
   const enterSplitView = () => {
     if (!canSplit) return;
@@ -1170,6 +1337,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
     const ri = enemyNavList.findIndex(u => u.id === unit.id);
     setSplitLeftIdx(li >= 0 ? li : 0);
     setSplitRightIdx(ri >= 0 ? ri : 0);
+    setFocusedPane(li >= 0 ? 'left' : ri >= 0 ? 'right' : 'left');
     setSplitView(true);
   };
 
@@ -1178,19 +1346,38 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
   const splitRightPrev = useCallback(() => setSplitRightIdx(i => Math.max(0, i - 1)), []);
   const splitRightNext = useCallback(() => setSplitRightIdx(i => Math.min((enemyNavList?.length ?? 1) - 1, i + 1)), [enemyNavList]);
 
-  // Touch swipe navigation. In single-pane mode the whole modal pages through
-  // the unit list; in split view each side pages through only its own list
-  // independently, so left/right panes never step on each other's swipes.
-  useSwipeNav(modalRef, handlePrev, handleNext, !splitView);
-  useSwipeNav(splitLeftRef, splitLeftPrev, splitLeftNext, splitView);
-  useSwipeNav(splitRightRef, splitRightPrev, splitRightNext, splitView);
+  // Keyboard: Escape=close, ←=prev, →=next, PageUp=friendly only, PageDown=enemy only.
+  // In split view, ←/→ apply to whichever pane currently has focus instead.
+  useEffect(() => {
+    const h = e => {
+      if (e.key === 'Escape')      onClose();
+      if (e.key === 'ArrowLeft')  {
+        e.preventDefault();
+        if (splitView) { (focusedPane === 'left' ? splitLeftPrev : splitRightPrev)(); }
+        else handlePrev();
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        if (splitView) { (focusedPane === 'left' ? splitLeftNext : splitRightNext)(); }
+        else handleNext();
+      }
+      if (e.key === 'PageUp')     { e.preventDefault(); onShowFriendlyOnly?.(); }
+      if (e.key === 'PageDown')   { e.preventDefault(); onShowEnemyOnly?.(); }
+    };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [onClose, handlePrev, handleNext, onShowFriendlyOnly, onShowEnemyOnly, splitView, focusedPane, splitLeftPrev, splitLeftNext, splitRightPrev, splitRightNext]);
+
+  // Touch swipe navigation for single-pane mode; split panes handle their
+  // own swipe internally (see SplitPane).
+  useSwipeNav(scrollRef, handlePrev, handleNext, !splitView);
 
   // Lock viewport zoom while modal is open; scroll to top on orientation change
   useEffect(() => {
     const meta = document.querySelector('meta[name=viewport]');
     const orig = meta?.content;
     if (meta) meta.content = 'width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1';
-    const scrollTop = () => setTimeout(() => { if (modalRef.current) modalRef.current.scrollTop = 0; }, 300);
+    const scrollTop = () => setTimeout(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, 300);
     window.addEventListener('orientationchange', scrollTop);
     return () => {
       if (meta && orig) meta.content = orig;
@@ -1232,8 +1419,12 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
         </div>
         <button className="gw-close" onClick={onClose} title="Close (Esc)">✕</button>
 
+        {/* ── Scrollable region: nav dots, faction-info slide, or the unit's
+             warscroll body — the keywords footer below is pinned outside it ── */}
+        {!splitView && (
+        <div className="gw-modal-scroll" ref={scrollRef}>
         {/* ── Nav dots ── */}
-        {!splitView && navTotal > 0 && (
+        {navTotal > 0 && (
           <div
             className="gw-nav-dots"
             ref={dotsRef}
@@ -1319,7 +1510,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
         )}
 
         {/* ── Slide content (spearhead or faction, replaces warscroll when active) ── */}
-        {!splitView && activePage !== null && (() => {
+        {activePage !== null && (() => {
           const { factionSlug, slideKey } = activePage;
 
           // Spearhead slides
@@ -1504,31 +1695,48 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
         })()}
 
         {/* ── Warscroll content (hidden when on a rule slide or in split view) ── */}
+        {activePage === null && (
+          <WarscrollBodyMain unit={unit} factions={factions} onFilterApply={onFilterApply} />
+        )}
+        </div>
+        )}
         {!splitView && activePage === null && (
-          <WarscrollBody unit={unit} factions={factions} onFilterApply={onFilterApply} />
+          <WarscrollKeywordsFooter unit={unit} factions={factions} onFilterApply={onFilterApply} />
         )}
 
-        {/* ── Split view: browse a friendly unit and an enemy unit side by side ── */}
+        {/* ── Split view: browse a friendly unit and an enemy unit side by side,
+             each with its own gold/purple nav dots, scrollable body, and
+             pinned keywords footer ── */}
         {splitView && (
           <div className="gw-split-view">
-            <div className="gw-split-pane" ref={splitLeftRef}>
-              <div className="gw-split-pane-nav">
-                <span className="gw-split-pane-label gw-split-pane-label-friendly">FRIENDLY</span>
-                <NavDotsStrip list={friendlyNavList} activeIndex={splitLeftIdx} onJump={setSplitLeftIdx} />
-              </div>
-              <div className="gw-split-pane-body">
-                <WarscrollBody unit={friendlyNavList[splitLeftIdx]} factions={factions} />
-              </div>
-            </div>
-            <div className="gw-split-pane" ref={splitRightRef}>
-              <div className="gw-split-pane-nav">
-                <span className="gw-split-pane-label gw-split-pane-label-enemy">ENEMY</span>
-                <NavDotsStrip list={enemyNavList} activeIndex={splitRightIdx} onJump={setSplitRightIdx} />
-              </div>
-              <div className="gw-split-pane-body">
-                <WarscrollBody unit={enemyNavList[splitRightIdx]} factions={factions} />
-              </div>
-            </div>
+            <SplitPane
+              label="FRIENDLY"
+              labelClass="gw-split-pane-label-friendly"
+              list={friendlyNavList}
+              activeIdx={splitLeftIdx}
+              setActiveIdx={setSplitLeftIdx}
+              onPrev={splitLeftPrev}
+              onNext={splitLeftNext}
+              factions={factions}
+              paneRef={splitLeftRef}
+              isFocused={focusedPane === 'left'}
+              onFocus={() => setFocusedPane('left')}
+              getSlidesForSlug={getSlidesForSlugAlways}
+            />
+            <SplitPane
+              label="ENEMY"
+              labelClass="gw-split-pane-label-enemy"
+              list={enemyNavList}
+              activeIdx={splitRightIdx}
+              setActiveIdx={setSplitRightIdx}
+              onPrev={splitRightPrev}
+              onNext={splitRightNext}
+              factions={factions}
+              paneRef={splitRightRef}
+              isFocused={focusedPane === 'right'}
+              onFocus={() => setFocusedPane('right')}
+              getSlidesForSlug={getSlidesForSlugAlways}
+            />
           </div>
         )}
       </div>
