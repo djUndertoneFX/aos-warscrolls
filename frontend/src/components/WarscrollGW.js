@@ -683,6 +683,61 @@ function getPrimaryType(u) {
   return 'Other';
 }
 
+// Touch swipe: left=next, right=prev. Axis-locked: once the gesture direction
+// is determined (H vs V), we commit. Horizontal swipes call preventDefault to
+// prevent frame shift / scroll interference. Reusable so each split-pane side
+// can page through its own list independently, in addition to the single-pane
+// modal itself.
+function useSwipeNav(ref, onPrev, onNext, enabled) {
+  useEffect(() => {
+    if (!enabled) return;
+    const el = ref.current;
+    if (!el) return;
+    let startX = null, startY = null, startT = null, axis = null; // axis: null | 'h' | 'v'
+
+    const onStart = e => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      startT = Date.now();
+      axis = null;
+    };
+    const onMove = e => {
+      if (startX === null) return;
+      if (axis === null) {
+        const dx = Math.abs(e.touches[0].clientX - startX);
+        const dy = Math.abs(e.touches[0].clientY - startY);
+        // Vertical wins at 8px with any vertical lean — preserves natural scroll/pan.
+        // Horizontal only locks when clearly dominant (2:1 ratio + 14px) to avoid
+        // diagonal micro-movements stealing scroll and causing squirly vertical feel.
+        if (dy > 8) axis = 'v';
+        else if (dx > 14 && dx > dy * 2) axis = 'h';
+      }
+      if (axis === 'h') e.preventDefault(); // stop scroll/frame-shift on horizontal
+    };
+    const onEnd = e => {
+      if (startX !== null && axis === 'h') {
+        const dx = e.changedTouches[0].clientX - startX;
+        const velocity = Math.abs(dx) / (Date.now() - startT); // px/ms
+        // Require either a fast flick (≥0.4 px/ms) or a long deliberate swipe (≥120px).
+        // This lets slow content-panning on iPhone coexist with navigation gestures.
+        if (Math.abs(dx) > 50 && (velocity >= 0.4 || Math.abs(dx) >= 120)) {
+          dx < 0 ? onNext() : onPrev();
+        }
+      }
+      startX = null; startY = null; startT = null; axis = null;
+    };
+
+    el.addEventListener('touchstart', onStart, { passive: true });
+    el.addEventListener('touchmove', onMove, { passive: false }); // non-passive so preventDefault works
+    el.addEventListener('touchend', onEnd, { passive: true });
+    return () => {
+      el.removeEventListener('touchstart', onStart);
+      el.removeEventListener('touchmove', onMove);
+      el.removeEventListener('touchend', onEnd);
+    };
+  }, [ref, onPrev, onNext, enabled]);
+}
+
 export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onFilterApply, factions = [], navIndex, navList, sortBy, spearheadData, allSpearheadRulesMap, onSwapFriendlyEnemy, onShowFriendlyOnly, onShowEnemyOnly, friendlyNavList, enemyNavList }) {
   const navTotal = navList ? navList.length : 0;
   const { showFlavorText, showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore, useSpearheadAbilities } = useSettings();
@@ -1025,55 +1080,36 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
     return () => window.removeEventListener('keydown', h);
   }, [onClose, handlePrev, handleNext, onShowFriendlyOnly, onShowEnemyOnly]);
 
-  // Touch swipe: left=next, right=prev.
-  // Axis-locked: once the gesture direction is determined (H vs V), we commit.
-  // Horizontal swipes call preventDefault to prevent frame shift / scroll interference.
-  useEffect(() => {
-    const el = modalRef.current;
-    if (!el) return;
-    let startX = null, startY = null, startT = null, axis = null; // axis: null | 'h' | 'v'
+  // Split-pane view: independently browse a friendly unit and an enemy unit
+  // side by side. Only offered when the parent page can supply both lists
+  // (i.e. the user has flagged at least one unit on each side).
+  const canSplit = !!(friendlyNavList?.length && enemyNavList?.length);
+  const [splitView, setSplitView] = useState(false);
+  const [splitLeftIdx, setSplitLeftIdx] = useState(0);
+  const [splitRightIdx, setSplitRightIdx] = useState(0);
+  const splitLeftRef  = useRef(null);
+  const splitRightRef = useRef(null);
 
-    const onStart = e => {
-      startX = e.touches[0].clientX;
-      startY = e.touches[0].clientY;
-      startT = Date.now();
-      axis = null;
-    };
-    const onMove = e => {
-      if (startX === null) return;
-      if (axis === null) {
-        const dx = Math.abs(e.touches[0].clientX - startX);
-        const dy = Math.abs(e.touches[0].clientY - startY);
-        // Vertical wins at 8px with any vertical lean — preserves natural scroll/pan.
-        // Horizontal only locks when clearly dominant (2:1 ratio + 14px) to avoid
-        // diagonal micro-movements stealing scroll and causing squirly vertical feel.
-        if (dy > 8) axis = 'v';
-        else if (dx > 14 && dx > dy * 2) axis = 'h';
-      }
-      if (axis === 'h') e.preventDefault(); // stop scroll/frame-shift on horizontal
-    };
-    const onEnd = e => {
-      if (startX !== null && axis === 'h') {
-        const dx = e.changedTouches[0].clientX - startX;
-        const velocity = Math.abs(dx) / (Date.now() - startT); // px/ms
-        // Require either a fast flick (≥0.4 px/ms) or a long deliberate swipe (≥120px).
-        // This lets slow content-panning on iPhone coexist with navigation gestures.
-        if (Math.abs(dx) > 50 && (velocity >= 0.4 || Math.abs(dx) >= 120)) {
-          dx < 0 ? handleNext() : handlePrev();
-        }
-      }
-      startX = null; startY = null; startT = null; axis = null;
-    };
+  const enterSplitView = () => {
+    if (!canSplit) return;
+    const li = friendlyNavList.findIndex(u => u.id === unit.id);
+    const ri = enemyNavList.findIndex(u => u.id === unit.id);
+    setSplitLeftIdx(li >= 0 ? li : 0);
+    setSplitRightIdx(ri >= 0 ? ri : 0);
+    setSplitView(true);
+  };
 
-    el.addEventListener('touchstart', onStart, { passive: true });
-    el.addEventListener('touchmove', onMove, { passive: false }); // non-passive so preventDefault works
-    el.addEventListener('touchend', onEnd, { passive: true });
-    return () => {
-      el.removeEventListener('touchstart', onStart);
-      el.removeEventListener('touchmove', onMove);
-      el.removeEventListener('touchend', onEnd);
-    };
-  }, [handlePrev, handleNext]);
+  const splitLeftPrev  = useCallback(() => setSplitLeftIdx(i => Math.max(0, i - 1)), []);
+  const splitLeftNext  = useCallback(() => setSplitLeftIdx(i => Math.min((friendlyNavList?.length ?? 1) - 1, i + 1)), [friendlyNavList]);
+  const splitRightPrev = useCallback(() => setSplitRightIdx(i => Math.max(0, i - 1)), []);
+  const splitRightNext = useCallback(() => setSplitRightIdx(i => Math.min((enemyNavList?.length ?? 1) - 1, i + 1)), [enemyNavList]);
+
+  // Touch swipe navigation. In single-pane mode the whole modal pages through
+  // the unit list; in split view each side pages through only its own list
+  // independently, so left/right panes never step on each other's swipes.
+  useSwipeNav(modalRef, handlePrev, handleNext, !splitView);
+  useSwipeNav(splitLeftRef, splitLeftPrev, splitLeftNext, splitView);
+  useSwipeNav(splitRightRef, splitRightPrev, splitRightNext, splitView);
 
   // Lock viewport zoom while modal is open; scroll to top on orientation change
   useEffect(() => {
@@ -1098,23 +1134,6 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
     document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
   }, [onClose]);
-
-  // Split-pane view: independently browse a friendly unit and an enemy unit
-  // side by side. Only offered when the parent page can supply both lists
-  // (i.e. the user has flagged at least one unit on each side).
-  const canSplit = !!(friendlyNavList?.length && enemyNavList?.length);
-  const [splitView, setSplitView] = useState(false);
-  const [splitLeftIdx, setSplitLeftIdx] = useState(0);
-  const [splitRightIdx, setSplitRightIdx] = useState(0);
-
-  const enterSplitView = () => {
-    if (!canSplit) return;
-    const li = friendlyNavList.findIndex(u => u.id === unit.id);
-    const ri = enemyNavList.findIndex(u => u.id === unit.id);
-    setSplitLeftIdx(li >= 0 ? li : 0);
-    setSplitRightIdx(ri >= 0 ? ri : 0);
-    setSplitView(true);
-  };
 
   return (
     <>
@@ -1418,19 +1437,19 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
         {/* ── Split view: browse a friendly unit and an enemy unit side by side ── */}
         {splitView && (
           <div className="gw-split-view">
-            <div className="gw-split-pane">
+            <div className="gw-split-pane" ref={splitLeftRef}>
               <div className="gw-split-pane-nav">
                 <button
                   className="gw-split-pane-arrow"
                   disabled={splitLeftIdx <= 0}
-                  onClick={() => setSplitLeftIdx(i => Math.max(0, i - 1))}
+                  onClick={splitLeftPrev}
                   title="Previous friendly unit"
                 >‹</button>
                 <span className="gw-split-pane-label gw-split-pane-label-friendly">FRIENDLY</span>
                 <button
                   className="gw-split-pane-arrow"
                   disabled={splitLeftIdx >= friendlyNavList.length - 1}
-                  onClick={() => setSplitLeftIdx(i => Math.min(friendlyNavList.length - 1, i + 1))}
+                  onClick={splitLeftNext}
                   title="Next friendly unit"
                 >›</button>
               </div>
@@ -1438,19 +1457,19 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
                 <WarscrollBody unit={friendlyNavList[splitLeftIdx]} factions={factions} />
               </div>
             </div>
-            <div className="gw-split-pane">
+            <div className="gw-split-pane" ref={splitRightRef}>
               <div className="gw-split-pane-nav">
                 <button
                   className="gw-split-pane-arrow"
                   disabled={splitRightIdx <= 0}
-                  onClick={() => setSplitRightIdx(i => Math.max(0, i - 1))}
+                  onClick={splitRightPrev}
                   title="Previous enemy unit"
                 >‹</button>
                 <span className="gw-split-pane-label gw-split-pane-label-enemy">ENEMY</span>
                 <button
                   className="gw-split-pane-arrow"
                   disabled={splitRightIdx >= enemyNavList.length - 1}
-                  onClick={() => setSplitRightIdx(i => Math.min(enemyNavList.length - 1, i + 1))}
+                  onClick={splitRightNext}
                   title="Next enemy unit"
                 >›</button>
               </div>
