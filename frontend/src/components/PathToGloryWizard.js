@@ -239,6 +239,19 @@ function RealmDropdown({ value, customValue, onChange, onCustomChange }) {
   );
 }
 
+// Reorders an already-alphabetized list into column-major order for a 2-col
+// grid: first half fills column 1 top-to-bottom, second half fills column 2 —
+// achieved by interleaving the two halves since the grid itself fills row-major.
+function toTwoColumnOrder(arr) {
+  const half = Math.ceil(arr.length / 2);
+  const out = [];
+  for (let i = 0; i < half; i++) {
+    out.push(arr[i]);
+    if (arr[i + half]) out.push(arr[i + half]);
+  }
+  return out;
+}
+
 // Faction picker for the Path to Glory Roster — a two-column pulldown so all
 // ~24 factions are visible at once, no scrolling required.
 function FactionPulldown({ factions, value, onChange }) {
@@ -246,6 +259,7 @@ function FactionPulldown({ factions, value, onChange }) {
   const ref = useRef(null);
   useCloseOnOutsideClick(ref, open, () => setOpen(false));
   const selected = factions.find(f => f.faction_slug === value);
+  const colMajorFactions = React.useMemo(() => toTwoColumnOrder(factions), [factions]);
   return (
     <div className="faction-dropdown" ref={ref}>
       <button type="button" className="faction-dropdown-trigger" onClick={() => setOpen(o => !o)}>
@@ -254,7 +268,7 @@ function FactionPulldown({ factions, value, onChange }) {
       </button>
       {open && (
         <div className="faction-dropdown-menu faction-dropdown-menu-2col">
-          {factions.map(f => (
+          {colMajorFactions.map(f => (
             <div
               key={f.faction_slug}
               className={`faction-dropdown-item${value === f.faction_slug ? ' selected' : ''}`}

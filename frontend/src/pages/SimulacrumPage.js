@@ -121,12 +121,26 @@ function TypeTags({ row, onFilter }) {
   );
 }
 
+// Reorders an already-alphabetized list into column-major order for a 2-col
+// grid: first half fills column 1 top-to-bottom, second half fills column 2 —
+// achieved by interleaving the two halves since the grid itself fills row-major.
+function toTwoColumnOrder(arr) {
+  const half = Math.ceil(arr.length / 2);
+  const out = [];
+  for (let i = 0; i < half; i++) {
+    out.push(arr[i]);
+    if (arr[i + half]) out.push(arr[i + half]);
+  }
+  return out;
+}
+
 function FactionDropdown({ factions, value, onChange, liveCount, align }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const selected = factions.find(f => f.faction_slug === value);
   const displayCount = (selected && liveCount != null) ? liveCount : selected?.unit_count;
   const label = selected ? `${selected.faction} (${displayCount})` : 'All Factions';
+  const colMajorFactions = React.useMemo(() => toTwoColumnOrder(factions), [factions]);
 
   useEffect(() => {
     if (!open) return;
@@ -148,7 +162,7 @@ function FactionDropdown({ factions, value, onChange, liveCount, align }) {
           <div className={`faction-dropdown-item faction-dropdown-item-all${value === '' ? ' selected' : ''}`} onMouseDown={() => pick('')}>
             All Factions
           </div>
-          {factions.map(f => (
+          {colMajorFactions.map(f => (
             <div key={f.faction_slug} className={`faction-dropdown-item${value === f.faction_slug ? ' selected' : ''}`} onMouseDown={() => pick(f.faction_slug)}>
               {f.faction} ({f.unit_count})
             </div>
