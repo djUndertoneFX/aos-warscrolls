@@ -2288,8 +2288,9 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   line-height: 1;
   transition: background 0.12s, border-color 0.12s;
 }
-.gw-view-mode-btn:hover { background: rgba(200,168,64,0.18); }
+.gw-view-mode-btn:hover:not(:disabled) { background: rgba(200,168,64,0.18); }
 .gw-view-mode-btn-active { background: rgba(200,168,64,0.22); border-color: #c8a840; }
+.gw-view-mode-btn:disabled { opacity: 0.35; cursor: default; }
 .gw-view-icon { display: flex; gap: 2px; width: 16px; height: 11px; }
 .gw-view-icon i { flex: 1; border: 1px solid currentColor; border-radius: 1px; display: block; font-style: normal; }
 

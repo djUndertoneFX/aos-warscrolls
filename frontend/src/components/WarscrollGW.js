@@ -1140,22 +1140,22 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
       <div className="gw-overlay" />
       <div className="gw-modal" ref={modalRef} role="dialog" aria-modal="true" aria-label={unit.name}>
 
-        {canSplit && (
-          <div className="gw-view-toggle">
-            <button
-              type="button"
-              className={`gw-view-mode-btn${!splitView ? ' gw-view-mode-btn-active' : ''}`}
-              onClick={() => setSplitView(false)}
-              title="Single pane"
-            ><span className="gw-view-icon gw-view-icon-single"><i /></span></button>
+        <div className="gw-view-toggle">
+          <button
+            type="button"
+            className={`gw-view-mode-btn${!splitView ? ' gw-view-mode-btn-active' : ''}`}
+            onClick={() => setSplitView(false)}
+            title="Single pane"
+          ><span className="gw-view-icon gw-view-icon-single"><i /></span></button>
+          <span title={canSplit ? 'Split pane — friendly + enemy side by side' : 'Flag at least one Friendly unit and one Enemy unit to use split view'}>
             <button
               type="button"
               className={`gw-view-mode-btn${splitView ? ' gw-view-mode-btn-active' : ''}`}
               onClick={enterSplitView}
-              title="Split pane — friendly + enemy side by side"
+              disabled={!canSplit}
             ><span className="gw-view-icon gw-view-icon-split"><i /><i /></span></button>
-          </div>
-        )}
+          </span>
+        </div>
         <button className="gw-close" onClick={onClose} title="Close (Esc)">✕</button>
 
         {/* ── Nav dots ── */}
