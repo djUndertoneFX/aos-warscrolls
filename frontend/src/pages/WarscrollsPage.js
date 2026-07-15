@@ -297,6 +297,30 @@ export default function WarscrollsPage({ headerCollapsed }) {
   const hasFriendlyMarks = Object.values(userUnits).some(u => u.is_friendly);
   const hasEnemyMarks    = Object.values(userUnits).some(u => u.is_enemy);
 
+  // Split-view fallback: if a side has no individually-flagged units at all,
+  // fall back to every unit of that side's currently-selected Faction/Enemy
+  // Faction dropdown, so split view still has something to show.
+  const [friendlyFactionFallback, setFriendlyFactionFallback] = useState([]);
+  const [enemyFactionFallback, setEnemyFactionFallback] = useState([]);
+
+  useEffect(() => {
+    if (hasFriendlyMarks || !faction) { setFriendlyFactionFallback([]); return; }
+    let cancelled = false;
+    axios.get('/api/warscrolls', { params: { faction, pageSize: 300, sortBy: 'name' } })
+      .then(res => { if (!cancelled) setFriendlyFactionFallback(res.data.data ?? []); })
+      .catch(() => { if (!cancelled) setFriendlyFactionFallback([]); });
+    return () => { cancelled = true; };
+  }, [hasFriendlyMarks, faction]);
+
+  useEffect(() => {
+    if (hasEnemyMarks || !enemyFaction) { setEnemyFactionFallback([]); return; }
+    let cancelled = false;
+    axios.get('/api/warscrolls', { params: { faction: enemyFaction, pageSize: 300, sortBy: 'name' } })
+      .then(res => { if (!cancelled) setEnemyFactionFallback(res.data.data ?? []); })
+      .catch(() => { if (!cancelled) setEnemyFactionFallback([]); });
+    return () => { cancelled = true; };
+  }, [hasEnemyMarks, enemyFaction]);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -1018,8 +1042,8 @@ export default function WarscrollsPage({ headerCollapsed }) {
         navIndex={idx}
         navList={rows}
         sortBy={sortBy}
-        friendlyNavList={rows.filter(r => userUnits[r.id]?.is_friendly)}
-        enemyNavList={rows.filter(r => userUnits[r.id]?.is_enemy)}
+        friendlyNavList={hasFriendlyMarks ? rows.filter(r => userUnits[r.id]?.is_friendly) : friendlyFactionFallback}
+        enemyNavList={hasEnemyMarks ? rows.filter(r => userUnits[r.id]?.is_enemy) : enemyFactionFallback}
         onClose={() => setDetailUnit(null)}
         onPrev={() => { if (idx > 0) setDetailUnit(rows[idx - 1]); }}
         onNext={() => { if (idx < rows.length - 1) setDetailUnit(rows[idx + 1]); }}
