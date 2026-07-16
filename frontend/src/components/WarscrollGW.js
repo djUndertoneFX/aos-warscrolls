@@ -841,7 +841,7 @@ function useFormationSelection(factionSlug) {
 // (Battle Traits/Formations/etc.), a scrollable body, and a pinned keywords
 // footer — the same nav-dot language and page types as the single-pane view,
 // scoped to just this side's own unit list.
-function SplitPane({ label, labelClass, list, activeIdx, setActiveIdx, onPrev, onNext, factions, paneRef, isFocused, onFocus, getSlidesForSlug }) {
+const SplitPane = React.forwardRef(function SplitPane({ label, labelClass, list, activeIdx, setActiveIdx, factions, paneRef, isFocused, onFocus, getSlidesForSlug }, apiRef) {
   const [activeSlide, setActiveSlide] = useState(null); // { factionSlug, groupStartIdx, slideKey } | null
 
   const factionGroups = React.useMemo(() => {
@@ -857,7 +857,62 @@ function SplitPane({ label, labelClass, list, activeIdx, setActiveIdx, onPrev, o
 
   const formationState = useFormationSelection(activeSlide?.slideKey === 'formations' ? activeSlide.factionSlug : null);
 
-  useSwipeNav(paneRef, onPrev, onNext, true);
+  // Prev/Next that step through this pane's own purple faction-info slides at
+  // faction-group boundaries, mirroring the single-pane modal's handlePrev/
+  // handleNext — exposed to the parent (for arrow-key routing) via ref.
+  const paneHandlePrev = useCallback(() => {
+    if (activeSlide) {
+      const slides = getSlidesForSlug(activeSlide.factionSlug);
+      const idx = slides.findIndex(s => s.key === activeSlide.slideKey);
+      if (idx > 0) {
+        setActiveSlide(prev => ({ ...prev, slideKey: slides[idx - 1].key }));
+      } else if (activeIdx > 0) {
+        setActiveSlide(null);
+        setActiveIdx(i => Math.max(0, i - 1));
+      }
+      return;
+    }
+    const group = factionGroups.find(g => activeIdx >= g.startIdx && activeIdx <= g.endIdx);
+    if (group && activeIdx === group.startIdx) {
+      const slides = getSlidesForSlug(group.faction_slug);
+      if (slides.length > 0) {
+        setActiveSlide({ factionSlug: group.faction_slug, groupStartIdx: group.startIdx, slideKey: slides[slides.length - 1].key });
+        return;
+      }
+    }
+    setActiveIdx(i => Math.max(0, i - 1));
+  }, [activeSlide, activeIdx, factionGroups, getSlidesForSlug, setActiveIdx]);
+
+  const paneHandleNext = useCallback(() => {
+    if (activeSlide) {
+      const slides = getSlidesForSlug(activeSlide.factionSlug);
+      const idx = slides.findIndex(s => s.key === activeSlide.slideKey);
+      if (idx < slides.length - 1) {
+        setActiveSlide(prev => ({ ...prev, slideKey: slides[idx + 1].key }));
+      } else {
+        const grp = factionGroups.find(g => g.startIdx === activeSlide.groupStartIdx)
+          ?? factionGroups.find(g => g.faction_slug === activeSlide.factionSlug);
+        setActiveSlide(null);
+        if (grp) setActiveIdx(grp.startIdx);
+      }
+      return;
+    }
+    const groupIdx = factionGroups.findIndex(g => activeIdx >= g.startIdx && activeIdx <= g.endIdx);
+    const group = factionGroups[groupIdx];
+    const nextGroup = factionGroups[groupIdx + 1];
+    if (group && nextGroup && activeIdx === group.endIdx) {
+      const slides = getSlidesForSlug(nextGroup.faction_slug);
+      if (slides.length > 0) {
+        setActiveSlide({ factionSlug: nextGroup.faction_slug, groupStartIdx: nextGroup.startIdx, slideKey: slides[0].key });
+        return;
+      }
+    }
+    setActiveIdx(i => Math.min(list.length - 1, i + 1));
+  }, [activeSlide, activeIdx, factionGroups, getSlidesForSlug, list.length, setActiveIdx]);
+
+  React.useImperativeHandle(apiRef, () => ({ prev: paneHandlePrev, next: paneHandleNext }), [paneHandlePrev, paneHandleNext]);
+
+  useSwipeNav(paneRef, paneHandlePrev, paneHandleNext, true);
 
   const activeKey = activeSlide ? `slide:${activeSlide.factionSlug}:${activeSlide.slideKey}` : `unit:${activeIdx}`;
   const { outerRef, innerRef, hasOverflow, atStart, atEnd, translate } = useDotsAutoCenter(activeIdx, list.length, activeKey);
@@ -949,7 +1004,7 @@ function SplitPane({ label, labelClass, list, activeIdx, setActiveIdx, onPrev, o
       </div>
     </div>
   );
-}
+});
 
 export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onFilterApply, factions = [], navIndex, navList, sortBy, spearheadData, allSpearheadRulesMap, onSwapFriendlyEnemy, onShowFriendlyOnly, onShowEnemyOnly, friendlyNavList, enemyNavList }) {
   const navTotal = navList ? navList.length : 0;
@@ -1327,6 +1382,11 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
   const [splitRightIdx, setSplitRightIdx] = useState(0);
   const splitLeftRef  = useRef(null);
   const splitRightRef = useRef(null);
+  // Each SplitPane exposes { prev, next } (which step through that pane's own
+  // purple faction-info slides at faction-group boundaries, same as the
+  // single-pane view) via these refs, for arrow-key routing below.
+  const leftPaneApiRef  = useRef(null);
+  const rightPaneApiRef = useRef(null);
   // Which pane the Left/Right arrow-key hotkeys apply to. Defaults to
   // whichever side the unit being viewed belonged to before splitting.
   const [focusedPane, setFocusedPane] = useState('left');
@@ -1341,11 +1401,6 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
     setSplitView(true);
   };
 
-  const splitLeftPrev  = useCallback(() => setSplitLeftIdx(i => Math.max(0, i - 1)), []);
-  const splitLeftNext  = useCallback(() => setSplitLeftIdx(i => Math.min((friendlyNavList?.length ?? 1) - 1, i + 1)), [friendlyNavList]);
-  const splitRightPrev = useCallback(() => setSplitRightIdx(i => Math.max(0, i - 1)), []);
-  const splitRightNext = useCallback(() => setSplitRightIdx(i => Math.min((enemyNavList?.length ?? 1) - 1, i + 1)), [enemyNavList]);
-
   // Keyboard: Escape=close, ←=prev, →=next, PageUp=friendly only, PageDown=enemy only.
   // In split view, ←/→ apply to whichever pane currently has focus instead.
   useEffect(() => {
@@ -1353,12 +1408,12 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
       if (e.key === 'Escape')      onClose();
       if (e.key === 'ArrowLeft')  {
         e.preventDefault();
-        if (splitView) { (focusedPane === 'left' ? splitLeftPrev : splitRightPrev)(); }
+        if (splitView) { (focusedPane === 'left' ? leftPaneApiRef : rightPaneApiRef).current?.prev(); }
         else handlePrev();
       }
       if (e.key === 'ArrowRight') {
         e.preventDefault();
-        if (splitView) { (focusedPane === 'left' ? splitLeftNext : splitRightNext)(); }
+        if (splitView) { (focusedPane === 'left' ? leftPaneApiRef : rightPaneApiRef).current?.next(); }
         else handleNext();
       }
       if (e.key === 'PageUp')     { e.preventDefault(); onShowFriendlyOnly?.(); }
@@ -1366,7 +1421,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
     };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
-  }, [onClose, handlePrev, handleNext, onShowFriendlyOnly, onShowEnemyOnly, splitView, focusedPane, splitLeftPrev, splitLeftNext, splitRightPrev, splitRightNext]);
+  }, [onClose, handlePrev, handleNext, onShowFriendlyOnly, onShowEnemyOnly, splitView, focusedPane]);
 
   // Touch swipe navigation for single-pane mode; split panes handle their
   // own swipe internally (see SplitPane).
@@ -1710,13 +1765,12 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
         {splitView && (
           <div className="gw-split-view">
             <SplitPane
+              ref={leftPaneApiRef}
               label="FRIENDLY"
               labelClass="gw-split-pane-label-friendly"
               list={friendlyNavList}
               activeIdx={splitLeftIdx}
               setActiveIdx={setSplitLeftIdx}
-              onPrev={splitLeftPrev}
-              onNext={splitLeftNext}
               factions={factions}
               paneRef={splitLeftRef}
               isFocused={focusedPane === 'left'}
@@ -1724,13 +1778,12 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
               getSlidesForSlug={getSlidesForSlugAlways}
             />
             <SplitPane
+              ref={rightPaneApiRef}
               label="ENEMY"
               labelClass="gw-split-pane-label-enemy"
               list={enemyNavList}
               activeIdx={splitRightIdx}
               setActiveIdx={setSplitRightIdx}
-              onPrev={splitRightPrev}
-              onNext={splitRightNext}
               factions={factions}
               paneRef={splitRightRef}
               isFocused={focusedPane === 'right'}
