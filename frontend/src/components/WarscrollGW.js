@@ -1011,7 +1011,7 @@ const SplitPane = React.forwardRef(function SplitPane({ label, labelClass, list,
   );
 });
 
-export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onFilterApply, factions = [], navIndex, navList, sortBy, spearheadData, allSpearheadRulesMap, onSwapFriendlyEnemy, onShowFriendlyOnly, onShowEnemyOnly, friendlyNavList, enemyNavList }) {
+export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onFilterApply, factions = [], navIndex, navList, sortBy, spearheadData, allSpearheadRulesMap, onSwapFriendlyEnemy, onShowFriendlyOnly, onShowEnemyOnly, friendlyNavList, enemyNavList, onEnterSplitView }) {
   const navTotal = navList ? navList.length : 0;
   const { showFlavorText, showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore, useSpearheadAbilities } = useSettings();
   const modalRef = useRef(null);
@@ -1382,7 +1382,17 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
   // (i.e. the user has flagged at least one unit on each side, or a Faction/
   // Enemy Faction is selected as a fallback — see parent pages).
   const canSplit = !!(friendlyNavList?.length && enemyNavList?.length);
-  const [splitView, setSplitView] = useState(false);
+  // Remembered across popup opens/closes (localStorage) — but only actually
+  // rendered once canSplit is true, so a restored "split" preference doesn't
+  // show broken empty panes before that side's data has loaded.
+  const [splitView, setSplitViewRaw] = useState(() => {
+    try { return localStorage.getItem('aos-warscroll-split-view') === '1'; } catch { return false; }
+  });
+  const setSplitView = (val) => {
+    setSplitViewRaw(val);
+    try { localStorage.setItem('aos-warscroll-split-view', val ? '1' : '0'); } catch {}
+  };
+  const showSplit = splitView && canSplit;
   const [splitLeftIdx, setSplitLeftIdx] = useState(0);
   const [splitRightIdx, setSplitRightIdx] = useState(0);
   const splitLeftRef  = useRef(null);
@@ -1396,15 +1406,26 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
   // whichever side the unit being viewed belonged to before splitting.
   const [focusedPane, setFocusedPane] = useState('left');
 
-  const enterSplitView = () => {
-    if (!canSplit) return;
-    const li = friendlyNavList.findIndex(u => u.id === unit.id);
-    const ri = enemyNavList.findIndex(u => u.id === unit.id);
-    setSplitLeftIdx(li >= 0 ? li : 0);
-    setSplitRightIdx(ri >= 0 ? ri : 0);
-    setFocusedPane(li >= 0 ? 'left' : ri >= 0 ? 'right' : 'left');
-    setSplitView(true);
-  };
+  const enterSplitView = () => setSplitView(true);
+
+  // Fires on every transition into split view — whether from clicking the
+  // split-pane toggle, or from restoring a remembered "split" preference on
+  // mount once canSplit becomes true. Initializes each pane's starting unit
+  // (same unit you were viewing, on whichever side it belongs to) and asks
+  // the parent page to check both Friendly/Enemy filters so the table stays
+  // in sync with what the popup is now showing.
+  const prevShowSplitRef = useRef(false);
+  useEffect(() => {
+    if (showSplit && !prevShowSplitRef.current) {
+      const li = friendlyNavList.findIndex(u => u.id === unit.id);
+      const ri = enemyNavList.findIndex(u => u.id === unit.id);
+      setSplitLeftIdx(li >= 0 ? li : 0);
+      setSplitRightIdx(ri >= 0 ? ri : 0);
+      setFocusedPane(li >= 0 ? 'left' : ri >= 0 ? 'right' : 'left');
+      onEnterSplitView?.();
+    }
+    prevShowSplitRef.current = showSplit;
+  }, [showSplit]); // eslint-disable-line
 
   // Keyboard: Escape=close, ←=prev, →=next, PageUp=friendly only, PageDown=enemy only.
   // In split view, ←/→ apply to whichever pane currently has focus instead.
@@ -1413,12 +1434,12 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
       if (e.key === 'Escape')      onClose();
       if (e.key === 'ArrowLeft')  {
         e.preventDefault();
-        if (splitView) { (focusedPane === 'left' ? leftPaneApiRef : rightPaneApiRef).current?.prev(); }
+        if (showSplit) { (focusedPane === 'left' ? leftPaneApiRef : rightPaneApiRef).current?.prev(); }
         else handlePrev();
       }
       if (e.key === 'ArrowRight') {
         e.preventDefault();
-        if (splitView) { (focusedPane === 'left' ? leftPaneApiRef : rightPaneApiRef).current?.next(); }
+        if (showSplit) { (focusedPane === 'left' ? leftPaneApiRef : rightPaneApiRef).current?.next(); }
         else handleNext();
       }
       if (e.key === 'PageUp')     { e.preventDefault(); onShowFriendlyOnly?.(); }
@@ -1426,11 +1447,11 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
     };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
-  }, [onClose, handlePrev, handleNext, onShowFriendlyOnly, onShowEnemyOnly, splitView, focusedPane]);
+  }, [onClose, handlePrev, handleNext, onShowFriendlyOnly, onShowEnemyOnly, showSplit, focusedPane]);
 
   // Touch swipe navigation for single-pane mode; split panes handle their
   // own swipe internally (see SplitPane).
-  useSwipeNav(scrollRef, handlePrev, handleNext, !splitView);
+  useSwipeNav(scrollRef, handlePrev, handleNext, !showSplit);
 
   // Lock viewport zoom while modal is open; scroll to top on orientation change
   useEffect(() => {
@@ -1459,19 +1480,19 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
   return (
     <>
       <div className="gw-overlay" />
-      <div className={`gw-modal${splitView ? ' gw-modal-split' : ''}`} ref={modalRef} role="dialog" aria-modal="true" aria-label={unit.name}>
+      <div className={`gw-modal${showSplit ? ' gw-modal-split' : ''}`} ref={modalRef} role="dialog" aria-modal="true" aria-label={unit.name}>
 
         <div className="gw-view-toggle">
           <button
             type="button"
-            className={`gw-view-mode-btn${!splitView ? ' gw-view-mode-btn-active' : ''}`}
+            className={`gw-view-mode-btn${!showSplit ? ' gw-view-mode-btn-active' : ''}`}
             onClick={() => setSplitView(false)}
             title="Single pane"
           ><span className="gw-view-icon gw-view-icon-single"><i /></span></button>
           <span title={canSplit ? 'Split pane — friendly + enemy side by side' : 'Flag at least one Friendly unit and one Enemy unit to use split view'}>
             <button
               type="button"
-              className={`gw-view-mode-btn${splitView ? ' gw-view-mode-btn-active' : ''}`}
+              className={`gw-view-mode-btn${showSplit ? ' gw-view-mode-btn-active' : ''}`}
               onClick={enterSplitView}
               disabled={!canSplit}
             ><span className="gw-view-icon gw-view-icon-split"><i /><i /></span></button>
@@ -1481,7 +1502,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
 
         {/* ── Scrollable region: nav dots, faction-info slide, or the unit's
              warscroll body — the keywords footer below is pinned outside it ── */}
-        {!splitView && (
+        {!showSplit && (
         <div className="gw-modal-scroll" ref={scrollRef}>
         {/* ── Nav dots ── */}
         {navTotal > 0 && (
@@ -1760,14 +1781,14 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
         )}
         </div>
         )}
-        {!splitView && activePage === null && (
+        {!showSplit && activePage === null && (
           <WarscrollKeywordsFooter unit={unit} factions={factions} onFilterApply={onFilterApply} />
         )}
 
         {/* ── Split view: browse a friendly unit and an enemy unit side by side,
              each with its own gold/purple nav dots, scrollable body, and
              pinned keywords footer ── */}
-        {splitView && (
+        {showSplit && (
           <div className="gw-split-view">
             <SplitPane
               ref={leftPaneApiRef}

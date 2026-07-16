@@ -319,7 +319,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
   useEffect(() => {
     if (friendlyIds.length === 0) { setFriendlyFlaggedFull([]); return; }
     let cancelled = false;
-    axios.get('/api/warscrolls', { params: { ids: friendlyIds.join(','), pageSize: 300, sortBy: 'name' } })
+    axios.get('/api/warscrolls', { params: { ids: friendlyIds.join(','), pageSize: 300, sortBy: 'faction' } })
       .then(res => { if (!cancelled) setFriendlyFlaggedFull(res.data.data ?? []); })
       .catch(() => { if (!cancelled) setFriendlyFlaggedFull([]); });
     return () => { cancelled = true; };
@@ -328,7 +328,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
   useEffect(() => {
     if (enemyIds.length === 0) { setEnemyFlaggedFull([]); return; }
     let cancelled = false;
-    axios.get('/api/warscrolls', { params: { ids: enemyIds.join(','), pageSize: 300, sortBy: 'name' } })
+    axios.get('/api/warscrolls', { params: { ids: enemyIds.join(','), pageSize: 300, sortBy: 'faction' } })
       .then(res => { if (!cancelled) setEnemyFlaggedFull(res.data.data ?? []); })
       .catch(() => { if (!cancelled) setEnemyFlaggedFull([]); });
     return () => { cancelled = true; };
@@ -337,7 +337,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
   useEffect(() => {
     if (friendlyIds.length > 0 || !faction) { setFriendlyFactionFallback([]); return; }
     let cancelled = false;
-    axios.get('/api/warscrolls', { params: { faction, pageSize: 300, sortBy: 'name' } })
+    axios.get('/api/warscrolls', { params: { faction, pageSize: 300, sortBy: 'faction' } })
       .then(res => { if (!cancelled) setFriendlyFactionFallback(res.data.data ?? []); })
       .catch(() => { if (!cancelled) setFriendlyFactionFallback([]); });
     return () => { cancelled = true; };
@@ -346,7 +346,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
   useEffect(() => {
     if (enemyIds.length > 0 || !enemyFaction) { setEnemyFactionFallback([]); return; }
     let cancelled = false;
-    axios.get('/api/warscrolls', { params: { faction: enemyFaction, pageSize: 300, sortBy: 'name' } })
+    axios.get('/api/warscrolls', { params: { faction: enemyFaction, pageSize: 300, sortBy: 'faction' } })
       .then(res => { if (!cancelled) setEnemyFactionFallback(res.data.data ?? []); })
       .catch(() => { if (!cancelled) setEnemyFactionFallback([]); });
     return () => { cancelled = true; };
@@ -1078,6 +1078,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
         sortBy={sortBy}
         friendlyNavList={splitFriendlyNavList}
         enemyNavList={splitEnemyNavList}
+        onEnterSplitView={() => { setShowFriendly(true); setShowEnemy(true); }}
         onClose={() => setDetailUnit(null)}
         onPrev={() => { if (idx > 0) setDetailUnit(rows[idx - 1]); }}
         onNext={() => { if (idx < rows.length - 1) setDetailUnit(rows[idx + 1]); }}
