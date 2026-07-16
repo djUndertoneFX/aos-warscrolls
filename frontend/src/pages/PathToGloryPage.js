@@ -1274,21 +1274,40 @@ export default function PathToGloryPage({ headerCollapsed }) {
           }
         }}
         {...(hasFriendlyMarks && hasEnemyMarks ? {
+          // Jump instantly using the already-loaded splitFriendlyNavList/
+          // splitEnemyNavList instead of waiting on the table's own refetch —
+          // see the matching fix in WarscrollsPage.js for the full rationale.
           onSwapFriendlyEnemy: () => {
             const id = detailUnit?.id ?? null;
-            if (showFriendly && !showEnemy) { savedFriendlyUnitId.current = id; pendingNavUnitId.current = savedEnemyUnitId.current ?? 'first'; }
-            else if (showEnemy && !showFriendly) { savedEnemyUnitId.current = id; pendingNavUnitId.current = savedFriendlyUnitId.current ?? 'first'; }
-            else { pendingNavUnitId.current = 'first'; }
+            let targetList, savedId;
+            if (showFriendly && !showEnemy) {
+              savedFriendlyUnitId.current = id;
+              targetList = splitEnemyNavList; savedId = savedEnemyUnitId.current;
+            } else if (showEnemy && !showFriendly) {
+              savedEnemyUnitId.current = id;
+              targetList = splitFriendlyNavList; savedId = savedFriendlyUnitId.current;
+            } else {
+              targetList = splitFriendlyNavList; savedId = null;
+            }
+            const target = (savedId && targetList.find(u => u.id === savedId)) || targetList[0];
+            if (target) setDetailUnit(target);
+            pendingNavUnitId.current = null;
             setShowFriendly(e => !e); setShowEnemy(f => !f); setPage(1);
           },
           onShowFriendlyOnly: () => {
             savedEnemyUnitId.current = detailUnit?.id ?? null;
-            pendingNavUnitId.current = savedFriendlyUnitId.current ?? 'first';
+            const savedId = savedFriendlyUnitId.current;
+            const target = (savedId && splitFriendlyNavList.find(u => u.id === savedId)) || splitFriendlyNavList[0];
+            if (target) setDetailUnit(target);
+            pendingNavUnitId.current = null;
             setShowFriendly(true); setShowEnemy(false); setPage(1);
           },
           onShowEnemyOnly: () => {
             savedFriendlyUnitId.current = detailUnit?.id ?? null;
-            pendingNavUnitId.current = savedEnemyUnitId.current ?? 'first';
+            const savedId = savedEnemyUnitId.current;
+            const target = (savedId && splitEnemyNavList.find(u => u.id === savedId)) || splitEnemyNavList[0];
+            if (target) setDetailUnit(target);
+            pendingNavUnitId.current = null;
             setShowFriendly(false); setShowEnemy(true); setPage(1);
           },
         } : {})}
