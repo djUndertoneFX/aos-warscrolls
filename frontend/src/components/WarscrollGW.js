@@ -1011,7 +1011,7 @@ const SplitPane = React.forwardRef(function SplitPane({ label, labelClass, list,
   );
 });
 
-export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onFilterApply, factions = [], navIndex, navList, sortBy, spearheadData, allSpearheadRulesMap, onSwapFriendlyEnemy, onShowFriendlyOnly, onShowEnemyOnly, friendlyNavList, enemyNavList, onEnterSplitView }) {
+export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onFilterApply, factions = [], navIndex, navList, sortBy, spearheadData, allSpearheadRulesMap, onSwapFriendlyEnemy, onShowFriendlyOnly, onShowEnemyOnly, friendlyNavList, enemyNavList, onEnterSplitView, onJumpToUnit }) {
   const navTotal = navList ? navList.length : 0;
   const { showFlavorText, showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore, useSpearheadAbilities } = useSettings();
   const modalRef = useRef(null);
@@ -1427,6 +1427,15 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
     prevShowSplitRef.current = showSplit;
   }, [showSplit]); // eslint-disable-line
 
+  // Leaving split view carries the focused pane's current unit back to the
+  // single-pane view (mirroring the single→dual carry-over above), so
+  // whichever unit you were just looking at stays selected either way.
+  const leaveSplitView = () => {
+    const focusedUnit = focusedPane === 'left' ? friendlyNavList[splitLeftIdx] : enemyNavList[splitRightIdx];
+    if (focusedUnit && focusedUnit.id !== unit.id) onJumpToUnit?.(focusedUnit);
+    setSplitView(false);
+  };
+
   // Keyboard: Escape=close, ←=prev, →=next, PageUp=friendly only, PageDown=enemy only.
   // In split view, ←/→ apply to whichever pane currently has focus instead.
   useEffect(() => {
@@ -1486,7 +1495,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
           <button
             type="button"
             className={`gw-view-mode-btn${!showSplit ? ' gw-view-mode-btn-active' : ''}`}
-            onClick={() => setSplitView(false)}
+            onClick={leaveSplitView}
             title="Single pane"
           ><span className="gw-view-icon gw-view-icon-single"><i /></span></button>
           <span title={canSplit ? 'Split pane — friendly + enemy side by side' : 'Flag at least one Friendly unit and one Enemy unit to use split view'}>

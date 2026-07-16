@@ -1079,6 +1079,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
         friendlyNavList={splitFriendlyNavList}
         enemyNavList={splitEnemyNavList}
         onEnterSplitView={() => { setShowFriendly(true); setShowEnemy(true); }}
+        onJumpToUnit={u => setDetailUnit(u)}
         onClose={() => setDetailUnit(null)}
         onPrev={() => { if (idx > 0) setDetailUnit(rows[idx - 1]); }}
         onNext={() => { if (idx < rows.length - 1) setDetailUnit(rows[idx + 1]); }}

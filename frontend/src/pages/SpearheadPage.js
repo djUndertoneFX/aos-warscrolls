@@ -877,6 +877,7 @@ export default function SpearheadPage({ headerCollapsed }) {
           friendlyNavList={yourSpearhead ? allUnits.filter(u => u._spName === yourSpearhead) : []}
           enemyNavList={opponentSpearhead ? allUnits.filter(u => u._spName === opponentSpearhead) : []}
           onEnterSplitView={() => { setShowFriendly(true); setShowEnemy(true); }}
+          onJumpToUnit={u => setDetailUnit(u)}
           {...(yourSpearhead && opponentSpearhead ? {
             onSwapFriendlyEnemy: () => {
               if (detailUnit?._spName) lastUnitPerSpearhead.current[detailUnit._spName] = detailUnit.id;
