@@ -64,6 +64,31 @@ function AllianceBadge({ alliance }) {
   return <span className={`alliance-badge alliance-${alliance}`}>{alliance}</span>;
 }
 
+// Army Roster scanned pages — same assets/blur-up placeholders as Path to
+// Glory's doc tray (see [[ptg_asset_extraction]]), reused here so the
+// preview thumbnail and Image-mode view render instantly with no network
+// round-trip before the real JPEG decodes.
+const ARMY_ROSTER_MICRO = {
+  page1: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABIMDRANCxIQDhAUExIVGywdGxgYGzYnKSAsQDlEQz85Pj1HUGZXR0thTT0+WXlaYWltcnNyRVV9hnxvhWZwcm7/2wBDARMUFBsXGzQdHTRuST5Jbm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm7/wAARCAAfABgDASIAAhEBAxEB/8QAGAAAAwEBAAAAAAAAAAAAAAAAAAMEBQH/xAAnEAACAQEHAgcAAAAAAAAAAAABAgADBBESEyEiMQVRFCMyQWGBkf/EABUBAQEAAAAAAAAAAAAAAAAAAAAB/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8A37Jl2VWVVxYnLbn7x/imW43rr8iJsdZCzUssFl9yZTiJIGXT/JAM5tLUtuABw16vzzpCdJAqIBTUa8gwgQ2E+a4FNRzvA5lQXf6vqZnTLSCCzE4dds0FqobmAMBrX5qEd+0ItqqM6kX3CED/2Q==',
+  page2: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABIMDRANCxIQDhAUExIVGywdGxgYGzYnKSAsQDlEQz85Pj1HUGZXR0thTT0+WXlaYWltcnNyRVV9hnxvhWZwcm7/2wBDARMUFBsXGzQdHTRuST5Jbm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm7/wAARCAAfABgDASIAAhEBAxEB/8QAGAAAAwEBAAAAAAAAAAAAAAAAAAMEAgb/xAAlEAACAgECBQUBAAAAAAAAAAABAgARAwQhEhMxUXEFFDJhkYH/xAAVAQEBAAAAAAAAAAAAAAAAAAAAAf/EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/AOpTVINTlwjHbITvfiabKWNFFrzJlysNZmDBVTiNNQvoI1SC1q1/wSCTX6NXyc0AhqoizX5CWZBbpfS+0ICEzZPeZldiMYY1+CNXhJtSTFEoGdnGzmxtAZUX4krfYQGarIVUHiO28JB6hq15JCu5P3CEf//Z',
+};
+const ARMY_ROSTER_AVG_COLOR = { page1: '#d1d2cc', page2: '#d1d2cb' };
+
+function ProgressiveImg({ src, micro, avgColor, alt, className }) {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    <span className={`ptg-progressive-img${className ? ' ' + className : ''}`} style={avgColor ? { backgroundColor: avgColor } : undefined}>
+      <img src={micro} alt="" aria-hidden="true" className="ptg-progressive-img-micro" />
+      <img
+        src={src}
+        alt={alt}
+        className={`ptg-progressive-img-full${loaded ? ' ptg-progressive-img-loaded' : ''}`}
+        onLoad={() => setLoaded(true)}
+      />
+    </span>
+  );
+}
+
 function unitTypeLabel(row) {
   if (row.is_hero)          return 'Heroes';
   if (row.is_infantry)      return 'Infantry';
@@ -342,6 +367,121 @@ function ListManager({ listsStore, activeListId, onSelect, onCreate, onDuplicate
   );
 }
 
+// ── Army Roster thumbnail + modal — a compact preview of the official 2-page
+// Army Roster sheet that opens into an editor with the same Image/Replica
+// toggle Path to Glory's doc tray uses (see ptg_asset_extraction memory).
+// Faction/Points Limit/Battle Formation are shown read-only here since this
+// page already tracks them live elsewhere; only Commander/Army Name/
+// regiments/auxiliary units/notes are free-text, matching how Path to
+// Glory's own Army Roster replica works (manual entry, not auto-populated
+// from an underlying unit system). ───────────────────────────────────────
+function ArmyRosterThumb({ onClick }) {
+  return (
+    <button type="button" className="ab-roster-thumb" onClick={onClick} title="Click to view/edit your Army Roster">
+      <ProgressiveImg
+        src="/ptg/army-roster-1-thumb.jpg" micro={ARMY_ROSTER_MICRO.page1} avgColor={ARMY_ROSTER_AVG_COLOR.page1}
+        alt="Army Roster" className="ab-roster-thumb-img"
+      />
+    </button>
+  );
+}
+
+function ArmyRosterModal({
+  onClose, presentMode, setPresentMode,
+  factionName, pointsLimit, battleFormation, totalPoints,
+  doc, setDoc,
+  addRegiment, removeRegiment, addRegimentUnit, updateRegimentUnit, removeRegimentUnit,
+  addAuxUnit, updateAuxUnit, removeAuxUnit,
+  regimentsTotal, auxTotal, armyUnitsTotal,
+}) {
+  const modalRef = useRef(null);
+  useEffect(() => {
+    const h = e => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [onClose]);
+
+  return (
+    <>
+      <div className="gw-overlay" onClick={onClose} />
+      <div className="ptg-wizard" ref={modalRef} role="dialog" aria-modal="true" aria-label="Army Roster">
+        <button className="gw-close" onClick={onClose} title="Close (Esc)">✕</button>
+        <div className="ptg-doc-editor-header">
+          <div className="ptg-doc-editor-title">Army Roster</div>
+          <div className="ptg-present-toggle">
+            <button className={presentMode === 'image' ? 'ptg-present-active' : ''} onClick={() => setPresentMode('image')}>Image</button>
+            <button className={presentMode === 'replica' ? 'ptg-present-active' : ''} onClick={() => setPresentMode('replica')}>Replica</button>
+          </div>
+        </div>
+
+        <div className="ptg-doc-editor-body">
+          {presentMode === 'image' ? (
+            <div className="ptg-doc-image-view">
+              <ProgressiveImg src="/ptg/army-roster-1.jpg" micro={ARMY_ROSTER_MICRO.page1} avgColor={ARMY_ROSTER_AVG_COLOR.page1} alt="Army Roster page 1" className="ptg-doc-full-img" />
+              <ProgressiveImg src="/ptg/army-roster-2.jpg" micro={ARMY_ROSTER_MICRO.page2} avgColor={ARMY_ROSTER_AVG_COLOR.page2} alt="Army Roster page 2" className="ptg-doc-full-img" />
+            </div>
+          ) : (
+            <>
+              <div className="ptg-army-header-grid">
+                <div className="ptg-field ptg-army-commander"><label>Commander</label><input type="text" value={doc.commander} onChange={e => setDoc(d => ({ ...d, commander: e.target.value }))} /></div>
+                <div className="ptg-field ptg-army-name"><label>Army Name</label><input type="text" value={doc.armyName} onChange={e => setDoc(d => ({ ...d, armyName: e.target.value }))} /></div>
+                <div className="ptg-field ptg-army-points-limit"><label>Points Limit</label><input type="text" value={`${totalPoints.toLocaleString()} / ${pointsLimit}`} readOnly /></div>
+                <div className="ptg-field ptg-army-faction"><label>Faction</label><input type="text" value={factionName || '—'} readOnly /></div>
+                <div className="ptg-field ptg-army-formation"><label>Battle Formation</label><input type="text" value={battleFormation || '—'} readOnly /></div>
+              </div>
+
+              {doc.regiments.map((r, ri) => (
+                <div className="ptg-regiment-block" key={r.id}>
+                  <div className="ptg-regiment-header">
+                    <span>{ri === 0 ? "General's Regiment 1" : `Regiment ${ri + 1}`}</span>
+                    {doc.regiments.length > 1 && <button className="ptg-oob-row-remove" onClick={() => removeRegiment(r.id)} title="Remove regiment">✕</button>}
+                  </div>
+                  <div className="ptg-regiment-table-head">
+                    <span>Warscroll Name</span><span>Size</span><span>Notes</span><span>Points</span><span />
+                  </div>
+                  {r.units.map(u => (
+                    <div className="ptg-regiment-table-row" key={u.id}>
+                      <input placeholder="Warscroll Name" value={u.name || ''} onChange={e => updateRegimentUnit(r.id, u.id, 'name', e.target.value)} />
+                      <input placeholder="Size" value={u.size || ''} onChange={e => updateRegimentUnit(r.id, u.id, 'size', e.target.value)} />
+                      <input placeholder="Notes" value={u.notes || ''} onChange={e => updateRegimentUnit(r.id, u.id, 'notes', e.target.value)} />
+                      <input placeholder="Pts" value={u.points || ''} onChange={e => updateRegimentUnit(r.id, u.id, 'points', e.target.value)} />
+                      <button className="ptg-oob-row-remove" onClick={() => removeRegimentUnit(r.id, u.id)} title="Remove unit">✕</button>
+                    </div>
+                  ))}
+                  <button className="ptg-wizard-nav-btn ptg-oob-add-btn" onClick={() => addRegimentUnit(r.id)}>+ Add Unit</button>
+                </div>
+              ))}
+              <button className="ptg-wizard-nav-btn ptg-oob-add-btn" onClick={addRegiment}>+ Add Regiment</button>
+              <div className="ptg-oob-cap">Regiments Total: {regimentsTotal}pts</div>
+
+              <div className="ptg-regiment-block">
+                <div className="ptg-regiment-header"><span>Auxiliary Units</span></div>
+                <div className="ptg-regiment-table-head">
+                  <span>Warscroll Name</span><span>Size</span><span>Notes</span><span>Points</span><span />
+                </div>
+                {doc.auxUnits.map(u => (
+                  <div className="ptg-regiment-table-row" key={u.id}>
+                    <input placeholder="Warscroll Name" value={u.name || ''} onChange={e => updateAuxUnit(u.id, 'name', e.target.value)} />
+                    <input placeholder="Size" value={u.size || ''} onChange={e => updateAuxUnit(u.id, 'size', e.target.value)} />
+                    <input placeholder="Notes" value={u.notes || ''} onChange={e => updateAuxUnit(u.id, 'notes', e.target.value)} />
+                    <input placeholder="Pts" value={u.points || ''} onChange={e => updateAuxUnit(u.id, 'points', e.target.value)} />
+                    <button className="ptg-oob-row-remove" onClick={() => removeAuxUnit(u.id)} title="Remove unit">✕</button>
+                  </div>
+                ))}
+                <button className="ptg-wizard-nav-btn ptg-oob-add-btn" onClick={addAuxUnit}>+ Add Unit</button>
+              </div>
+              <div className="ptg-oob-cap">Auxiliary Units Total: {auxTotal}pts</div>
+              <div className="ptg-oob-cap"><strong>Units Total: {armyUnitsTotal}pts</strong></div>
+
+              <div className="ptg-field"><label>Notes</label><textarea rows={3} value={doc.notes} onChange={e => setDoc(d => ({ ...d, notes: e.target.value }))} /></div>
+            </>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function ArmyBuilderPage({ headerCollapsed }) {
   const { presumedSave, presumedWard, roundingMode, includeSaveWardInADO } = useSettings();
   const { logout } = useAuth();
@@ -359,8 +499,12 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
   const LISTS_KEY = 'aos-army-builder-lists-v1';
   const LEGACY_ARMY_KEY = 'aos-army-builder-v1'; // pre-multi-list save, migrated once below
 
+  function makeBlankArmyRosterDoc() {
+    return { commander: '', armyName: '', regiments: [{ id: 'r1', units: [] }], auxUnits: [], notes: '' };
+  }
+
   function makeBlankList(name) {
-    return { name, faction: '', pointsLimit: 2000, roster: {}, battleFormation: '', heroAssignments: {}, activeStage: 'units' };
+    return { name, faction: '', pointsLimit: 2000, roster: {}, battleFormation: '', heroAssignments: {}, activeStage: 'units', armyRosterDoc: makeBlankArmyRosterDoc() };
   }
 
   const [listsStore, setListsStore] = useState(() => {
@@ -381,6 +525,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
           battleFormation: legacy.battleFormation ?? '',
           heroAssignments: legacy.heroAssignments ?? {},
           activeStage: legacy.activeStage ?? 'units',
+          armyRosterDoc: legacy.armyRosterDoc ?? makeBlankArmyRosterDoc(),
         },
       },
     };
@@ -394,6 +539,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
   const [battleFormation, setBattleFormation] = useState(activeListData.battleFormation);
   const [heroAssignments, setHeroAssignments] = useState(activeListData.heroAssignments); // { [heroId]: { heroic_traits, artefacts, spell_lore, prayer_lore, manifestation_lore } }
   const [activeStage, setActiveStage] = useState(activeListData.activeStage);
+  const [armyRosterDoc, setArmyRosterDoc] = useState(activeListData.armyRosterDoc ?? makeBlankArmyRosterDoc());
 
   useEffect(() => {
     setListsStore(prev => {
@@ -401,13 +547,13 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
         ...prev,
         lists: {
           ...prev.lists,
-          [prev.activeListId]: { ...prev.lists[prev.activeListId], faction, pointsLimit, roster, battleFormation, heroAssignments, activeStage },
+          [prev.activeListId]: { ...prev.lists[prev.activeListId], faction, pointsLimit, roster, battleFormation, heroAssignments, activeStage, armyRosterDoc },
         },
       };
       localStorage.setItem(LISTS_KEY, JSON.stringify(next));
       return next;
     });
-  }, [faction, pointsLimit, roster, battleFormation, heroAssignments, activeStage]);
+  }, [faction, pointsLimit, roster, battleFormation, heroAssignments, activeStage, armyRosterDoc]);
 
   const loadListIntoState = (list) => {
     setFaction(list.faction ?? '');
@@ -416,6 +562,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
     setBattleFormation(list.battleFormation ?? '');
     setHeroAssignments(list.heroAssignments ?? {});
     setActiveStage(list.activeStage ?? 'units');
+    setArmyRosterDoc(list.armyRosterDoc ?? makeBlankArmyRosterDoc());
   };
 
   const selectList = (id) => {
@@ -436,7 +583,15 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
     const src = listsStore.lists[id];
     if (!src) return;
     const newId = `list-${Date.now()}`;
-    const clone = { ...src, name: `${src.name} (Copy)`, roster: { ...src.roster }, heroAssignments: { ...src.heroAssignments } };
+    const srcDoc = src.armyRosterDoc ?? makeBlankArmyRosterDoc();
+    const clone = {
+      ...src, name: `${src.name} (Copy)`, roster: { ...src.roster }, heroAssignments: { ...src.heroAssignments },
+      armyRosterDoc: {
+        ...srcDoc,
+        regiments: srcDoc.regiments.map(r => ({ ...r, units: r.units.map(u => ({ ...u })) })),
+        auxUnits: srcDoc.auxUnits.map(u => ({ ...u })),
+      },
+    };
     setListsStore({ activeListId: newId, lists: { ...listsStore.lists, [newId]: clone } });
     loadListIntoState(clone);
   };
@@ -576,6 +731,40 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
       return next;
     });
   };
+
+  // ── Army Roster document (Commander/Army Name/regiments/aux units/notes) —
+  // free-text fields the user fills in themselves, same as Path to Glory's
+  // own Army Roster replica. Faction/Points Limit/Battle Formation are NOT
+  // duplicated here since this page already tracks them live; the replica
+  // form just displays those directly instead of a second editable copy. ──
+  const [rosterDocOpen, setRosterDocOpen] = useState(false);
+  const [rosterPresentMode, setRosterPresentMode] = useState('replica');
+
+  const addRegiment = () => setArmyRosterDoc(d => ({ ...d, regiments: [...d.regiments, { id: `${Date.now()}-${d.regiments.length}`, units: [] }] }));
+  const removeRegiment = rid => setArmyRosterDoc(d => ({ ...d, regiments: d.regiments.filter(r => r.id !== rid) }));
+  const addRegimentUnit = rid => setArmyRosterDoc(d => ({
+    ...d,
+    regiments: d.regiments.map(r => r.id === rid
+      ? { ...r, units: [...r.units, { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, name: '', size: '', notes: '', points: '' }] }
+      : r),
+  }));
+  const updateRegimentUnit = (rid, uid, field, value) => setArmyRosterDoc(d => ({
+    ...d,
+    regiments: d.regiments.map(r => r.id === rid
+      ? { ...r, units: r.units.map(u => u.id === uid ? { ...u, [field]: value } : u) }
+      : r),
+  }));
+  const removeRegimentUnit = (rid, uid) => setArmyRosterDoc(d => ({
+    ...d,
+    regiments: d.regiments.map(r => r.id === rid ? { ...r, units: r.units.filter(u => u.id !== uid) } : r),
+  }));
+  const addAuxUnit = () => setArmyRosterDoc(d => ({ ...d, auxUnits: [...d.auxUnits, { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, name: '', size: '', notes: '', points: '' }] }));
+  const updateAuxUnit = (uid, field, value) => setArmyRosterDoc(d => ({ ...d, auxUnits: d.auxUnits.map(u => u.id === uid ? { ...u, [field]: value } : u) }));
+  const removeAuxUnit = uid => setArmyRosterDoc(d => ({ ...d, auxUnits: d.auxUnits.filter(u => u.id !== uid) }));
+
+  const regimentsTotal = armyRosterDoc.regiments.reduce((sum, r) => sum + r.units.reduce((s, u) => s + (parseInt(u.points, 10) || 0), 0), 0);
+  const auxTotal = armyRosterDoc.auxUnits.reduce((sum, u) => sum + (parseInt(u.points, 10) || 0), 0);
+  const armyUnitsTotal = regimentsTotal + auxTotal;
 
   // ── Faction-rules cache, shared by Battle Formation + hero-assignment stages ──
   const rulesCache = useRef({});
@@ -847,7 +1036,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
           <span>Age of Sigmar 4th Edition</span>
         </div>
 
-        <div className="ab-header-center">
+        <div className="ab-header-cell ab-header-list">
           <ListManager
             listsStore={listsStore}
             activeListId={activeListId}
@@ -857,6 +1046,9 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
             onRename={renameList}
             onDelete={deleteList}
           />
+        </div>
+
+        <div className="ab-header-cell ab-header-stages">
           <div className="ab-stage-tabs">
             {STAGES.map(s => (
               <button
@@ -866,6 +1058,10 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
               >{s.label}</button>
             ))}
           </div>
+        </div>
+
+        <div className="ab-header-cell ab-header-roster">
+          <ArmyRosterThumb onClick={() => setRosterDocOpen(true)} />
         </div>
 
         <div className="ab-points-block">
@@ -1083,6 +1279,31 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
         />
       );
     })()}
+
+    {rosterDocOpen && (
+      <ArmyRosterModal
+        onClose={() => setRosterDocOpen(false)}
+        presentMode={rosterPresentMode}
+        setPresentMode={setRosterPresentMode}
+        factionName={factionName}
+        pointsLimit={pointsLimit}
+        battleFormation={battleFormation}
+        totalPoints={totalPoints}
+        doc={armyRosterDoc}
+        setDoc={setArmyRosterDoc}
+        addRegiment={addRegiment}
+        removeRegiment={removeRegiment}
+        addRegimentUnit={addRegimentUnit}
+        updateRegimentUnit={updateRegimentUnit}
+        removeRegimentUnit={removeRegimentUnit}
+        addAuxUnit={addAuxUnit}
+        updateAuxUnit={updateAuxUnit}
+        removeAuxUnit={removeAuxUnit}
+        regimentsTotal={regimentsTotal}
+        auxTotal={auxTotal}
+        armyUnitsTotal={armyUnitsTotal}
+      />
+    )}
     </>
   );
 }
