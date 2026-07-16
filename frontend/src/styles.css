@@ -600,11 +600,21 @@ input, select {
 .ab-points-limit-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .ab-points-limit-input:focus { outline: none; border-bottom-color: var(--gold); }
 
+.ab-page-header { position: relative; }
+.ab-header-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
 .ab-stage-tabs {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
-  margin-bottom: 0.8rem;
 }
 .ab-stage-tab {
   font-family: 'Cinzel', serif;
@@ -624,6 +634,84 @@ input, select {
   border-color: var(--border-gold);
   background: rgba(201,168,76,0.1);
 }
+
+.ab-list-manager { position: relative; }
+.ab-list-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--parchment);
+  padding: 0.4rem 0.7rem;
+  cursor: pointer;
+  font-family: 'Cinzel', serif;
+  font-size: 0.8rem;
+  transition: border-color 0.2s;
+}
+.ab-list-trigger:hover, .ab-list-trigger:focus { border-color: var(--gold-dark); outline: none; }
+.ab-list-menu {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  min-width: 220px;
+  background: var(--bg-card);
+  border: 1px solid var(--gold-dark);
+  border-radius: 3px;
+  z-index: 200;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.ab-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.85rem;
+  color: var(--parchment);
+  transition: background 0.1s;
+}
+.ab-list-item:hover { background: var(--bg-panel); }
+.ab-list-item.selected { background: var(--gold-dark); color: var(--bg-dark); }
+.ab-list-item-name { flex: 1; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ab-list-rename-input {
+  flex: 1;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-gold);
+  border-radius: 3px;
+  color: var(--parchment);
+  font-size: 0.85rem;
+  padding: 0.1rem 0.3rem;
+}
+.ab-list-item-actions { display: flex; gap: 0.2rem; flex-shrink: 0; }
+.ab-list-item-actions button {
+  background: transparent;
+  border: none;
+  color: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0.1rem 0.25rem;
+  border-radius: 3px;
+}
+.ab-list-item-actions button:hover:not(:disabled) { opacity: 1; background: rgba(0,0,0,0.2); }
+.ab-list-item-actions button:disabled { opacity: 0.25; cursor: not-allowed; }
+.ab-list-new-btn {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--border);
+  color: var(--gold);
+  font-family: 'Cinzel', serif;
+  font-size: 0.8rem;
+  padding: 0.5rem;
+  cursor: pointer;
+  text-align: center;
+}
+.ab-list-new-btn:hover { background: rgba(201,168,76,0.1); }
 
 .col-count { text-align: center; padding: 2px !important; }
 .ab-count-input {
@@ -1476,6 +1564,25 @@ tr.separator-faction td {
   text-transform: uppercase;
 }
 tr.separator-faction:hover { background: var(--gold-dark) !important; }
+
+/* "Other Factions" divider — a distinct violet band so it reads as a
+   section break, not just another faction header. */
+tr.separator-other-factions {
+  background: var(--death) !important;
+  border-top: 2px solid #8a4fc4;
+  border-bottom: 1px solid #8a4fc4;
+  cursor: default;
+}
+tr.separator-other-factions td {
+  padding: 0.45rem 0.8rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--parchment);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: center;
+}
+tr.separator-other-factions:hover { background: var(--death) !important; }
 
 /* Unit-type sub-header row — subtle dark band */
 tr.separator-type {

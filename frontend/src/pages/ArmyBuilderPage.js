@@ -151,6 +151,25 @@ function FactionDropdown({ factions, value, onChange, liveCount }) {
   );
 }
 
+// Guest/Regiments-of-Renown units are bucketed under a faction_slug on
+// Wahapedia without being core to that faction — detected the same way
+// the backend's hideOtherFactions filter does (empty keywords, or keywords
+// that don't mention the faction's own distinctive name), but applied
+// client-side per-row since Army Builder fetches every faction in one query.
+const FACTION_SKIP_WORDS = new Set(['of', 'the', 'to', 'and']);
+function getFactionDistinctWord(slug) {
+  return (slug || '')
+    .split('-')
+    .filter(w => !FACTION_SKIP_WORDS.has(w) && w.length > 2)
+    .map(w => w.toUpperCase())[0];
+}
+function isGuestOfFaction(row) {
+  if (!row.keywords) return true;
+  const word = getFactionDistinctWord(row.faction_slug);
+  if (!word) return false;
+  return row.keywords.toUpperCase().indexOf(word) === -1;
+}
+
 const TEXT_SORT_COLS = new Set(['faction','name','types','keywords','alliance']);
 function SortIcon({ col, sortBy, sortDir }) {
   if (sortBy !== col) return <span className="sort-icon">↕</span>;
@@ -256,6 +275,73 @@ function HeroAssignmentStage({ label, sectionKey, selectedHeroes, rulesCache, he
   );
 }
 
+// ── Saved-list manager: switch between named army lists, each with its own
+// faction/roster/formation/hero-assignment/points-limit snapshot ───────────
+function ListManager({ listsStore, activeListId, onSelect, onCreate, onDuplicate, onRename, onDelete }) {
+  const [open, setOpen] = useState(false);
+  const [renamingId, setRenamingId] = useState(null);
+  const [renameValue, setRenameValue] = useState('');
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = e => { if (ref.current && !ref.current.contains(e.target)) { setOpen(false); setRenamingId(null); } };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const ids = Object.keys(listsStore.lists);
+  const activeName = listsStore.lists[activeListId]?.name ?? 'Default List';
+
+  const startRename = (id, name) => { setRenamingId(id); setRenameValue(name); };
+  const commitRename = () => {
+    if (renamingId && renameValue.trim()) onRename(renamingId, renameValue.trim());
+    setRenamingId(null);
+  };
+
+  return (
+    <div className="ab-list-manager" ref={ref}>
+      <button className="ab-list-trigger" onClick={() => setOpen(o => !o)}>
+        <span>{activeName}</span>
+        <span className="faction-dropdown-arrow">{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div className="ab-list-menu">
+          {ids.map(id => (
+            <div key={id} className={`ab-list-item${id === activeListId ? ' selected' : ''}`}>
+              {renamingId === id ? (
+                <input
+                  className="ab-list-rename-input"
+                  autoFocus
+                  value={renameValue}
+                  onChange={e => setRenameValue(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') setRenamingId(null); }}
+                  onBlur={commitRename}
+                  onClick={e => e.stopPropagation()}
+                />
+              ) : (
+                <span className="ab-list-item-name" onClick={() => { onSelect(id); setOpen(false); }}>
+                  {listsStore.lists[id].name}
+                </span>
+              )}
+              <span className="ab-list-item-actions">
+                <button type="button" title="Rename" onClick={e => { e.stopPropagation(); startRename(id, listsStore.lists[id].name); }}>✎</button>
+                <button type="button" title="Duplicate" onClick={e => { e.stopPropagation(); onDuplicate(id); setOpen(false); }}>⧉</button>
+                <button
+                  type="button" title={ids.length <= 1 ? 'At least one list is required' : 'Delete'}
+                  disabled={ids.length <= 1}
+                  onClick={e => { e.stopPropagation(); onDelete(id); }}
+                >🗑</button>
+              </span>
+            </div>
+          ))}
+          <button type="button" className="ab-list-new-btn" onClick={() => { onCreate(); setOpen(false); }}>+ New List</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ArmyBuilderPage({ headerCollapsed }) {
   const { presumedSave, presumedWard, roundingMode, includeSaveWardInADO } = useSettings();
   const { logout } = useAuth();
@@ -264,22 +350,113 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState('');
 
-  // ── Persisted army state ─────────────────────────────────────────────────
-  const ARMY_KEY = 'aos-army-builder-v1';
-  const savedArmy = (() => { try { return JSON.parse(localStorage.getItem(ARMY_KEY)) || {}; } catch { return {}; } })();
+  // ── Persisted army state, split across named saved lists ────────────────
+  // Each list snapshots faction/points/roster/formation/hero-assignments;
+  // the live component state below always mirrors whichever list is active,
+  // and every change to it is continuously written back into that list's
+  // slot (see the effect further down) — so switching lists never loses
+  // in-progress edits on the list you're leaving.
+  const LISTS_KEY = 'aos-army-builder-lists-v1';
+  const LEGACY_ARMY_KEY = 'aos-army-builder-v1'; // pre-multi-list save, migrated once below
 
-  const [faction, setFaction]         = useState(savedArmy.faction ?? '');
-  const [pointsLimit, setPointsLimit] = useState(savedArmy.pointsLimit ?? 2000);
-  const [roster, setRoster]           = useState(savedArmy.roster ?? {}); // { [unitId]: { train, reinforce } }
-  const [battleFormation, setBattleFormation] = useState(savedArmy.battleFormation ?? '');
-  const [heroAssignments, setHeroAssignments] = useState(savedArmy.heroAssignments ?? {}); // { [heroId]: { heroic_traits, artefacts, spell_lore, prayer_lore, manifestation_lore } }
-  const [activeStage, setActiveStage] = useState(savedArmy.activeStage ?? 'units');
+  function makeBlankList(name) {
+    return { name, faction: '', pointsLimit: 2000, roster: {}, battleFormation: '', heroAssignments: {}, activeStage: 'units' };
+  }
+
+  const [listsStore, setListsStore] = useState(() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem(LISTS_KEY));
+      if (raw && raw.lists && Object.keys(raw.lists).length > 0) return raw;
+    } catch {}
+    let legacy = {};
+    try { legacy = JSON.parse(localStorage.getItem(LEGACY_ARMY_KEY)) || {}; } catch {}
+    return {
+      activeListId: 'default',
+      lists: {
+        default: {
+          name: 'Default List',
+          faction: legacy.faction ?? '',
+          pointsLimit: legacy.pointsLimit ?? 2000,
+          roster: legacy.roster ?? {},
+          battleFormation: legacy.battleFormation ?? '',
+          heroAssignments: legacy.heroAssignments ?? {},
+          activeStage: legacy.activeStage ?? 'units',
+        },
+      },
+    };
+  });
+  const activeListId = listsStore.activeListId;
+  const activeListData = listsStore.lists[activeListId] ?? makeBlankList('Default List');
+
+  const [faction, setFaction]         = useState(activeListData.faction);
+  const [pointsLimit, setPointsLimit] = useState(activeListData.pointsLimit);
+  const [roster, setRoster]           = useState(activeListData.roster); // { [unitId]: { train, reinforce } }
+  const [battleFormation, setBattleFormation] = useState(activeListData.battleFormation);
+  const [heroAssignments, setHeroAssignments] = useState(activeListData.heroAssignments); // { [heroId]: { heroic_traits, artefacts, spell_lore, prayer_lore, manifestation_lore } }
+  const [activeStage, setActiveStage] = useState(activeListData.activeStage);
 
   useEffect(() => {
-    localStorage.setItem(ARMY_KEY, JSON.stringify({
-      faction, pointsLimit, roster, battleFormation, heroAssignments, activeStage,
-    }));
+    setListsStore(prev => {
+      const next = {
+        ...prev,
+        lists: {
+          ...prev.lists,
+          [prev.activeListId]: { ...prev.lists[prev.activeListId], faction, pointsLimit, roster, battleFormation, heroAssignments, activeStage },
+        },
+      };
+      localStorage.setItem(LISTS_KEY, JSON.stringify(next));
+      return next;
+    });
   }, [faction, pointsLimit, roster, battleFormation, heroAssignments, activeStage]);
+
+  const loadListIntoState = (list) => {
+    setFaction(list.faction ?? '');
+    setPointsLimit(list.pointsLimit ?? 2000);
+    setRoster(list.roster ?? {});
+    setBattleFormation(list.battleFormation ?? '');
+    setHeroAssignments(list.heroAssignments ?? {});
+    setActiveStage(list.activeStage ?? 'units');
+  };
+
+  const selectList = (id) => {
+    const target = listsStore.lists[id];
+    if (!target || id === activeListId) return;
+    setListsStore({ ...listsStore, activeListId: id });
+    loadListIntoState(target);
+  };
+
+  const createList = () => {
+    const id = `list-${Date.now()}`;
+    const blank = makeBlankList(`New List ${Object.keys(listsStore.lists).length + 1}`);
+    setListsStore({ activeListId: id, lists: { ...listsStore.lists, [id]: blank } });
+    loadListIntoState(blank);
+  };
+
+  const duplicateList = (id) => {
+    const src = listsStore.lists[id];
+    if (!src) return;
+    const newId = `list-${Date.now()}`;
+    const clone = { ...src, name: `${src.name} (Copy)`, roster: { ...src.roster }, heroAssignments: { ...src.heroAssignments } };
+    setListsStore({ activeListId: newId, lists: { ...listsStore.lists, [newId]: clone } });
+    loadListIntoState(clone);
+  };
+
+  const renameList = (id, name) => {
+    setListsStore({ ...listsStore, lists: { ...listsStore.lists, [id]: { ...listsStore.lists[id], name } } });
+  };
+
+  const deleteList = (id) => {
+    const ids = Object.keys(listsStore.lists);
+    if (ids.length <= 1) return;
+    const nextLists = { ...listsStore.lists };
+    delete nextLists[id];
+    let nextActiveId = listsStore.activeListId;
+    if (nextActiveId === id) {
+      nextActiveId = Object.keys(nextLists)[0];
+      loadListIntoState(nextLists[nextActiveId]);
+    }
+    setListsStore({ activeListId: nextActiveId, lists: nextLists });
+  };
 
   // ── Filters (no enemy/friendly concept — this army is always "friendly") ──
   const FILTER_KEY = 'aos-army-builder-filters';
@@ -296,6 +473,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
   const [isTerrain, setIsTerrain]       = useState(saved.isTerrain    ?? false);
   const [isManifestation, setIsManifestation] = useState(saved.isManifestation ?? false);
   const [hideLegends, setHideLegends]                 = useState(saved.hideLegends         ?? true);
+  const [hideOtherFactions, setHideOtherFactions]     = useState(saved.hideOtherFactions   ?? false);
   const [hideScourgeOfGhyran, setHideScourgeOfGhyran] = useState(saved.hideScourgeOfGhyran ?? false);
   const [hideRoR, setHideRoR]                         = useState(saved.hideRoR             ?? false);
   const [sortBy, setSortBy]   = useState(saved.sortBy  ?? 'faction');
@@ -304,10 +482,10 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
   useEffect(() => {
     localStorage.setItem(FILTER_KEY, JSON.stringify({
       search, alliance, isHero, isMonster, isInfantry, isCavalry, isBeast, isWarMachine, isTerrain, isManifestation,
-      hideLegends, hideScourgeOfGhyran, hideRoR, sortBy, sortDir,
+      hideLegends, hideOtherFactions, hideScourgeOfGhyran, hideRoR, sortBy, sortDir,
     }));
   }, [search, alliance, isHero, isMonster, isInfantry, isCavalry, isBeast, isWarMachine, isTerrain, isManifestation,
-      hideLegends, hideScourgeOfGhyran, hideRoR, sortBy, sortDir]);
+      hideLegends, hideOtherFactions, hideScourgeOfGhyran, hideRoR, sortBy, sortDir]);
 
   const [expandedIds, setExpandedIds] = useState(new Set());
   const [fullExpandedIds, setFullExpandedIds] = useState(new Set());
@@ -462,7 +640,8 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
     return sorted;
   };
 
-  const allRows = data?.data ?? [];
+  const allRowsRaw = data?.data ?? [];
+  const allRows = hideOtherFactions ? allRowsRaw.filter(r => !isGuestOfFaction(r)) : allRowsRaw;
   const ownRows   = faction ? sortRows(allRows.filter(r => r.faction_slug === faction)) : sortRows(allRows);
   const otherRows = faction ? sortRows(allRows.filter(r => r.faction_slug !== faction)) : [];
   const navList = [...ownRows, ...otherRows];
@@ -616,11 +795,33 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
     <div className="table-page">
       {!headerCollapsed && (
       <>
-      <div className="page-header">
+      <div className="page-header ab-page-header">
         <div className="page-title">
           Army Builder
           <span>Age of Sigmar 4th Edition</span>
         </div>
+
+        <div className="ab-header-center">
+          <ListManager
+            listsStore={listsStore}
+            activeListId={activeListId}
+            onSelect={selectList}
+            onCreate={createList}
+            onDuplicate={duplicateList}
+            onRename={renameList}
+            onDelete={deleteList}
+          />
+          <div className="ab-stage-tabs">
+            {STAGES.map(s => (
+              <button
+                key={s.key}
+                className={`ab-stage-tab${activeStage === s.key ? ' active' : ''}`}
+                onClick={() => setActiveStage(s.key)}
+              >{s.label}</button>
+            ))}
+          </div>
+        </div>
+
         <div className="ab-points-block">
           <div className="ab-points-label">Points</div>
           <div className="ab-points-value">
@@ -633,16 +834,6 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
             />
           </div>
         </div>
-      </div>
-
-      <div className="ab-stage-tabs">
-        {STAGES.map(s => (
-          <button
-            key={s.key}
-            className={`ab-stage-tab${activeStage === s.key ? ' active' : ''}`}
-            onClick={() => setActiveStage(s.key)}
-          >{s.label}</button>
-        ))}
       </div>
       </>
       )}
@@ -686,6 +877,10 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
               <label className="cb-item">
                 <input type="checkbox" checked={hideScourgeOfGhyran} onChange={e => setHideScourgeOfGhyran(e.target.checked)} />
                 <span>Scourge</span>
+              </label>
+              <label className="cb-item">
+                <input type="checkbox" checked={hideOtherFactions} onChange={e => setHideOtherFactions(e.target.checked)} />
+                <span>Other Factions</span>
               </label>
               <label className="cb-item">
                 <input type="checkbox" checked={hideRoR} onChange={e => setHideRoR(e.target.checked)} />
@@ -744,7 +939,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
               <tbody>
                 {ownRows.map((row, idx) => renderUnitRow(row, idx + 1, ownRows[idx - 1], false))}
                 {faction && otherRows.length > 0 && (
-                  <tr className="separator-faction">
+                  <tr className="separator-other-factions">
                     <td colSpan={19}>Other Factions</td>
                   </tr>
                 )}
