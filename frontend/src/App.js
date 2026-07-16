@@ -15,11 +15,13 @@ import './styles.css';
 const NAV_PAGES = [
   { label: 'Warscrolls',         path: '/warscrolls' },
   { label: 'Army Builder',       path: '/army-builder',    soon: true },
-  { label: 'Simulacrum',         path: '/simulacrum' },
+  { label: 'Battle Buddy',       path: '/battle-buddy',    soon: true },
+  { label: 'Matched Play',       path: '/matched-play',    soon: true },
   { label: 'Spearhead',          path: '/spearhead' },
   { label: 'Path to Glory',      path: '/path-to-glory' },
   { label: 'Consult the Oracle', path: '/consult-oracle',  soon: true },
   { label: 'Comparitator',       path: '/comparitator',    soon: true },
+  { label: 'Simulacrum',         path: '/simulacrum' },
 ];
 
 const SAVE_OPTIONS  = ['-', 2, 3, 4, 5, 6];
@@ -217,11 +219,13 @@ function AppRoutes() {
           <ProtectedRoute><WarscrollsPage headerCollapsed={headerCollapsed} /></ProtectedRoute>
         } />
         <Route path="/army-builder"  element={<ProtectedRoute><ComingSoon title="Army Builder" /></ProtectedRoute>} />
-        <Route path="/simulacrum"    element={<ProtectedRoute><SimulacrumPage headerCollapsed={headerCollapsed} /></ProtectedRoute>} />
+        <Route path="/battle-buddy"  element={<ProtectedRoute><ComingSoon title="Battle Buddy" /></ProtectedRoute>} />
+        <Route path="/matched-play"  element={<ProtectedRoute><ComingSoon title="Matched Play" /></ProtectedRoute>} />
         <Route path="/spearhead"     element={<ProtectedRoute><SpearheadPage headerCollapsed={headerCollapsed} /></ProtectedRoute>} />
         <Route path="/path-to-glory"  element={<ProtectedRoute><PathToGloryPage headerCollapsed={headerCollapsed} /></ProtectedRoute>} />
         <Route path="/consult-oracle" element={<ProtectedRoute><ComingSoon title="Consult the Oracle" /></ProtectedRoute>} />
         <Route path="/comparitator"   element={<ProtectedRoute><ComingSoon title="Comparitator" /></ProtectedRoute>} />
+        <Route path="/simulacrum"    element={<ProtectedRoute><SimulacrumPage headerCollapsed={headerCollapsed} /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to={user ? "/warscrolls" : "/login"} />} />
       </Routes>
     </div>
