@@ -583,6 +583,7 @@ input, select {
   line-height: 1;
 }
 .ab-points-sep { color: var(--text-dim); font-weight: 400; font-size: 1.4rem; }
+.ab-points-current.ab-points-over { color: #e0483f; }
 .ab-points-limit-input {
   width: 4.5ch;
   background: transparent;
@@ -608,6 +609,14 @@ input, select {
   gap: 0.75rem;
 }
 .ab-header-cell { display: flex; justify-content: center; min-width: 0; }
+.ab-header-roster { flex-direction: column; align-items: center; gap: 0.2rem; }
+.ab-roster-thumb-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.62rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
 
 .ab-stage-tabs {
   display: flex;
@@ -669,6 +678,7 @@ input, select {
   align-items: flex-start;
   gap: 1rem;
 }
+.ab-roster-image-page { position: relative; display: inline-block; }
 .ab-roster-page-img {
   border: 1px solid rgba(200,168,64,0.3);
   border-radius: 3px;
@@ -679,6 +689,119 @@ input, select {
   width: auto;
   max-width: 100%;
 }
+
+/* Text overlaid directly on the scanned page, positioned via the pixel-
+   measured percentages in ROSTER_LAYOUT (see [[ptg_asset_extraction]]). */
+.ab-roster-overlay-field {
+  position: absolute;
+  color: #2a2218;
+  font-family: 'Palatino Linotype', Palatino, Georgia, serif;
+  font-size: 1.5vh;
+  line-height: 1.2;
+  padding: 0 0.3vh;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.ab-roster-overlay-field.ab-roster-overlay-center { text-align: center; }
+.ab-roster-overlay-over { color: #a41c1c; font-weight: 700; }
+.ab-roster-overlay-row {
+  position: absolute;
+  left: 7%;
+  width: 89%;
+  height: 2.2%;
+}
+.ab-roster-overlay-cell {
+  position: absolute;
+  top: 0;
+  color: #2a2218;
+  font-family: 'Palatino Linotype', Palatino, Georgia, serif;
+  font-size: 1.4vh;
+  line-height: 1.2;
+  padding: 0 0.3vh;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ab-roster-overlay-cell.ab-roster-overlay-center { text-align: center; }
+.ab-roster-overlay-row-empty { cursor: default; }
+.ab-roster-overlay-note {
+  position: absolute;
+  top: 74%;
+  left: 8%;
+  width: 84%;
+  font-size: 1.2vh;
+  font-style: italic;
+  color: #6a5a3a;
+}
+.ab-roster-overlay-notes-text {
+  position: absolute;
+  color: #2a2218;
+  font-family: 'Palatino Linotype', Palatino, Georgia, serif;
+  font-size: 1.4vh;
+  white-space: pre-wrap;
+}
+
+/* Replica-mode regiment/aux slot table — a fixed set of General|Hero + Unit
+   N slots matching the printed sheet exactly (see REGIMENT_SLOTS), each
+   auto-populated from the actual roster selection and drag-reassignable. */
+.ab-roster-slot-head, .ab-roster-slot-row {
+  display: grid;
+  grid-template-columns: 0.9fr 1.6fr 0.6fr 1.6fr 0.6fr;
+  gap: 0.4rem;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+.ab-roster-slot-head span {
+  font-family: 'Cinzel', serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.03em;
+  color: var(--text-dim, #8a8578);
+  text-transform: uppercase;
+}
+.ab-roster-slot-row {
+  padding: 0.35rem 0.45rem;
+  border: 1px dashed rgba(200,168,64,0.3);
+  border-radius: 3px;
+}
+.ab-roster-slot-row.ab-roster-slot-filled { border-style: solid; background: rgba(0,0,0,0.2); cursor: grab; }
+.ab-roster-slot-row.ab-roster-slot-filled:active { cursor: grabbing; }
+.ab-roster-slot-row.ab-roster-slot-empty { color: var(--text-dim, #8a8578); font-style: italic; }
+.ab-roster-slot-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.72rem;
+  color: #c8a840;
+}
+.ab-roster-slot-row span:not(.ab-roster-slot-label) {
+  font-family: 'Palatino Linotype', Palatino, Georgia, serif;
+  font-size: 0.8rem;
+  color: #d8cca8;
+}
+.ab-roster-slot-row.ab-roster-slot-empty span:not(.ab-roster-slot-label) { color: inherit; }
+
+.ab-roster-points-limit-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.3rem;
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: 1.3rem;
+}
+.ab-roster-points-limit-row input {
+  width: 4.5ch;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid rgba(200,168,64,0.4);
+  color: #d8cca8;
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: 1.3rem;
+  text-align: center;
+  padding: 0;
+}
+.ab-roster-points-limit-row input:focus { outline: none; border-bottom-color: #c8a840; }
 
 .ab-list-manager { position: relative; width: 340px; flex-shrink: 0; }
 .ab-list-trigger {
@@ -776,6 +899,8 @@ th.ab-count-th { padding-left: 0.35rem; padding-right: 0.35rem; text-align: cent
   padding: 2px 0;
 }
 .ab-count-input:focus { outline: none; border-color: var(--border-gold); }
+.ab-count-checkbox-cell input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; }
+.ab-count-na { color: var(--text-dim); }
 
 .ab-stage-body { padding: 0.5rem 0.2rem 2rem; }
 .ab-stage-empty {

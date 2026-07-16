@@ -74,6 +74,128 @@ const ARMY_ROSTER_MICRO = {
 };
 const ARMY_ROSTER_AVG_COLOR = { page1: '#d1d2cc', page2: '#d1d2cb' };
 
+// The official Army Roster sheet has a FIXED capacity: General's Regiment 1
+// gets 1 General + 4 Unit slots, Regiments 2-5 each get 1 Hero + 3 Unit
+// slots, and Auxiliary Units gets 5 plain Unit slots — measured directly off
+// the printed page (see ptg_asset_extraction memory) rather than guessed.
+const REGIMENT_SLOTS = [
+  { label: "General's Regiment 1", heroLabel: 'General', unitCount: 4 },
+  { label: 'Regiment 2', heroLabel: 'Hero', unitCount: 3 },
+  { label: 'Regiment 3', heroLabel: 'Hero', unitCount: 3 },
+  { label: 'Regiment 4', heroLabel: 'Hero', unitCount: 3 },
+  { label: 'Regiment 5', heroLabel: 'Hero', unitCount: 3 },
+];
+const AUX_SLOT_COUNT = 5;
+
+// Pixel-measured (via PIL band-detection on the actual JPEGs) position of
+// every row/field on the printed sheet, expressed as % of image width/height
+// — used to overlay live text on top of the scanned page in Image mode.
+// Column X-ranges are shared by every regiment/aux row on both pages.
+const ROSTER_ROW_COLS = {
+  name:  { left: 20.6, width: 27.2 },
+  size:  { left: 47.8, width: 6.2 },
+  notes: { left: 54,   width: 29.5 },
+  points:{ left: 83.5, width: 12.5 },
+};
+const ROSTER_LAYOUT = {
+  header: {
+    commander:       { page: 0, top: 19,   left: 6.5,  width: 32 },
+    armyName:        { page: 0, top: 19,   left: 39.4, width: 34.5 },
+    pointsLimit:     { page: 0, top: 24.5, left: 74.5, width: 17.9 },
+    faction:         { page: 0, top: 29,   left: 6.5,  width: 32 },
+    battleFormation: { page: 0, top: 29,   left: 39.4, width: 34.5 },
+  },
+  regiments: [
+    { page: 0, general: 41.91, units: [44.99, 48.01, 51.03, 54.06] },
+    { page: 0, general: 63.32, units: [66.40, 69.42, 72.44] },
+    { page: 0, general: 82.22, units: [85.29, 88.31, 91.34] },
+    { page: 1, general: 16.73, units: [19.80, 22.82, 25.84] },
+    { page: 1, general: 35.62, units: [38.69, 41.71, 44.74] },
+  ],
+  regimentsTotal: { page: 1, top: 50.23 },
+  aux: [59.55, 62.62, 65.64, 68.66, 71.69].map(top => ({ page: 1, top })),
+  auxTotal: { page: 1, top: 77.23 },
+  unitsTotal: { page: 1, top: 79.70 },
+  notes: { page: 1, top: 89, height: 8 },
+};
+
+// ── Roster-slot instance keys: "<unitId>:train:<i>" / "<unitId>:reinforce:<i>"
+// — one key per physically selected unit copy, stable across re-renders as
+// long as train/reinforce counts for that unit don't change. ──────────────
+function instanceUnit(key, unitsById) {
+  const [unitId] = key.split(':');
+  return unitsById[unitId];
+}
+function instanceReinforced(key) {
+  return key.split(':')[1] === 'reinforce';
+}
+function instancePoints(key, unitsById) {
+  const unit = instanceUnit(key, unitsById);
+  if (!unit) return 0;
+  const pts = parseInt(unit.points, 10) || 0;
+  return instanceReinforced(key) ? pts * 2 : pts;
+}
+function instanceSize(key, unitsById) {
+  const unit = instanceUnit(key, unitsById);
+  if (!unit) return '';
+  const size = parseInt(unit.unit_size, 10) || 0;
+  if (!size) return '';
+  return instanceReinforced(key) ? size * 2 : size;
+}
+function instanceName(key, unitsById) {
+  const unit = instanceUnit(key, unitsById);
+  return unit ? unit.name : '(unknown unit)';
+}
+function instanceNotes(key) {
+  return instanceReinforced(key) ? 'Reinforced' : '';
+}
+
+function makeEmptySlots() {
+  return {
+    regiments: REGIMENT_SLOTS.map(r => ({ general: null, units: Array(r.unitCount).fill(null) })),
+    aux: Array(AUX_SLOT_COUNT).fill(null),
+  };
+}
+function cloneSlots(slots) {
+  return {
+    regiments: slots.regiments.map(r => ({ general: r.general, units: [...r.units] })),
+    aux: [...slots.aux],
+  };
+}
+// Locates where an instance key currently lives within `slots`.
+function findSlotRef(slots, key) {
+  for (let ri = 0; ri < slots.regiments.length; ri++) {
+    if (slots.regiments[ri].general === key) return { kind: 'general', regimentIdx: ri };
+    const ui = slots.regiments[ri].units.indexOf(key);
+    if (ui !== -1) return { kind: 'unit', regimentIdx: ri, unitIdx: ui };
+  }
+  const ai = slots.aux.indexOf(key);
+  if (ai !== -1) return { kind: 'aux', unitIdx: ai };
+  return null;
+}
+function getSlotValueAt(slots, ref) {
+  if (!ref) return null;
+  if (ref.kind === 'general') return slots.regiments[ref.regimentIdx].general;
+  if (ref.kind === 'unit') return slots.regiments[ref.regimentIdx].units[ref.unitIdx];
+  return slots.aux[ref.unitIdx];
+}
+function setSlotValueAt(slots, ref, value) {
+  const next = cloneSlots(slots);
+  if (ref.kind === 'general') next.regiments[ref.regimentIdx].general = value;
+  else if (ref.kind === 'unit') next.regiments[ref.regimentIdx].units[ref.unitIdx] = value;
+  else next.aux[ref.unitIdx] = value;
+  return next;
+}
+// Swaps whatever is at `sourceKey`'s current slot with whatever is at `targetRef`.
+function swapIntoSlot(slots, sourceKey, targetRef) {
+  const sourceRef = findSlotRef(slots, sourceKey);
+  if (!sourceRef) return slots;
+  const targetValue = getSlotValueAt(slots, targetRef);
+  let next = setSlotValueAt(slots, sourceRef, targetValue);
+  next = setSlotValueAt(next, targetRef, sourceKey);
+  return next;
+}
+
 function ProgressiveImg({ src, micro, avgColor, alt, className }) {
   const [loaded, setLoaded] = useState(false);
   return (
@@ -174,25 +296,6 @@ function FactionDropdown({ factions, value, onChange, liveCount }) {
       )}
     </div>
   );
-}
-
-// Guest/Regiments-of-Renown units are bucketed under a faction_slug on
-// Wahapedia without being core to that faction — detected the same way
-// the backend's hideOtherFactions filter does (empty keywords, or keywords
-// that don't mention the faction's own distinctive name), but applied
-// client-side per-row since Army Builder fetches every faction in one query.
-const FACTION_SKIP_WORDS = new Set(['of', 'the', 'to', 'and']);
-function getFactionDistinctWord(slug) {
-  return (slug || '')
-    .split('-')
-    .filter(w => !FACTION_SKIP_WORDS.has(w) && w.length > 2)
-    .map(w => w.toUpperCase())[0];
-}
-function isGuestOfFaction(row) {
-  if (!row.keywords) return true;
-  const word = getFactionDistinctWord(row.faction_slug);
-  if (!word) return false;
-  return row.keywords.toUpperCase().indexOf(word) === -1;
 }
 
 const TEXT_SORT_COLS = new Set(['faction','name','types','keywords','alliance']);
@@ -387,12 +490,57 @@ function ArmyRosterThumb({ onClick }) {
   );
 }
 
+// One regiment/aux slot, rendered either as a replica table row or as
+// absolutely-positioned overlay text on the scanned page image — both share
+// the same drag-and-drop wiring so reassigning a unit works identically in
+// either view mode.
+function RosterSlotRow({ mode, label, instanceKey, slotRef, unitsById, onMove, top }) {
+  const name = instanceKey ? instanceName(instanceKey, unitsById) : '';
+  const size = instanceKey ? instanceSize(instanceKey, unitsById) : '';
+  const notes = instanceKey ? instanceNotes(instanceKey) : '';
+  const points = instanceKey ? instancePoints(instanceKey, unitsById) : '';
+
+  const dragProps = {
+    draggable: !!instanceKey,
+    onDragStart: e => { if (instanceKey) e.dataTransfer.setData('text/plain', instanceKey); },
+    onDragOver: e => e.preventDefault(),
+    onDrop: e => {
+      e.preventDefault();
+      const sourceKey = e.dataTransfer.getData('text/plain');
+      if (sourceKey) onMove(sourceKey, slotRef);
+    },
+  };
+
+  if (mode === 'replica') {
+    return (
+      <div className={`ab-roster-slot-row${instanceKey ? ' ab-roster-slot-filled' : ' ab-roster-slot-empty'}`} {...dragProps}>
+        <span className="ab-roster-slot-label">{label}</span>
+        <span>{name}</span>
+        <span>{size}</span>
+        <span>{notes}</span>
+        <span>{instanceKey ? points : ''}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`ab-roster-overlay-row${instanceKey ? '' : ' ab-roster-overlay-row-empty'}`} style={{ top: `${top}%` }} {...dragProps}>
+      <span className="ab-roster-overlay-cell" style={{ left: `${ROSTER_ROW_COLS.name.left}%`, width: `${ROSTER_ROW_COLS.name.width}%` }}>{name}</span>
+      <span className="ab-roster-overlay-cell ab-roster-overlay-center" style={{ left: `${ROSTER_ROW_COLS.size.left}%`, width: `${ROSTER_ROW_COLS.size.width}%` }}>{size}</span>
+      <span className="ab-roster-overlay-cell" style={{ left: `${ROSTER_ROW_COLS.notes.left}%`, width: `${ROSTER_ROW_COLS.notes.width}%` }}>{notes}</span>
+      <span className="ab-roster-overlay-cell ab-roster-overlay-center" style={{ left: `${ROSTER_ROW_COLS.points.left}%`, width: `${ROSTER_ROW_COLS.points.width}%` }}>{instanceKey ? points : ''}</span>
+    </div>
+  );
+}
+
+function overlayFieldStyle(pos) {
+  return { top: `${pos.top}%`, left: `${pos.left}%`, width: `${pos.width}%` };
+}
+
 function ArmyRosterModal({
   onClose, presentMode, setPresentMode,
-  factionName, pointsLimit, battleFormation, totalPoints,
-  doc, setDoc,
-  addRegiment, removeRegiment, addRegimentUnit, updateRegimentUnit, removeRegimentUnit,
-  addAuxUnit, updateAuxUnit, removeAuxUnit,
+  listName, factionName, pointsLimit, setPointsLimit, battleFormation, totalPoints,
+  doc, setDoc, unitsById, moveToSlot,
   regimentsTotal, auxTotal, armyUnitsTotal,
 }) {
   const modalRef = useRef(null);
@@ -401,6 +549,15 @@ function ArmyRosterModal({
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
   }, [onClose]);
+
+  const overLimit = totalPoints > pointsLimit;
+  const { slots } = doc;
+  const overflowAux = Math.max(0, slots.aux.length - AUX_SLOT_COUNT);
+
+  const renderSlot = (mode, label, instanceKey, slotRef, top) => {
+    const key = `${slotRef.kind}-${slotRef.regimentIdx ?? ''}-${slotRef.unitIdx ?? ''}`;
+    return <RosterSlotRow key={key} mode={mode} label={label} instanceKey={instanceKey} slotRef={slotRef} unitsById={unitsById} onMove={moveToSlot} top={top} />;
+  };
 
   return (
     <>
@@ -418,58 +575,81 @@ function ArmyRosterModal({
         <div className={presentMode === 'image' ? 'ab-roster-image-body' : 'ptg-doc-editor-body'}>
           {presentMode === 'image' ? (
             <div className="ab-roster-image-view">
-              <ProgressiveImg src="/ptg/army-roster-1.jpg" micro={ARMY_ROSTER_MICRO.page1} avgColor={ARMY_ROSTER_AVG_COLOR.page1} alt="Army Roster page 1" className="ab-roster-page-img" />
-              <ProgressiveImg src="/ptg/army-roster-2.jpg" micro={ARMY_ROSTER_MICRO.page2} avgColor={ARMY_ROSTER_AVG_COLOR.page2} alt="Army Roster page 2" className="ab-roster-page-img" />
+              <div className="ab-roster-image-page">
+                <ProgressiveImg src="/ptg/army-roster-1.jpg" micro={ARMY_ROSTER_MICRO.page1} avgColor={ARMY_ROSTER_AVG_COLOR.page1} alt="Army Roster page 1" className="ab-roster-page-img" />
+                <div className="ab-roster-overlay-field" style={overlayFieldStyle(ROSTER_LAYOUT.header.commander)}>{doc.commander}</div>
+                <div className="ab-roster-overlay-field" style={overlayFieldStyle(ROSTER_LAYOUT.header.armyName)}>{listName}</div>
+                <div className={`ab-roster-overlay-field ab-roster-overlay-center${overLimit ? ' ab-roster-overlay-over' : ''}`} style={overlayFieldStyle(ROSTER_LAYOUT.header.pointsLimit)}>{totalPoints.toLocaleString()} / {pointsLimit}</div>
+                <div className="ab-roster-overlay-field" style={overlayFieldStyle(ROSTER_LAYOUT.header.faction)}>{factionName}</div>
+                <div className="ab-roster-overlay-field" style={overlayFieldStyle(ROSTER_LAYOUT.header.battleFormation)}>{battleFormation}</div>
+
+                {ROSTER_LAYOUT.regiments.map((rl, ri) => rl.page === 0 && (
+                  <React.Fragment key={ri}>
+                    {renderSlot('image', REGIMENT_SLOTS[ri].heroLabel, slots.regiments[ri].general, { kind: 'general', regimentIdx: ri }, rl.general)}
+                    {rl.units.map((top, ui) => renderSlot('image', `Unit ${ui + 1}`, slots.regiments[ri].units[ui], { kind: 'unit', regimentIdx: ri, unitIdx: ui }, top))}
+                  </React.Fragment>
+                ))}
+              </div>
+
+              <div className="ab-roster-image-page">
+                <ProgressiveImg src="/ptg/army-roster-2.jpg" micro={ARMY_ROSTER_MICRO.page2} avgColor={ARMY_ROSTER_AVG_COLOR.page2} alt="Army Roster page 2" className="ab-roster-page-img" />
+                {ROSTER_LAYOUT.regiments.map((rl, ri) => rl.page === 1 && (
+                  <React.Fragment key={ri}>
+                    {renderSlot('image', REGIMENT_SLOTS[ri].heroLabel, slots.regiments[ri].general, { kind: 'general', regimentIdx: ri }, rl.general)}
+                    {rl.units.map((top, ui) => renderSlot('image', `Unit ${ui + 1}`, slots.regiments[ri].units[ui], { kind: 'unit', regimentIdx: ri, unitIdx: ui }, top))}
+                  </React.Fragment>
+                ))}
+                <div className="ab-roster-overlay-field ab-roster-overlay-center" style={{ top: `${ROSTER_LAYOUT.regimentsTotal.top}%`, left: `${ROSTER_ROW_COLS.points.left}%`, width: `${ROSTER_ROW_COLS.points.width}%` }}>{regimentsTotal}</div>
+
+                {ROSTER_LAYOUT.aux.map((a, ai) => renderSlot('image', `Unit ${ai + 1}`, slots.aux[ai], { kind: 'aux', unitIdx: ai }, a.top))}
+                {overflowAux > 0 && <div className="ab-roster-overlay-note">+{overflowAux} more not shown — see Replica</div>}
+                <div className="ab-roster-overlay-field ab-roster-overlay-center" style={{ top: `${ROSTER_LAYOUT.auxTotal.top}%`, left: `${ROSTER_ROW_COLS.points.left}%`, width: `${ROSTER_ROW_COLS.points.width}%` }}>{auxTotal}</div>
+                <div className="ab-roster-overlay-field ab-roster-overlay-center" style={{ top: `${ROSTER_LAYOUT.unitsTotal.top}%`, left: `${ROSTER_ROW_COLS.points.left}%`, width: `${ROSTER_ROW_COLS.points.width}%` }}>{armyUnitsTotal}</div>
+                <div className="ab-roster-overlay-notes-text" style={{ top: `${ROSTER_LAYOUT.notes.top}%`, left: '8%', width: '84%' }}>{doc.notes}</div>
+              </div>
             </div>
           ) : (
             <>
               <div className="ptg-army-header-grid">
                 <div className="ptg-field ptg-army-commander"><label>Commander</label><input type="text" value={doc.commander} onChange={e => setDoc(d => ({ ...d, commander: e.target.value }))} /></div>
-                <div className="ptg-field ptg-army-name"><label>Army Name</label><input type="text" value={doc.armyName} onChange={e => setDoc(d => ({ ...d, armyName: e.target.value }))} /></div>
-                <div className="ptg-field ptg-army-points-limit"><label>Points Limit</label><input type="text" value={`${totalPoints.toLocaleString()} / ${pointsLimit}`} readOnly /></div>
+                <div className="ptg-field ptg-army-name"><label>Army Name</label><input type="text" value={listName} readOnly title="Set by renaming the list in the banner" /></div>
+                <div className="ptg-field ptg-army-points-limit">
+                  <label>Points Limit</label>
+                  <div className="ab-roster-points-limit-row">
+                    <span className={overLimit ? 'ab-roster-overlay-over' : ''}>{totalPoints.toLocaleString()}</span>
+                    <span>/</span>
+                    <input
+                      type="number" min="0" value={pointsLimit}
+                      onChange={e => setPointsLimit(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                    />
+                  </div>
+                </div>
                 <div className="ptg-field ptg-army-faction"><label>Faction</label><input type="text" value={factionName || '—'} readOnly /></div>
                 <div className="ptg-field ptg-army-formation"><label>Battle Formation</label><input type="text" value={battleFormation || '—'} readOnly /></div>
               </div>
 
-              {doc.regiments.map((r, ri) => (
-                <div className="ptg-regiment-block" key={r.id}>
-                  <div className="ptg-regiment-header">
-                    <span>{ri === 0 ? "General's Regiment 1" : `Regiment ${ri + 1}`}</span>
-                    {doc.regiments.length > 1 && <button className="ptg-oob-row-remove" onClick={() => removeRegiment(r.id)} title="Remove regiment">✕</button>}
+              {REGIMENT_SLOTS.map((rs, ri) => (
+                <div className="ptg-regiment-block" key={ri}>
+                  <div className="ptg-regiment-header"><span>{rs.label}</span></div>
+                  <div className="ab-roster-slot-head">
+                    <span></span><span>Warscroll Name</span><span>Size</span><span>Notes</span><span>Points</span>
                   </div>
-                  <div className="ptg-regiment-table-head">
-                    <span>Warscroll Name</span><span>Size</span><span>Notes</span><span>Points</span><span />
-                  </div>
-                  {r.units.map(u => (
-                    <div className="ptg-regiment-table-row" key={u.id}>
-                      <input placeholder="Warscroll Name" value={u.name || ''} onChange={e => updateRegimentUnit(r.id, u.id, 'name', e.target.value)} />
-                      <input placeholder="Size" value={u.size || ''} onChange={e => updateRegimentUnit(r.id, u.id, 'size', e.target.value)} />
-                      <input placeholder="Notes" value={u.notes || ''} onChange={e => updateRegimentUnit(r.id, u.id, 'notes', e.target.value)} />
-                      <input placeholder="Pts" value={u.points || ''} onChange={e => updateRegimentUnit(r.id, u.id, 'points', e.target.value)} />
-                      <button className="ptg-oob-row-remove" onClick={() => removeRegimentUnit(r.id, u.id)} title="Remove unit">✕</button>
-                    </div>
-                  ))}
-                  <button className="ptg-wizard-nav-btn ptg-oob-add-btn" onClick={() => addRegimentUnit(r.id)}>+ Add Unit</button>
+                  {renderSlot('replica', rs.heroLabel, slots.regiments[ri].general, { kind: 'general', regimentIdx: ri })}
+                  {slots.regiments[ri].units.map((u, ui) =>
+                    renderSlot('replica', `Unit ${ui + 1}`, u, { kind: 'unit', regimentIdx: ri, unitIdx: ui })
+                  )}
                 </div>
               ))}
-              <button className="ptg-wizard-nav-btn ptg-oob-add-btn" onClick={addRegiment}>+ Add Regiment</button>
               <div className="ptg-oob-cap">Regiments Total: {regimentsTotal}pts</div>
 
               <div className="ptg-regiment-block">
                 <div className="ptg-regiment-header"><span>Auxiliary Units</span></div>
-                <div className="ptg-regiment-table-head">
-                  <span>Warscroll Name</span><span>Size</span><span>Notes</span><span>Points</span><span />
+                <div className="ab-roster-slot-head">
+                  <span></span><span>Warscroll Name</span><span>Size</span><span>Notes</span><span>Points</span>
                 </div>
-                {doc.auxUnits.map(u => (
-                  <div className="ptg-regiment-table-row" key={u.id}>
-                    <input placeholder="Warscroll Name" value={u.name || ''} onChange={e => updateAuxUnit(u.id, 'name', e.target.value)} />
-                    <input placeholder="Size" value={u.size || ''} onChange={e => updateAuxUnit(u.id, 'size', e.target.value)} />
-                    <input placeholder="Notes" value={u.notes || ''} onChange={e => updateAuxUnit(u.id, 'notes', e.target.value)} />
-                    <input placeholder="Pts" value={u.points || ''} onChange={e => updateAuxUnit(u.id, 'points', e.target.value)} />
-                    <button className="ptg-oob-row-remove" onClick={() => removeAuxUnit(u.id)} title="Remove unit">✕</button>
-                  </div>
-                ))}
-                <button className="ptg-wizard-nav-btn ptg-oob-add-btn" onClick={addAuxUnit}>+ Add Unit</button>
+                {slots.aux.map((u, ai) =>
+                  renderSlot('replica', `Unit ${ai + 1}`, u, { kind: 'aux', unitIdx: ai })
+                )}
               </div>
               <div className="ptg-oob-cap">Auxiliary Units Total: {auxTotal}pts</div>
               <div className="ptg-oob-cap"><strong>Units Total: {armyUnitsTotal}pts</strong></div>
@@ -501,11 +681,20 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
   const LEGACY_ARMY_KEY = 'aos-army-builder-v1'; // pre-multi-list save, migrated once below
 
   function makeBlankArmyRosterDoc() {
-    return { commander: '', armyName: '', regiments: [{ id: 'r1', units: [] }], auxUnits: [], notes: '' };
+    return { commander: '', notes: '', slots: makeEmptySlots() };
+  }
+  // Guards against pre-slots-model saved docs (older localStorage state had
+  // `regiments`/`auxUnits` arrays instead of `slots`) — falls back to blank
+  // rather than crashing on the shape mismatch.
+  function sanitizeArmyRosterDoc(doc) {
+    if (doc && doc.slots && Array.isArray(doc.slots.regiments) && doc.slots.regiments.length === REGIMENT_SLOTS.length && Array.isArray(doc.slots.aux)) {
+      return doc;
+    }
+    return makeBlankArmyRosterDoc();
   }
 
   function makeBlankList(name) {
-    return { name, faction: '', pointsLimit: 2000, roster: {}, battleFormation: '', heroAssignments: {}, activeStage: 'units', armyRosterDoc: makeBlankArmyRosterDoc() };
+    return { name, faction: '', pointsLimit: 2000, roster: {}, rosterOrder: [], battleFormation: '', heroAssignments: {}, activeStage: 'units', armyRosterDoc: makeBlankArmyRosterDoc() };
   }
 
   const [listsStore, setListsStore] = useState(() => {
@@ -523,10 +712,11 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
           faction: legacy.faction ?? '',
           pointsLimit: legacy.pointsLimit ?? 2000,
           roster: legacy.roster ?? {},
+          rosterOrder: legacy.rosterOrder ?? Object.keys(legacy.roster ?? {}),
           battleFormation: legacy.battleFormation ?? '',
           heroAssignments: legacy.heroAssignments ?? {},
           activeStage: legacy.activeStage ?? 'units',
-          armyRosterDoc: legacy.armyRosterDoc ?? makeBlankArmyRosterDoc(),
+          armyRosterDoc: sanitizeArmyRosterDoc(legacy.armyRosterDoc),
         },
       },
     };
@@ -537,10 +727,11 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
   const [faction, setFaction]         = useState(activeListData.faction);
   const [pointsLimit, setPointsLimit] = useState(activeListData.pointsLimit);
   const [roster, setRoster]           = useState(activeListData.roster); // { [unitId]: { train, reinforce } }
+  const [rosterOrder, setRosterOrder] = useState(activeListData.rosterOrder ?? Object.keys(activeListData.roster ?? {})); // unitIds in first-selected order
   const [battleFormation, setBattleFormation] = useState(activeListData.battleFormation);
   const [heroAssignments, setHeroAssignments] = useState(activeListData.heroAssignments); // { [heroId]: { heroic_traits, artefacts, spell_lore, prayer_lore, manifestation_lore } }
   const [activeStage, setActiveStage] = useState(activeListData.activeStage);
-  const [armyRosterDoc, setArmyRosterDoc] = useState(activeListData.armyRosterDoc ?? makeBlankArmyRosterDoc());
+  const [armyRosterDoc, setArmyRosterDoc] = useState(sanitizeArmyRosterDoc(activeListData.armyRosterDoc));
 
   useEffect(() => {
     setListsStore(prev => {
@@ -548,22 +739,23 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
         ...prev,
         lists: {
           ...prev.lists,
-          [prev.activeListId]: { ...prev.lists[prev.activeListId], faction, pointsLimit, roster, battleFormation, heroAssignments, activeStage, armyRosterDoc },
+          [prev.activeListId]: { ...prev.lists[prev.activeListId], faction, pointsLimit, roster, rosterOrder, battleFormation, heroAssignments, activeStage, armyRosterDoc },
         },
       };
       localStorage.setItem(LISTS_KEY, JSON.stringify(next));
       return next;
     });
-  }, [faction, pointsLimit, roster, battleFormation, heroAssignments, activeStage, armyRosterDoc]);
+  }, [faction, pointsLimit, roster, rosterOrder, battleFormation, heroAssignments, activeStage, armyRosterDoc]);
 
   const loadListIntoState = (list) => {
     setFaction(list.faction ?? '');
     setPointsLimit(list.pointsLimit ?? 2000);
     setRoster(list.roster ?? {});
+    setRosterOrder(list.rosterOrder ?? Object.keys(list.roster ?? {}));
     setBattleFormation(list.battleFormation ?? '');
     setHeroAssignments(list.heroAssignments ?? {});
     setActiveStage(list.activeStage ?? 'units');
-    setArmyRosterDoc(list.armyRosterDoc ?? makeBlankArmyRosterDoc());
+    setArmyRosterDoc(sanitizeArmyRosterDoc(list.armyRosterDoc));
   };
 
   const selectList = (id) => {
@@ -584,13 +776,15 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
     const src = listsStore.lists[id];
     if (!src) return;
     const newId = `list-${Date.now()}`;
-    const srcDoc = src.armyRosterDoc ?? makeBlankArmyRosterDoc();
+    const srcDoc = sanitizeArmyRosterDoc(src.armyRosterDoc);
     const clone = {
-      ...src, name: `${src.name} (Copy)`, roster: { ...src.roster }, heroAssignments: { ...src.heroAssignments },
+      ...src, name: `${src.name} (Copy)`, roster: { ...src.roster }, rosterOrder: [...(src.rosterOrder ?? [])], heroAssignments: { ...src.heroAssignments },
       armyRosterDoc: {
         ...srcDoc,
-        regiments: srcDoc.regiments.map(r => ({ ...r, units: r.units.map(u => ({ ...u })) })),
-        auxUnits: srcDoc.auxUnits.map(u => ({ ...u })),
+        slots: {
+          regiments: srcDoc.slots.regiments.map(r => ({ general: r.general, units: [...r.units] })),
+          aux: [...srcDoc.slots.aux],
+        },
       },
     };
     setListsStore({ activeListId: newId, lists: { ...listsStore.lists, [newId]: clone } });
@@ -726,45 +920,133 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
 
   const setUnitCount = (id, field, value) => {
     const n = Math.max(0, parseInt(value, 10) || 0);
+    const prevSel = roster[id] ?? { train: 0, reinforce: 0 };
+    const nextSel = { ...prevSel, [field]: n };
+    const hadBefore = (prevSel.train || 0) + (prevSel.reinforce || 0) > 0;
+    const willHave = (nextSel.train || 0) + (nextSel.reinforce || 0) > 0;
     setRoster(prev => {
-      const next = { ...prev, [id]: { ...(prev[id] ?? { train: 0, reinforce: 0 }), [field]: n } };
-      if ((next[id].train ?? 0) === 0 && (next[id].reinforce ?? 0) === 0) delete next[id];
+      const next = { ...prev };
+      if (willHave) next[id] = nextSel; else delete next[id];
       return next;
     });
+    if (!hadBefore && willHave) {
+      setRosterOrder(prev => prev.includes(id) ? prev : [...prev, id]);
+    } else if (hadBefore && !willHave) {
+      setRosterOrder(prev => prev.filter(x => x !== id));
+    }
   };
 
-  // ── Army Roster document (Commander/Army Name/regiments/aux units/notes) —
-  // free-text fields the user fills in themselves, same as Path to Glory's
-  // own Army Roster replica. Faction/Points Limit/Battle Formation are NOT
-  // duplicated here since this page already tracks them live; the replica
-  // form just displays those directly instead of a second editable copy. ──
+  // Self-healing cleanup: Heroes/Manifestations/Faction Terrain can't be
+  // reinforced (no reinforce field is shown for them anymore), but older
+  // saved lists may still carry a leftover reinforce count from before that
+  // restriction existed — clear it so points tallies stay correct.
+  useEffect(() => {
+    if (!Object.keys(unitsById).length) return;
+    setRoster(prev => {
+      let changed = false;
+      const next = { ...prev };
+      for (const [id, sel] of Object.entries(prev)) {
+        const unit = unitsById[id];
+        if (!unit) continue;
+        if ((unit.is_hero || unit.is_manifestation || unit.is_terrain) && (sel.reinforce || 0) > 0) {
+          next[id] = { ...sel, reinforce: 0 };
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [unitsById]);
+
+  // ── Army Roster document — Commander/Notes are free-text; everything else
+  // (Army Name, Faction, Points Limit, Battle Formation) mirrors live page
+  // state directly rather than a second editable copy. Regiments/Auxiliary
+  // Units are auto-populated from the actual roster selections: the first
+  // selected Hero becomes Regiment 1's General, additional Heroes lead
+  // Regiments 2-5, and non-Hero units fill each regiment's Unit slots in
+  // order before overflowing into the next regiment, then Auxiliary Units.
+  // Manifestations/Faction Terrain always land in Auxiliary Units. The user
+  // can drag any placed unit to a different slot afterward — see the
+  // reconcile effect below for how manual placements survive roster changes.
   const [rosterDocOpen, setRosterDocOpen] = useState(false);
   const [rosterPresentMode, setRosterPresentMode] = useState('replica');
 
-  const addRegiment = () => setArmyRosterDoc(d => ({ ...d, regiments: [...d.regiments, { id: `${Date.now()}-${d.regiments.length}`, units: [] }] }));
-  const removeRegiment = rid => setArmyRosterDoc(d => ({ ...d, regiments: d.regiments.filter(r => r.id !== rid) }));
-  const addRegimentUnit = rid => setArmyRosterDoc(d => ({
-    ...d,
-    regiments: d.regiments.map(r => r.id === rid
-      ? { ...r, units: [...r.units, { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, name: '', size: '', notes: '', points: '' }] }
-      : r),
-  }));
-  const updateRegimentUnit = (rid, uid, field, value) => setArmyRosterDoc(d => ({
-    ...d,
-    regiments: d.regiments.map(r => r.id === rid
-      ? { ...r, units: r.units.map(u => u.id === uid ? { ...u, [field]: value } : u) }
-      : r),
-  }));
-  const removeRegimentUnit = (rid, uid) => setArmyRosterDoc(d => ({
-    ...d,
-    regiments: d.regiments.map(r => r.id === rid ? { ...r, units: r.units.filter(u => u.id !== uid) } : r),
-  }));
-  const addAuxUnit = () => setArmyRosterDoc(d => ({ ...d, auxUnits: [...d.auxUnits, { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, name: '', size: '', notes: '', points: '' }] }));
-  const updateAuxUnit = (uid, field, value) => setArmyRosterDoc(d => ({ ...d, auxUnits: d.auxUnits.map(u => u.id === uid ? { ...u, [field]: value } : u) }));
-  const removeAuxUnit = uid => setArmyRosterDoc(d => ({ ...d, auxUnits: d.auxUnits.filter(u => u.id !== uid) }));
+  useEffect(() => {
+    const heroInstances = [];
+    const unitInstances = [];
+    const auxOnlyInstances = [];
+    for (const id of rosterOrder) {
+      const sel = roster[id];
+      const unit = unitsById[id];
+      if (!sel || !unit) continue;
+      if (unit.is_manifestation || unit.is_terrain) {
+        if ((sel.train || 0) > 0) auxOnlyInstances.push(`${id}:train:0`);
+        continue;
+      }
+      if (unit.is_hero) {
+        for (let i = 0; i < (sel.train || 0); i++) heroInstances.push(`${id}:train:${i}`);
+        continue;
+      }
+      for (let i = 0; i < (sel.train || 0); i++) unitInstances.push(`${id}:train:${i}`);
+      for (let i = 0; i < (sel.reinforce || 0); i++) unitInstances.push(`${id}:reinforce:${i}`);
+    }
+    const validKeys = new Set([...heroInstances, ...unitInstances, ...auxOnlyInstances]);
 
-  const regimentsTotal = armyRosterDoc.regiments.reduce((sum, r) => sum + r.units.reduce((s, u) => s + (parseInt(u.points, 10) || 0), 0), 0);
-  const auxTotal = armyRosterDoc.auxUnits.reduce((sum, u) => sum + (parseInt(u.points, 10) || 0), 0);
+    setArmyRosterDoc(doc => {
+      const slots = (doc.slots && doc.slots.regiments?.length === REGIMENT_SLOTS.length)
+        ? cloneSlots(doc.slots)
+        : makeEmptySlots();
+
+      // Drop placements for units no longer selected (count reduced to 0).
+      slots.regiments.forEach(r => {
+        if (r.general && !validKeys.has(r.general)) r.general = null;
+        r.units = r.units.map(u => (u && !validKeys.has(u)) ? null : u);
+      });
+      slots.aux = slots.aux.map(a => (a && !validKeys.has(a)) ? null : a);
+
+      const isPlaced = key => {
+        for (const r of slots.regiments) { if (r.general === key || r.units.includes(key)) return true; }
+        return slots.aux.includes(key);
+      };
+      const placeInAux = key => {
+        const emptyIdx = slots.aux.findIndex(a => a === null);
+        if (emptyIdx !== -1) slots.aux[emptyIdx] = key;
+        else slots.aux.push(key); // overflow beyond the printed sheet's 5 slots
+      };
+
+      for (const key of heroInstances) {
+        if (isPlaced(key)) continue;
+        const target = slots.regiments.find(r => r.general === null);
+        if (target) target.general = key; else placeInAux(key);
+      }
+      for (const key of unitInstances) {
+        if (isPlaced(key)) continue;
+        let placed = false;
+        for (const r of slots.regiments) {
+          const emptyIdx = r.units.findIndex(u => u === null);
+          if (emptyIdx !== -1) { r.units[emptyIdx] = key; placed = true; break; }
+        }
+        if (!placed) placeInAux(key);
+      }
+      for (const key of auxOnlyInstances) {
+        if (isPlaced(key)) continue;
+        placeInAux(key);
+      }
+
+      if (JSON.stringify(slots) === JSON.stringify(doc.slots)) return doc;
+      return { ...doc, slots };
+    });
+  }, [roster, rosterOrder, unitsById]);
+
+  const moveToSlot = (sourceKey, targetRef) => {
+    setArmyRosterDoc(d => ({ ...d, slots: swapIntoSlot(d.slots, sourceKey, targetRef) }));
+  };
+
+  const regimentsTotal = armyRosterDoc.slots.regiments.reduce((sum, r) => {
+    const generalPts = r.general ? instancePoints(r.general, unitsById) : 0;
+    const unitsPts = r.units.reduce((s, u) => s + (u ? instancePoints(u, unitsById) : 0), 0);
+    return sum + generalPts + unitsPts;
+  }, 0);
+  const auxTotal = armyRosterDoc.slots.aux.reduce((sum, u) => sum + (u ? instancePoints(u, unitsById) : 0), 0);
   const armyUnitsTotal = regimentsTotal + auxTotal;
 
   // ── Faction-rules cache, shared by Battle Formation + hero-assignment stages ──
@@ -876,10 +1158,9 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
     return sorted;
   };
 
-  const allRowsRaw = data?.data ?? [];
-  const allRows = hideOtherFactions ? allRowsRaw.filter(r => !isGuestOfFaction(r)) : allRowsRaw;
+  const allRows = data?.data ?? [];
   const ownRows   = faction ? sortRows(allRows.filter(r => r.faction_slug === faction)) : sortRows(allRows);
-  const otherRows = faction ? sortRows(allRows.filter(r => r.faction_slug !== faction)) : [];
+  const otherRows = (faction && !hideOtherFactions) ? sortRows(allRows.filter(r => r.faction_slug !== faction)) : [];
   const navList = [...ownRows, ...otherRows];
 
   const [navbarExtrasEl, setNavbarExtrasEl] = useState(null);
@@ -925,20 +1206,36 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
           style={{ cursor: 'pointer' }}
         >
           <td className="col-rownum">{rowNum}</td>
-          <td className="col-count" onClick={e => e.stopPropagation()}>
-            <input
-              type="number" min="0" className="ab-count-input"
-              value={sel.train || ''} placeholder="0"
-              onChange={e => setUnitCount(row.id, 'train', e.target.value)}
-            />
-          </td>
-          <td className="col-count" onClick={e => e.stopPropagation()}>
-            <input
-              type="number" min="0" className="ab-count-input"
-              value={sel.reinforce || ''} placeholder="0"
-              onChange={e => setUnitCount(row.id, 'reinforce', e.target.value)}
-            />
-          </td>
+          {row.is_manifestation || row.is_terrain ? (
+            <td className="col-count ab-count-checkbox-cell" colSpan={2} onClick={e => e.stopPropagation()} title="Manifestations and Faction Terrain can't be reinforced — just whether you have it">
+              <input
+                type="checkbox"
+                checked={(sel.train || 0) > 0}
+                onChange={e => setUnitCount(row.id, 'train', e.target.checked ? 1 : 0)}
+              />
+            </td>
+          ) : (
+            <>
+              <td className="col-count" onClick={e => e.stopPropagation()}>
+                <input
+                  type="number" min="0" className="ab-count-input"
+                  value={sel.train || ''} placeholder="0"
+                  onChange={e => setUnitCount(row.id, 'train', e.target.value)}
+                />
+              </td>
+              <td className="col-count" onClick={e => e.stopPropagation()}>
+                {row.is_hero ? (
+                  <span className="ab-count-na" title="Heroes can't be reinforced">—</span>
+                ) : (
+                  <input
+                    type="number" min="0" className="ab-count-input"
+                    value={sel.reinforce || ''} placeholder="0"
+                    onChange={e => setUnitCount(row.id, 'reinforce', e.target.value)}
+                  />
+                )}
+              </td>
+            </>
+          )}
           <td>
             <span className="row-expand-hint">{isFullExpanded ? '◆' : isExpanded ? '▲' : '▼'}</span>
           </td>
@@ -1063,12 +1360,13 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
 
         <div className="ab-header-cell ab-header-roster">
           <ArmyRosterThumb onClick={() => setRosterDocOpen(true)} />
+          <div className="ab-roster-thumb-label">Army Roster</div>
         </div>
 
         <div className="ab-points-block">
           <div className="ab-points-label">Points</div>
           <div className="ab-points-value">
-            <span className="ab-points-current">{totalPoints.toLocaleString()}</span>
+            <span className={`ab-points-current${totalPoints > pointsLimit ? ' ab-points-over' : ''}`}>{totalPoints.toLocaleString()}</span>
             <span className="ab-points-sep">/</span>
             <input
               type="number" min="0" className="ab-points-limit-input"
@@ -1286,20 +1584,16 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
         onClose={() => setRosterDocOpen(false)}
         presentMode={rosterPresentMode}
         setPresentMode={setRosterPresentMode}
+        listName={listsStore.lists[activeListId]?.name ?? 'Default List'}
         factionName={factionName}
         pointsLimit={pointsLimit}
+        setPointsLimit={setPointsLimit}
         battleFormation={battleFormation}
         totalPoints={totalPoints}
         doc={armyRosterDoc}
         setDoc={setArmyRosterDoc}
-        addRegiment={addRegiment}
-        removeRegiment={removeRegiment}
-        addRegimentUnit={addRegimentUnit}
-        updateRegimentUnit={updateRegimentUnit}
-        removeRegimentUnit={removeRegimentUnit}
-        addAuxUnit={addAuxUnit}
-        updateAuxUnit={updateAuxUnit}
-        removeAuxUnit={removeAuxUnit}
+        unitsById={unitsById}
+        moveToSlot={moveToSlot}
         regimentsTotal={regimentsTotal}
         auxTotal={auxTotal}
         armyUnitsTotal={armyUnitsTotal}
