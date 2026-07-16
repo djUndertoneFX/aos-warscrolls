@@ -616,6 +616,52 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
     }
   };
 
+  // ── Column resizing — mirrors WarscrollsPage's colWidths/thStyle/startResize
+  // pattern so this table's proportions match the main Warscrolls page. Train/
+  // Reinforce are sized just wide enough for their header text + the count
+  // input (not the equal-share width they got with no explicit widths set),
+  // and Keywords is 3x the Warscrolls default so more keywords fit per line
+  // (shorter, less-wrapped rows). ──────────────────────────────────────────
+  const DEFAULT_COL_WIDTHS = {
+    rownum: 22, train: 50, reinforce: 58, expand: 22, thumb: 44,
+    name: 190, faction: 110, alliance: 66, models: 42,
+    move: 42, health: 42, control: 42, save: 42, ward: 38, points: 48,
+    types: 68, keywords: 390,
+    ado_ranged: 54, ado_melee: 54,
+  };
+  const COL_WIDTHS_KEY = 'aos-army-builder-col-widths-v1';
+  const [colWidths, setColWidths] = useState(() => {
+    try { return { ...DEFAULT_COL_WIDTHS, ...JSON.parse(localStorage.getItem(COL_WIDTHS_KEY)) }; }
+    catch { return DEFAULT_COL_WIDTHS; }
+  });
+  const dragRef = useRef(null);
+
+  const startResize = useCallback((e, colKey) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = colWidths[colKey];
+    dragRef.current = { colKey, startX, startW };
+
+    const onMove = (ev) => {
+      const { colKey: k, startX: sx, startW: sw } = dragRef.current;
+      const newW = Math.max(20, sw + ev.clientX - sx);
+      setColWidths(prev => {
+        const next = { ...prev, [k]: newW };
+        localStorage.setItem(COL_WIDTHS_KEY, JSON.stringify(next));
+        return next;
+      });
+    };
+    const onUp = () => {
+      dragRef.current = null;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, [colWidths]);
+
+  const thStyle = (key) => ({ width: colWidths[key], position: 'relative' });
+
   const alliances = ['Order', 'Chaos', 'Death', 'Destruction'];
   const filteredFactions = (alliance ? factions.filter(f => f.grand_alliance === alliance) : factions)
     .slice().sort((a, b) => a.faction.localeCompare(b.faction));
@@ -912,28 +958,61 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
             <table>
               <thead>
                 <tr>
-                  <th style={{ textAlign: 'right' }} title="Row number"><span className="th-abbr" style={{ color: 'var(--text-dim)' }}>#</span></th>
-                  <th title="Units at standard size/points">Units</th>
-                  <th title="Units at double models / double points">Reinf.</th>
-                  <th></th>
-                  {SORTABLE_COLS.map(col => (
-                    <React.Fragment key={col.key}>
-                      <th
-                        className={`sortable${col.statGroup === 'start' ? ' stat-group stat-group-start' : col.statGroup === 'end' ? ' stat-group stat-group-end' : col.statGroup ? ' stat-group' : ''}${col.key === 'ward' ? ' col-ward' : ''} ${sortBy === col.key ? 'sort-active' : ''}`}
-                        title={col.abbr ? col.label : undefined}
-                        onClick={e => handleSort(col.key, e)}
-                        onContextMenu={e => { e.preventDefault(); handleSort(col.key, e, true); }}
-                      >
-                        {col.abbr ? <span className="th-abbr">{col.abbr}</span> : col.label}
-                        <SortIcon col={col.key} sortBy={sortBy} sortDir={sortDir} />
-                      </th>
-                      {col.key === 'name' && <th></th>}
-                    </React.Fragment>
-                  ))}
-                  <th>Types</th>
-                  <th>Keywords</th>
-                  <th style={{ textAlign: 'center' }}>ADO-R</th>
-                  <th style={{ textAlign: 'center' }}>ADO-M</th>
+                  <th style={{ ...thStyle('rownum'), textAlign: 'right' }} title="Row number">
+                    <span className="th-abbr" style={{ color: 'var(--text-dim)' }}>#</span>
+                    <span className="col-resize-handle" onMouseDown={e => startResize(e, 'rownum')} />
+                  </th>
+                  <th className="ab-count-th" style={thStyle('train')} title="Units at standard size/points">
+                    Units
+                    <span className="col-resize-handle" onMouseDown={e => startResize(e, 'train')} />
+                  </th>
+                  <th className="ab-count-th" style={thStyle('reinforce')} title="Units at double models / double points">
+                    Reinf.
+                    <span className="col-resize-handle" onMouseDown={e => startResize(e, 'reinforce')} />
+                  </th>
+                  <th style={thStyle('expand')}>
+                    <span className="col-resize-handle" onMouseDown={e => startResize(e, 'expand')} />
+                  </th>
+                  {SORTABLE_COLS.map(col => {
+                    const keyMap = { name: 'name', faction: 'faction', grand_alliance: 'alliance', move: 'move', health: 'health', control: 'control', save: 'save', ward: 'ward', points: 'points', unit_size: 'models' };
+                    const wKey = keyMap[col.key] || col.key;
+                    return (
+                      <React.Fragment key={col.key}>
+                        <th
+                          style={thStyle(wKey)}
+                          className={`sortable${col.statGroup === 'start' ? ' stat-group stat-group-start' : col.statGroup === 'end' ? ' stat-group stat-group-end' : col.statGroup ? ' stat-group' : ''}${col.key === 'ward' ? ' col-ward' : ''} ${sortBy === col.key ? 'sort-active' : ''}`}
+                          title={col.abbr ? col.label : undefined}
+                          onClick={e => handleSort(col.key, e)}
+                          onContextMenu={e => { e.preventDefault(); handleSort(col.key, e, true); }}
+                        >
+                          {col.abbr ? <span className="th-abbr">{col.abbr}</span> : col.label}
+                          <SortIcon col={col.key} sortBy={sortBy} sortDir={sortDir} />
+                          <span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e, wKey); }} />
+                        </th>
+                        {col.key === 'name' && (
+                          <th style={thStyle('thumb')}>
+                            <span className="col-resize-handle" onMouseDown={e => startResize(e, 'thumb')} />
+                          </th>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                  <th style={thStyle('types')}>
+                    Types
+                    <span className="col-resize-handle" onMouseDown={e => startResize(e, 'types')} />
+                  </th>
+                  <th style={thStyle('keywords')}>
+                    Keywords
+                    <span className="col-resize-handle" onMouseDown={e => startResize(e, 'keywords')} />
+                  </th>
+                  <th style={{ ...thStyle('ado_ranged'), textAlign: 'center' }}>
+                    ADO-R
+                    <span className="col-resize-handle" onMouseDown={e => startResize(e, 'ado_ranged')} />
+                  </th>
+                  <th style={{ ...thStyle('ado_melee'), textAlign: 'center' }}>
+                    ADO-M
+                    <span className="col-resize-handle" onMouseDown={e => startResize(e, 'ado_melee')} />
+                  </th>
                 </tr>
               </thead>
               <tbody>

@@ -713,6 +713,10 @@ input, select {
 }
 .ab-list-new-btn:hover { background: rgba(201,168,76,0.1); }
 
+/* Train/Reinforce header cells are much narrower than the default th padding
+   allows for — tighten the horizontal padding so "Units"/"Reinf." fit without
+   forcing the compressed column wider than it needs to be. */
+th.ab-count-th { padding-left: 0.35rem; padding-right: 0.35rem; text-align: center; }
 .col-count { text-align: center; padding: 2px !important; }
 .ab-count-input {
   width: 2.6em;
