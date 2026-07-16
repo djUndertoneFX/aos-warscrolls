@@ -544,11 +544,13 @@ function ArmyRosterModal({
   regimentsTotal, auxTotal, armyUnitsTotal,
 }) {
   const modalRef = useRef(null);
+  const [printPreview, setPrintPreview] = useState(false);
+
   useEffect(() => {
-    const h = e => { if (e.key === 'Escape') onClose(); };
+    const h = e => { if (e.key === 'Escape') { if (printPreview) setPrintPreview(false); else onClose(); } };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
-  }, [onClose]);
+  }, [onClose, printPreview]);
 
   const overLimit = totalPoints > pointsLimit;
   const { slots } = doc;
@@ -559,105 +561,133 @@ function ArmyRosterModal({
     return <RosterSlotRow key={key} mode={mode} label={label} instanceKey={instanceKey} slotRef={slotRef} unitsById={unitsById} onMove={moveToSlot} top={top} />;
   };
 
-  return (
+  // Shared between the live editor and the print preview — printing reads
+  // straight out of the same inputs/spans, so whatever's on screen prints.
+  const replicaBody = (
     <>
-      <div className="gw-overlay" onClick={onClose} />
-      <div className={`ptg-wizard${presentMode === 'image' ? ' ab-roster-modal-wide' : ''}`} ref={modalRef} role="dialog" aria-modal="true" aria-label="Army Roster">
-        <button className="gw-close" onClick={onClose} title="Close (Esc)">✕</button>
-        <div className="ptg-doc-editor-header">
-          <div className="ptg-doc-editor-title">Army Roster</div>
-          <div className="ptg-present-toggle">
-            <button className={presentMode === 'image' ? 'ptg-present-active' : ''} onClick={() => setPresentMode('image')}>Image</button>
-            <button className={presentMode === 'replica' ? 'ptg-present-active' : ''} onClick={() => setPresentMode('replica')}>Replica</button>
+      <div className="ptg-army-header-grid">
+        <div className="ptg-field ptg-army-commander"><label>Commander</label><input type="text" value={doc.commander} onChange={e => setDoc(d => ({ ...d, commander: e.target.value }))} /></div>
+        <div className="ptg-field ptg-army-name"><label>Army Name</label><input type="text" value={listName} readOnly title="Set by renaming the list in the banner" /></div>
+        <div className="ptg-field ptg-army-points-limit">
+          <label>Points Limit</label>
+          <div className="ab-roster-points-limit-row">
+            <span className={overLimit ? 'ab-roster-overlay-over' : ''}>{totalPoints.toLocaleString()}</span>
+            <span>/</span>
+            <input
+              type="number" min="0" value={pointsLimit}
+              onChange={e => setPointsLimit(Math.max(0, parseInt(e.target.value, 10) || 0))}
+            />
           </div>
         </div>
+        <div className="ptg-field ptg-army-faction"><label>Faction</label><input type="text" value={factionName || '—'} readOnly /></div>
+        <div className="ptg-field ptg-army-formation"><label>Battle Formation</label><input type="text" value={battleFormation || '—'} readOnly /></div>
+      </div>
 
-        <div className={presentMode === 'image' ? 'ab-roster-image-body' : 'ptg-doc-editor-body'}>
-          {presentMode === 'image' ? (
-            <div className="ab-roster-image-view">
-              <div className="ab-roster-image-page">
-                <ProgressiveImg src="/ptg/army-roster-1.jpg" micro={ARMY_ROSTER_MICRO.page1} avgColor={ARMY_ROSTER_AVG_COLOR.page1} alt="Army Roster page 1" className="ab-roster-page-img" />
-                <div className="ab-roster-overlay-field" style={overlayFieldStyle(ROSTER_LAYOUT.header.commander)}>{doc.commander}</div>
-                <div className="ab-roster-overlay-field" style={overlayFieldStyle(ROSTER_LAYOUT.header.armyName)}>{listName}</div>
-                <div className={`ab-roster-overlay-field ab-roster-overlay-center${overLimit ? ' ab-roster-overlay-over' : ''}`} style={overlayFieldStyle(ROSTER_LAYOUT.header.pointsLimit)}>{totalPoints.toLocaleString()} / {pointsLimit}</div>
-                <div className="ab-roster-overlay-field" style={overlayFieldStyle(ROSTER_LAYOUT.header.faction)}>{factionName}</div>
-                <div className="ab-roster-overlay-field" style={overlayFieldStyle(ROSTER_LAYOUT.header.battleFormation)}>{battleFormation}</div>
-
-                {ROSTER_LAYOUT.regiments.map((rl, ri) => rl.page === 0 && (
-                  <React.Fragment key={ri}>
-                    {renderSlot('image', REGIMENT_SLOTS[ri].heroLabel, slots.regiments[ri].general, { kind: 'general', regimentIdx: ri }, rl.general)}
-                    {rl.units.map((top, ui) => renderSlot('image', `Unit ${ui + 1}`, slots.regiments[ri].units[ui], { kind: 'unit', regimentIdx: ri, unitIdx: ui }, top))}
-                  </React.Fragment>
-                ))}
-              </div>
-
-              <div className="ab-roster-image-page">
-                <ProgressiveImg src="/ptg/army-roster-2.jpg" micro={ARMY_ROSTER_MICRO.page2} avgColor={ARMY_ROSTER_AVG_COLOR.page2} alt="Army Roster page 2" className="ab-roster-page-img" />
-                {ROSTER_LAYOUT.regiments.map((rl, ri) => rl.page === 1 && (
-                  <React.Fragment key={ri}>
-                    {renderSlot('image', REGIMENT_SLOTS[ri].heroLabel, slots.regiments[ri].general, { kind: 'general', regimentIdx: ri }, rl.general)}
-                    {rl.units.map((top, ui) => renderSlot('image', `Unit ${ui + 1}`, slots.regiments[ri].units[ui], { kind: 'unit', regimentIdx: ri, unitIdx: ui }, top))}
-                  </React.Fragment>
-                ))}
-                <div className="ab-roster-overlay-field ab-roster-overlay-center" style={{ top: `${ROSTER_LAYOUT.regimentsTotal.top}%`, left: `${ROSTER_ROW_COLS.points.left}%`, width: `${ROSTER_ROW_COLS.points.width}%` }}>{regimentsTotal}</div>
-
-                {ROSTER_LAYOUT.aux.map((a, ai) => renderSlot('image', `Unit ${ai + 1}`, slots.aux[ai], { kind: 'aux', unitIdx: ai }, a.top))}
-                {overflowAux > 0 && <div className="ab-roster-overlay-note">+{overflowAux} more not shown — see Replica</div>}
-                <div className="ab-roster-overlay-field ab-roster-overlay-center" style={{ top: `${ROSTER_LAYOUT.auxTotal.top}%`, left: `${ROSTER_ROW_COLS.points.left}%`, width: `${ROSTER_ROW_COLS.points.width}%` }}>{auxTotal}</div>
-                <div className="ab-roster-overlay-field ab-roster-overlay-center" style={{ top: `${ROSTER_LAYOUT.unitsTotal.top}%`, left: `${ROSTER_ROW_COLS.points.left}%`, width: `${ROSTER_ROW_COLS.points.width}%` }}>{armyUnitsTotal}</div>
-                <div className="ab-roster-overlay-notes-text" style={{ top: `${ROSTER_LAYOUT.notes.top}%`, left: '8%', width: '84%' }}>{doc.notes}</div>
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className="ptg-army-header-grid">
-                <div className="ptg-field ptg-army-commander"><label>Commander</label><input type="text" value={doc.commander} onChange={e => setDoc(d => ({ ...d, commander: e.target.value }))} /></div>
-                <div className="ptg-field ptg-army-name"><label>Army Name</label><input type="text" value={listName} readOnly title="Set by renaming the list in the banner" /></div>
-                <div className="ptg-field ptg-army-points-limit">
-                  <label>Points Limit</label>
-                  <div className="ab-roster-points-limit-row">
-                    <span className={overLimit ? 'ab-roster-overlay-over' : ''}>{totalPoints.toLocaleString()}</span>
-                    <span>/</span>
-                    <input
-                      type="number" min="0" value={pointsLimit}
-                      onChange={e => setPointsLimit(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                    />
-                  </div>
-                </div>
-                <div className="ptg-field ptg-army-faction"><label>Faction</label><input type="text" value={factionName || '—'} readOnly /></div>
-                <div className="ptg-field ptg-army-formation"><label>Battle Formation</label><input type="text" value={battleFormation || '—'} readOnly /></div>
-              </div>
-
-              {REGIMENT_SLOTS.map((rs, ri) => (
-                <div className="ptg-regiment-block" key={ri}>
-                  <div className="ptg-regiment-header"><span>{rs.label}</span></div>
-                  <div className="ab-roster-slot-head">
-                    <span></span><span>Warscroll Name</span><span>Size</span><span>Notes</span><span>Points</span>
-                  </div>
-                  {renderSlot('replica', rs.heroLabel, slots.regiments[ri].general, { kind: 'general', regimentIdx: ri })}
-                  {slots.regiments[ri].units.map((u, ui) =>
-                    renderSlot('replica', `Unit ${ui + 1}`, u, { kind: 'unit', regimentIdx: ri, unitIdx: ui })
-                  )}
-                </div>
-              ))}
-              <div className="ptg-oob-cap">Regiments Total: {regimentsTotal}pts</div>
-
-              <div className="ptg-regiment-block">
-                <div className="ptg-regiment-header"><span>Auxiliary Units</span></div>
-                <div className="ab-roster-slot-head">
-                  <span></span><span>Warscroll Name</span><span>Size</span><span>Notes</span><span>Points</span>
-                </div>
-                {slots.aux.map((u, ai) =>
-                  renderSlot('replica', `Unit ${ai + 1}`, u, { kind: 'aux', unitIdx: ai })
-                )}
-              </div>
-              <div className="ptg-oob-cap">Auxiliary Units Total: {auxTotal}pts</div>
-              <div className="ptg-oob-cap"><strong>Units Total: {armyUnitsTotal}pts</strong></div>
-
-              <div className="ptg-field"><label>Notes</label><textarea rows={3} value={doc.notes} onChange={e => setDoc(d => ({ ...d, notes: e.target.value }))} /></div>
-            </>
+      {REGIMENT_SLOTS.map((rs, ri) => (
+        <div className="ptg-regiment-block" key={ri}>
+          <div className="ptg-regiment-header"><span>{rs.label}</span></div>
+          <div className="ab-roster-slot-head">
+            <span></span><span>Warscroll Name</span><span>Size</span><span>Notes</span><span>Points</span>
+          </div>
+          {renderSlot('replica', rs.heroLabel, slots.regiments[ri].general, { kind: 'general', regimentIdx: ri })}
+          {slots.regiments[ri].units.map((u, ui) =>
+            renderSlot('replica', `Unit ${ui + 1}`, u, { kind: 'unit', regimentIdx: ri, unitIdx: ui })
           )}
         </div>
+      ))}
+      <div className="ptg-oob-cap">Regiments Total: {regimentsTotal}pts</div>
+
+      <div className="ptg-regiment-block">
+        <div className="ptg-regiment-header"><span>Auxiliary Units</span></div>
+        <div className="ab-roster-slot-head">
+          <span></span><span>Warscroll Name</span><span>Size</span><span>Notes</span><span>Points</span>
+        </div>
+        {slots.aux.map((u, ai) =>
+          renderSlot('replica', `Unit ${ai + 1}`, u, { kind: 'aux', unitIdx: ai })
+        )}
+      </div>
+      <div className="ptg-oob-cap">Auxiliary Units Total: {auxTotal}pts</div>
+      <div className="ptg-oob-cap"><strong>Units Total: {armyUnitsTotal}pts</strong></div>
+
+      <div className="ptg-field"><label>Notes</label><textarea rows={3} value={doc.notes} onChange={e => setDoc(d => ({ ...d, notes: e.target.value }))} /></div>
+    </>
+  );
+
+  const handlePrintClick = () => {
+    if (presentMode === 'replica') setPrintPreview(true);
+    else window.print();
+  };
+
+  return (
+    <>
+      <div className="gw-overlay" onClick={printPreview ? () => setPrintPreview(false) : onClose} />
+      <div className={`ptg-wizard${presentMode === 'image' ? ' ab-roster-modal-wide' : ''}`} ref={modalRef} role="dialog" aria-modal="true" aria-label="Army Roster">
+        {!printPreview && <button className="ab-roster-print-btn" onClick={handlePrintClick} title="Print">🖨 Print</button>}
+        {!printPreview && <button className="gw-close" onClick={onClose} title="Close (Esc)">✕</button>}
+
+        {printPreview ? (
+          <>
+            <div className="ptg-doc-editor-header">
+              <div className="ptg-doc-editor-title">Print Preview</div>
+              <div className="ab-roster-print-actions">
+                <button className="ptg-wizard-nav-btn" onClick={() => setPrintPreview(false)}>‹ Cancel</button>
+                <button className="ptg-wizard-nav-btn ab-roster-print-confirm" onClick={() => window.print()}>🖨 Print</button>
+              </div>
+            </div>
+            <div className="ptg-doc-editor-body ab-roster-print-target ab-roster-print-ready">
+              {replicaBody}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="ptg-doc-editor-header">
+              <div className="ptg-doc-editor-title">Army Roster</div>
+              <div className="ptg-present-toggle">
+                <button className={presentMode === 'image' ? 'ptg-present-active' : ''} onClick={() => setPresentMode('image')}>Image</button>
+                <button className={presentMode === 'replica' ? 'ptg-present-active' : ''} onClick={() => setPresentMode('replica')}>Replica</button>
+              </div>
+            </div>
+
+            <div className={presentMode === 'image' ? 'ab-roster-image-body' : 'ptg-doc-editor-body'}>
+              {presentMode === 'image' ? (
+                <div className="ab-roster-image-view ab-roster-print-target">
+                  <div className="ab-roster-image-page">
+                    <ProgressiveImg src="/ptg/army-roster-1.jpg" micro={ARMY_ROSTER_MICRO.page1} avgColor={ARMY_ROSTER_AVG_COLOR.page1} alt="Army Roster page 1" className="ab-roster-page-img" />
+                    <div className="ab-roster-overlay-field" style={overlayFieldStyle(ROSTER_LAYOUT.header.commander)}>{doc.commander}</div>
+                    <div className="ab-roster-overlay-field" style={overlayFieldStyle(ROSTER_LAYOUT.header.armyName)}>{listName}</div>
+                    <div className={`ab-roster-overlay-field ab-roster-overlay-center${overLimit ? ' ab-roster-overlay-over' : ''}`} style={overlayFieldStyle(ROSTER_LAYOUT.header.pointsLimit)}>{totalPoints.toLocaleString()} / {pointsLimit}</div>
+                    <div className="ab-roster-overlay-field" style={overlayFieldStyle(ROSTER_LAYOUT.header.faction)}>{factionName}</div>
+                    <div className="ab-roster-overlay-field" style={overlayFieldStyle(ROSTER_LAYOUT.header.battleFormation)}>{battleFormation}</div>
+
+                    {ROSTER_LAYOUT.regiments.map((rl, ri) => rl.page === 0 && (
+                      <React.Fragment key={ri}>
+                        {renderSlot('image', REGIMENT_SLOTS[ri].heroLabel, slots.regiments[ri].general, { kind: 'general', regimentIdx: ri }, rl.general)}
+                        {rl.units.map((top, ui) => renderSlot('image', `Unit ${ui + 1}`, slots.regiments[ri].units[ui], { kind: 'unit', regimentIdx: ri, unitIdx: ui }, top))}
+                      </React.Fragment>
+                    ))}
+                  </div>
+
+                  <div className="ab-roster-image-page">
+                    <ProgressiveImg src="/ptg/army-roster-2.jpg" micro={ARMY_ROSTER_MICRO.page2} avgColor={ARMY_ROSTER_AVG_COLOR.page2} alt="Army Roster page 2" className="ab-roster-page-img" />
+                    {ROSTER_LAYOUT.regiments.map((rl, ri) => rl.page === 1 && (
+                      <React.Fragment key={ri}>
+                        {renderSlot('image', REGIMENT_SLOTS[ri].heroLabel, slots.regiments[ri].general, { kind: 'general', regimentIdx: ri }, rl.general)}
+                        {rl.units.map((top, ui) => renderSlot('image', `Unit ${ui + 1}`, slots.regiments[ri].units[ui], { kind: 'unit', regimentIdx: ri, unitIdx: ui }, top))}
+                      </React.Fragment>
+                    ))}
+                    <div className="ab-roster-overlay-field ab-roster-overlay-center" style={{ top: `${ROSTER_LAYOUT.regimentsTotal.top}%`, left: `${ROSTER_ROW_COLS.points.left}%`, width: `${ROSTER_ROW_COLS.points.width}%` }}>{regimentsTotal}</div>
+
+                    {ROSTER_LAYOUT.aux.map((a, ai) => renderSlot('image', `Unit ${ai + 1}`, slots.aux[ai], { kind: 'aux', unitIdx: ai }, a.top))}
+                    {overflowAux > 0 && <div className="ab-roster-overlay-note">+{overflowAux} more not shown — see Replica</div>}
+                    <div className="ab-roster-overlay-field ab-roster-overlay-center" style={{ top: `${ROSTER_LAYOUT.auxTotal.top}%`, left: `${ROSTER_ROW_COLS.points.left}%`, width: `${ROSTER_ROW_COLS.points.width}%` }}>{auxTotal}</div>
+                    <div className="ab-roster-overlay-field ab-roster-overlay-center" style={{ top: `${ROSTER_LAYOUT.unitsTotal.top}%`, left: `${ROSTER_ROW_COLS.points.left}%`, width: `${ROSTER_ROW_COLS.points.width}%` }}>{armyUnitsTotal}</div>
+                    <div className="ab-roster-overlay-notes-text" style={{ top: `${ROSTER_LAYOUT.notes.top}%`, left: '8%', width: '84%' }}>{doc.notes}</div>
+                  </div>
+                </div>
+              ) : replicaBody}
+            </div>
+          </>
+        )}
       </div>
     </>
   );

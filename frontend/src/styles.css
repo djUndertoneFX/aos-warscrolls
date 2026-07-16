@@ -743,6 +743,103 @@ input, select {
   white-space: pre-wrap;
 }
 
+/* Print button — mirrors .gw-close's positioning/size on the opposite corner. */
+.ab-roster-print-btn {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  z-index: 10;
+  background: transparent;
+  border: 1px solid rgba(200,168,64,0.4);
+  color: #c8a840;
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 3px 8px;
+  border-radius: 2px;
+  line-height: 1;
+  transition: background 0.12s, border-color 0.12s;
+}
+.ab-roster-print-btn:hover { background: rgba(200,168,64,0.18); border-color: #c8a840; }
+
+.ab-roster-print-actions { display: flex; gap: 0.5rem; justify-self: end; }
+.ab-roster-print-confirm { color: #1a1614; background: #c8a840; border-color: #c8a840; }
+.ab-roster-print-confirm:hover { background: #e0bc58; }
+
+/* "Gold print ready" theme — a near-inversion of the dark parchment-on-black
+   editor (dark backgrounds → white, gold/parchment text → black) so the
+   Replica view doesn't print a solid black page. Anything game-color-coded
+   (e.g. AbilityCard phase banners, the over-limit red) is set via inline
+   style or its own dedicated color class rather than these base dark-theme
+   classes, so it isn't touched by this override. */
+.ab-roster-print-ready {
+  background: #ffffff;
+  color: #000000;
+}
+.ab-roster-print-ready .ptg-field label,
+.ab-roster-print-ready .ptg-regiment-header span,
+.ab-roster-print-ready .ab-roster-slot-label,
+.ab-roster-print-ready .ab-roster-slot-head span,
+.ab-roster-print-ready .ptg-oob-cap {
+  color: #000000;
+}
+.ab-roster-print-ready .ptg-field input,
+.ab-roster-print-ready .ptg-field textarea,
+.ab-roster-print-ready .ab-roster-points-limit-row input {
+  background: #ffffff;
+  color: #000000;
+  border-color: #999999;
+}
+.ab-roster-print-ready .ptg-regiment-block {
+  background: #ffffff;
+  border-color: #999999;
+}
+.ab-roster-print-ready .ab-roster-slot-row {
+  background: #ffffff;
+  border-color: #cccccc;
+  color: #000000;
+}
+.ab-roster-print-ready .ab-roster-slot-row span:not(.ab-roster-slot-label) { color: #000000; }
+.ab-roster-print-ready .ab-roster-slot-row.ab-roster-slot-empty { color: #999999; }
+.ab-roster-print-ready .ab-roster-slot-row.ab-roster-slot-empty span:not(.ab-roster-slot-label) { color: #999999; }
+.ab-roster-print-ready .ptg-oob-cap { border-bottom-color: #cccccc; }
+.ab-roster-print-ready .ab-roster-overlay-over { color: #c00000 !important; }
+
+/* Printing — isolate whichever content currently carries
+   .ab-roster-print-target (either the Image-mode page view or the Replica
+   print-preview) and force portrait, one physical page per scanned page. */
+@media print {
+  @page { size: portrait; margin: 10mm; }
+  body * { visibility: hidden; }
+  .ab-roster-print-target, .ab-roster-print-target * { visibility: visible; }
+  .ab-roster-print-target {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+  }
+  .ab-roster-print-target.ab-roster-image-view {
+    display: block;
+  }
+  .ab-roster-print-target .ab-roster-image-page {
+    position: relative;
+    display: block;
+    width: 100%;
+    break-after: page;
+    page-break-after: always;
+  }
+  .ab-roster-print-target .ab-roster-image-page:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+  .ab-roster-print-target .ab-roster-page-img,
+  .ab-roster-print-target .ptg-progressive-img-micro,
+  .ab-roster-print-target .ptg-progressive-img-full {
+    width: 100% !important;
+    height: auto !important;
+    max-width: 100%;
+  }
+}
+
 /* Replica-mode regiment/aux slot table — a fixed set of General|Hero + Unit
    N slots matching the printed sheet exactly (see REGIMENT_SLOTS), each
    auto-populated from the actual roster selection and drag-reassignable. */
