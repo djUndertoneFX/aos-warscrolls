@@ -226,9 +226,10 @@ function BattleFormationStage({ factionName, rules, battleFormation, setBattleFo
     byName[gName].items.push(item);
   }
   if (groups.length === 0) return <div className="ab-stage-empty">No Battle Formations found for {factionName}.</div>;
+  const gridOrder = toTwoColumnOrder(groups);
   return (
     <div className="ab-formation-list">
-      {groups.map((g, gi) => (
+      {gridOrder.map((g, gi) => (
         <label key={gi} className={`ab-formation-option${battleFormation === g.name ? ' selected' : ''}`}>
           <input
             type="radio"
@@ -404,7 +405,7 @@ function ArmyRosterModal({
   return (
     <>
       <div className="gw-overlay" onClick={onClose} />
-      <div className="ptg-wizard" ref={modalRef} role="dialog" aria-modal="true" aria-label="Army Roster">
+      <div className={`ptg-wizard${presentMode === 'image' ? ' ab-roster-modal-wide' : ''}`} ref={modalRef} role="dialog" aria-modal="true" aria-label="Army Roster">
         <button className="gw-close" onClick={onClose} title="Close (Esc)">✕</button>
         <div className="ptg-doc-editor-header">
           <div className="ptg-doc-editor-title">Army Roster</div>
@@ -414,11 +415,11 @@ function ArmyRosterModal({
           </div>
         </div>
 
-        <div className="ptg-doc-editor-body">
+        <div className={presentMode === 'image' ? 'ab-roster-image-body' : 'ptg-doc-editor-body'}>
           {presentMode === 'image' ? (
-            <div className="ptg-doc-image-view">
-              <ProgressiveImg src="/ptg/army-roster-1.jpg" micro={ARMY_ROSTER_MICRO.page1} avgColor={ARMY_ROSTER_AVG_COLOR.page1} alt="Army Roster page 1" className="ptg-doc-full-img" />
-              <ProgressiveImg src="/ptg/army-roster-2.jpg" micro={ARMY_ROSTER_MICRO.page2} avgColor={ARMY_ROSTER_AVG_COLOR.page2} alt="Army Roster page 2" className="ptg-doc-full-img" />
+            <div className="ab-roster-image-view">
+              <ProgressiveImg src="/ptg/army-roster-1.jpg" micro={ARMY_ROSTER_MICRO.page1} avgColor={ARMY_ROSTER_AVG_COLOR.page1} alt="Army Roster page 1" className="ab-roster-page-img" />
+              <ProgressiveImg src="/ptg/army-roster-2.jpg" micro={ARMY_ROSTER_MICRO.page2} avgColor={ARMY_ROSTER_AVG_COLOR.page2} alt="Army Roster page 2" className="ab-roster-page-img" />
             </div>
           ) : (
             <>

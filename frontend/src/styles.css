@@ -656,6 +656,30 @@ input, select {
 }
 .ab-roster-thumb:hover .ab-roster-thumb-img { border-color: #c8a840; }
 
+/* Image-mode Army Roster viewer: the modal widens to fit both pages
+   side by side, each scaled to (nearly) full viewport height instead of
+   the shared .ptg-doc-image-view's vertical-stack/62vh-scroll layout
+   (left untouched — Path to Glory's other single-page docs still use it). */
+.ptg-wizard.ab-roster-modal-wide { width: min(1800px, 96vw); max-height: 98vh; top: 1vh; }
+.ab-roster-image-body { min-height: 0; }
+.ab-roster-image-view {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 1rem;
+}
+.ab-roster-page-img {
+  border: 1px solid rgba(200,168,64,0.3);
+  border-radius: 3px;
+}
+.ab-roster-page-img .ptg-progressive-img-micro {
+  display: block;
+  height: 78vh;
+  width: auto;
+  max-width: 100%;
+}
+
 .ab-list-manager { position: relative; width: 340px; flex-shrink: 0; }
 .ab-list-trigger {
   display: flex;
@@ -761,7 +785,10 @@ th.ab-count-th { padding-left: 0.35rem; padding-right: 0.35rem; text-align: cent
   text-align: center;
 }
 
-.ab-formation-list { display: flex; flex-direction: column; gap: 0.9rem; }
+/* 2x2-and-onward grid: reordered via toTwoColumnOrder so item 1/2 fill
+   column 1 top-to-bottom and item 3/4 fill column 2, matching the printed
+   battle formation pages' left/right pairing. */
+.ab-formation-list { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem; align-items: start; }
 .ab-formation-option {
   display: flex;
   align-items: flex-start;
