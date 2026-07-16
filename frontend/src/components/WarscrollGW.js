@@ -956,12 +956,17 @@ const SplitPane = React.forwardRef(function SplitPane({ label, labelClass, list,
                   {slides.length > 0 && <span className="gw-nav-sep" />}
                   {list.slice(group.startIdx, group.endIdx + 1).map((u2, localI) => {
                     const i = group.startIdx + localI;
+                    const type = getPrimaryType(u2);
+                    const prevType = localI > 0 ? getPrimaryType(list[i - 1]) : null;
                     return (
-                      <span key={u2.id ?? i}
-                        className={`gw-nav-dot${!activeSlide && i === activeIdx ? ' gw-nav-dot-active' : ''}`}
-                        title={u2.name}
-                        onClick={() => jumpUnit(i)}
-                      />
+                      <React.Fragment key={u2.id ?? i}>
+                        {localI > 0 && prevType !== type && <span className="gw-nav-sep" />}
+                        <span
+                          className={`gw-nav-dot${!activeSlide && i === activeIdx ? ' gw-nav-dot-active' : ''}`}
+                          title={u2.name}
+                          onClick={() => jumpUnit(i)}
+                        />
+                      </React.Fragment>
                     );
                   })}
                 </React.Fragment>
