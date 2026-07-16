@@ -870,7 +870,7 @@ function SplitPane({ label, labelClass, list, activeIdx, setActiveIdx, onPrev, o
   const activeSlideDef = activeSlide ? getSlidesForSlug(activeSlide.factionSlug).find(s => s.key === activeSlide.slideKey) : null;
 
   return (
-    <div className={`gw-split-pane${isFocused ? ' gw-split-pane-focused' : ''}`} ref={paneRef} onMouseDown={onFocus}>
+    <div className={`gw-split-pane${isFocused ? ' gw-split-pane-focused' : ''}`} ref={paneRef} onMouseEnter={onFocus} onMouseDown={onFocus}>
       <div className="gw-split-pane-nav">
         <span className={`gw-split-pane-label ${labelClass}`}>{label}</span>
         <div
