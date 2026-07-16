@@ -7,6 +7,7 @@ import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import WarscrollsPage from './pages/WarscrollsPage';
+import ArmyBuilderPage from './pages/ArmyBuilderPage';
 import SimulacrumPage from './pages/SimulacrumPage';
 import SpearheadPage from './pages/SpearheadPage';
 import PathToGloryPage from './pages/PathToGloryPage';
@@ -14,7 +15,7 @@ import './styles.css';
 
 const NAV_PAGES = [
   { label: 'Warscrolls',         path: '/warscrolls' },
-  { label: 'Army Builder',       path: '/army-builder',    soon: true },
+  { label: 'Army Builder',       path: '/army-builder' },
   { label: 'Battle Buddy',       path: '/battle-buddy',    soon: true },
   { label: 'Matched Play',       path: '/matched-play',    soon: true },
   { label: 'Spearhead',          path: '/spearhead' },
@@ -123,7 +124,7 @@ function Navbar({ headerCollapsed, onToggleCollapse }) {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const isWarscrolls = location.pathname === '/warscrolls' || location.pathname === '/simulacrum' || location.pathname === '/spearhead' || location.pathname === '/path-to-glory';
+  const isWarscrolls = location.pathname === '/warscrolls' || location.pathname === '/simulacrum' || location.pathname === '/spearhead' || location.pathname === '/path-to-glory' || location.pathname === '/army-builder';
   if (!user) return null;
   return (
     <>
@@ -218,7 +219,7 @@ function AppRoutes() {
         <Route path="/warscrolls" element={
           <ProtectedRoute><WarscrollsPage headerCollapsed={headerCollapsed} /></ProtectedRoute>
         } />
-        <Route path="/army-builder"  element={<ProtectedRoute><ComingSoon title="Army Builder" /></ProtectedRoute>} />
+        <Route path="/army-builder"  element={<ProtectedRoute><ArmyBuilderPage headerCollapsed={headerCollapsed} /></ProtectedRoute>} />
         <Route path="/battle-buddy"  element={<ProtectedRoute><ComingSoon title="Battle Buddy" /></ProtectedRoute>} />
         <Route path="/matched-play"  element={<ProtectedRoute><ComingSoon title="Matched Play" /></ProtectedRoute>} />
         <Route path="/spearhead"     element={<ProtectedRoute><SpearheadPage headerCollapsed={headerCollapsed} /></ProtectedRoute>} />
