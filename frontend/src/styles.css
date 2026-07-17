@@ -643,6 +643,25 @@ input, select {
   background: rgba(201,168,76,0.1);
 }
 
+/* iPad landscape (and any viewport this cramped) — the fixed-width List
+   field would otherwise force itself past its own grid column into the
+   Stages column at this width, and 7 Stage tabs / 4 Hide checkboxes no
+   longer fit on one row without being unreadably tiny. Let List shrink to
+   whatever its column actually allows (guaranteeing no overlap regardless
+   of exact viewport width) and let Stages/Hide wrap into a second row
+   instead of over-compressing onto one. */
+@media (max-width: 1366px) {
+  .ab-page .ab-list-manager { width: auto; max-width: 100%; min-width: 0; flex-shrink: 1; }
+  .ab-page .ab-stage-tabs { flex-wrap: wrap; row-gap: 0.3rem; }
+  /* Force exactly 2 rows (not just "wrap if it doesn't fit") — 2 of the
+     4 Hide: checkboxes per row regardless of how much width is available. */
+  .ab-page .filters .cb-group-right { flex-wrap: wrap; gap: 0.35rem 1.25rem; }
+  /* flex-basis 40% (not an exact 50%-gap split) leaves enough slack that
+     subpixel rounding can't tip a 2-up row into wrapping to 3 rows — grow:1
+     lets the 2 items stretch to fill the row evenly. */
+  .ab-page .filters .cb-group-right .cb-item { flex: 1 1 40%; }
+}
+
 /* Army Roster preview thumbnail (banner section 4) — opens ArmyRosterModal,
    which reuses Path to Glory's doc-editor/Image-Replica-toggle CSS (.ptg-*)
    directly rather than duplicating it. */
@@ -900,7 +919,7 @@ input, select {
 }
 .ab-roster-points-limit-row input:focus { outline: none; border-bottom-color: #c8a840; }
 
-.ab-list-manager { position: relative; width: 340px; flex-shrink: 0; }
+.ab-list-manager { position: relative; width: 255px; flex-shrink: 0; }
 .ab-list-trigger {
   display: flex;
   align-items: center;
@@ -918,6 +937,7 @@ input, select {
   transition: border-color 0.2s;
 }
 .ab-list-trigger:hover, .ab-list-trigger:focus { border-color: var(--gold-dark); outline: none; }
+.ab-list-trigger > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .ab-list-menu {
   position: absolute;
   top: calc(100% + 2px);
@@ -998,6 +1018,34 @@ th.ab-count-th { padding-left: 0.35rem; padding-right: 0.35rem; text-align: cent
 .ab-count-input:focus { outline: none; border-color: var(--border-gold); }
 .ab-count-checkbox-cell input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; }
 .ab-count-na { color: var(--text-dim); }
+
+/* Train/Reinforce stepper — not directly editable (typing a value on a
+   touch keyboard is fiddly); − sits left, + sits right of a read-only count. */
+.ab-count-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+.ab-count-btn {
+  width: 18px;
+  height: 18px;
+  line-height: 1;
+  padding: 0;
+  background: var(--bg-input, rgba(0,0,0,0.25));
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--gold-light);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.ab-count-btn:hover { border-color: var(--border-gold); color: var(--gold); }
+.ab-count-value {
+  min-width: 1.4em;
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--text);
+}
 
 .ab-stage-body { padding: 0.5rem 0.2rem 2rem; }
 .ab-stage-empty {

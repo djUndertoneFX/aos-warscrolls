@@ -30,6 +30,24 @@ function triParam(val) {
   return undefined;
 }
 
+// Touch devices have no right-click, so a sortable column header can never
+// reach the "clear sort" action that onContextMenu gives desktop users —
+// a touch-and-hold (~550ms without lifting/dragging) triggers the same
+// reset instead. A quick tap still sorts normally; one shared timer/ref
+// pair (not per-column) is fine since only one column can be touched at a
+// time — call this once per table, not inside a per-column .map().
+function useColumnLongPress(onLongPressCol, onClickCol) {
+  const timerRef = useRef(null);
+  const firedRef = useRef(false);
+  const start = (colKey) => {
+    firedRef.current = false;
+    timerRef.current = setTimeout(() => { firedRef.current = true; onLongPressCol(colKey); }, 550);
+  };
+  const cancel = () => { if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; } };
+  const click = (colKey, e) => { if (firedRef.current) { e.preventDefault(); return; } onClickCol(colKey, e); };
+  return { start, cancel, click };
+}
+
 function TriCheckbox({ value, onChange, label }) {
   const isExclude = value === 'exclude';
   const isInclude = value === true;
@@ -411,6 +429,7 @@ function ListManager({ listsStore, activeListId, onSelect, onCreate, onDuplicate
   const [renamingId, setRenamingId] = useState(null);
   const [renameValue, setRenameValue] = useState('');
   const ref = useRef(null);
+  const renameInputRef = useRef(null);
 
   useEffect(() => {
     if (!open) return;
@@ -419,8 +438,19 @@ function ListManager({ listsStore, activeListId, onSelect, onCreate, onDuplicate
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
+  // autoFocus + onFocus={select} isn't reliable here (React's autoFocus
+  // doesn't consistently deliver a synthetic focus event in time for the
+  // select() call to land before the browser settles cursor position) —
+  // focusing and selecting explicitly once the input mounts is deterministic.
+  useEffect(() => {
+    if (renamingId && renameInputRef.current) {
+      renameInputRef.current.focus();
+      renameInputRef.current.select();
+    }
+  }, [renamingId]);
+
   const ids = Object.keys(listsStore.lists);
-  const activeName = listsStore.lists[activeListId]?.name ?? 'Default List';
+  const activeName = listsStore.lists[activeListId]?.name ?? 'List name…';
 
   const startRename = (id, name) => { setRenamingId(id); setRenameValue(name); };
   const commitRename = () => {
@@ -440,9 +470,10 @@ function ListManager({ listsStore, activeListId, onSelect, onCreate, onDuplicate
             <div key={id} className={`ab-list-item${id === activeListId ? ' selected' : ''}`}>
               {renamingId === id ? (
                 <input
+                  ref={renameInputRef}
                   className="ab-list-rename-input"
-                  autoFocus
                   value={renameValue}
+                  onFocus={e => e.target.select()}
                   onChange={e => setRenameValue(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') setRenamingId(null); }}
                   onBlur={commitRename}
@@ -738,7 +769,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
       activeListId: 'default',
       lists: {
         default: {
-          name: 'Default List',
+          name: 'List name…',
           faction: legacy.faction ?? '',
           pointsLimit: legacy.pointsLimit ?? 2000,
           roster: legacy.roster ?? {},
@@ -752,7 +783,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
     };
   });
   const activeListId = listsStore.activeListId;
-  const activeListData = listsStore.lists[activeListId] ?? makeBlankList('Default List');
+  const activeListData = listsStore.lists[activeListId] ?? makeBlankList('List name…');
 
   const [faction, setFaction]         = useState(activeListData.faction);
   const [pointsLimit, setPointsLimit] = useState(activeListData.pointsLimit);
@@ -948,23 +979,45 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
     return sum;
   }, [roster, unitsById]);
 
+  // Both setters are purely functional (derive everything from `prev`, never
+  // from the outer `roster` closure) so rapid consecutive calls — e.g. two
+  // quick taps on a stepper +/- button before React re-renders — each see
+  // the truly-latest count instead of both reading the same stale value and
+  // silently colliding on the same "+1" result.
   const setUnitCount = (id, field, value) => {
     const n = Math.max(0, parseInt(value, 10) || 0);
-    const prevSel = roster[id] ?? { train: 0, reinforce: 0 };
-    const nextSel = { ...prevSel, [field]: n };
-    const hadBefore = (prevSel.train || 0) + (prevSel.reinforce || 0) > 0;
-    const willHave = (nextSel.train || 0) + (nextSel.reinforce || 0) > 0;
     setRoster(prev => {
-      const next = { ...prev };
-      if (willHave) next[id] = nextSel; else delete next[id];
+      const next = { ...prev, [id]: { ...(prev[id] ?? { train: 0, reinforce: 0 }), [field]: n } };
+      if ((next[id].train ?? 0) === 0 && (next[id].reinforce ?? 0) === 0) delete next[id];
       return next;
     });
-    if (!hadBefore && willHave) {
-      setRosterOrder(prev => prev.includes(id) ? prev : [...prev, id]);
-    } else if (hadBefore && !willHave) {
-      setRosterOrder(prev => prev.filter(x => x !== id));
-    }
   };
+  const bumpUnitCount = (id, field, delta) => {
+    setRoster(prev => {
+      const prevSel = prev[id] ?? { train: 0, reinforce: 0 };
+      const n = Math.max(0, (prevSel[field] || 0) + delta);
+      const nextSel = { ...prevSel, [field]: n };
+      const next = { ...prev };
+      if ((nextSel.train || 0) + (nextSel.reinforce || 0) > 0) next[id] = nextSel;
+      else delete next[id];
+      return next;
+    });
+  };
+
+  // Keeps rosterOrder (first-selected order, used to decide which Hero
+  // becomes which regiment's General) in sync with roster — decoupled from
+  // the setters above so it's correct regardless of which one touched
+  // roster, or how many updates landed in the same batch.
+  useEffect(() => {
+    const curKeys = Object.keys(roster);
+    const curSet = new Set(curKeys);
+    setRosterOrder(prev => {
+      const next = prev.filter(id => curSet.has(id));
+      for (const id of curKeys) if (!next.includes(id)) next.push(id);
+      if (next.length === prev.length && next.every((v, i) => v === prev[i])) return prev;
+      return next;
+    });
+  }, [roster]);
 
   // Self-healing cleanup: Heroes/Manifestations/Faction Terrain can't be
   // reinforced (no reinforce field is shown for them anymore), but older
@@ -1117,6 +1170,10 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
       setSortDir(['control','move','unit_size','points','health'].includes(col) ? 'desc' : 'asc');
     }
   };
+  const colLongPress = useColumnLongPress(
+    colKey => handleSort(colKey, null, true),
+    (colKey, e) => handleSort(colKey, e)
+  );
 
   // ── Column resizing — mirrors WarscrollsPage's colWidths/thStyle/startResize
   // pattern so this table's proportions match the main Warscrolls page. Train/
@@ -1125,7 +1182,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
   // and Keywords is 3x the Warscrolls default so more keywords fit per line
   // (shorter, less-wrapped rows). ──────────────────────────────────────────
   const DEFAULT_COL_WIDTHS = {
-    rownum: 22, train: 50, reinforce: 58, expand: 22, thumb: 44,
+    rownum: 22, train: 72, reinforce: 80, expand: 22, thumb: 44,
     name: 190, faction: 110, alliance: 66, models: 42,
     move: 42, health: 42, control: 42, save: 42, ward: 38, points: 48,
     types: 68, keywords: 390,
@@ -1247,21 +1304,21 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
           ) : (
             <>
               <td className="col-count" onClick={e => e.stopPropagation()}>
-                <input
-                  type="number" min="0" className="ab-count-input"
-                  value={sel.train || ''} placeholder="0"
-                  onChange={e => setUnitCount(row.id, 'train', e.target.value)}
-                />
+                <div className="ab-count-stepper">
+                  <button type="button" className="ab-count-btn ab-count-btn-minus" onClick={() => bumpUnitCount(row.id, 'train', -1)}>−</button>
+                  <span className="ab-count-value">{sel.train || 0}</span>
+                  <button type="button" className="ab-count-btn ab-count-btn-plus" onClick={() => bumpUnitCount(row.id, 'train', 1)}>+</button>
+                </div>
               </td>
               <td className="col-count" onClick={e => e.stopPropagation()}>
                 {row.is_hero ? (
                   <span className="ab-count-na" title="Heroes can't be reinforced">—</span>
                 ) : (
-                  <input
-                    type="number" min="0" className="ab-count-input"
-                    value={sel.reinforce || ''} placeholder="0"
-                    onChange={e => setUnitCount(row.id, 'reinforce', e.target.value)}
-                  />
+                  <div className="ab-count-stepper">
+                    <button type="button" className="ab-count-btn ab-count-btn-minus" onClick={() => bumpUnitCount(row.id, 'reinforce', -1)}>−</button>
+                    <span className="ab-count-value">{sel.reinforce || 0}</span>
+                    <button type="button" className="ab-count-btn ab-count-btn-plus" onClick={() => bumpUnitCount(row.id, 'reinforce', 1)}>+</button>
+                  </div>
                 )}
               </td>
             </>
@@ -1355,9 +1412,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
 
   return (
     <>
-    <div className="table-page">
-      {!headerCollapsed && (
-      <>
+    <div className="table-page ab-page">
       <div className="page-header ab-page-header">
         <div className="page-title">
           Army Builder
@@ -1406,8 +1461,6 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
           </div>
         </div>
       </div>
-      </>
-      )}
 
       {activeStage === 'units' && (
         <>
@@ -1507,8 +1560,11 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
                           style={thStyle(wKey)}
                           className={`sortable${col.statGroup === 'start' ? ' stat-group stat-group-start' : col.statGroup === 'end' ? ' stat-group stat-group-end' : col.statGroup ? ' stat-group' : ''}${col.key === 'ward' ? ' col-ward' : ''} ${sortBy === col.key ? 'sort-active' : ''}`}
                           title={col.abbr ? col.label : undefined}
-                          onClick={e => handleSort(col.key, e)}
+                          onClick={e => colLongPress.click(col.key, e)}
                           onContextMenu={e => { e.preventDefault(); handleSort(col.key, e, true); }}
+                          onTouchStart={() => colLongPress.start(col.key)}
+                          onTouchEnd={colLongPress.cancel}
+                          onTouchMove={colLongPress.cancel}
                         >
                           {col.abbr ? <span className="th-abbr">{col.abbr}</span> : col.label}
                           <SortIcon col={col.key} sortBy={sortBy} sortDir={sortDir} />
@@ -1614,7 +1670,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
         onClose={() => setRosterDocOpen(false)}
         presentMode={rosterPresentMode}
         setPresentMode={setRosterPresentMode}
-        listName={listsStore.lists[activeListId]?.name ?? 'Default List'}
+        listName={listsStore.lists[activeListId]?.name ?? 'List name…'}
         factionName={factionName}
         pointsLimit={pointsLimit}
         setPointsLimit={setPointsLimit}
