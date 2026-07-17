@@ -719,6 +719,12 @@ function WarscrollBodyMain({ unit, factions = [], onFilterApply }) {
               <span className="gw-meta-pip-lbl">SIZE</span>
             </div>
           )}
+          {unit.base_size && (
+            <div className="gw-meta-pip gw-meta-pip-base">
+              <span className="gw-meta-pip-val">{unit.base_size}</span>
+              <span className="gw-meta-pip-lbl">BASE</span>
+            </div>
+          )}
         </div>
       </div>
 

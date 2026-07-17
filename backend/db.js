@@ -217,6 +217,24 @@ function initDb() {
     CREATE INDEX IF NOT EXISTS idx_ptg_rosters_user ON ptg_rosters(user_id);
   `);
 
+  // Saved Army Builder lists — one per named list, server-side so they
+  // persist across devices/sessions instead of living in localStorage
+  // (which a browser update, storage clear, or new device would wipe).
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS army_builder_lists (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      faction_slug TEXT,
+      faction_name TEXT,
+      data TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_army_builder_lists_user ON army_builder_lists(user_id);
+  `);
+
   db.close();
   console.log('Database initialized.');
 }

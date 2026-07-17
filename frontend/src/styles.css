@@ -4607,6 +4607,9 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   .gw-header-warscroll-label { display: none; }
   .gw-header-name { font-size: 1.05rem; }
   .gw-header-right { flex: 0 0 auto; border-left: 1px solid rgba(200,168,64,0.22); border-top: none; flex-direction: column; align-items: center; justify-content: center; padding: 6px 10px; gap: 4px; }
+  /* Base size is a nice-to-have, not essential like Points/Size — drop it
+     on phone-width screens where header real estate is tight. */
+  .gw-meta-pip-base { display: none; }
 
   /* Image: centered */
   .gw-abilities-row { flex-direction: column; }

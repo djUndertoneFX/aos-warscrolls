@@ -94,7 +94,7 @@ async function scrapeFaction(faction) {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml',
       },
-      timeout: 15000,
+      timeout: 30000,
     });
     if (!res.ok) {
       console.warn(`  HTTP ${res.status} for ${faction.name}, skipping.`);
@@ -275,7 +275,17 @@ async function scrapeFaction(faction) {
     const rawText = $(el).text();
     const pointsNum = rawText.match(/Points[^\d]*(\d+)/);
     const sizeNum   = rawText.match(/Unit Size[^\d]*(\d+)/i);
-    const baseMatch = rawText.match(/Base size[^:]*:\s*([^\s,;]+)/i);
+    // Read straight from the .ShowBaseSize span rather than regexing the
+    // flattened page text — $(el).text() concatenates separate DOM nodes
+    // with no space, so "...: 60mm" butts straight up against the next
+    // label ("Can be reinforced: ..."), and a whitespace-terminated regex
+    // silently captured "60mmCan" as the value (also produced garbage like
+    // "NoPassiveBLISSBREW" when Base size was absent and the regex matched
+    // unrelated later text). Oval bases render as "90 × 52mm".
+    const baseSizeSpan = $(el).find('span.ShowBaseSize').first();
+    const baseSize = baseSizeSpan.length
+      ? baseSizeSpan.clone().find('.redfont, b').remove().end().text().trim()
+      : '';
 
     // Keywords from wsKeywordLine1 and wsKeywordLine2.
     // Multi-word faction names are stored as separate .kwb elements
@@ -323,7 +333,7 @@ async function scrapeFaction(faction) {
       ward,
       points: pointsNum ? pointsNum[1] : '',
       unit_size: sizeNum ? sizeNum[1] : '',
-      base_size: baseMatch ? baseMatch[1].trim() : '',
+      base_size: baseSize,
       keywords,
       abilities:    JSON.stringify(abilities),
       weapons:      JSON.stringify(weapons),

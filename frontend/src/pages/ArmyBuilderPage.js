@@ -765,10 +765,16 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
   // Each list snapshots faction/points/roster/formation/hero-assignments;
   // the live component state below always mirrors whichever list is active,
   // and every change to it is continuously written back into that list's
-  // slot (see the effect further down) — so switching lists never loses
-  // in-progress edits on the list you're leaving.
-  const LISTS_KEY = 'aos-army-builder-lists-v1';
+  // slot server-side (see the debounced-autosave effect further down) — so
+  // switching lists never loses in-progress edits on the list you're
+  // leaving, and lists survive across devices/sessions/deploys instead of
+  // living in localStorage (which a browser update or storage clear wipes).
+  // localStorage is only still touched for a one-time migration of any
+  // lists saved before this went server-side, and to remember which list
+  // was last active (a pure UI nicety — safe to lose).
+  const LISTS_KEY = 'aos-army-builder-lists-v1'; // pre-server-sync save, migrated once below
   const LEGACY_ARMY_KEY = 'aos-army-builder-v1'; // pre-multi-list save, migrated once below
+  const LAST_ACTIVE_KEY = 'aos-army-builder-last-active-list-id';
 
   function makeBlankArmyRosterDoc() {
     return { commander: '', notes: '', slots: makeEmptySlots() };
@@ -786,58 +792,33 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
   function makeBlankList(name) {
     return { name, faction: '', pointsLimit: 2000, roster: {}, rosterOrder: [], battleFormation: '', heroAssignments: {}, activeStage: 'units', armyRosterDoc: makeBlankArmyRosterDoc() };
   }
+  // The subset of a list's fields that live in the server row's `data` blob
+  // (name/faction_slug/faction_name are their own columns, set separately).
+  function listToDataBlob(list) {
+    const { name, ...rest } = list; // eslint-disable-line no-unused-vars
+    return rest;
+  }
 
-  const [listsStore, setListsStore] = useState(() => {
-    try {
-      const raw = JSON.parse(localStorage.getItem(LISTS_KEY));
-      if (raw && raw.lists && Object.keys(raw.lists).length > 0) return raw;
-    } catch {}
-    let legacy = {};
-    try { legacy = JSON.parse(localStorage.getItem(LEGACY_ARMY_KEY)) || {}; } catch {}
-    return {
-      activeListId: 'default',
-      lists: {
-        default: {
-          name: 'List name…',
-          faction: legacy.faction ?? '',
-          pointsLimit: legacy.pointsLimit ?? 2000,
-          roster: legacy.roster ?? {},
-          rosterOrder: legacy.rosterOrder ?? Object.keys(legacy.roster ?? {}),
-          battleFormation: legacy.battleFormation ?? '',
-          heroAssignments: legacy.heroAssignments ?? {},
-          activeStage: legacy.activeStage ?? 'units',
-          armyRosterDoc: sanitizeArmyRosterDoc(legacy.armyRosterDoc),
-        },
-      },
-    };
-  });
+  const [listsStore, setListsStore] = useState({ activeListId: null, lists: {} });
+  const [listsLoading, setListsLoading] = useState(true);
   const activeListId = listsStore.activeListId;
-  const activeListData = listsStore.lists[activeListId] ?? makeBlankList('List name…');
+  // Kept in sync with activeListId on every list switch/create/duplicate/
+  // delete so the debounced autosave callback (which fires after a delay,
+  // by which point a stale closure over activeListId could be wrong) always
+  // saves to whichever list is actually active at save time.
+  const activeListIdRef = useRef(null);
+  useEffect(() => { activeListIdRef.current = activeListId; }, [activeListId]);
 
-  const [faction, setFaction]         = useState(activeListData.faction);
-  const [pointsLimit, setPointsLimit] = useState(activeListData.pointsLimit);
-  const [roster, setRoster]           = useState(activeListData.roster); // { [unitId]: { train, reinforce } }
-  const [rosterOrder, setRosterOrder] = useState(activeListData.rosterOrder ?? Object.keys(activeListData.roster ?? {})); // unitIds in first-selected order
-  const [battleFormation, setBattleFormation] = useState(activeListData.battleFormation);
-  const [heroAssignments, setHeroAssignments] = useState(activeListData.heroAssignments); // { [heroId]: { heroic_traits, artefacts, spell_lore, prayer_lore, manifestation_lore } }
-  const [activeStage, setActiveStage] = useState(activeListData.activeStage);
-  const [armyRosterDoc, setArmyRosterDoc] = useState(sanitizeArmyRosterDoc(activeListData.armyRosterDoc));
+  const [faction, setFaction]         = useState('');
+  const [pointsLimit, setPointsLimit] = useState(2000);
+  const [roster, setRoster]           = useState({}); // { [unitId]: { train, reinforce } }
+  const [rosterOrder, setRosterOrder] = useState([]); // unitIds in first-selected order
+  const [battleFormation, setBattleFormation] = useState('');
+  const [heroAssignments, setHeroAssignments] = useState({}); // { [heroId]: { heroic_traits, artefacts, spell_lore, prayer_lore, manifestation_lore } }
+  const [activeStage, setActiveStage] = useState('units');
+  const [armyRosterDoc, setArmyRosterDoc] = useState(makeBlankArmyRosterDoc());
 
-  useEffect(() => {
-    setListsStore(prev => {
-      const next = {
-        ...prev,
-        lists: {
-          ...prev.lists,
-          [prev.activeListId]: { ...prev.lists[prev.activeListId], faction, pointsLimit, roster, rosterOrder, battleFormation, heroAssignments, activeStage, armyRosterDoc },
-        },
-      };
-      localStorage.setItem(LISTS_KEY, JSON.stringify(next));
-      return next;
-    });
-  }, [faction, pointsLimit, roster, rosterOrder, battleFormation, heroAssignments, activeStage, armyRosterDoc]);
-
-  const loadListIntoState = (list) => {
+  const loadListIntoState = useCallback((list) => {
     setFaction(list.faction ?? '');
     setPointsLimit(list.pointsLimit ?? 2000);
     setRoster(list.roster ?? {});
@@ -846,54 +827,187 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
     setHeroAssignments(list.heroAssignments ?? {});
     setActiveStage(list.activeStage ?? 'units');
     setArmyRosterDoc(sanitizeArmyRosterDoc(list.armyRosterDoc));
+  }, []);
+
+  // One-time load: fetch this account's saved lists from the server. If none
+  // exist yet, migrate whatever's sitting in this browser's localStorage
+  // (multi-list save, or the older pre-multi-list single save) up to the
+  // server so nothing gets lost switching over to server-side storage; a
+  // brand new account with neither just gets one blank list.
+  // migrationStarted guards against StrictMode's dev-only double-invoke of
+  // this effect (mount→cleanup→mount, with component state — including
+  // refs — surviving the cycle): without it, the "0 rows -> create list(s)"
+  // migration branch runs twice and creates duplicate lists server-side.
+  // Deliberately NOT paired with a cleanup-driven `cancelled` flag — that
+  // combination is a trap: StrictMode's synthetic cleanup would flip
+  // `cancelled` true on the one invocation that's actually allowed to run
+  // (the ref already blocked the second one), so the real fetch always
+  // discarded its own result and the page silently never loaded any data.
+  const migrationStarted = useRef(false);
+  useEffect(() => {
+    if (migrationStarted.current) return;
+    migrationStarted.current = true;
+    (async () => {
+      try {
+        const { data: rows } = await axios.get('/api/army-builder-lists');
+        let finalRows = rows;
+        if (rows.length === 0) {
+          const localLists = [];
+          try {
+            const raw = JSON.parse(localStorage.getItem(LISTS_KEY));
+            if (raw && raw.lists) {
+              for (const l of Object.values(raw.lists)) localLists.push(l);
+            }
+          } catch {}
+          if (localLists.length === 0) {
+            let legacy = null;
+            try { legacy = JSON.parse(localStorage.getItem(LEGACY_ARMY_KEY)); } catch {}
+            if (legacy && (legacy.faction || Object.keys(legacy.roster ?? {}).length > 0)) {
+              localLists.push({
+                name: 'List name…', faction: legacy.faction ?? '', pointsLimit: legacy.pointsLimit ?? 2000,
+                roster: legacy.roster ?? {}, rosterOrder: legacy.rosterOrder ?? Object.keys(legacy.roster ?? {}),
+                battleFormation: legacy.battleFormation ?? '', heroAssignments: legacy.heroAssignments ?? {},
+                activeStage: legacy.activeStage ?? 'units', armyRosterDoc: sanitizeArmyRosterDoc(legacy.armyRosterDoc),
+              });
+            }
+          }
+          if (localLists.length === 0) localLists.push(makeBlankList('List name…'));
+
+          const created = [];
+          for (const l of localLists) {
+            const { data: res } = await axios.post('/api/army-builder-lists', {
+              name: l.name || 'List name…', faction_slug: l.faction || null, faction_name: null, data: listToDataBlob(l),
+            });
+            created.push({ id: res.id, name: l.name || 'List name…', faction_slug: l.faction || null, faction_name: null });
+          }
+          finalRows = created;
+        }
+
+        const listsMeta = {};
+        for (const r of finalRows) listsMeta[r.id] = { name: r.name, faction_slug: r.faction_slug, faction_name: r.faction_name };
+        let lastActive = null;
+        try { lastActive = localStorage.getItem(LAST_ACTIVE_KEY); } catch {}
+        // activeListId is always kept as a string — Object.keys() (used
+        // throughout for the id list / "is this the active one" checks)
+        // always returns strings, and comparing that against a raw numeric
+        // id from an API response would silently fail (1 !== "1").
+        const activeId = (lastActive && listsMeta[lastActive]) ? lastActive : String(finalRows[0].id);
+
+        const { data: full } = await axios.get(`/api/army-builder-lists/${activeId}`);
+        setListsStore({ activeListId: activeId, lists: listsMeta });
+        loadListIntoState(full.data);
+      } catch (err) {
+        console.error('Failed to load Army Builder lists:', err);
+        const blank = makeBlankList('List name…');
+        setListsStore({ activeListId: 'local-fallback', lists: { 'local-fallback': { name: blank.name, faction_slug: null, faction_name: null } } });
+        loadListIntoState(blank);
+      } finally {
+        setListsLoading(false);
+      }
+    })();
+  }, []); // eslint-disable-line
+
+  // Continuous autosave: debounce a PUT of the active list's current state
+  // up to the server (rather than firing one per keystroke). Reads
+  // activeListIdRef at fire time, not at effect-schedule time, so a rapid
+  // list switch just before the timer fires can't save to the wrong list.
+  const autosaveTimer = useRef(null);
+  useEffect(() => {
+    if (listsLoading || !activeListId) return;
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    const snapshot = { faction, pointsLimit, roster, rosterOrder, battleFormation, heroAssignments, activeStage, armyRosterDoc };
+    autosaveTimer.current = setTimeout(() => {
+      const id = activeListIdRef.current;
+      if (!id || id === 'local-fallback') return;
+      const factionName = factions.find(f => f.faction_slug === snapshot.faction)?.faction ?? null;
+      axios.put(`/api/army-builder-lists/${id}`, {
+        faction_slug: snapshot.faction || null, faction_name: factionName, data: listToDataBlob(snapshot),
+      }).catch(err => console.error('Army Builder autosave failed:', err));
+    }, 700);
+    return () => { if (autosaveTimer.current) clearTimeout(autosaveTimer.current); };
+  }, [faction, pointsLimit, roster, rosterOrder, battleFormation, heroAssignments, activeStage, armyRosterDoc, listsLoading, activeListId, factions]);
+
+  const selectList = async (id) => {
+    if (!listsStore.lists[id] || id === activeListId) return;
+    try {
+      const { data: full } = await axios.get(`/api/army-builder-lists/${id}`);
+      setListsStore(prev => ({ ...prev, activeListId: id }));
+      loadListIntoState(full.data);
+      try { localStorage.setItem(LAST_ACTIVE_KEY, String(id)); } catch {}
+    } catch (err) {
+      console.error('Failed to load list:', err);
+    }
   };
 
-  const selectList = (id) => {
-    const target = listsStore.lists[id];
-    if (!target || id === activeListId) return;
-    setListsStore({ ...listsStore, activeListId: id });
-    loadListIntoState(target);
+  const createList = async () => {
+    const name = `New List ${Object.keys(listsStore.lists).length + 1}`;
+    const blank = makeBlankList(name);
+    try {
+      const { data: res } = await axios.post('/api/army-builder-lists', { name, faction_slug: null, faction_name: null, data: listToDataBlob(blank) });
+      const newId = String(res.id);
+      setListsStore(prev => ({ activeListId: newId, lists: { ...prev.lists, [newId]: { name, faction_slug: null, faction_name: null } } }));
+      loadListIntoState(blank);
+      try { localStorage.setItem(LAST_ACTIVE_KEY, newId); } catch {}
+    } catch (err) {
+      console.error('Failed to create list:', err);
+    }
   };
 
-  const createList = () => {
-    const id = `list-${Date.now()}`;
-    const blank = makeBlankList(`New List ${Object.keys(listsStore.lists).length + 1}`);
-    setListsStore({ activeListId: id, lists: { ...listsStore.lists, [id]: blank } });
-    loadListIntoState(blank);
-  };
-
-  const duplicateList = (id) => {
-    const src = listsStore.lists[id];
-    if (!src) return;
-    const newId = `list-${Date.now()}`;
-    const srcDoc = sanitizeArmyRosterDoc(src.armyRosterDoc);
-    const clone = {
-      ...src, name: `${src.name} (Copy)`, roster: { ...src.roster }, rosterOrder: [...(src.rosterOrder ?? [])], heroAssignments: { ...src.heroAssignments },
-      armyRosterDoc: {
-        ...srcDoc,
-        slots: {
-          regiments: srcDoc.slots.regiments.map(r => ({ general: r.general, units: [...r.units] })),
-          aux: [...srcDoc.slots.aux],
-        },
-      },
-    };
-    setListsStore({ activeListId: newId, lists: { ...listsStore.lists, [newId]: clone } });
-    loadListIntoState(clone);
+  const duplicateList = async (id) => {
+    const meta = listsStore.lists[id];
+    if (!meta) return;
+    try {
+      // If duplicating the currently-active list, flush the live state first —
+      // the debounced autosave may not have reached the server yet, and the
+      // duplicate endpoint clones whatever's currently stored server-side.
+      if (id === activeListId) {
+        if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+        const factionName = factions.find(f => f.faction_slug === faction)?.faction ?? null;
+        await axios.put(`/api/army-builder-lists/${id}`, {
+          faction_slug: faction || null, faction_name: factionName,
+          data: listToDataBlob({ faction, pointsLimit, roster, rosterOrder, battleFormation, heroAssignments, activeStage, armyRosterDoc }),
+        });
+      }
+      const { data: dup } = await axios.post(`/api/army-builder-lists/${id}/duplicate`);
+      const dupId = String(dup.id);
+      const { data: full } = await axios.get(`/api/army-builder-lists/${dupId}`);
+      setListsStore(prev => ({
+        activeListId: dupId,
+        lists: { ...prev.lists, [dupId]: { name: full.name, faction_slug: full.faction_slug, faction_name: full.faction_name } },
+      }));
+      loadListIntoState(full.data);
+      try { localStorage.setItem(LAST_ACTIVE_KEY, dupId); } catch {}
+    } catch (err) {
+      console.error('Failed to duplicate list:', err);
+    }
   };
 
   const renameList = (id, name) => {
-    setListsStore({ ...listsStore, lists: { ...listsStore.lists, [id]: { ...listsStore.lists[id], name } } });
+    setListsStore(prev => ({ ...prev, lists: { ...prev.lists, [id]: { ...prev.lists[id], name } } }));
+    axios.put(`/api/army-builder-lists/${id}`, { name }).catch(err => console.error('Failed to rename list:', err));
   };
 
-  const deleteList = (id) => {
+  const deleteList = async (id) => {
     const ids = Object.keys(listsStore.lists);
     if (ids.length <= 1) return;
+    try {
+      await axios.delete(`/api/army-builder-lists/${id}`);
+    } catch (err) {
+      console.error('Failed to delete list:', err);
+      return;
+    }
     const nextLists = { ...listsStore.lists };
     delete nextLists[id];
-    let nextActiveId = listsStore.activeListId;
+    let nextActiveId = activeListId;
     if (nextActiveId === id) {
       nextActiveId = Object.keys(nextLists)[0];
-      loadListIntoState(nextLists[nextActiveId]);
+      try {
+        const { data: full } = await axios.get(`/api/army-builder-lists/${nextActiveId}`);
+        loadListIntoState(full.data);
+        localStorage.setItem(LAST_ACTIVE_KEY, String(nextActiveId));
+      } catch (err) {
+        console.error('Failed to load list after delete:', err);
+      }
     }
     setListsStore({ activeListId: nextActiveId, lists: nextLists });
   };

@@ -880,6 +880,109 @@ app.delete('/api/ptg-rosters/:id', requireAuth, (req, res) => {
   }
 });
 
+// ── Army Builder saved lists ────────────────────────────────────────────────
+// Same shape as ptg_rosters (opaque `data` blob = the page's full working
+// state), but the PUT below supports partial updates — Army Builder autosaves
+// continuously as the user edits (no explicit "Save" step) and also needs a
+// cheap rename-only call, so requiring the full blob on every write like
+// ptg_rosters does would be wasteful and would force fetching a non-active
+// list's data just to rename it.
+
+// GET /api/army-builder-lists — lightweight list (no `data` blob) for the
+// List selector dropdown. Ordered by id (creation order) — unlike
+// ptg-rosters' "most recently used" ordering, this list is a persistent set
+// of named slots the user expects to stay in a stable, predictable order.
+app.get('/api/army-builder-lists', requireAuth, (req, res) => {
+  const db = getDb();
+  try {
+    const rows = db.prepare(
+      'SELECT id, name, faction_slug, faction_name, updated_at FROM army_builder_lists WHERE user_id = ? ORDER BY id ASC'
+    ).all(req.user.id);
+    res.json(rows);
+  } finally {
+    db.close();
+  }
+});
+
+// GET /api/army-builder-lists/:id — full record including the state blob
+app.get('/api/army-builder-lists/:id', requireAuth, (req, res) => {
+  const db = getDb();
+  try {
+    const row = db.prepare('SELECT * FROM army_builder_lists WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+    if (!row) return res.status(404).json({ error: 'List not found' });
+    res.json({ ...row, data: JSON.parse(row.data) });
+  } finally {
+    db.close();
+  }
+});
+
+// POST /api/army-builder-lists — create a new list
+app.post('/api/army-builder-lists', requireAuth, (req, res) => {
+  const { name, faction_slug, faction_name, data } = req.body;
+  if (!name || !data) return res.status(400).json({ error: 'name and data are required' });
+  const db = getDb();
+  try {
+    const info = db.prepare(
+      'INSERT INTO army_builder_lists (user_id, name, faction_slug, faction_name, data) VALUES (?, ?, ?, ?, ?)'
+    ).run(req.user.id, name, faction_slug || null, faction_name || null, JSON.stringify(data));
+    res.json({ id: info.lastInsertRowid });
+  } finally {
+    db.close();
+  }
+});
+
+// PUT /api/army-builder-lists/:id — partial update: only the fields present
+// in the body are changed (rename sends just { name }, autosave sends
+// { faction_slug, faction_name, data }, etc).
+app.put('/api/army-builder-lists/:id', requireAuth, (req, res) => {
+  const { name, faction_slug, faction_name, data } = req.body;
+  const db = getDb();
+  try {
+    const existing = db.prepare('SELECT id FROM army_builder_lists WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+    if (!existing) return res.status(404).json({ error: 'List not found' });
+    const sets = [];
+    const params = [];
+    if (name !== undefined)         { sets.push('name = ?');         params.push(name); }
+    if (faction_slug !== undefined) { sets.push('faction_slug = ?'); params.push(faction_slug || null); }
+    if (faction_name !== undefined) { sets.push('faction_name = ?'); params.push(faction_name || null); }
+    if (data !== undefined)         { sets.push('data = ?');         params.push(JSON.stringify(data)); }
+    if (sets.length === 0) return res.status(400).json({ error: 'No fields to update' });
+    sets.push('updated_at = CURRENT_TIMESTAMP');
+    params.push(req.params.id);
+    db.prepare(`UPDATE army_builder_lists SET ${sets.join(', ')} WHERE id = ?`).run(...params);
+    res.json({ ok: true });
+  } finally {
+    db.close();
+  }
+});
+
+// POST /api/army-builder-lists/:id/duplicate
+app.post('/api/army-builder-lists/:id/duplicate', requireAuth, (req, res) => {
+  const db = getDb();
+  try {
+    const row = db.prepare('SELECT * FROM army_builder_lists WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+    if (!row) return res.status(404).json({ error: 'List not found' });
+    const info = db.prepare(
+      'INSERT INTO army_builder_lists (user_id, name, faction_slug, faction_name, data) VALUES (?, ?, ?, ?, ?)'
+    ).run(req.user.id, `${row.name} (Copy)`, row.faction_slug, row.faction_name, row.data);
+    res.json({ id: info.lastInsertRowid });
+  } finally {
+    db.close();
+  }
+});
+
+// DELETE /api/army-builder-lists/:id
+app.delete('/api/army-builder-lists/:id', requireAuth, (req, res) => {
+  const db = getDb();
+  try {
+    const info = db.prepare('DELETE FROM army_builder_lists WHERE id = ? AND user_id = ?').run(req.params.id, req.user.id);
+    if (info.changes === 0) return res.status(404).json({ error: 'List not found' });
+    res.json({ ok: true });
+  } finally {
+    db.close();
+  }
+});
+
 // PUT /api/spearhead-image/:name — upload cover art for a spearhead (protected)
 app.put('/api/spearhead-image/:name', (req, res) => {
   if (req.headers['x-upload-secret'] !== process.env.UPLOAD_SECRET) return res.status(403).json({ error: 'Forbidden' });
