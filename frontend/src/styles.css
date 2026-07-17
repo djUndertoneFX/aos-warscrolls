@@ -653,13 +653,23 @@ input, select {
 @media (max-width: 1366px) {
   .ab-page .ab-list-manager { width: auto; max-width: 100%; min-width: 0; flex-shrink: 1; }
   .ab-page .ab-stage-tabs { flex-wrap: wrap; row-gap: 0.3rem; }
-  /* Force exactly 2 rows (not just "wrap if it doesn't fit") — 2 of the
-     4 Hide: checkboxes per row regardless of how much width is available. */
-  .ab-page .filters .cb-group-right { flex-wrap: wrap; gap: 0.35rem 1.25rem; }
-  /* flex-basis 40% (not an exact 50%-gap split) leaves enough slack that
-     subpixel rounding can't tip a 2-up row into wrapping to 3 rows — grow:1
-     lets the 2 items stretch to fill the row evenly. */
-  .ab-page .filters .cb-group-right .cb-item { flex: 1 1 40%; }
+  /* Force exactly 2 rows of 2. A flex-wrap approach right-aligns each row
+     independently, so column widths never match row-to-row (Scourge and
+     Regiments of Renown ended up at different x since their rows packed
+     to different total widths) — a real 2-column grid guarantees Scourge
+     lines up directly above Regiments of Renown, and Other Factions above
+     Legends, regardless of each label's own text length. The header
+     ("Hide:") spans both columns as its own row so it doesn't get pulled
+     into the first grid cell. */
+  .ab-page .filters .cb-group-right {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 1.25rem;
+    row-gap: 0.35rem;
+    justify-items: start;
+  }
+  .ab-page .filters .cb-group-right .cb-group-header { grid-column: 1 / -1; }
+  .ab-page .filters .cb-group-right .cb-item { flex: unset; }
 }
 
 /* Army Roster preview thumbnail (banner section 4) — opens ArmyRosterModal,
