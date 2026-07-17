@@ -124,7 +124,18 @@ input, select {
   gap: 0.25rem;
   flex: 1;
   justify-content: center;
+  /* min-width:0 lets this flex:1 item actually shrink below its unwrapped
+     content width — without it, the default min-width:auto forces the full
+     row of (nowrap) page links to stay at full intrinsic width, pushing
+     navbar-right off the right edge of the screen instead of scrolling.
+     overflow-x turns that same "doesn't fit" case into an internal scroll
+     of just the page links, leaving settings/user/sign-out untouched. */
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
+.navbar-nav::-webkit-scrollbar { height: 4px; }
+.navbar-nav::-webkit-scrollbar-thumb { background: var(--border-gold); border-radius: 2px; }
 
 .nav-link {
   font-family: 'Cinzel', serif;
@@ -148,6 +159,9 @@ input, select {
   gap: 1.5rem;
   font-size: 0.9rem;
   color: var(--text-dim);
+  /* Never shrink or get squeezed off-screen by navbar-nav — settings/
+     user/sign-out must stay fixed at the top-right at every width. */
+  flex-shrink: 0;
 }
 
 .hamburger {
@@ -202,6 +216,28 @@ input, select {
   transition: color 0.2s;
 }
 .mobile-signout:hover { color: #e06060; }
+
+/* Mobile menu's own settings entry — same row styling as the page links/
+   sign-out above it, but doubles as the anchor for SettingsPanel's
+   position:absolute (inherited from .settings-gear-wrap's position:relative). */
+.mobile-settings-wrap { position: relative; }
+.mobile-settings-toggle {
+  display: block;
+  width: 100%;
+  font-family: 'Cinzel', serif;
+  font-size: 0.85rem;
+  letter-spacing: 0.07em;
+  color: var(--text-dim);
+  background: transparent;
+  border: none;
+  text-align: left;
+  padding: 0.85rem 1.5rem;
+  cursor: pointer;
+  transition: color 0.2s;
+  border-bottom: 1px solid var(--border);
+}
+.mobile-settings-toggle:hover { color: var(--gold-light); background: rgba(201,168,76,0.08); }
+.mobile-settings-wrap .settings-panel { left: 1rem; right: 1rem; }
 
 .coming-soon {
   flex: 1;
@@ -4109,8 +4145,8 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 }
 /* Alternate two accent colors across columns so adjacent groups read as
    visually distinct, mirroring the printed page's own color-coded columns. */
-.gw-trait-group[data-col="a"] .gw-trait-group-header { color: #c8a840; border-color: #c8a840; }
-.gw-trait-group[data-col="b"] .gw-trait-group-header { color: #6ab0e8; border-color: #6ab0e8; }
+.gw-trait-group[data-col="a"] .gw-trait-group-header { color: #6ab0e8; border-color: #6ab0e8; }
+.gw-trait-group[data-col="b"] .gw-trait-group-header { color: #c8a840; border-color: #c8a840; }
 .gw-trait-group .gw-abilities-grid { grid-template-columns: 1fr; }
 
 /* ── Top band: 3-column (wheel | centered name | right meta) ── */
@@ -4638,6 +4674,10 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   .gw-nav-dot         { width: 18px; height: 18px; }
   .gw-nav-dot-faction { width: 18px; height: 18px; border-radius: 4px; }
   .gw-nav-dots-inner  { gap: 8px; }
+  /* First thing to go when the navbar is tight (iPad and narrower) — the
+     username isn't essential, and dropping it buys back space for the page
+     links before they'd otherwise need to scroll. */
+  .navbar-username { display: none; }
 }
 
 @media (max-width: 900px) {
@@ -4660,6 +4700,10 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   .navbar-right { gap: 0.75rem; }
   .navbar-username { display: none; }
   .btn-logout { display: none; }
+  /* Settings/user/sign-out all collapse into the hamburger menu on an
+     ultra-compressed screen (iPhone) — .mobile-settings-wrap and
+     .mobile-signout inside .mobile-menu below are the equivalents. */
+  .navbar-right .settings-gear-wrap { display: none; }
   .hamburger { display: flex; }
   .mobile-menu { display: flex; }
   .cb-group-center { justify-content: flex-start; flex: unset; flex-direction: column; align-items: flex-start; }

@@ -171,6 +171,16 @@ function Navbar({ headerCollapsed, onToggleCollapse }) {
               {p.label}
             </NavLink>
           ))}
+          {/* Settings toggle stays open while the rest of the mobile menu is
+              open (unlike the page links, which close it) — closing the menu
+              here would unmount SettingsPanel along with it, since it's
+              nested inside for anchoring. */}
+          <div className="settings-gear-wrap mobile-settings-wrap">
+            <button type="button" className="mobile-settings-toggle" onClick={() => setSettingsOpen(o => !o)}>
+              ⚙ Display Settings
+            </button>
+            {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
+          </div>
           <button className="mobile-signout" onClick={() => { setMenuOpen(false); logout(); }}>Sign Out</button>
         </div>
       )}

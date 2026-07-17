@@ -417,16 +417,28 @@ function FactionTraitsSlide({ faction, grandAlliance, title, traits, slideKey })
         <div className="gw-faction-slide-title">{(title ?? 'Battle Traits').toUpperCase()}</div>
       </div>
       <div className="gw-faction-slide-body">
+        {/* Grouped traits (e.g. Idoneth's Tides columns) are the faction's
+            signature named mechanic and read as "core" — shown first.
+            Ungrouped traits are comparatively "additional" and follow a
+            divider (confirmed with Idoneth: Twin Tides isn't part of either
+            Tides column). Wahapedia doesn't mark this distinction with an
+            expansion icon the way it does for Battle Formations, so it's
+            inferred structurally — factions with no grouped traits at all
+            (the vast majority) just render the flat list as before, no
+            divider, since there's nothing to call "core" vs "additional". */}
+        {groups.length > 0 && (
+          <div className="gw-trait-groups" style={{ gridTemplateColumns: `repeat(${groups.length}, 1fr)` }}>
+            {groups.map((group, gi) => <TraitGroupColumn key={gi} group={group} gi={gi} />)}
+          </div>
+        )}
+        {groups.length > 0 && ungrouped.length > 0 && (
+          <div className="gw-formation-divider" />
+        )}
         {ungrouped.length > 0 && (
           <div className="gw-abilities-grid gw-sp-grid-2col">
             {ungrouped.map((ab, i) => (
               <AbilityCard key={i} ab={{ ...ab, bullets: parseBullets(ab.bullets) }} keywords={[]} />
             ))}
-          </div>
-        )}
-        {groups.length > 0 && (
-          <div className="gw-trait-groups" style={{ gridTemplateColumns: `repeat(${groups.length}, 1fr)` }}>
-            {groups.map((group, gi) => <TraitGroupColumn key={gi} group={group} gi={gi} />)}
           </div>
         )}
       </div>
