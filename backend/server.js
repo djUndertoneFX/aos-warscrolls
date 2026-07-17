@@ -277,7 +277,30 @@ app.post('/api/auth/login', async (req, res) => {
 
 // GET /api/auth/me
 app.get('/api/auth/me', requireAuth, (req, res) => {
-  res.json({ username: req.user.username });
+  const db = getDb();
+  try {
+    const row = db.prepare('SELECT commander_name FROM users WHERE id = ?').get(req.user.id);
+    res.json({ username: req.user.username, commander_name: row?.commander_name ?? null });
+  } finally {
+    db.close();
+  }
+});
+
+// PUT /api/auth/commander-name — the account-level default Commander name
+// used on new/blank Army Rosters, set the first time the user overrides the
+// username-default in the Commander field on any roster.
+app.put('/api/auth/commander-name', requireAuth, (req, res) => {
+  const { commander_name } = req.body;
+  if (typeof commander_name !== 'string' || !commander_name.trim()) {
+    return res.status(400).json({ error: 'commander_name is required' });
+  }
+  const db = getDb();
+  try {
+    db.prepare('UPDATE users SET commander_name = ? WHERE id = ?').run(commander_name.trim(), req.user.id);
+    res.json({ ok: true });
+  } finally {
+    db.close();
+  }
 });
 
 // POST /api/auth/forgot-password
@@ -747,7 +770,7 @@ app.get('/api/faction-rules/:slug', requireAuth, (req, res) => {
       'SELECT id, formation_name, name, timing, declare, effect, bullets, keywords, lore_text, source_note, phase_key FROM faction_battle_formations WHERE faction_slug = ? ORDER BY id'
     ).all(slug);
     const extra = db.prepare(
-      'SELECT id, section, group_name, name, timing, declare, effect, bullets, keywords, lore_text FROM faction_extra_rules WHERE faction_slug = ? ORDER BY id'
+      'SELECT id, section, group_name, name, timing, declare, effect, bullets, keywords, lore_text, casting_value FROM faction_extra_rules WHERE faction_slug = ? ORDER BY id'
     ).all(slug);
 
     // Partition extra rules by section

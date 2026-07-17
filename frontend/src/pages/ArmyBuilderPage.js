@@ -401,52 +401,130 @@ function BattleFormationStage({ factionName, rules, battleFormation, setBattleFo
 
 // ── Heroic Traits / Artefacts / Spell / Prayer / Manifestation Lore stages:
 // each pick is assigned to one of your selected Hero units ──────────────────
-function HeroAssignmentStage({ label, sectionKey, selectedHeroes, rulesCache, heroAssignments, setHeroAssignments }) {
+// Per-faction "core" heroic-trait/artefact names, given in the book's actual
+// visual layout order (top-left, top-right, bottom-left[, bottom-right]).
+// Unlike Battle Formations, Wahapedia doesn't mark these with an expansion
+// icon, so there's no data-driven way to detect the split — confirmed
+// manually per faction from the physical battletome. A faction missing from
+// these maps just renders as a single flat list (no core/additional split),
+// same as before this existed.
+const CORE_HEROIC_TRAITS = {
+  'idoneth-deepkin': ['FORM OF THE FANGMORA', 'NIGHTMARE LEGACY', 'HUNTER OF SOULS'],
+};
+const CORE_ARTEFACTS = {
+  // none confirmed yet
+};
+
+// core preserves the exact order given in coreNamesInOrder (already the
+// book's visual placement order); additional preserves the API's own order.
+function splitCoreAdditional(options, coreNamesInOrder) {
+  if (!coreNamesInOrder || coreNamesInOrder.length === 0) return { core: [], additional: options };
+  const byName = new Map(options.map(o => [o.name, o]));
+  const core = coreNamesInOrder.map(n => byName.get(n)).filter(Boolean);
+  const coreSet = new Set(core.map(o => o.name));
+  const additional = options.filter(o => !coreSet.has(o.name));
+  return { core, additional };
+}
+
+function HeroAssignmentStage({ label, sectionKey, selectedHeroes, rulesCache, heroAssignments, setHeroAssignments, primaryFaction, primaryRules }) {
+  const coreConfig = sectionKey === 'heroic_traits' ? CORE_HEROIC_TRAITS : sectionKey === 'artefacts' ? CORE_ARTEFACTS : null;
+
+  // Overview card grid for the army's primary faction — core traits/
+  // artefacts in the book's 2x2 layout, a divider, then any additional ones
+  // below. Shown once at the top regardless of how many heroes are selected;
+  // the per-hero rows further down keep their own dropdowns scoped to each
+  // hero's own faction (relevant for allied heroes from another faction).
+  const primaryOptions = primaryRules ? (primaryRules[sectionKey] ?? []) : [];
+  const { core: primaryCore, additional: primaryAdditional } = splitCoreAdditional(primaryOptions, coreConfig?.[primaryFaction]);
+
+  const overview = primaryOptions.length > 0 && (
+    <>
+      {primaryCore.length > 0 && (
+        <div className="gw-abilities-grid gw-sp-grid-2col">
+          {primaryCore.map((ab, i) => <AbilityCard key={i} ab={{ ...ab, bullets: parseBullets(ab.bullets) }} keywords={[]} />)}
+        </div>
+      )}
+      {primaryCore.length > 0 && primaryAdditional.length > 0 && <div className="gw-formation-divider" />}
+      {primaryAdditional.length > 0 && (
+        <div className="gw-abilities-grid gw-sp-grid-2col">
+          {primaryAdditional.map((ab, i) => <AbilityCard key={i} ab={{ ...ab, bullets: parseBullets(ab.bullets) }} keywords={[]} />)}
+        </div>
+      )}
+    </>
+  );
+
   if (selectedHeroes.length === 0) {
-    return <div className="ab-stage-empty">No Hero units selected yet — add some on the Select Units stage.</div>;
+    return (
+      <div className="ab-hero-assign-wrap">
+        {overview}
+        <div className="ab-stage-empty">No Hero units selected yet — add some on the Select Units stage.</div>
+      </div>
+    );
   }
   const rows = selectedHeroes.map(hero => {
     const rules = rulesCache[hero.faction_slug];
     const options = rules ? (rules[sectionKey] ?? []) : null;
-    return { hero, rules, options };
+    const { core, additional } = options ? splitCoreAdditional(options, coreConfig?.[hero.faction_slug]) : { core: [], additional: [] };
+    return { hero, rules, options, core, additional };
   });
   const anyEligible = rows.some(r => r.options === null || r.options.length > 0);
   return (
-    <div className="ab-hero-assign-list">
-      {rows.map(({ hero, rules, options }) => {
-        if (rules && options.length === 0) return null; // this hero's faction has no such option category
-        const current = heroAssignments[hero.id]?.[sectionKey] ?? '';
-        const currentAb = options?.find(o => o.name === current);
-        return (
-          <div key={hero.id} className="ab-hero-assign-row">
-            <div className="ab-hero-assign-head">
-              <span className="ab-hero-assign-name">{hero.name}</span>
-              <span className="ab-hero-assign-faction">{hero.faction}</span>
-              {!rules ? (
-                <span className="ab-hero-assign-loading">Loading…</span>
-              ) : (
-                <select
-                  className="ab-hero-assign-select"
-                  value={current}
-                  onChange={e => {
-                    const val = e.target.value;
-                    setHeroAssignments(prev => ({ ...prev, [hero.id]: { ...prev[hero.id], [sectionKey]: val } }));
-                  }}
-                >
-                  <option value="">— None —</option>
-                  {options.map(o => <option key={o.id} value={o.name}>{o.name}</option>)}
-                </select>
+    <div className="ab-hero-assign-wrap">
+      {overview}
+      <div className="ab-hero-assign-list">
+        {rows.map(({ hero, rules, options, core, additional }) => {
+          if (rules && options.length === 0) return null; // this hero's faction has no such option category
+          const current = heroAssignments[hero.id]?.[sectionKey] ?? '';
+          const currentAb = options?.find(o => o.name === current);
+          return (
+            <div key={hero.id} className="ab-hero-assign-row">
+              <div className="ab-hero-assign-head">
+                <span className="ab-hero-assign-name">{hero.name}</span>
+                <span className="ab-hero-assign-faction">{hero.faction}</span>
+                {!rules ? (
+                  <span className="ab-hero-assign-loading">Loading…</span>
+                ) : (
+                  <select
+                    className="ab-hero-assign-select"
+                    value={current}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setHeroAssignments(prev => ({ ...prev, [hero.id]: { ...prev[hero.id], [sectionKey]: val } }));
+                    }}
+                  >
+                    <option value="">— None —</option>
+                    {core.map(o => <option key={o.id} value={o.name}>{o.name}</option>)}
+                    {core.length > 0 && additional.length > 0 && <option disabled>──────────</option>}
+                    {additional.map(o => <option key={o.id} value={o.name}>{o.name}</option>)}
+                  </select>
+                )}
+              </div>
+              {currentAb && (
+                <AbilityCard ab={{ ...currentAb, bullets: parseBullets(currentAb.bullets) }} keywords={[]} />
               )}
             </div>
-            {currentAb && (
-              <AbilityCard ab={{ ...currentAb, bullets: parseBullets(currentAb.bullets) }} keywords={[]} />
-            )}
-          </div>
-        );
-      })}
-      {!anyEligible && (
-        <div className="ab-stage-empty">None of your selected Heroes' factions have {label} options.</div>
-      )}
+          );
+        })}
+        {!anyEligible && (
+          <div className="ab-stage-empty">None of your selected Heroes' factions have {label} options.</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Spell / Prayer / Manifestation Lore stage: these aren't assigned to a
+// specific unit (any eligible WIZARD/PRIEST can cast whichever spell/prayer
+// you choose in-game, manifestations are summoned by the army generally) —
+// just browse the full list for the army's faction ────────────────────────
+function LoreCardsStage({ label, sectionKey, primaryFaction, primaryRules }) {
+  if (!primaryFaction) return <div className="ab-stage-empty">Pick a Faction on the Select Units stage first.</div>;
+  if (!primaryRules) return <div className="ab-stage-empty">Loading…</div>;
+  const options = primaryRules[sectionKey] ?? [];
+  if (options.length === 0) return <div className="ab-stage-empty">No {label} found for this faction.</div>;
+  return (
+    <div className="gw-abilities-grid gw-sp-grid-2col">
+      {options.map((ab, i) => <AbilityCard key={i} ab={{ ...ab, bullets: parseBullets(ab.bullets) }} keywords={[]} />)}
     </div>
   );
 }
@@ -602,6 +680,7 @@ function ArmyRosterModal({
   listName, factionName, pointsLimit, setPointsLimit, battleFormation, totalPoints,
   doc, setDoc, unitsById, moveToSlot,
   regimentsTotal, auxTotal, armyUnitsTotal,
+  onCommanderNameChange,
 }) {
   const modalRef = useRef(null);
   const [printPreview, setPrintPreview] = useState(false);
@@ -626,7 +705,15 @@ function ArmyRosterModal({
   const replicaBody = (
     <>
       <div className="ptg-army-header-grid">
-        <div className="ptg-field ptg-army-commander"><label>Commander</label><input type="text" value={doc.commander} onChange={e => setDoc(d => ({ ...d, commander: e.target.value }))} /></div>
+        <div className="ptg-field ptg-army-commander">
+          <label>Commander</label>
+          <input
+            type="text"
+            value={doc.commander}
+            onChange={e => setDoc(d => ({ ...d, commander: e.target.value }))}
+            onBlur={e => onCommanderNameChange && onCommanderNameChange(e.target.value)}
+          />
+        </div>
         <div className="ptg-field ptg-army-name"><label>Army Name</label><input type="text" value={listName} readOnly title="Set by renaming the list in the banner" /></div>
         <div className="ptg-field ptg-army-points-limit">
           <label>Points Limit</label>
@@ -755,7 +842,7 @@ function ArmyRosterModal({
 
 export default function ArmyBuilderPage({ headerCollapsed }) {
   const { presumedSave, presumedWard, roundingMode, includeSaveWardInADO } = useSettings();
-  const { logout } = useAuth();
+  const { logout, user, commanderName, setCommanderName } = useAuth();
   const [data, setData]         = useState(null);
   const [factions, setFactions] = useState([]);
   const [loading, setLoading]   = useState(true);
@@ -777,7 +864,11 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
   const LAST_ACTIVE_KEY = 'aos-army-builder-last-active-list-id';
 
   function makeBlankArmyRosterDoc() {
-    return { commander: '', notes: '', slots: makeEmptySlots() };
+    // Defaults to the account's saved Commander-name preference, falling
+    // back to the username until the user overrides it on some roster (see
+    // the Commander input's onBlur in ArmyRosterModal, which saves whatever
+    // they type as that preference going forward).
+    return { commander: commanderName || user?.username || '', notes: '', slots: makeEmptySlots() };
   }
   // Guards against pre-slots-model saved docs (older localStorage state had
   // `regiments`/`auxUnits` arrays instead of `slots`) — falls back to blank
@@ -1849,14 +1940,25 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
 
       {STAGES.filter(s => s.section).map(s => activeStage === s.key && (
         <div className="ab-stage-body" key={s.key}>
-          <HeroAssignmentStage
-            label={s.label}
-            sectionKey={s.section}
-            selectedHeroes={selectedHeroes}
-            rulesCache={rulesCache.current}
-            heroAssignments={heroAssignments}
-            setHeroAssignments={setHeroAssignments}
-          />
+          {['spell_lore', 'prayer_lore', 'manifestation_lore'].includes(s.section) ? (
+            <LoreCardsStage
+              label={s.label}
+              sectionKey={s.section}
+              primaryFaction={faction}
+              primaryRules={faction ? rulesCache.current[faction] : null}
+            />
+          ) : (
+            <HeroAssignmentStage
+              label={s.label}
+              sectionKey={s.section}
+              selectedHeroes={selectedHeroes}
+              rulesCache={rulesCache.current}
+              heroAssignments={heroAssignments}
+              setHeroAssignments={setHeroAssignments}
+              primaryFaction={faction}
+              primaryRules={faction ? rulesCache.current[faction] : null}
+            />
+          )}
         </div>
       ))}
     </div>
@@ -1889,6 +1991,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
         setPointsLimit={setPointsLimit}
         battleFormation={battleFormation}
         totalPoints={totalPoints}
+        onCommanderNameChange={setCommanderName}
         doc={armyRosterDoc}
         setDoc={setArmyRosterDoc}
         unitsById={unitsById}

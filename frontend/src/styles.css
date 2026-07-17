@@ -759,6 +759,12 @@ input, select {
    measured percentages in ROSTER_LAYOUT (see [[ptg_asset_extraction]]). */
 .ab-roster-overlay-field {
   position: absolute;
+  /* ROSTER_LAYOUT's `top` values were measured (PIL band-detection) as each
+     field's vertical center on the printed line, not its top edge — without
+     this, single-line text sitting flush at that y-coordinate reads as
+     shifted down by about half a line-height everywhere, a small but
+     consistent misalignment across every header field. */
+  transform: translateY(-50%);
   color: #2a2218;
   font-family: 'Palatino Linotype', Palatino, Georgia, serif;
   font-size: 1.5vh;
@@ -779,7 +785,16 @@ input, select {
 }
 .ab-roster-overlay-cell {
   position: absolute;
+  /* Fill the parent .ab-roster-overlay-row's full measured height and
+     vertically center within it, rather than sitting flush against the
+     row's top edge — same "measured as center, rendered as top" gap as
+     .ab-roster-overlay-field above, just via flex instead of a transform
+     since these need to stay centered against a row of known height rather
+     than a single point. */
   top: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
   color: #2a2218;
   font-family: 'Palatino Linotype', Palatino, Georgia, serif;
   font-size: 1.4vh;
@@ -1125,6 +1140,7 @@ th.ab-count-th { padding-left: 0.35rem; padding-right: 0.35rem; text-align: cent
   margin-bottom: 0.4rem;
 }
 
+.ab-hero-assign-wrap { display: flex; flex-direction: column; gap: 1.2rem; }
 .ab-hero-assign-list { display: flex; flex-direction: column; gap: 1rem; }
 .ab-hero-assign-row {
   border: 1px solid var(--border);
@@ -1142,13 +1158,22 @@ th.ab-count-th { padding-left: 0.35rem; padding-right: 0.35rem; text-align: cent
 .ab-hero-assign-faction { color: var(--text-dim); font-size: 0.8rem; }
 .ab-hero-assign-select {
   margin-left: auto;
-  background: var(--bg-input, rgba(0,0,0,0.25));
+  background: rgba(0,0,0,0.25);
   border: 1px solid var(--border);
   border-radius: 3px;
-  color: var(--text);
+  color: var(--parchment);
   font-size: 0.85rem;
   padding: 0.25rem 0.5rem;
   min-width: 220px;
+}
+/* Browsers render a <select>'s open dropdown list using the OS's native
+   popup — the select element's own background/color CSS doesn't carry over
+   to it. Only styling the <option> elements directly darkens the actual
+   open list (the washed-out white-background/bright-blue-highlight look
+   the closed select's dark styling doesn't prevent). */
+.ab-hero-assign-select option {
+  background: var(--bg-card);
+  color: var(--parchment);
 }
 .ab-hero-assign-loading { margin-left: auto; color: var(--text-dim); font-size: 0.8rem; font-style: italic; }
 
@@ -2325,7 +2350,10 @@ tr.sp-rules-row td { background: rgba(160,100,220,0.04); border-top: 1px solid r
 }
 
 /* ── Spearhead regiment/enhancements section headers & selectable cards ── */
-.gw-sp-filter-bar { display: flex; justify-content: flex-start; padding: 0.4rem 0.6rem 0; }
+/* padding-left:0 so the button's left edge lines up with the checkboxes
+   below it (those sit flush against the slide body's own padding, with no
+   extra left inset of their own) rather than being indented further in. */
+.gw-sp-filter-bar { display: flex; justify-content: flex-start; padding: 0.4rem 0 0; margin-bottom: 0.7rem; }
 .gw-sp-filter-btn { font-size: 0.72rem; padding: 3px 10px; border-radius: 4px; border: 1px solid rgba(160,100,220,0.55); background: rgba(160,100,220,0.1); color: #c8a8f0; cursor: pointer; }
 .gw-sp-filter-btn:hover:not(:disabled) { border-color: #a060e0; background: rgba(160,100,220,0.2); }
 .gw-sp-filter-btn:disabled { opacity: 0.35; cursor: default; }
@@ -4346,12 +4374,36 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 }
 
 .gw-ability-card {
+  position: relative;
   border: 1px solid;
   border-radius: 2px;
   overflow: hidden;
   background: rgba(0,0,0,0.25);
   display: flex;
   flex-direction: column;
+}
+/* Spell/prayer/manifestation-lore casting value — pinned to the card's top
+   right corner, matching the small circular badge on the printed cards
+   (distinct from .gw-ability-cost, which is an inline Destiny-Point spend/
+   refund badge used elsewhere and stays next to the ability name). */
+.gw-ability-casting-value {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--bg-deep);
+  border: 2px solid var(--gold);
+  color: var(--gold-light);
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: 0.8rem;
+  z-index: 2;
 }
 .gw-ability-hdr {
   padding: 4px 10px;

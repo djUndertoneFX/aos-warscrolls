@@ -294,6 +294,9 @@ export function AbilityCard({ ab, keywords }) {
 
   return (
     <div className="gw-ability-card" style={{ borderColor: ps.border }}>
+      {ab.casting_value && (
+        <div className="gw-ability-casting-value" title="Casting value">{ab.casting_value}</div>
+      )}
       {ab.timing && (
         <div className="gw-ability-hdr" style={{ background: ps.hdrBg }}>
           <div className="gw-ability-timing">{ab.timing.toUpperCase()}</div>

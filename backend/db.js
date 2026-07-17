@@ -191,6 +191,14 @@ function initDb() {
   try { db.exec('ALTER TABLE faction_battle_formations ADD COLUMN source_note TEXT DEFAULT NULL'); } catch {}
   try { db.exec('ALTER TABLE faction_battle_formations ADD COLUMN phase_key TEXT DEFAULT NULL'); } catch {}
   try { db.exec('ALTER TABLE faction_extra_rules ADD COLUMN lore_text TEXT DEFAULT NULL'); } catch {}
+  // Spell/prayer/manifestation-lore casting value (the 2D6 target number,
+  // e.g. "6") — null for every other section (traits, artefacts, etc).
+  try { db.exec('ALTER TABLE faction_extra_rules ADD COLUMN casting_value TEXT DEFAULT NULL'); } catch {}
+  // Account-level default Commander name for the Army Roster — starts null
+  // (falls back to the username) until the user types something different
+  // into the Commander field, at which point that becomes their new default
+  // for every future roster, not just the one they edited it on.
+  try { db.exec('ALTER TABLE users ADD COLUMN commander_name TEXT DEFAULT NULL'); } catch {}
   // Starting-warscroll data (Anvil of Apotheosis Step 2) — only the concrete
   // values the source actually provides (weapon profile + keywords). Move/
   // Health/Save/Control have no fixed starting value in the source: they're

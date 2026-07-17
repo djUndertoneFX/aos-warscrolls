@@ -113,6 +113,11 @@ function parseAbilityBlock($, block, skipNestGuard = false) {
 
   const keywords = $(block).find('.abKeywordsBodyText').text().trim();
 
+  // Spell/prayer/manifestation-lore abilities carry a casting value (the 2D6
+  // target number) in a small badge in the header's corner — not part of the
+  // declare/effect text at all, so it needs its own selector.
+  const castingValue = normalizeText($(block).find('.abSpellPointsN').first().text()) || null;
+
   return {
     name,
     timing,
@@ -121,6 +126,7 @@ function parseAbilityBlock($, block, skipNestGuard = false) {
     bullets: JSON.stringify(bullets.map(b => normalizeText(b))),
     keywords: normalizeText(keywords),
     lore_text: loreText || null,
+    casting_value: castingValue,
   };
 }
 
@@ -411,9 +417,9 @@ async function scrapeAllRules(targetSlug = null) {
 
   const insertExtra = db.prepare(`
     INSERT INTO faction_extra_rules
-      (faction_slug, faction_name, section, group_name, name, timing, declare, effect, bullets, keywords, lore_text)
+      (faction_slug, faction_name, section, group_name, name, timing, declare, effect, bullets, keywords, lore_text, casting_value)
     VALUES
-      (@faction_slug, @faction_name, @section, @group_name, @name, @timing, @declare, @effect, @bullets, @keywords, @lore_text)
+      (@faction_slug, @faction_name, @section, @group_name, @name, @timing, @declare, @effect, @bullets, @keywords, @lore_text, @casting_value)
   `);
 
   let totals = { traits: 0, formations: 0, extra: 0 };
