@@ -809,6 +809,14 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
   const activeListIdRef = useRef(null);
   useEffect(() => { activeListIdRef.current = activeListId; }, [activeListId]);
 
+  // Identifies this browser tab to the server (see the live-sync EventSource
+  // effect further down) so a device's own edit doesn't echo back to itself
+  // as a "someone else changed this" event. Lazy-init via a ref rather than
+  // useState — this value never needs to trigger a re-render.
+  const clientIdRef = useRef(null);
+  if (!clientIdRef.current) clientIdRef.current = crypto.randomUUID();
+  const clientIdHeader = useCallback(() => ({ headers: { 'X-Client-Id': clientIdRef.current } }), []);
+
   const [faction, setFaction]         = useState('');
   const [pointsLimit, setPointsLimit] = useState(2000);
   const [roster, setRoster]           = useState({}); // { [unitId]: { train, reinforce } }
@@ -818,7 +826,16 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
   const [activeStage, setActiveStage] = useState('units');
   const [armyRosterDoc, setArmyRosterDoc] = useState(makeBlankArmyRosterDoc());
 
+  // Set whenever loadListIntoState runs (initial load, list switch, or a
+  // remote live-sync update) and checked once by the autosave effect below —
+  // populating these fields is itself a state change the effect would
+  // otherwise see and immediately re-save right back to the server. Skipping
+  // that one redundant PUT (and its broadcast) doesn't affect correctness
+  // either way, just avoids the pointless round-trip on every load.
+  const justLoadedRef = useRef(false);
+
   const loadListIntoState = useCallback((list) => {
+    justLoadedRef.current = true;
     setFaction(list.faction ?? '');
     setPointsLimit(list.pointsLimit ?? 2000);
     setRoster(list.roster ?? {});
@@ -877,7 +894,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
           for (const l of localLists) {
             const { data: res } = await axios.post('/api/army-builder-lists', {
               name: l.name || 'List name…', faction_slug: l.faction || null, faction_name: null, data: listToDataBlob(l),
-            });
+            }, clientIdHeader());
             created.push({ id: res.id, name: l.name || 'List name…', faction_slug: l.faction || null, faction_name: null });
           }
           finalRows = created;
@@ -914,6 +931,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
   const autosaveTimer = useRef(null);
   useEffect(() => {
     if (listsLoading || !activeListId) return;
+    if (justLoadedRef.current) { justLoadedRef.current = false; return; }
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
     const snapshot = { faction, pointsLimit, roster, rosterOrder, battleFormation, heroAssignments, activeStage, armyRosterDoc };
     autosaveTimer.current = setTimeout(() => {
@@ -922,10 +940,62 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
       const factionName = factions.find(f => f.faction_slug === snapshot.faction)?.faction ?? null;
       axios.put(`/api/army-builder-lists/${id}`, {
         faction_slug: snapshot.faction || null, faction_name: factionName, data: listToDataBlob(snapshot),
-      }).catch(err => console.error('Army Builder autosave failed:', err));
+      }, clientIdHeader()).catch(err => console.error('Army Builder autosave failed:', err));
     }, 700);
     return () => { if (autosaveTimer.current) clearTimeout(autosaveTimer.current); };
   }, [faction, pointsLimit, roster, rosterOrder, battleFormation, heroAssignments, activeStage, armyRosterDoc, listsLoading, activeListId, factions]);
+
+  // Live sync across devices: an SSE push channel notifies this account's
+  // OTHER connected devices whenever a list changes here (create/rename/
+  // duplicate/delete/autosave — see clientIdHeader() above and the
+  // broadcastListChange calls in server.js), and vice versa. "Last write
+  // wins" — an incoming update for the list currently open on this device
+  // just reloads it into state; this is sequential multi-device sync (switch
+  // from iPad to desktop and see your latest edit), not simultaneous
+  // collaborative editing with conflict resolution.
+  useEffect(() => {
+    if (listsLoading) return;
+    let token = null;
+    try { token = localStorage.getItem('aos_token'); } catch {}
+    if (!token) return;
+
+    const base = axios.defaults.baseURL || '';
+    const url = `${base}/api/army-builder-lists/stream?token=${encodeURIComponent(token)}&clientId=${encodeURIComponent(clientIdRef.current)}`;
+    const es = new EventSource(url);
+
+    es.addEventListener('list-upsert', e => {
+      const row = JSON.parse(e.data);
+      const id = String(row.id);
+      setListsStore(prev => ({
+        ...prev,
+        lists: { ...prev.lists, [id]: { name: row.name, faction_slug: row.faction_slug, faction_name: row.faction_name } },
+      }));
+      if (id === activeListIdRef.current) loadListIntoState(row.data);
+    });
+
+    es.addEventListener('list-delete', e => {
+      const id = String(JSON.parse(e.data).id);
+      setListsStore(prev => {
+        if (!prev.lists[id]) return prev;
+        const nextLists = { ...prev.lists };
+        delete nextLists[id];
+        // Defensive only — deleteList already refuses to remove an
+        // account's last list, so this shouldn't normally be reachable.
+        if (Object.keys(nextLists).length === 0) return prev;
+        let nextActiveId = prev.activeListId;
+        if (nextActiveId === id) {
+          nextActiveId = Object.keys(nextLists)[0];
+          axios.get(`/api/army-builder-lists/${nextActiveId}`).then(({ data: full }) => {
+            loadListIntoState(full.data);
+            try { localStorage.setItem(LAST_ACTIVE_KEY, nextActiveId); } catch {}
+          }).catch(err => console.error('Failed to load list after remote delete:', err));
+        }
+        return { activeListId: nextActiveId, lists: nextLists };
+      });
+    });
+
+    return () => es.close();
+  }, [listsLoading, loadListIntoState]); // eslint-disable-line
 
   const selectList = async (id) => {
     if (!listsStore.lists[id] || id === activeListId) return;
@@ -943,7 +1013,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
     const name = `New List ${Object.keys(listsStore.lists).length + 1}`;
     const blank = makeBlankList(name);
     try {
-      const { data: res } = await axios.post('/api/army-builder-lists', { name, faction_slug: null, faction_name: null, data: listToDataBlob(blank) });
+      const { data: res } = await axios.post('/api/army-builder-lists', { name, faction_slug: null, faction_name: null, data: listToDataBlob(blank) }, clientIdHeader());
       const newId = String(res.id);
       setListsStore(prev => ({ activeListId: newId, lists: { ...prev.lists, [newId]: { name, faction_slug: null, faction_name: null } } }));
       loadListIntoState(blank);
@@ -966,9 +1036,9 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
         await axios.put(`/api/army-builder-lists/${id}`, {
           faction_slug: faction || null, faction_name: factionName,
           data: listToDataBlob({ faction, pointsLimit, roster, rosterOrder, battleFormation, heroAssignments, activeStage, armyRosterDoc }),
-        });
+        }, clientIdHeader());
       }
-      const { data: dup } = await axios.post(`/api/army-builder-lists/${id}/duplicate`);
+      const { data: dup } = await axios.post(`/api/army-builder-lists/${id}/duplicate`, null, clientIdHeader());
       const dupId = String(dup.id);
       const { data: full } = await axios.get(`/api/army-builder-lists/${dupId}`);
       setListsStore(prev => ({
@@ -984,14 +1054,14 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
 
   const renameList = (id, name) => {
     setListsStore(prev => ({ ...prev, lists: { ...prev.lists, [id]: { ...prev.lists[id], name } } }));
-    axios.put(`/api/army-builder-lists/${id}`, { name }).catch(err => console.error('Failed to rename list:', err));
+    axios.put(`/api/army-builder-lists/${id}`, { name }, clientIdHeader()).catch(err => console.error('Failed to rename list:', err));
   };
 
   const deleteList = async (id) => {
     const ids = Object.keys(listsStore.lists);
     if (ids.length <= 1) return;
     try {
-      await axios.delete(`/api/army-builder-lists/${id}`);
+      await axios.delete(`/api/army-builder-lists/${id}`, clientIdHeader());
     } catch (err) {
       console.error('Failed to delete list:', err);
       return;

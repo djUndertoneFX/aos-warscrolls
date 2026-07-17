@@ -888,6 +888,70 @@ app.delete('/api/ptg-rosters/:id', requireAuth, (req, res) => {
 // ptg_rosters does would be wasteful and would force fetching a non-active
 // list's data just to rename it.
 
+// ── Live sync (SSE) ─────────────────────────────────────────────────────────
+// One-directional server→client push so an edit made on one device shows up
+// on another within a second or two, without polling. Writes still go
+// through the REST endpoints below as normal; broadcastListChange just
+// notifies this account's OTHER connected devices after a write lands.
+// In-memory only — correct for this app's single Railway instance, but a
+// broadcast from one process won't reach clients connected to a different
+// instance if this is ever scaled horizontally (would need Redis pub/sub or
+// similar at that point).
+const sseClients = new Map(); // userId -> Map<clientId, res>
+
+function broadcastListChange(userId, originClientId, event, payload) {
+  const conns = sseClients.get(userId);
+  if (!conns) return;
+  for (const [clientId, res] of conns) {
+    if (clientId === originClientId) continue; // the device that made the change already has this state
+    try {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`);
+    } catch {
+      // Connection is dead but the server hasn't noticed via 'close' yet
+      // (can lag behind a real disconnect, e.g. a hard page reload that
+      // never runs cleanup) — drop it now rather than waiting.
+      conns.delete(clientId);
+    }
+  }
+}
+
+// GET /api/army-builder-lists/stream — SSE push channel for the account's
+// list changes. EventSource can't set custom headers, so auth comes from a
+// ?token= query param (the same JWT, just relocated) instead of the usual
+// Authorization header requireAuth expects.
+app.get('/api/army-builder-lists/stream', (req, res) => {
+  let user;
+  try {
+    user = jwt.verify(req.query.token, JWT_SECRET);
+  } catch {
+    return res.status(401).end();
+  }
+  const clientId = req.query.clientId || crypto.randomUUID();
+
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+  res.write(': connected\n\n');
+
+  if (!sseClients.has(user.id)) sseClients.set(user.id, new Map());
+  sseClients.get(user.id).set(clientId, res);
+
+  // Keep the connection alive through idle-timeout proxies between real events.
+  const heartbeat = setInterval(() => res.write(': ping\n\n'), 25000);
+
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    const conns = sseClients.get(user.id);
+    if (conns) {
+      conns.delete(clientId);
+      if (conns.size === 0) sseClients.delete(user.id);
+    }
+  });
+});
+
 // GET /api/army-builder-lists — lightweight list (no `data` blob) for the
 // List selector dropdown. Ordered by id (creation order) — unlike
 // ptg-rosters' "most recently used" ordering, this list is a persistent set
@@ -926,6 +990,9 @@ app.post('/api/army-builder-lists', requireAuth, (req, res) => {
       'INSERT INTO army_builder_lists (user_id, name, faction_slug, faction_name, data) VALUES (?, ?, ?, ?, ?)'
     ).run(req.user.id, name, faction_slug || null, faction_name || null, JSON.stringify(data));
     res.json({ id: info.lastInsertRowid });
+    broadcastListChange(req.user.id, req.headers['x-client-id'], 'list-upsert', {
+      id: info.lastInsertRowid, name, faction_slug: faction_slug || null, faction_name: faction_name || null, data,
+    });
   } finally {
     db.close();
   }
@@ -951,6 +1018,11 @@ app.put('/api/army-builder-lists/:id', requireAuth, (req, res) => {
     params.push(req.params.id);
     db.prepare(`UPDATE army_builder_lists SET ${sets.join(', ')} WHERE id = ?`).run(...params);
     res.json({ ok: true });
+    // Broadcast the full row, not just the (possibly partial) request body —
+    // other devices need the complete current state, e.g. a rename-only PUT
+    // still needs its data field so a device viewing this list doesn't lose it.
+    const updated = db.prepare('SELECT * FROM army_builder_lists WHERE id = ?').get(req.params.id);
+    broadcastListChange(req.user.id, req.headers['x-client-id'], 'list-upsert', { ...updated, data: JSON.parse(updated.data) });
   } finally {
     db.close();
   }
@@ -966,6 +1038,9 @@ app.post('/api/army-builder-lists/:id/duplicate', requireAuth, (req, res) => {
       'INSERT INTO army_builder_lists (user_id, name, faction_slug, faction_name, data) VALUES (?, ?, ?, ?, ?)'
     ).run(req.user.id, `${row.name} (Copy)`, row.faction_slug, row.faction_name, row.data);
     res.json({ id: info.lastInsertRowid });
+    broadcastListChange(req.user.id, req.headers['x-client-id'], 'list-upsert', {
+      id: info.lastInsertRowid, name: `${row.name} (Copy)`, faction_slug: row.faction_slug, faction_name: row.faction_name, data: JSON.parse(row.data),
+    });
   } finally {
     db.close();
   }
@@ -978,6 +1053,7 @@ app.delete('/api/army-builder-lists/:id', requireAuth, (req, res) => {
     const info = db.prepare('DELETE FROM army_builder_lists WHERE id = ? AND user_id = ?').run(req.params.id, req.user.id);
     if (info.changes === 0) return res.status(404).json({ error: 'List not found' });
     res.json({ ok: true });
+    broadcastListChange(req.user.id, req.headers['x-client-id'], 'list-delete', { id: Number(req.params.id) });
   } finally {
     db.close();
   }
