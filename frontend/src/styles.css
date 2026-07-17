@@ -4040,14 +4040,18 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 .gw-faction-slide-body {
   padding: 14px 16px;
 }
+/* True 2-col grid (not CSS multi-column) so the caller can pre-reorder items
+   via toTwoColumnOrder and have them land in the exact book quadrant —
+   multi-column's top-to-bottom-then-next-column fill order doesn't respect
+   that reordering. */
 .gw-formation-groups-2col {
-  column-count: 2;
-  column-gap: 24px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 24px;
+  align-items: start;
 }
 .gw-formation-group {
   margin-bottom: 18px;
-  break-inside: avoid;
-  -webkit-column-break-inside: avoid;
 }
 .gw-formation-group-header-row {
   display: flex;
@@ -4066,6 +4070,48 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   font-family: Arial, sans-serif;
   font-weight: 700;
 }
+/* Additional (non-core) formation source, e.g. "(Scourge of Ghyran)" —
+   smaller and fainter than the group name it follows. */
+.gw-formation-source-note {
+  font-size: 0.85em;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text-dim);
+}
+/* Sits between two sibling formation grids (core vs additional), not inside
+   either one as a grid item. */
+.gw-formation-divider {
+  height: 1px;
+  margin: 4px 0 18px;
+  background: linear-gradient(to right, transparent, rgba(200,168,64,0.5), transparent);
+}
+
+/* Grouped traits (e.g. Idoneth Deepkin's "Tides" battle traits) — one column
+   per group, header pinned above its stacked abilities. Column count is set
+   inline per-slide since it varies (usually 2, but not fixed). */
+.gw-trait-groups {
+  display: grid;
+  gap: 0 24px;
+  align-items: start;
+  margin-top: 14px;
+}
+.gw-trait-group-header {
+  font-size: 0.75rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-family: Arial, sans-serif;
+  font-weight: 700;
+  text-align: center;
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+  border-bottom: 2px solid;
+}
+/* Alternate two accent colors across columns so adjacent groups read as
+   visually distinct, mirroring the printed page's own color-coded columns. */
+.gw-trait-group[data-col="a"] .gw-trait-group-header { color: #c8a840; border-color: #c8a840; }
+.gw-trait-group[data-col="b"] .gw-trait-group-header { color: #6ab0e8; border-color: #6ab0e8; }
+.gw-trait-group .gw-abilities-grid { grid-template-columns: 1fr; }
 
 /* ── Top band: 3-column (wheel | centered name | right meta) ── */
 .gw-top-band {
@@ -4568,7 +4614,8 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   .gw-unit-img { width: 220px; }
   .gw-abilities-grid { grid-template-columns: 1fr; }
   .gw-sp-grid-2col { grid-template-columns: 1fr; }
-  .gw-formation-groups-2col { column-count: 1; }
+  .gw-formation-groups-2col { grid-template-columns: 1fr; }
+  .gw-trait-groups { grid-template-columns: 1fr !important; }
 
   /* Weapons table: drop ADO col, keep fixed layout so table never exceeds panel width */
   .gw-weapon-table { table-layout: fixed; }

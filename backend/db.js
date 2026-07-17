@@ -180,7 +180,16 @@ function initDb() {
   try { db.exec('ALTER TABLE spearheads ADD COLUMN image_path TEXT DEFAULT NULL'); } catch {}
   try { db.exec('ALTER TABLE spearheads ADD COLUMN lore_text TEXT DEFAULT NULL'); } catch {}
   try { db.exec('ALTER TABLE faction_battle_traits ADD COLUMN lore_text TEXT DEFAULT NULL'); } catch {}
+  // group_name: shared column-header label for traits grouped without an h3
+  // (confirmed: Idoneth Deepkin's "Tides" traits) — null for standalone traits.
+  try { db.exec('ALTER TABLE faction_battle_traits ADD COLUMN group_name TEXT DEFAULT NULL'); } catch {}
   try { db.exec('ALTER TABLE faction_battle_formations ADD COLUMN lore_text TEXT DEFAULT NULL'); } catch {}
+  // source_note: cleaned expansion/supplement label (e.g. "Scourge of Ghyran")
+  // when a formation comes from outside the core battletome, else NULL.
+  // phase_key: thematic PHASE_PRESETS color key (see scrapeRules.js
+  // resolveFormationPhaseKey / WarscrollGW.js PHASE_PRESETS).
+  try { db.exec('ALTER TABLE faction_battle_formations ADD COLUMN source_note TEXT DEFAULT NULL'); } catch {}
+  try { db.exec('ALTER TABLE faction_battle_formations ADD COLUMN phase_key TEXT DEFAULT NULL'); } catch {}
   try { db.exec('ALTER TABLE faction_extra_rules ADD COLUMN lore_text TEXT DEFAULT NULL'); } catch {}
   // Starting-warscroll data (Anvil of Apotheosis Step 2) — only the concrete
   // values the source actually provides (weapon profile + keywords). Move/

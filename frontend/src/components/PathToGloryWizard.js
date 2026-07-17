@@ -309,13 +309,17 @@ function FormationDropdown({ formations, value, onChange, loading }) {
               onMouseDown={() => { onChange(f.formation_name); setOpen(false); setHovered(null); }}
             >
               {f.formation_name}
+              {f.source_note && <span className="gw-formation-source-note"> ({f.source_note})</span>}
             </div>
           ))}
         </div>
       )}
       {open && shown && (
         <div className="ptg-formation-popup">
-          <div className="ptg-formation-popup-label">{shown.formation_name}</div>
+          <div className="ptg-formation-popup-label">
+            {shown.formation_name}
+            {shown.source_note && <span className="gw-formation-source-note"> ({shown.source_note})</span>}
+          </div>
           <AbilityCard ab={{ ...shown, bullets: parseFormationBullets(shown.bullets) }} keywords={[]} />
         </div>
       )}

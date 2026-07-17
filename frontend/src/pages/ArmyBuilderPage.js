@@ -336,6 +336,28 @@ const STAGES = [
 
 // ── Battle Formation stage: single army-wide radio pick, tied to the army's
 // primary Faction (Select Units stage) ──────────────────────────────────────
+function FormationOption({ g, battleFormation, setBattleFormation }) {
+  return (
+    <label className={`ab-formation-option${battleFormation === g.name ? ' selected' : ''}`}>
+      <input
+        type="radio"
+        name="battle-formation"
+        checked={battleFormation === g.name}
+        onChange={() => setBattleFormation(g.name)}
+      />
+      <div className="ab-formation-option-body">
+        <div className="ab-formation-option-name">
+          {g.name}
+          {g.sourceNote && <span className="gw-formation-source-note"> ({g.sourceNote})</span>}
+        </div>
+        <div className="gw-abilities-grid gw-sp-grid-2col">
+          {g.items.map((ab, i) => <AbilityCard key={i} ab={{ ...ab, bullets: parseBullets(ab.bullets) }} keywords={[]} />)}
+        </div>
+      </div>
+    </label>
+  );
+}
+
 function BattleFormationStage({ factionName, rules, battleFormation, setBattleFormation, hasFaction }) {
   if (!hasFaction) return <div className="ab-stage-empty">Pick a Faction on the Select Units stage first.</div>;
   if (!rules) return <div className="ab-stage-empty">Loading…</div>;
@@ -343,30 +365,37 @@ function BattleFormationStage({ factionName, rules, battleFormation, setBattleFo
   const byName = {};
   for (const item of rules.formations ?? []) {
     const gName = item.formation_name || 'General';
-    if (!byName[gName]) { byName[gName] = { name: gName, items: [] }; groups.push(byName[gName]); }
+    if (!byName[gName]) { byName[gName] = { name: gName, sourceNote: item.source_note || null, items: [] }; groups.push(byName[gName]); }
     byName[gName].items.push(item);
   }
   if (groups.length === 0) return <div className="ab-stage-empty">No Battle Formations found for {factionName}.</div>;
-  const gridOrder = toTwoColumnOrder(groups);
+
+  // Primary = core-battletome formations, always laid out in the book's
+  // fixed 2x2 quadrant order. Additional = later-supplement formations
+  // (Scourge of Ghyran, etc.) with no fixed book position — listed below a
+  // divider in document order instead.
+  const primaryGroups    = groups.filter(g => !g.sourceNote);
+  const additionalGroups = groups.filter(g => g.sourceNote);
+  const primaryGridOrder = toTwoColumnOrder(primaryGroups);
+
   return (
-    <div className="ab-formation-list">
-      {gridOrder.map((g, gi) => (
-        <label key={gi} className={`ab-formation-option${battleFormation === g.name ? ' selected' : ''}`}>
-          <input
-            type="radio"
-            name="battle-formation"
-            checked={battleFormation === g.name}
-            onChange={() => setBattleFormation(g.name)}
-          />
-          <div className="ab-formation-option-body">
-            <div className="ab-formation-option-name">{g.name}</div>
-            <div className="gw-abilities-grid gw-sp-grid-2col">
-              {g.items.map((ab, i) => <AbilityCard key={i} ab={{ ...ab, bullets: parseBullets(ab.bullets) }} keywords={[]} />)}
-            </div>
+    <>
+      <div className="ab-formation-list">
+        {primaryGridOrder.map((g, gi) => (
+          <FormationOption key={gi} g={g} battleFormation={battleFormation} setBattleFormation={setBattleFormation} />
+        ))}
+      </div>
+      {additionalGroups.length > 0 && (
+        <>
+          <div className="gw-formation-divider" />
+          <div className="ab-formation-list">
+            {additionalGroups.map((g, gi) => (
+              <FormationOption key={gi} g={g} battleFormation={battleFormation} setBattleFormation={setBattleFormation} />
+            ))}
           </div>
-        </label>
-      ))}
-    </div>
+        </>
+      )}
+    </>
   );
 }
 

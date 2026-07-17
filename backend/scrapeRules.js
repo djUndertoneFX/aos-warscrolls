@@ -139,8 +139,43 @@ function parseAbilityBlock($, block, skipNestGuard = false) {
 // row held Isharann Council's ability text, etc). Fixed by reading each block's
 // OWN nested h3 directly instead of tracking traversal-order state — see
 // feedback_scraper_formation_name_offbyone memory.
+// Wahapedia marks a formation's h3 sub-heading with an <img class="tooltip">
+// whose title reads e.g. "Expansion. Scourge of Ghyran - Idoneth Deepkin (4th
+// edition)" when that formation comes from a supplement rather than the core
+// battletome — core formations have no such image. Confirmed by inspecting
+// live HTML across 6 factions: every faction's first N formations (its "core"
+// set) carry no marker, every formation after that does, always tagged
+// "Expansion. Scourge of Ghyran - ..." (or, for Stormcast, "Supplement.
+// Battletome Supplement: Stormcast Eternals"). Strips the leading
+// "Expansion. "/"Supplement. " and any "(4th edition)" suffix so the UI can
+// show a short label, e.g. "Scourge of Ghyran".
+function extractSourceNote($el) {
+  const title = $el.find('h3.h2_pge img.tooltip').first().attr('title');
+  if (!title) return null;
+  return title
+    .replace(/^(Expansion|Supplement)\.\s*/i, '')
+    .replace(/\s*\(\d\w{0,2} edition\)\s*$/i, '')
+    // Book titles are formatted "{Book Name} - {Faction Name}" — the faction
+    // name is redundant with whichever faction's page you're already on.
+    .replace(/\s*-\s*[^-]+$/, '')
+    .trim() || null;
+}
+
+// Most top-level .BreakInsideAvoid blocks under a section heading wrap
+// exactly one ability (one .abBody) — the common case. Idoneth Deepkin's
+// Battle Traits are a confirmed exception: their "Tides" mechanic groups 3
+// abilities under a shared label div (class contains "title", e.g.
+// class="tide-title sea") with NO h3, one such group per column. Scraping
+// only the top-level block's FIRST nested .abBody (the old behaviour)
+// silently dropped the other two abilities per group. Spot-checked 5 other
+// factions' Battle Traits (Stormcast, Nighthaunt, Kruleboyz, Slaves to
+// Darkness, Ogor Mawtribes) — all had exactly 1 abBody per top-level block,
+// so this appears to be Idoneth-specific flavour, but the fix below is
+// general: any top-level block containing 2+ .abBody elements is expanded
+// into one result per direct nested .BreakInsideAvoid child, grouped under
+// the block's own "*title*"-class label (if any) instead of an h3.
 function collectSectionBlocks($, html, sectionTitle) {
-  const results = []; // { formationName, block }
+  const results = []; // { formationName, sourceNote, block, skipNestGuard }
   let inSection = false;
 
   $('h2.outline_header3, div.datasheet, div.BreakInsideAvoid').each((_, el) => {
@@ -161,8 +196,22 @@ function collectSectionBlocks($, html, sectionTitle) {
     if ($el.hasClass('BreakInsideAvoid')) {
       if ($el.parents('.BreakInsideAvoid').length > 0) return;
       if ($el.parents('.datasheet').length > 0) return; // nested inside a warscroll
+
+      const abBodyCount = $el.find('.abBody').length;
+      if (abBodyCount > 1) {
+        const groupName = normalizeText($el.children('[class*="title"]').first().text()) || null;
+        $el.children('.BreakInsideAvoid').each((__, child) => {
+          const $child = $(child);
+          if ($child.find('.abBody').length >= 1) {
+            results.push({ formationName: groupName, sourceNote: null, block: child, skipNestGuard: true });
+          }
+        });
+        return;
+      }
+
       const formationName = normalizeText($el.find('h3.h2_pge').first().text());
-      results.push({ formationName, block: el });
+      const sourceNote = extractSourceNote($el);
+      results.push({ formationName, sourceNote, block: el, skipNestGuard: false });
     }
   });
 
@@ -172,11 +221,89 @@ function collectSectionBlocks($, html, sectionTitle) {
 // Scrape all BreakInsideAvoid blocks under a heading, grouped by h3 sub-headings
 function scrapeSection($, sectionTitle, factionSlug, factionName) {
   const results = [];
-  for (const { formationName: groupName, block } of collectSectionBlocks($, null, sectionTitle)) {
-    const ability = parseAbilityBlock($, block);
-    if (ability) results.push({ ...ability, faction_slug: factionSlug, faction_name: factionName, group_name: groupName || null });
+  for (const { formationName: groupName, sourceNote, block, skipNestGuard } of collectSectionBlocks($, null, sectionTitle)) {
+    const ability = parseAbilityBlock($, block, skipNestGuard);
+    if (ability) results.push({ ...ability, faction_slug: factionSlug, faction_name: factionName, group_name: groupName || null, source_note: sourceNote });
   }
   return results;
+}
+
+// ── Battle Formation phase-colour detection ──────────────────────────────
+// Battle Formation abilities are always headed "Passive" on Wahapedia (they're
+// permanent bonuses, not phase-triggered), so unlike other ability cards we
+// can't just read ab.timing to pick a PHASE_PRESETS colour. The printed books
+// still colour-code formation cards by the phase their effect is thematically
+// tied to (confirmed against 4 known Idoneth Deepkin examples: Namarti Corps'
+// "re-roll run AND charge rolls" is ambiguous between two phases so the book
+// uses the neutral/passive black; Akhelian Beastmasters' "hit rolls for
+// combat attacks" is Combat Phase red; Isharann Council's "casting rolls" is
+// Hero Phase gold; Soul-raid Ambushers references the named ability
+// "Unpredictable Tide", which is itself a Hero Phase battle trait, and
+// inherits that same gold). This mirrors that reasoning: prefer an explicit
+// non-Passive timing verbatim, else scan the formation's own text for a
+// single unambiguous phase keyword group, else follow a quoted ability-name
+// reference into the faction's own battle traits/heroic traits, else fall
+// back to 'passive'. The returned key is a PHASE_PRESETS-compatible string
+// (frontend/src/components/WarscrollGW.js) — keep the two in sync.
+const PHASE_KEYWORD_GROUPS = [
+  { key: 'hero phase', patterns: [/casting roll/, /\bunbind/, /\bdispel/, /prayer roll/, /ritual roll/, /lurelight/, /\bhero phase\b/, /command point/] },
+  { key: 'movement',   patterns: [/run roll/, /\bretreat/, /movement phase/, /\bmove roll/] },
+  { key: 'charge',     patterns: [/charge roll/, /charge phase/] },
+  { key: 'shooting',   patterns: [/shooting attack/, /shoot phase/, /ranged attack/, /shooting phase/] },
+  { key: 'combat',     patterns: [/combat attack/, /fight phase/, /\bpile in\b/, /combat phase/] },
+  { key: 'end of turn', patterns: [/end of (the |any )?turn/, /end of (the )?battle round/] },
+  { key: 'deployment', patterns: [/\bdeploy/, /set up.*battlefield edge/, /\breserves?\b/] },
+];
+
+function timingToPhaseKey(timing) {
+  if (!timing) return null;
+  const t = timing.toLowerCase();
+  if (t.includes('passive')) return null; // uninformative — caller should fall through to text detection
+  if (t.includes('hero phase')) return 'hero phase';
+  if (t.includes('movement') || t.includes('move phase')) return 'movement';
+  if (t.includes('charge')) return 'charge';
+  if (t.includes('shooting')) return 'shooting';
+  if (t.includes('combat')) return 'combat';
+  if (t.includes('end of')) return 'end of turn';
+  if (t.includes('deployment')) return 'deployment';
+  return null;
+}
+
+function detectPhaseFromText(text) {
+  const t = text.toLowerCase();
+  const matched = new Set();
+  for (const grp of PHASE_KEYWORD_GROUPS) {
+    if (grp.patterns.some(re => re.test(t))) matched.add(grp.key);
+  }
+  return matched.size === 1 ? [...matched][0] : null; // null = none or ambiguous
+}
+
+function formationOwnText(formation) {
+  let bullets = [];
+  try { bullets = JSON.parse(formation.bullets || '[]'); } catch {}
+  return [formation.declare, formation.effect, ...bullets].filter(Boolean).join(' ');
+}
+
+function resolveFormationPhaseKey(formation, nameToTiming) {
+  const directKey = timingToPhaseKey(formation.timing);
+  if (directKey) return directKey;
+
+  const ownText = formationOwnText(formation);
+  const textKey = detectPhaseFromText(ownText);
+  if (textKey) return textKey;
+
+  // Follow a quoted ability-name reference (e.g. "the 'Unpredictable Tide'
+  // ability") into the faction's own battle traits/heroic traits/other
+  // formations to inherit a known timing.
+  const refs = [...ownText.matchAll(/['‘’]([A-Z][A-Za-z' -]{2,40})['‘’]/g)].map(m => m[1].toUpperCase());
+  for (const ref of refs) {
+    const refTiming = nameToTiming.get(ref);
+    if (!refTiming) continue;
+    const refKey = timingToPhaseKey(refTiming) || detectPhaseFromText(refTiming);
+    if (refKey) return refKey;
+  }
+
+  return 'passive';
 }
 
 async function scrapeFactionRules(faction) {
@@ -205,8 +332,11 @@ async function scrapeFactionRules(faction) {
   const $ = cheerio.load(html);
   const s = faction.slug, n = faction.name;
 
-  // Battle Traits — flatten group_name into formation-style (not used as sub-group visually)
-  const traits = scrapeSection($, 'Battle Traits', s, n).map(a => ({ ...a, group_name: undefined }));
+  // Battle Traits — group_name is usually null (most traits stand alone), but
+  // some factions (confirmed: Idoneth Deepkin's "Tides" traits) group several
+  // traits under a shared column-header label instead of an h3 — see
+  // collectSectionBlocks' multi-abBody expansion.
+  const traits = scrapeSection($, 'Battle Traits', s, n);
 
   // Battle Formations — keep group_name as formation_name for the existing table shape
   const formations = scrapeSection($, 'Battle Formations', s, n)
@@ -219,6 +349,17 @@ async function scrapeFactionRules(faction) {
   const prayerLore         = scrapeSection($, 'Prayer Lore',         s, n).map(a => ({ ...a, section: 'prayer_lore' }));
   const manifestationLore  = scrapeSection($, 'Manifestation Lore',  s, n).map(a => ({ ...a, section: 'manifestation_lore' }));
   const extraRules = [...heroicTraits, ...artefacts, ...spellLore, ...prayerLore, ...manifestationLore];
+
+  // Resolve each formation's thematic phase colour — needs traits/heroic
+  // traits/other formations already scraped so quoted ability-name
+  // references (see resolveFormationPhaseKey) can be looked up by name.
+  const nameToTiming = new Map();
+  for (const a of [...traits, ...heroicTraits, ...formations]) {
+    if (a.name) nameToTiming.set(a.name.toUpperCase(), a.timing);
+  }
+  for (const f of formations) {
+    f.phase_key = resolveFormationPhaseKey(f, nameToTiming);
+  }
 
   console.log(
     `  ${n}: ${traits.length} traits, ${formations.length} formations,` +
@@ -256,16 +397,16 @@ async function scrapeAllRules(targetSlug = null) {
 
   const insertTrait = db.prepare(`
     INSERT INTO faction_battle_traits
-      (faction_slug, faction_name, name, timing, declare, effect, bullets, keywords, lore_text)
+      (faction_slug, faction_name, name, timing, declare, effect, bullets, keywords, lore_text, group_name)
     VALUES
-      (@faction_slug, @faction_name, @name, @timing, @declare, @effect, @bullets, @keywords, @lore_text)
+      (@faction_slug, @faction_name, @name, @timing, @declare, @effect, @bullets, @keywords, @lore_text, @group_name)
   `);
 
   const insertFormation = db.prepare(`
     INSERT INTO faction_battle_formations
-      (faction_slug, faction_name, formation_name, name, timing, declare, effect, bullets, keywords, lore_text)
+      (faction_slug, faction_name, formation_name, name, timing, declare, effect, bullets, keywords, lore_text, source_note, phase_key)
     VALUES
-      (@faction_slug, @faction_name, @formation_name, @name, @timing, @declare, @effect, @bullets, @keywords, @lore_text)
+      (@faction_slug, @faction_name, @formation_name, @name, @timing, @declare, @effect, @bullets, @keywords, @lore_text, @source_note, @phase_key)
   `);
 
   const insertExtra = db.prepare(`

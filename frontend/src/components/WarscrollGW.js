@@ -284,7 +284,12 @@ function WeaponSection({ weapons, type, unitSize }) {
 // ── Ability card ─────────────────────────────────────────────────────────────
 export function AbilityCard({ ab, keywords }) {
   const { showFlavorText } = useSettings();
-  const ps      = getPhaseStyle(ab.timing);
+  // Battle Formations are always headed "Passive" on Wahapedia (they're
+  // permanent bonuses, not phase-triggered) but the printed books still
+  // colour-code formation cards by their thematic phase — phase_key carries
+  // that pre-computed colour (see scrapeRules.js resolveFormationPhaseKey)
+  // without changing the displayed timing text below.
+  const ps      = getPhaseStyle(ab.phase_key || ab.timing);
   const bullets = Array.isArray(ab.bullets) ? ab.bullets : [];
 
   return (
@@ -371,7 +376,37 @@ function FactionInfoToggleRow({ activeKey }) {
   );
 }
 
+// Most traits/heroic-traits/artefacts/etc. stand alone (group_name null) and
+// render in the existing flat 2-col grid. Some (confirmed: Idoneth Deepkin's
+// "Tides" battle traits) are grouped under a shared column-header label
+// instead — each group renders as its own vertical column, header on top,
+// its abilities stacked below, one column per group.
+function TraitGroupColumn({ group, gi }) {
+  return (
+    <div className="gw-trait-group" data-col={gi % 2 === 0 ? 'a' : 'b'}>
+      <div className="gw-trait-group-header">{group.name}</div>
+      <div className="gw-abilities-grid">
+        {group.items.map((ab, i) => (
+          <AbilityCard key={i} ab={{ ...ab, bullets: parseBullets(ab.bullets) }} keywords={[]} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function FactionTraitsSlide({ faction, grandAlliance, title, traits, slideKey }) {
+  const ungrouped = traits.filter(t => !t.group_name);
+  const groups = [];
+  const nameToGroup = {};
+  for (const t of traits) {
+    if (!t.group_name) continue;
+    if (!nameToGroup[t.group_name]) {
+      nameToGroup[t.group_name] = { name: t.group_name, items: [] };
+      groups.push(nameToGroup[t.group_name]);
+    }
+    nameToGroup[t.group_name].items.push(t);
+  }
+
   return (
     <div className="gw-faction-slide">
       <div className="gw-faction-slide-header">
@@ -382,11 +417,58 @@ function FactionTraitsSlide({ faction, grandAlliance, title, traits, slideKey })
         <div className="gw-faction-slide-title">{(title ?? 'Battle Traits').toUpperCase()}</div>
       </div>
       <div className="gw-faction-slide-body">
-        <div className="gw-abilities-grid gw-sp-grid-2col">
-          {traits.map((ab, i) => (
-            <AbilityCard key={i} ab={{ ...ab, bullets: parseBullets(ab.bullets) }} keywords={[]} />
-          ))}
-        </div>
+        {ungrouped.length > 0 && (
+          <div className="gw-abilities-grid gw-sp-grid-2col">
+            {ungrouped.map((ab, i) => (
+              <AbilityCard key={i} ab={{ ...ab, bullets: parseBullets(ab.bullets) }} keywords={[]} />
+            ))}
+          </div>
+        )}
+        {groups.length > 0 && (
+          <div className="gw-trait-groups" style={{ gridTemplateColumns: `repeat(${groups.length}, 1fr)` }}>
+            {groups.map((group, gi) => <TraitGroupColumn key={gi} group={group} gi={gi} />)}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Reorders a 4-item (or any even-ish) array so a row-major 2-col CSS grid
+// reads as column-major: item0/item1 fill the left column top-to-bottom,
+// item2/item3 fill the right column — matching the printed battle formation
+// pages' actual left/right quadrant pairing. Same helper as ArmyBuilderPage's
+// BattleFormationStage/toTwoColumnOrder.
+function toTwoColumnOrder(arr) {
+  const half = Math.ceil(arr.length / 2);
+  const out = [];
+  for (let i = 0; i < half; i++) {
+    out.push(arr[i]);
+    if (arr[i + half]) out.push(arr[i + half]);
+  }
+  return out;
+}
+
+function FormationGroupCard({ group, isSelected, onToggle }) {
+  return (
+    <div className="gw-formation-group">
+      <div className="gw-formation-group-header-row">
+        <button
+          className={`gw-ab-checkbox${isSelected ? ' gw-ab-checkbox-on' : ''}`}
+          onClick={() => onToggle(group.name)}
+          title={isSelected ? 'Deselect' : 'Select (mark as in play)'}
+        >{isSelected ? '☑' : '☐'}</button>
+        {group.name !== 'General' && (
+          <div className="gw-formation-group-header">
+            {group.name}
+            {group.sourceNote && <span className="gw-formation-source-note"> ({group.sourceNote})</span>}
+          </div>
+        )}
+      </div>
+      <div className="gw-abilities-grid">
+        {group.items.map((ab, i) => (
+          <AbilityCard key={i} ab={{ ...ab, bullets: parseBullets(ab.bullets) }} keywords={[]} />
+        ))}
       </div>
     </div>
   );
@@ -399,7 +481,7 @@ function FactionFormationsSlide({ faction, grandAlliance, formations, selected, 
   for (const item of formations) {
     const gName = item.formation_name || 'General';
     if (!nameToGroup[gName]) {
-      nameToGroup[gName] = { name: gName, items: [] };
+      nameToGroup[gName] = { name: gName, sourceNote: item.source_note || null, items: [] };
       groups.push(nameToGroup[gName]);
     }
     nameToGroup[gName].items.push(item);
@@ -407,6 +489,14 @@ function FactionFormationsSlide({ faction, grandAlliance, formations, selected, 
 
   const hasSelected = selected.size > 0;
   const visibleGroups = filterSelected ? groups.filter(g => selected.has(g.name)) : groups;
+
+  // Primary = core-battletome formations (no source_note), always laid out
+  // in the book's fixed 2x2 quadrant order. Additional = formations added by
+  // a later supplement/expansion (Scourge of Ghyran, etc.) — no fixed book
+  // position, so they're just listed below a divider in document order.
+  const primaryGroups    = visibleGroups.filter(g => !g.sourceNote);
+  const additionalGroups = visibleGroups.filter(g => g.sourceNote);
+  const primaryGridOrder = toTwoColumnOrder(primaryGroups);
 
   return (
     <div className="gw-faction-slide">
@@ -431,29 +521,20 @@ function FactionFormationsSlide({ faction, grandAlliance, formations, selected, 
           >{filterSelected ? 'Show All' : 'Show Selected'}</button>
         </div>
         <div className="gw-formation-groups-2col">
-          {visibleGroups.map((group, gi) => {
-            const isSelected = selected.has(group.name);
-            return (
-              <div key={gi} className="gw-formation-group">
-                <div className="gw-formation-group-header-row">
-                  <button
-                    className={`gw-ab-checkbox${isSelected ? ' gw-ab-checkbox-on' : ''}`}
-                    onClick={() => onToggle(group.name)}
-                    title={isSelected ? 'Deselect' : 'Select (mark as in play)'}
-                  >{isSelected ? '☑' : '☐'}</button>
-                  {group.name !== 'General' && (
-                    <div className="gw-formation-group-header">{group.name}</div>
-                  )}
-                </div>
-                <div className="gw-abilities-grid">
-                  {group.items.map((ab, i) => (
-                    <AbilityCard key={i} ab={{ ...ab, bullets: parseBullets(ab.bullets) }} keywords={[]} />
-                  ))}
-                </div>
-              </div>
-            );
-          })}
+          {primaryGridOrder.map((group, gi) => (
+            <FormationGroupCard key={gi} group={group} isSelected={selected.has(group.name)} onToggle={onToggle} />
+          ))}
         </div>
+        {additionalGroups.length > 0 && (
+          <>
+            <div className="gw-formation-divider" />
+            <div className="gw-formation-groups-2col">
+              {additionalGroups.map((group, gi) => (
+                <FormationGroupCard key={gi} group={group} isSelected={selected.has(group.name)} onToggle={onToggle} />
+              ))}
+            </div>
+          </>
+        )}
         {filterSelected && visibleGroups.length === 0 && (
           <p style={{ color: 'var(--text-dim)', fontStyle: 'italic', padding: '1rem' }}>No selected formations to show.</p>
         )}
@@ -1110,8 +1191,8 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
       { key: 'spell_lore',         enabled: showSpellLore,         data: spellPrayerData },
       { key: 'artefacts',          enabled: showArtefacts,         data: rules.artefacts ?? [] },
       { key: 'heroic_traits',      enabled: showHeroicTraits,      data: rules.heroic_traits ?? [] },
-      { key: 'formations',         enabled: showBattleFormations,  data: rules.formations ?? [] },
       { key: 'traits',             enabled: showBattleTraits,      data: rules.traits ?? [] },
+      { key: 'formations',         enabled: showBattleFormations,  data: rules.formations ?? [] },
     ].filter(s => s.enabled && s.data.length > 0);
   }, [loadedSlugs, sortBy, showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore]); // eslint-disable-line
 
@@ -1127,8 +1208,8 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
       { key: 'spell_lore',         enabled: showSpellLore,         data: spellPrayerData },
       { key: 'artefacts',          enabled: showArtefacts,         data: rules.artefacts ?? [] },
       { key: 'heroic_traits',      enabled: showHeroicTraits,      data: rules.heroic_traits ?? [] },
-      { key: 'formations',         enabled: showBattleFormations,  data: rules.formations ?? [] },
       { key: 'traits',             enabled: showBattleTraits,      data: rules.traits ?? [] },
+      { key: 'formations',         enabled: showBattleFormations,  data: rules.formations ?? [] },
     ].filter(s => s.enabled && s.data.length > 0);
   }, [loadedSlugs, showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore]); // eslint-disable-line
 
