@@ -1222,12 +1222,12 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
     if (!rules) return [];
     const spellPrayerData = [...(rules.spell_lore ?? []), ...(rules.prayer_lore ?? [])];
     return [
-      { key: 'manifestation_lore', enabled: showManifestationLore, data: rules.manifestation_lore ?? [] },
-      { key: 'spell_lore',         enabled: showSpellLore,         data: spellPrayerData },
-      { key: 'artefacts',          enabled: showArtefacts,         data: rules.artefacts ?? [] },
-      { key: 'heroic_traits',      enabled: showHeroicTraits,      data: rules.heroic_traits ?? [] },
       { key: 'traits',             enabled: showBattleTraits,      data: rules.traits ?? [] },
       { key: 'formations',         enabled: showBattleFormations,  data: rules.formations ?? [] },
+      { key: 'heroic_traits',      enabled: showHeroicTraits,      data: rules.heroic_traits ?? [] },
+      { key: 'artefacts',          enabled: showArtefacts,         data: rules.artefacts ?? [] },
+      { key: 'spell_lore',         enabled: showSpellLore,         data: spellPrayerData },
+      { key: 'manifestation_lore', enabled: showManifestationLore, data: rules.manifestation_lore ?? [] },
     ].filter(s => s.enabled && s.data.length > 0);
   }, [loadedSlugs, sortBy, showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore]); // eslint-disable-line
 
@@ -1239,12 +1239,12 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
     if (!rules) return [];
     const spellPrayerData = [...(rules.spell_lore ?? []), ...(rules.prayer_lore ?? [])];
     return [
-      { key: 'manifestation_lore', enabled: showManifestationLore, data: rules.manifestation_lore ?? [] },
-      { key: 'spell_lore',         enabled: showSpellLore,         data: spellPrayerData },
-      { key: 'artefacts',          enabled: showArtefacts,         data: rules.artefacts ?? [] },
-      { key: 'heroic_traits',      enabled: showHeroicTraits,      data: rules.heroic_traits ?? [] },
       { key: 'traits',             enabled: showBattleTraits,      data: rules.traits ?? [] },
       { key: 'formations',         enabled: showBattleFormations,  data: rules.formations ?? [] },
+      { key: 'heroic_traits',      enabled: showHeroicTraits,      data: rules.heroic_traits ?? [] },
+      { key: 'artefacts',          enabled: showArtefacts,         data: rules.artefacts ?? [] },
+      { key: 'spell_lore',         enabled: showSpellLore,         data: spellPrayerData },
+      { key: 'manifestation_lore', enabled: showManifestationLore, data: rules.manifestation_lore ?? [] },
     ].filter(s => s.enabled && s.data.length > 0);
   }, [loadedSlugs, showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore]); // eslint-disable-line
 

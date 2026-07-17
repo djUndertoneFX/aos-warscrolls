@@ -359,6 +359,7 @@ function FormationOption({ g, battleFormation, setBattleFormation }) {
 }
 
 function BattleFormationStage({ factionName, rules, battleFormation, setBattleFormation, hasFaction }) {
+  const [filterSelected, setFilterSelected] = useState(false);
   if (!hasFaction) return <div className="ab-stage-empty">Pick a Faction on the Select Units stage first.</div>;
   if (!rules) return <div className="ab-stage-empty">Loading…</div>;
   const groups = [];
@@ -374,12 +375,22 @@ function BattleFormationStage({ factionName, rules, battleFormation, setBattleFo
   // fixed 2x2 quadrant order. Additional = later-supplement formations
   // (Scourge of Ghyran, etc.) with no fixed book position — listed below a
   // divider in document order instead.
-  const primaryGroups    = groups.filter(g => !g.sourceNote);
-  const additionalGroups = groups.filter(g => g.sourceNote);
+  const hasSelected = !!battleFormation;
+  const visibleGroups = filterSelected ? groups.filter(g => g.name === battleFormation) : groups;
+  const primaryGroups    = visibleGroups.filter(g => !g.sourceNote);
+  const additionalGroups = visibleGroups.filter(g => g.sourceNote);
   const primaryGridOrder = toTwoColumnOrder(primaryGroups);
 
   return (
     <>
+      <div className="gw-sp-filter-bar">
+        <button
+          className={`gw-sp-filter-btn${filterSelected ? ' active' : ''}`}
+          onClick={() => setFilterSelected(f => !f)}
+          disabled={!hasSelected}
+          title="Show only your selected Battle Formation"
+        >{filterSelected ? 'Show All' : 'Filter to Selection'}</button>
+      </div>
       <div className="ab-formation-list">
         {primaryGridOrder.map((g, gi) => (
           <FormationOption key={gi} g={g} battleFormation={battleFormation} setBattleFormation={setBattleFormation} />
@@ -394,6 +405,9 @@ function BattleFormationStage({ factionName, rules, battleFormation, setBattleFo
             ))}
           </div>
         </>
+      )}
+      {filterSelected && visibleGroups.length === 0 && (
+        <div className="ab-stage-empty">No Battle Formation selected yet.</div>
       )}
     </>
   );
@@ -459,6 +473,7 @@ function applyPhaseKeyOverrides(options, sectionKey, factionSlug) {
 }
 
 function HeroAssignmentStage({ label, sectionKey, selectedHeroes, rulesCache, heroAssignments, setHeroAssignments, primaryFaction, primaryRules }) {
+  const [filterSelected, setFilterSelected] = useState(false);
   const coreConfig = sectionKey === 'heroic_traits' ? CORE_HEROIC_TRAITS : sectionKey === 'artefacts' ? CORE_ARTEFACTS : null;
 
   // Overview card grid for the army's primary faction — core traits/
@@ -467,7 +482,16 @@ function HeroAssignmentStage({ label, sectionKey, selectedHeroes, rulesCache, he
   // the per-hero rows further down keep their own dropdowns scoped to each
   // hero's own faction (relevant for allied heroes from another faction).
   const primaryOptions = primaryRules ? applyPhaseKeyOverrides(primaryRules[sectionKey] ?? [], sectionKey, primaryFaction) : [];
-  const { core: primaryCore, additional: primaryAdditional } = splitCoreAdditional(primaryOptions, coreConfig?.[primaryFaction]);
+
+  // "Filter to Selection" (mirrors the same button on the Warscrolls Battle
+  // Formation page) narrows the overview grid down to just the traits/
+  // artefacts currently assigned to any of your selected Heroes — it never
+  // touches the per-hero rows below, since those need to stay visible to
+  // reassign or clear a pick.
+  const assignedNames = new Set(selectedHeroes.map(h => heroAssignments[h.id]?.[sectionKey]).filter(Boolean));
+  const hasSelected = assignedNames.size > 0;
+  const visibleOptions = filterSelected ? primaryOptions.filter(o => assignedNames.has(o.name)) : primaryOptions;
+  const { core: primaryCore, additional: primaryAdditional } = splitCoreAdditional(visibleOptions, coreConfig?.[primaryFaction]);
 
   // Artefacts: one column per core item in a single row. Heroic Traits (and
   // everything else): the fixed 2x2 grid via .gw-sp-grid-2col.
@@ -476,8 +500,20 @@ function HeroAssignmentStage({ label, sectionKey, selectedHeroes, rulesCache, he
     : undefined;
   const coreGridClass = coreGridStyle ? 'gw-abilities-grid' : 'gw-abilities-grid gw-sp-grid-2col';
 
-  const overview = primaryOptions.length > 0 && (
+  const filterBar = primaryOptions.length > 0 && (
+    <div className="gw-sp-filter-bar">
+      <button
+        className={`gw-sp-filter-btn${filterSelected ? ' active' : ''}`}
+        onClick={() => setFilterSelected(f => !f)}
+        disabled={!hasSelected}
+        title={`Show only the ${label} assigned to your Heroes`}
+      >{filterSelected ? 'Show All' : 'Filter to Selection'}</button>
+    </div>
+  );
+
+  const overview = (
     <>
+      {filterBar}
       {primaryCore.length > 0 && (
         <div className={coreGridClass} style={coreGridStyle}>
           {primaryCore.map((ab, i) => <AbilityCard key={i} ab={{ ...ab, bullets: parseBullets(ab.bullets) }} keywords={[]} />)}
@@ -488,6 +524,9 @@ function HeroAssignmentStage({ label, sectionKey, selectedHeroes, rulesCache, he
         <div className="gw-abilities-grid gw-sp-grid-2col">
           {primaryAdditional.map((ab, i) => <AbilityCard key={i} ab={{ ...ab, bullets: parseBullets(ab.bullets) }} keywords={[]} />)}
         </div>
+      )}
+      {filterSelected && visibleOptions.length === 0 && (
+        <div className="ab-stage-empty">No {label} assigned yet.</div>
       )}
     </>
   );
@@ -1602,6 +1641,38 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
 
   const thStyle = (key) => ({ width: colWidths[key], position: 'relative' });
 
+  // ── Split-view divider (all stages but Select Units): drag to resize how
+  // much horizontal space the Army Roster preview pane gets. Persisted the
+  // same way as the units-table column widths above, so it stays put across
+  // stage switches, page reloads, and future sessions. ──────────────────────
+  const SPLIT_PANE_KEY = 'aos-army-builder-split-pane-v1';
+  const [rightPanePct, setRightPanePct] = useState(() => {
+    const saved = parseFloat(localStorage.getItem(SPLIT_PANE_KEY));
+    return Number.isFinite(saved) ? saved : 33.34;
+  });
+  const splitViewRef = useRef(null);
+  const splitDragRef = useRef(null);
+
+  const startSplitResize = useCallback((e) => {
+    e.preventDefault();
+    splitDragRef.current = true;
+    const onMove = (ev) => {
+      if (!splitDragRef.current || !splitViewRef.current) return;
+      const rect = splitViewRef.current.getBoundingClientRect();
+      const pct = ((rect.right - ev.clientX) / rect.width) * 100;
+      const clamped = Math.min(60, Math.max(18, pct));
+      setRightPanePct(clamped);
+      localStorage.setItem(SPLIT_PANE_KEY, String(clamped));
+    };
+    const onUp = () => {
+      splitDragRef.current = null;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, []);
+
   const alliances = ['Order', 'Chaos', 'Death', 'Destruction'];
   const filteredFactions = (alliance ? factions.filter(f => f.grand_alliance === alliance) : factions)
     .slice().sort((a, b) => a.faction.localeCompare(b.faction));
@@ -2004,8 +2075,9 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
       )}
 
       {activeStage !== 'units' && (
-        <div className="ab-split-view">
+        <div className="ab-split-view" ref={splitViewRef}>
           <div className="ab-split-left">
+            <div className="ab-stage-subhead">{STAGES.find(s => s.key === activeStage)?.label}</div>
             {activeStage === 'formation' && (
               <div className="ab-stage-body">
                 <BattleFormationStage
@@ -2043,7 +2115,9 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
             ))}
           </div>
 
-          <div className="ab-split-right">
+          <div className="ab-split-divider" onMouseDown={startSplitResize} title="Drag to resize" />
+
+          <div className="ab-split-right" style={{ flexBasis: `${rightPanePct}%` }}>
             <ArmyRosterModal
               inline
               presentMode={rosterPresentMode}

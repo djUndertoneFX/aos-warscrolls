@@ -1126,22 +1126,57 @@ th.ab-count-th { padding-left: 0.35rem; padding-right: 0.35rem; text-align: cent
 
 /* Split view: every stage but Select Units shows its own content on the
    left and a live, always-visible Army Roster preview on the right, so
-   assignments can be checked against the roster without leaving the stage. */
-.ab-split-view { display: flex; flex-direction: row; flex: 1; min-height: 0; gap: 1rem; }
-.ab-split-left { flex: 1 1 60%; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
+   assignments can be checked against the roster without leaving the stage.
+   The right pane's width is user-controlled (dragged via .ab-split-divider,
+   set as an inline flex-basis % from ArmyBuilderPage's rightPanePct state,
+   persisted in localStorage) rather than fixed here — this file only
+   supplies the default/fallback and the drag handle's own styling. */
+.ab-split-view { display: flex; flex-direction: row; flex: 1; min-height: 0; }
+.ab-split-left { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
 .ab-split-left .ab-stage-body { padding: 0.5rem 0.2rem 2rem 0; }
 .ab-split-right {
-  flex: 0 0 38%;
-  max-width: 520px;
-  min-width: 280px;
+  flex: 0 0 33.34%;
+  min-width: 220px;
   min-height: 0;
   overflow-y: auto;
-  padding: 0.5rem 0 2rem 1rem;
-  border-left: 1px solid rgba(200,168,64,0.2);
+  padding: 0.5rem 0 2rem 0.9rem;
+}
+.ab-split-divider {
+  flex: 0 0 auto;
+  width: 9px;
+  margin: 0 0.15rem;
+  cursor: col-resize;
+  position: relative;
+  background: transparent;
+}
+.ab-split-divider::after {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0; left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+  background: rgba(200,168,64,0.2);
+  transition: background 0.12s, width 0.12s;
+}
+.ab-split-divider:hover::after, .ab-split-divider:active::after {
+  width: 3px;
+  background: #c8a840;
+}
+.ab-stage-subhead {
+  text-align: center;
+  font-family: 'Cinzel', serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 1.05rem;
+  color: #c8a840;
+  padding: 0.2rem 0 0.7rem;
+  margin-bottom: 0.6rem;
+  border-bottom: 1px solid rgba(200,168,64,0.2);
 }
 @media (max-width: 900px) {
   .ab-split-view { flex-direction: column; }
-  .ab-split-right { flex: none; max-width: none; border-left: none; border-top: 1px solid rgba(200,168,64,0.2); padding: 1rem 0 0; }
+  .ab-split-divider { display: none; }
+  .ab-split-right { flex: none !important; border-top: 1px solid rgba(200,168,64,0.2); padding: 1rem 0 0; }
 }
 
 /* Inline (non-modal) rendering of ArmyRosterModal for the split view above:
