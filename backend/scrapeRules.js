@@ -126,24 +126,30 @@ function parseAbilityBlock($, block, skipNestGuard = false) {
 
 // Collect all .BreakInsideAvoid blocks that belong to a section identified by
 // an h2.outline_header3 whose text matches sectionTitle. Returns an array of
-// cheerio elements. Also optionally calls onFormationName(name) each time an
-// h3.h2_pge sub-heading is encountered within the section.
+// { formationName, block } pairs.
+//
+// Each formation's <h3 class="h2_pge"> sub-heading is NESTED INSIDE the same
+// outer .BreakInsideAvoid wrapper as its own ability content (wrapper > a[name]
+// + h3 + nested .BreakInsideAvoid-with-abBody), not a preceding sibling. Using
+// "whichever h3 was last seen while walking in document order" therefore always
+// tags a block with the PREVIOUS formation's name, since the outer wrapper
+// itself (which is what gets scraped as the ability block) is visited before
+// its own child h3 is. Confirmed by re-fetching Idoneth Deepkin live and diffing
+// against the DB: every formation_name was shifted back by one (Namarti Corps'
+// row held Isharann Council's ability text, etc). Fixed by reading each block's
+// OWN nested h3 directly instead of tracking traversal-order state — see
+// feedback_scraper_formation_name_offbyone memory.
 function collectSectionBlocks($, html, sectionTitle) {
   const results = []; // { formationName, block }
   let inSection = false;
-  let currentFormation = '';
 
-  // Walk every element in document order using a flat selector.
-  // Stop the current section when hitting a .datasheet block (warscroll unit entries
-  // appear after the rules sections on some factions and also use BreakInsideAvoid).
-  $('h2.outline_header3, h3.h2_pge, div.datasheet, div.BreakInsideAvoid').each((_, el) => {
+  $('h2.outline_header3, div.datasheet, div.BreakInsideAvoid').each((_, el) => {
     const tag = el.tagName ? el.tagName.toLowerCase() : '';
     const $el = $(el);
 
     if (tag === 'h2') {
       const text = $el.text().trim();
       inSection = text === sectionTitle;
-      currentFormation = '';
       return;
     }
 
@@ -152,15 +158,11 @@ function collectSectionBlocks($, html, sectionTitle) {
     // A datasheet block means we've entered the warscroll units section — stop.
     if ($el.hasClass('datasheet')) { inSection = false; return; }
 
-    if (tag === 'h3') {
-      currentFormation = normalizeText($el.text());
-      return;
-    }
-
     if ($el.hasClass('BreakInsideAvoid')) {
       if ($el.parents('.BreakInsideAvoid').length > 0) return;
       if ($el.parents('.datasheet').length > 0) return; // nested inside a warscroll
-      results.push({ formationName: currentFormation, block: el });
+      const formationName = normalizeText($el.find('h3.h2_pge').first().text());
+      results.push({ formationName, block: el });
     }
   });
 
