@@ -411,8 +411,11 @@ function BattleFormationStage({ factionName, rules, battleFormation, setBattleFo
 const CORE_HEROIC_TRAITS = {
   'idoneth-deepkin': ['FORM OF THE FANGMORA', 'NIGHTMARE LEGACY', 'HUNTER OF SOULS'],
 };
+// Artefacts of Power lay out as a single row of N columns (one per core
+// artefact) rather than Heroic Traits' fixed 2x2 — confirmed against
+// Idoneth's 3 artefacts, shown side by side in 3 columns.
 const CORE_ARTEFACTS = {
-  // none confirmed yet
+  'idoneth-deepkin': ['ARMOUR OF THE CYTHAI', 'LIFEKELP POD', 'DRITCHLEECH'],
 };
 
 // core preserves the exact order given in coreNamesInOrder (already the
@@ -426,6 +429,35 @@ function splitCoreAdditional(options, coreNamesInOrder) {
   return { core, additional };
 }
 
+// Confirmed per-item colour corrections — these items' literal scraped
+// timing (mostly "Passive") doesn't reproduce the book's actual card
+// colour, and two Idoneth artefacts even share that same literal timing
+// while needing different colours, so a general timing/keyword rule can't
+// get both right at once. Scoped to just these confirmed items rather than
+// changing the shared phase palette globally (e.g. Lifekelp Pod is
+// overridden to grey here without touching the site-wide "Movement Phase =
+// green" used correctly elsewhere on every other warscroll). See the
+// matching 'ovr-*' entries in WarscrollGW.js's PHASE_PRESETS.
+const PHASE_KEY_OVERRIDES = {
+  'idoneth-deepkin': {
+    heroic_traits: {
+      'FORM OF THE FANGMORA': 'ovr-passive-grey',
+      'NIGHTMARE LEGACY': 'ovr-eot-purple',
+      'HUNTER OF SOULS': 'ovr-deploy-black',
+    },
+    artefacts: {
+      'ARMOUR OF THE CYTHAI': 'ovr-passive-grey',
+      'LIFEKELP POD': 'ovr-movement-grey',
+      'DRITCHLEECH': 'hero phase',
+    },
+  },
+};
+function applyPhaseKeyOverrides(options, sectionKey, factionSlug) {
+  const overrides = PHASE_KEY_OVERRIDES[factionSlug]?.[sectionKey];
+  if (!overrides) return options;
+  return options.map(o => overrides[o.name] ? { ...o, phase_key: overrides[o.name] } : o);
+}
+
 function HeroAssignmentStage({ label, sectionKey, selectedHeroes, rulesCache, heroAssignments, setHeroAssignments, primaryFaction, primaryRules }) {
   const coreConfig = sectionKey === 'heroic_traits' ? CORE_HEROIC_TRAITS : sectionKey === 'artefacts' ? CORE_ARTEFACTS : null;
 
@@ -434,13 +466,20 @@ function HeroAssignmentStage({ label, sectionKey, selectedHeroes, rulesCache, he
   // below. Shown once at the top regardless of how many heroes are selected;
   // the per-hero rows further down keep their own dropdowns scoped to each
   // hero's own faction (relevant for allied heroes from another faction).
-  const primaryOptions = primaryRules ? (primaryRules[sectionKey] ?? []) : [];
+  const primaryOptions = primaryRules ? applyPhaseKeyOverrides(primaryRules[sectionKey] ?? [], sectionKey, primaryFaction) : [];
   const { core: primaryCore, additional: primaryAdditional } = splitCoreAdditional(primaryOptions, coreConfig?.[primaryFaction]);
+
+  // Artefacts: one column per core item in a single row. Heroic Traits (and
+  // everything else): the fixed 2x2 grid via .gw-sp-grid-2col.
+  const coreGridStyle = sectionKey === 'artefacts' && primaryCore.length > 0
+    ? { gridTemplateColumns: `repeat(${primaryCore.length}, 1fr)` }
+    : undefined;
+  const coreGridClass = coreGridStyle ? 'gw-abilities-grid' : 'gw-abilities-grid gw-sp-grid-2col';
 
   const overview = primaryOptions.length > 0 && (
     <>
       {primaryCore.length > 0 && (
-        <div className="gw-abilities-grid gw-sp-grid-2col">
+        <div className={coreGridClass} style={coreGridStyle}>
           {primaryCore.map((ab, i) => <AbilityCard key={i} ab={{ ...ab, bullets: parseBullets(ab.bullets) }} keywords={[]} />)}
         </div>
       )}
@@ -463,7 +502,7 @@ function HeroAssignmentStage({ label, sectionKey, selectedHeroes, rulesCache, he
   }
   const rows = selectedHeroes.map(hero => {
     const rules = rulesCache[hero.faction_slug];
-    const options = rules ? (rules[sectionKey] ?? []) : null;
+    const options = rules ? applyPhaseKeyOverrides(rules[sectionKey] ?? [], sectionKey, hero.faction_slug) : null;
     const { core, additional } = options ? splitCoreAdditional(options, coreConfig?.[hero.faction_slug]) : { core: [], additional: [] };
     return { hero, rules, options, core, additional };
   });
@@ -522,10 +561,31 @@ function LoreCardsStage({ label, sectionKey, primaryFaction, primaryRules }) {
   if (!primaryRules) return <div className="ab-stage-empty">Loading…</div>;
   const options = primaryRules[sectionKey] ?? [];
   if (options.length === 0) return <div className="ab-stage-empty">No {label} found for this faction.</div>;
+
+  // Spell Lore / Prayer Lore each have exactly one Signature Spell/Prayer —
+  // every WIZARD/PRIEST in the army knows it automatically, and the book
+  // shows it full-width above the rest of the lore's 2-col grid. Wahapedia
+  // doesn't mark this in the HTML (checked: identical wrapper classes on
+  // every spell), but it's always listed first, matching the book's own
+  // convention — confirmed against Idoneth (Steed of Tides spans both
+  // columns, Counter-Current/Pressure of the Deep sit 2-col below it).
+  // Manifestation Lore has no equivalent "signature" mechanic, so it stays
+  // a plain grid.
+  const hasSignature = (sectionKey === 'spell_lore' || sectionKey === 'prayer_lore') && options.length > 1;
+  const signature = hasSignature ? options[0] : null;
+  const rest = hasSignature ? options.slice(1) : options;
+
   return (
-    <div className="gw-abilities-grid gw-sp-grid-2col">
-      {options.map((ab, i) => <AbilityCard key={i} ab={{ ...ab, bullets: parseBullets(ab.bullets) }} keywords={[]} />)}
-    </div>
+    <>
+      {signature && (
+        <div className="gw-abilities-grid" style={{ marginBottom: '0.9rem' }}>
+          <AbilityCard ab={{ ...signature, bullets: parseBullets(signature.bullets) }} keywords={[]} />
+        </div>
+      )}
+      <div className="gw-abilities-grid gw-sp-grid-2col">
+        {rest.map((ab, i) => <AbilityCard key={i} ab={{ ...ab, bullets: parseBullets(ab.bullets) }} keywords={[]} />)}
+      </div>
+    </>
   );
 }
 
@@ -681,15 +741,22 @@ function ArmyRosterModal({
   doc, setDoc, unitsById, moveToSlot,
   regimentsTotal, auxTotal, armyUnitsTotal,
   onCommanderNameChange,
+  // Split-view usage (every stage except Select Units): rendered as a plain
+  // pane alongside the stage content instead of a fixed-position modal —
+  // no overlay, no close button, no Escape handling (it's always visible,
+  // there's nothing to close). Select Units keeps the original click-to-
+  // open popup behavior; inline is false there.
+  inline = false,
 }) {
   const modalRef = useRef(null);
   const [printPreview, setPrintPreview] = useState(false);
 
   useEffect(() => {
+    if (inline) return;
     const h = e => { if (e.key === 'Escape') { if (printPreview) setPrintPreview(false); else onClose(); } };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
-  }, [onClose, printPreview]);
+  }, [onClose, printPreview, inline]);
 
   const overLimit = totalPoints > pointsLimit;
   const { slots } = doc;
@@ -765,12 +832,10 @@ function ArmyRosterModal({
     else window.print();
   };
 
-  return (
+  const content = (
     <>
-      <div className="gw-overlay" onClick={printPreview ? () => setPrintPreview(false) : onClose} />
-      <div className={`ptg-wizard${presentMode === 'image' ? ' ab-roster-modal-wide' : ''}`} ref={modalRef} role="dialog" aria-modal="true" aria-label="Army Roster">
-        {!printPreview && <button className="ab-roster-print-btn" onClick={handlePrintClick} title="Print">🖨 Print</button>}
-        {!printPreview && <button className="gw-close" onClick={onClose} title="Close (Esc)">✕</button>}
+        {!inline && !printPreview && <button className="ab-roster-print-btn" onClick={handlePrintClick} title="Print">🖨 Print</button>}
+        {!inline && !printPreview && <button className="gw-close" onClick={onClose} title="Close (Esc)">✕</button>}
 
         {printPreview ? (
           <>
@@ -835,6 +900,18 @@ function ArmyRosterModal({
             </div>
           </>
         )}
+    </>
+  );
+
+  if (inline) {
+    return <div className="ab-roster-inline-panel">{content}</div>;
+  }
+
+  return (
+    <>
+      <div className="gw-overlay" onClick={printPreview ? () => setPrintPreview(false) : onClose} />
+      <div className={`ptg-wizard${presentMode === 'image' ? ' ab-roster-modal-wide' : ''}`} ref={modalRef} role="dialog" aria-modal="true" aria-label="Army Roster">
+        {content}
       </div>
     </>
   );
@@ -1926,41 +2003,69 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
         </>
       )}
 
-      {activeStage === 'formation' && (
-        <div className="ab-stage-body">
-          <BattleFormationStage
-            hasFaction={!!faction}
-            factionName={factionName}
-            rules={faction ? rulesCache.current[faction] : null}
-            battleFormation={battleFormation}
-            setBattleFormation={setBattleFormation}
-          />
+      {activeStage !== 'units' && (
+        <div className="ab-split-view">
+          <div className="ab-split-left">
+            {activeStage === 'formation' && (
+              <div className="ab-stage-body">
+                <BattleFormationStage
+                  hasFaction={!!faction}
+                  factionName={factionName}
+                  rules={faction ? rulesCache.current[faction] : null}
+                  battleFormation={battleFormation}
+                  setBattleFormation={setBattleFormation}
+                />
+              </div>
+            )}
+
+            {STAGES.filter(s => s.section).map(s => activeStage === s.key && (
+              <div className="ab-stage-body" key={s.key}>
+                {['spell_lore', 'prayer_lore', 'manifestation_lore'].includes(s.section) ? (
+                  <LoreCardsStage
+                    label={s.label}
+                    sectionKey={s.section}
+                    primaryFaction={faction}
+                    primaryRules={faction ? rulesCache.current[faction] : null}
+                  />
+                ) : (
+                  <HeroAssignmentStage
+                    label={s.label}
+                    sectionKey={s.section}
+                    selectedHeroes={selectedHeroes}
+                    rulesCache={rulesCache.current}
+                    heroAssignments={heroAssignments}
+                    setHeroAssignments={setHeroAssignments}
+                    primaryFaction={faction}
+                    primaryRules={faction ? rulesCache.current[faction] : null}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="ab-split-right">
+            <ArmyRosterModal
+              inline
+              presentMode={rosterPresentMode}
+              setPresentMode={setRosterPresentMode}
+              listName={listsStore.lists[activeListId]?.name ?? 'List name…'}
+              factionName={factionName}
+              pointsLimit={pointsLimit}
+              setPointsLimit={setPointsLimit}
+              battleFormation={battleFormation}
+              totalPoints={totalPoints}
+              onCommanderNameChange={setCommanderName}
+              doc={armyRosterDoc}
+              setDoc={setArmyRosterDoc}
+              unitsById={unitsById}
+              moveToSlot={moveToSlot}
+              regimentsTotal={regimentsTotal}
+              auxTotal={auxTotal}
+              armyUnitsTotal={armyUnitsTotal}
+            />
+          </div>
         </div>
       )}
-
-      {STAGES.filter(s => s.section).map(s => activeStage === s.key && (
-        <div className="ab-stage-body" key={s.key}>
-          {['spell_lore', 'prayer_lore', 'manifestation_lore'].includes(s.section) ? (
-            <LoreCardsStage
-              label={s.label}
-              sectionKey={s.section}
-              primaryFaction={faction}
-              primaryRules={faction ? rulesCache.current[faction] : null}
-            />
-          ) : (
-            <HeroAssignmentStage
-              label={s.label}
-              sectionKey={s.section}
-              selectedHeroes={selectedHeroes}
-              rulesCache={rulesCache.current}
-              heroAssignments={heroAssignments}
-              setHeroAssignments={setHeroAssignments}
-              primaryFaction={faction}
-              primaryRules={faction ? rulesCache.current[faction] : null}
-            />
-          )}
-        </div>
-      ))}
     </div>
 
     {detailUnit && (() => {

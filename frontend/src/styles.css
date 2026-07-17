@@ -891,6 +891,13 @@ input, select {
   @page { size: portrait; margin: 10mm; }
   body * { visibility: hidden; }
   .ab-roster-print-target, .ab-roster-print-target * { visibility: visible; }
+  /* .ptg-wizard (the modal shell) is max-height:92vh + overflow-y:auto on
+     screen — without resetting that here, it still clips the print target
+     to one screen-height's worth of content even though the target itself
+     is set position:absolute below to escape the modal's normal flow.
+     Confirmed as the cause of prints cutting off right under the Faction/
+     Battle Formation row on both Replica and Image-mode prints. */
+  .ptg-wizard { max-height: none !important; overflow: visible !important; position: static !important; }
   .ab-roster-print-target {
     position: absolute;
     top: 0;
@@ -1108,7 +1115,50 @@ th.ab-count-th { padding-left: 0.35rem; padding-right: 0.35rem; text-align: cent
   color: var(--text);
 }
 
-.ab-stage-body { padding: 0.5rem 0.2rem 2rem; }
+/* .table-page (the shared page shell) is overflow:hidden — the main units
+   table has its own internal scroll wrapper, but the other stages (Battle
+   Formation/Heroic Traits/Artefacts/Lores) had no scroll container of their
+   own, so once their content (especially the new card grids) grew taller
+   than the viewport it was just clipped with no way to reach what was
+   below. flex:1/min-height:0 lets this take the remaining space under the
+   fixed header; overflow-y:auto makes it the actual scrolling region. */
+.ab-stage-body { flex: 1; min-height: 0; overflow-y: auto; padding: 0.5rem 0.2rem 2rem; }
+
+/* Split view: every stage but Select Units shows its own content on the
+   left and a live, always-visible Army Roster preview on the right, so
+   assignments can be checked against the roster without leaving the stage. */
+.ab-split-view { display: flex; flex-direction: row; flex: 1; min-height: 0; gap: 1rem; }
+.ab-split-left { flex: 1 1 60%; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
+.ab-split-left .ab-stage-body { padding: 0.5rem 0.2rem 2rem 0; }
+.ab-split-right {
+  flex: 0 0 38%;
+  max-width: 520px;
+  min-width: 280px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.5rem 0 2rem 1rem;
+  border-left: 1px solid rgba(200,168,64,0.2);
+}
+@media (max-width: 900px) {
+  .ab-split-view { flex-direction: column; }
+  .ab-split-right { flex: none; max-width: none; border-left: none; border-top: 1px solid rgba(200,168,64,0.2); padding: 1rem 0 0; }
+}
+
+/* Inline (non-modal) rendering of ArmyRosterModal for the split view above:
+   no fixed positioning/overlay/close button — it's just a pane. The Image
+   mode's two-page-side-by-side layout (sized to 78vh, meant for a wide
+   modal) is overridden here to stack vertically and scale by width instead,
+   since this pane is narrower and taller than the modal ever was. */
+.ab-roster-inline-panel { position: relative; }
+.ab-roster-inline-panel .ab-roster-image-view { flex-direction: column; align-items: stretch; }
+/* width:100% needs an unbroken chain of definite-width ancestors to resolve
+   against — .ptg-progressive-img is inline-block with no explicit width
+   everywhere else (sized by its content, i.e. the placeholder image itself),
+   so without forcing it and .ab-roster-image-page to block+100% here too,
+   the percentage falls back to the 24x31px placeholder's intrinsic size. */
+.ab-roster-inline-panel .ab-roster-image-page { display: block; width: 100%; }
+.ab-roster-inline-panel .ab-roster-page-img { display: block; width: 100%; }
+.ab-roster-inline-panel .ab-roster-page-img .ptg-progressive-img-micro { display: block; height: auto; width: 100%; max-width: 100%; }
 .ab-stage-empty {
   color: var(--text-dim);
   font-style: italic;
@@ -3420,6 +3470,16 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   position: relative;
   display: inline-block;
   vertical-align: top;
+  /* The blur-up micro placeholder below is scale(1.12) with no box of its
+     own to grow into, so without clipping it visually (and, since CSS
+     transforms carry their hit-test region with them, *interactively*)
+     bleeds ~9% past every edge of this wrapper — a faint blurred ghost of
+     the image showing through nearby UI, and a real (if invisible) click
+     target intercepting clicks meant for whatever sits just above/beside
+     it. Confirmed as the cause of both the Army Roster's "blurred
+     background" look and its Replica toggle button only being clickable
+     on its top half (the bled-out placeholder was covering the rest). */
+  overflow: hidden;
 }
 .ptg-progressive-img-micro {
   display: block;

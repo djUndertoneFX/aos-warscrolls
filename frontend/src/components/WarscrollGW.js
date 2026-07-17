@@ -52,6 +52,20 @@ function TransparentImage({ src, alt, className, onError }) {
 
 // ── Phase colour mapping (GW canonical AoS 4e colors) ────────────────────────
 const PHASE_PRESETS = [
+  // Explicit per-item overrides (see PHASE_KEY_OVERRIDES in ArmyBuilderPage.js)
+  // for confirmed Heroic Trait/Artefact colours that don't match what their
+  // literal scraped timing would produce below — e.g. two Idoneth artefacts
+  // share the literal timing "Passive" but the book colours them
+  // differently (Armour of the Cythai: dark grey: Dritchleech: hero-phase
+  // gold, since its effect is themed around disrupting enemy casting).
+  // Must come FIRST: matching below is substring-based (t.includes(k)), and
+  // e.g. 'ovr-passive-grey' itself contains 'passive' and 'ovr-movement-grey'
+  // contains 'movement' — checked in the other order they'd be caught by
+  // those generic presets before ever reaching their own override entry.
+  { keys: ['ovr-passive-grey'],                                 style: { hdrBg: '#3a3a3a', hdrTxt: '#d8d8d8', border: '#606060' } },
+  { keys: ['ovr-movement-grey'],                                style: { hdrBg: '#525252', hdrTxt: '#e0e0e0', border: '#787878' } },
+  { keys: ['ovr-eot-purple'],                                   style: { hdrBg: '#500848', hdrTxt: '#f0b8e8', border: '#a01888' } },
+  { keys: ['ovr-deploy-black'],                                 style: { hdrBg: '#161616', hdrTxt: '#c8c8c8', border: '#3a3a3a' } },
   { keys: ['passive'],                                          style: { hdrBg: '#3a3220', hdrTxt: '#e8d898', border: '#7a6830' } },
   { keys: ['hero phase'],                                       style: { hdrBg: '#7a6010', hdrTxt: '#ffffff', border: '#c8a020' } },
   { keys: ['movement', 'move phase'],                           style: { hdrBg: '#0e4020', hdrTxt: '#a0f0b8', border: '#208848' } },
