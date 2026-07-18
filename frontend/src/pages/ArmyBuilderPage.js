@@ -483,8 +483,34 @@ function applyPhaseKeyOverrides(options, sectionKey, factionSlug) {
   return options.map(o => overrides[o.name] ? { ...o, phase_key: overrides[o.name] } : o);
 }
 
+// Ability card with its own checkbox (mirrors FactionFormationsSlide's
+// FormationGroupCard on the Warscrolls page) — Heroic Traits/Artefacts don't
+// have a Battle Formation-style radio pick to derive "selected" from, so
+// "Filter to Selection" needs its own explicit, manually-checked marker
+// instead of inferring it from hero assignments further down the page.
+function SelectableAbilityCard({ ab, isSelected, onToggle }) {
+  return (
+    <div className="gw-formation-group">
+      <div className="gw-formation-group-header-row">
+        <button
+          className={`gw-ab-checkbox${isSelected ? ' gw-ab-checkbox-on' : ''}`}
+          onClick={() => onToggle(ab.name)}
+          title={isSelected ? 'Deselect' : 'Select (mark as in play)'}
+        >{isSelected ? '☑' : '☐'}</button>
+      </div>
+      <AbilityCard ab={{ ...ab, bullets: parseBullets(ab.bullets) }} keywords={[]} />
+    </div>
+  );
+}
+
 function HeroAssignmentStage({ label, sectionKey, selectedHeroes, rulesCache, heroAssignments, setHeroAssignments, primaryFaction, primaryRules }) {
   const [filterSelected, setFilterSelected] = useState(false);
+  const [selectedNames, setSelectedNames] = useState(new Set());
+  const toggleSelected = name => setSelectedNames(prev => {
+    const next = new Set(prev);
+    if (next.has(name)) next.delete(name); else next.add(name);
+    return next;
+  });
   const coreConfig = sectionKey === 'heroic_traits' ? CORE_HEROIC_TRAITS : sectionKey === 'artefacts' ? CORE_ARTEFACTS : null;
 
   // Overview card grid for the army's primary faction — core traits/
@@ -495,13 +521,11 @@ function HeroAssignmentStage({ label, sectionKey, selectedHeroes, rulesCache, he
   const primaryOptions = primaryRules ? applyPhaseKeyOverrides(primaryRules[sectionKey] ?? [], sectionKey, primaryFaction) : [];
 
   // "Filter to Selection" (mirrors the same button on the Warscrolls Battle
-  // Formation page) narrows the overview grid down to just the traits/
-  // artefacts currently assigned to any of your selected Heroes — it never
-  // touches the per-hero rows below, since those need to stay visible to
-  // reassign or clear a pick.
-  const assignedNames = new Set(selectedHeroes.map(h => heroAssignments[h.id]?.[sectionKey]).filter(Boolean));
-  const hasSelected = assignedNames.size > 0;
-  const visibleOptions = filterSelected ? primaryOptions.filter(o => assignedNames.has(o.name)) : primaryOptions;
+  // Formation page) narrows the overview grid down to just the checked
+  // traits/artefacts — it never touches the per-hero rows below, since those
+  // need to stay visible to reassign or clear a pick.
+  const hasSelected = selectedNames.size > 0;
+  const visibleOptions = filterSelected ? primaryOptions.filter(o => selectedNames.has(o.name)) : primaryOptions;
   const { core: primaryCore, additional: primaryAdditional } = splitCoreAdditional(visibleOptions, coreConfig?.[primaryFaction]);
 
   // Artefacts: one column per core item in a single row. Heroic Traits (and
@@ -517,7 +541,7 @@ function HeroAssignmentStage({ label, sectionKey, selectedHeroes, rulesCache, he
         className={`gw-sp-filter-btn${filterSelected ? ' active' : ''}`}
         onClick={() => setFilterSelected(f => !f)}
         disabled={!hasSelected}
-        title={`Show only the ${label} assigned to your Heroes`}
+        title="Show only the traits/artefacts you've checked"
       >{filterSelected ? 'Show All' : 'Filter to Selection'}</button>
     </div>
   );
@@ -527,17 +551,17 @@ function HeroAssignmentStage({ label, sectionKey, selectedHeroes, rulesCache, he
       {filterBar}
       {primaryCore.length > 0 && (
         <div className={coreGridClass} style={coreGridStyle}>
-          {primaryCore.map((ab, i) => <AbilityCard key={i} ab={{ ...ab, bullets: parseBullets(ab.bullets) }} keywords={[]} />)}
+          {primaryCore.map((ab, i) => <SelectableAbilityCard key={i} ab={ab} isSelected={selectedNames.has(ab.name)} onToggle={toggleSelected} />)}
         </div>
       )}
       {primaryCore.length > 0 && primaryAdditional.length > 0 && <div className="gw-formation-divider" />}
       {primaryAdditional.length > 0 && (
         <div className="gw-abilities-grid gw-sp-grid-2col">
-          {primaryAdditional.map((ab, i) => <AbilityCard key={i} ab={{ ...ab, bullets: parseBullets(ab.bullets) }} keywords={[]} />)}
+          {primaryAdditional.map((ab, i) => <SelectableAbilityCard key={i} ab={ab} isSelected={selectedNames.has(ab.name)} onToggle={toggleSelected} />)}
         </div>
       )}
       {filterSelected && visibleOptions.length === 0 && (
-        <div className="ab-stage-empty">No {label} assigned yet.</div>
+        <div className="ab-stage-empty">No {label} checked yet.</div>
       )}
     </>
   );

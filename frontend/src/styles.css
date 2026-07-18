@@ -951,6 +951,17 @@ input, select {
   .ab-roster-print-target.ab-roster-image-view {
     display: block;
   }
+  /* .ab-roster-print-ready's 2.5rem padding (added for the on-screen "white
+     gap" preview) was stacking with @page's own 10mm margin at print time —
+     doubling the effective inset on every side, shrinking the usable content
+     width/height further and contributing to Replica prints spilling onto a
+     3rd page. @page's margin is the print-time equivalent, so drop the
+     element padding here rather than adding to it. */
+  .ab-roster-print-target.ab-roster-print-ready { padding: 0; }
+  /* Keep a regiment block from splitting across a page boundary — a block
+     cut mid-way wastes the remainder of that page's height and was pushing
+     the last regiment/aux section onto a spurious 3rd page. */
+  .ab-roster-print-target .ptg-regiment-block { break-inside: avoid; page-break-inside: avoid; }
   .ab-roster-print-target .ab-roster-image-page {
     position: relative;
     display: block;
@@ -3670,7 +3681,13 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
    buttons never move — this keeps the Replica editor's own content at a
    comfortable reading width instead of stretching across that shell's full
    (Image-mode-sized) 1800px. */
-.ab-roster-replica-body { max-width: 900px; margin: 0 auto; }
+/* 720px — a touch under a portrait page's printable width at @page's 10mm
+   margins on the narrower of Letter/A4 (~718px/~740px at 96dpi) — so the
+   Print Preview reflows identically to the eventual print output instead of
+   the two wrapping text differently (900px doesn't fit on a physical page
+   at print DPI, forcing Chrome to shrink/reflow it, which is what made the
+   in-app preview and the actual print look meaningfully different). */
+.ab-roster-replica-body { max-width: 720px; margin: 0 auto; }
 
 .ptg-field { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 0.9rem; }
 .ptg-warlord-characteristics {
