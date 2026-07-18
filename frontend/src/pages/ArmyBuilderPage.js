@@ -164,9 +164,16 @@ function instanceSize(key, unitsById) {
   if (!size) return '';
   return instanceReinforced(key) ? size * 2 : size;
 }
+// Warscroll names are stored lowercase in the DB ("akhelian king") — the
+// Army Roster is meant to read like the physical sheet, so title-case it
+// here rather than touching the shared `unit.name` value other pages key
+// image/data lookups off of.
+function titleCase(s) {
+  return s.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1));
+}
 function instanceName(key, unitsById) {
   const unit = instanceUnit(key, unitsById);
-  return unit ? unit.name : '(unknown unit)';
+  return unit ? titleCase(unit.name) : '(unknown unit)';
 }
 function instanceNotes(key) {
   return instanceReinforced(key) ? 'Reinforced' : '';
@@ -904,7 +911,7 @@ function ArmyRosterModal({
                 <button className="ptg-wizard-nav-btn ab-roster-print-confirm" onClick={() => window.print()}>🖨 Print</button>
               </div>
             </div>
-            <div className="ptg-doc-editor-body ab-roster-print-target ab-roster-print-ready">
+            <div className="ptg-doc-editor-body ab-roster-replica-body ab-roster-print-target ab-roster-print-ready">
               {replicaBody}
             </div>
           </>
@@ -918,7 +925,7 @@ function ArmyRosterModal({
               </div>
             </div>
 
-            <div className={presentMode === 'image' ? 'ab-roster-image-body' : 'ptg-doc-editor-body'}>
+            <div className={presentMode === 'image' ? 'ab-roster-image-body' : 'ptg-doc-editor-body ab-roster-replica-body'}>
               {presentMode === 'image' ? (
                 <div className="ab-roster-image-view ab-roster-print-target">
                   <div className="ab-roster-image-page">
@@ -978,7 +985,13 @@ function ArmyRosterModal({
   return (
     <>
       <div className="gw-overlay ab-roster-overlay-clickable" onClick={printPreview ? () => setPrintPreview(false) : onClose} />
-      <div className={`ptg-wizard${presentMode === 'image' ? ' ab-roster-modal-wide' : ''}`} ref={modalRef} role="dialog" aria-modal="true" aria-label="Army Roster">
+      {/* Always the same size/position regardless of presentMode — it used to
+          only widen (and shift up) for Image mode, which visibly moved the
+          Print/Close buttons and the Image/Replica toggle itself every time
+          you switched. Replica's own content stays a comfortable reading
+          width via .ab-roster-replica-body's own max-width, independent of
+          how wide this outer shell is. */}
+      <div className="ptg-wizard ab-roster-modal-wide" ref={modalRef} role="dialog" aria-modal="true" aria-label="Army Roster">
         {content}
       </div>
     </>

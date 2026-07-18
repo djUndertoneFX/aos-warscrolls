@@ -1247,8 +1247,12 @@ th.ab-count-th { padding-left: 0.35rem; padding-right: 0.35rem; text-align: cent
 
 /* 2x2-and-onward grid: reordered via toTwoColumnOrder so item 1/2 fill
    column 1 top-to-bottom and item 3/4 fill column 2, matching the printed
-   battle formation pages' left/right pairing. */
-.ab-formation-list { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem; align-items: start; }
+   battle formation pages' left/right pairing. align-items:stretch (grid's
+   default, but explicit here since it's easy to reach for start/center out
+   of habit) makes every cell in a row match that row's tallest cell instead
+   of sizing to its own content — a mismatched 2x2 otherwise looks uneven
+   even though each row IS already auto-sized to its tallest item. */
+.ab-formation-list { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem; align-items: stretch; }
 .ab-formation-option {
   display: flex;
   align-items: flex-start;
@@ -3661,6 +3665,12 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   color: #c8a840;
 }
 .ptg-doc-editor-body { min-height: 260px; }
+/* The Army Roster modal shell is now a fixed size/position regardless of
+   Image/Replica mode (see ArmyRosterModal's return statement) so its header
+   buttons never move — this keeps the Replica editor's own content at a
+   comfortable reading width instead of stretching across that shell's full
+   (Image-mode-sized) 1800px. */
+.ab-roster-replica-body { max-width: 900px; margin: 0 auto; }
 
 .ptg-field { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 0.9rem; }
 .ptg-warlord-characteristics {
@@ -4257,7 +4267,7 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0 24px;
-  align-items: start;
+  align-items: stretch;
 }
 .gw-formation-group {
   margin-bottom: 18px;
@@ -4292,7 +4302,7 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
    either one as a grid item. */
 .gw-formation-divider {
   height: 1px;
-  margin: 4px 0 18px;
+  margin: 18px 0;
   background: linear-gradient(to right, transparent, rgba(200,168,64,0.5), transparent);
 }
 
