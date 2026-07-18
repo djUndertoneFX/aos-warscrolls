@@ -110,10 +110,10 @@ const AUX_SLOT_COUNT = 5;
 // — used to overlay live text on top of the scanned page in Image mode.
 // Column X-ranges are shared by every regiment/aux row on both pages.
 const ROSTER_ROW_COLS = {
-  name:   { left: 19.5, width: 28.3 },
+  name:   { left: 18.2, width: 28.3 },
   size:   { left: 49.5, width: 6.2 },
-  notes:  { left: 54,   width: 29.5 },
-  points: { left: 86.3, width: 11 },
+  notes:  { left: 57,   width: 26 },
+  points: { left: 87.1, width: 11 },
   // Regiment/Aux/Units totals share the row grid's vertical rhythm but sit in
   // their own left-shifted column (measured separately from the per-row
   // Points column above, which was pushed right of these by the same fix).
@@ -123,7 +123,7 @@ const ROSTER_LAYOUT = {
   header: {
     commander:       { page: 0, top: 18.1, left: 6.5,  width: 32 },
     armyName:        { page: 0, top: 18.1, left: 42.4, width: 31.5 },
-    pointsLimit:     { page: 0, top: 24.5, left: 74.5, width: 17.9 },
+    pointsLimit:     { page: 0, top: 22.5, left: 74.5, width: 17.9 },
     faction:         { page: 0, top: 27.4, left: 9.5,  width: 29 },
     battleFormation: { page: 0, top: 27.4, left: 42.4, width: 31.5 },
   },
@@ -959,7 +959,7 @@ function ArmyRosterModal({
                   <div className="ab-roster-image-page">
                     <ProgressiveImg src="/ptg/army-roster-1.jpg" micro={ARMY_ROSTER_MICRO.page1} avgColor={ARMY_ROSTER_AVG_COLOR.page1} alt="Army Roster page 1" className="ab-roster-page-img" />
                     <input
-                      type="text" className="ab-roster-overlay-input" style={overlayFieldStyle(ROSTER_LAYOUT.header.commander)}
+                      type="text" className="ab-roster-overlay-input ab-roster-overlay-input-center" style={overlayFieldStyle(ROSTER_LAYOUT.header.commander)}
                       value={doc.commander}
                       onChange={e => setDoc(d => ({ ...d, commander: e.target.value }))}
                       onBlur={e => onCommanderNameChange && onCommanderNameChange(e.target.value)}
@@ -1679,9 +1679,9 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
   // (shorter, less-wrapped rows). ──────────────────────────────────────────
   const DEFAULT_COL_WIDTHS = {
     rownum: 22, train: 72, reinforce: 80, expand: 22, thumb: 44,
-    name: 190, faction: 110, alliance: 66, models: 42,
+    name: 280, faction: 110, alliance: 66, models: 42,
     move: 42, health: 42, control: 42, save: 42, ward: 38, points: 48,
-    types: 68, keywords: 390,
+    types: 68, keywords: 300,
     ado_ranged: 54, ado_melee: 54,
   };
   const COL_WIDTHS_KEY = 'aos-army-builder-col-widths-v1';
