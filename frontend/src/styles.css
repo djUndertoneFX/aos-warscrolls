@@ -777,11 +777,36 @@ input, select {
 }
 .ab-roster-overlay-field.ab-roster-overlay-center { text-align: center; }
 .ab-roster-overlay-over { color: #a41c1c; font-weight: 700; }
+/* Editable variant of .ab-roster-overlay-field (Commander/Army Name in Image
+   mode) — same position/typography, but a real <input> so it can be typed
+   into directly instead of only via the Replica view's fields. Transparent/
+   borderless so it reads as text printed on the page until focused. */
+.ab-roster-overlay-input {
+  position: absolute;
+  transform: translateY(-50%);
+  color: #2a2218;
+  font-family: 'Palatino Linotype', Palatino, Georgia, serif;
+  font-size: 1.5vh;
+  line-height: 1.2;
+  padding: 0 0.3vh;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  cursor: text;
+  pointer-events: auto;
+}
+.ab-roster-overlay-input:hover { border-color: rgba(42,34,24,0.3); }
+.ab-roster-overlay-input:focus { outline: none; border-color: #7a6830; background: rgba(255,255,255,0.5); }
 .ab-roster-overlay-row {
   position: absolute;
   left: 7%;
   width: 89%;
   height: 2.2%;
+  /* Same "measured as center, not top edge" correction as
+     .ab-roster-overlay-field above — regiment rows never got this fix when
+     it was applied there, so every row rendered about half its own height
+     (~1.1% of the page) lower than the printed line it's meant to sit on. */
+  transform: translateY(-50%);
 }
 .ab-roster-overlay-cell {
   position: absolute;
@@ -854,6 +879,11 @@ input, select {
 .ab-roster-print-ready {
   background: #ffffff;
   color: #000000;
+  /* White gap around the content so it doesn't read as cramped against the
+     page edge — both on screen (this preview) and on the printed page
+     (stacks with @page's own 10mm margin below). */
+  padding: 2.5rem;
+  box-sizing: border-box;
 }
 .ab-roster-print-ready .ptg-field label,
 .ab-roster-print-ready .ptg-regiment-header span,
@@ -896,8 +926,22 @@ input, select {
      to one screen-height's worth of content even though the target itself
      is set position:absolute below to escape the modal's normal flow.
      Confirmed as the cause of prints cutting off right under the Faction/
-     Battle Formation row on both Replica and Image-mode prints. */
-  .ptg-wizard { max-height: none !important; overflow: visible !important; position: static !important; }
+     Battle Formation row on both Replica and Image-mode prints.
+
+     transform:none is just as load-bearing as position:static: .ptg-wizard's
+     screen-only `transform: translateX(-50%)` (its horizontal-centering
+     trick) is never reset here, and a `transform` on an element still forms
+     a containing block for its position:absolute descendants regardless of
+     the element's own position value. Left in place, .ab-roster-print-target
+     resolves its top:0/left:0 against .ptg-wizard's own (now-static, but
+     still transformed) box instead of the physical page — which, since
+     .ptg-wizard itself sits far down the normal document flow behind
+     everything else on the page (all of it still visibility:hidden but NOT
+     removed from layout), put the actual print content mostly below the
+     first printed page with only a sliver of it visible at the very bottom.
+     This — not any DPI/image-sizing issue — was the "prints at a different
+     scale than the preview" bug. */
+  .ptg-wizard { max-height: none !important; overflow: visible !important; position: static !important; transform: none !important; }
   .ab-roster-print-target {
     position: absolute;
     top: 0;
@@ -2949,6 +2993,12 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   z-index: 1200;
   pointer-events: none;
 }
+/* .gw-overlay is pointer-events:none by default (every other usage is a
+   purely decorative backdrop, closed only via Escape/close-button) — the
+   Army Roster modal is the one place that wants an actual click-outside-to-
+   cancel, so it opts back in here rather than changing the shared default
+   and risking click-through behavior other modals may depend on. */
+.ab-roster-overlay-clickable { pointer-events: auto; }
 
 .gw-modal {
   position: fixed;

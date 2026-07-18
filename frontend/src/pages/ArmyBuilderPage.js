@@ -110,18 +110,22 @@ const AUX_SLOT_COUNT = 5;
 // — used to overlay live text on top of the scanned page in Image mode.
 // Column X-ranges are shared by every regiment/aux row on both pages.
 const ROSTER_ROW_COLS = {
-  name:  { left: 20.6, width: 27.2 },
-  size:  { left: 47.8, width: 6.2 },
-  notes: { left: 54,   width: 29.5 },
-  points:{ left: 83.5, width: 12.5 },
+  name:   { left: 19.5, width: 28.3 },
+  size:   { left: 49.5, width: 6.2 },
+  notes:  { left: 54,   width: 29.5 },
+  points: { left: 86.3, width: 11 },
+  // Regiment/Aux/Units totals share the row grid's vertical rhythm but sit in
+  // their own left-shifted column (measured separately from the per-row
+  // Points column above, which was pushed right of these by the same fix).
+  totals: { left: 80.2, width: 12.5 },
 };
 const ROSTER_LAYOUT = {
   header: {
-    commander:       { page: 0, top: 19,   left: 6.5,  width: 32 },
-    armyName:        { page: 0, top: 19,   left: 39.4, width: 34.5 },
+    commander:       { page: 0, top: 18.1, left: 6.5,  width: 32 },
+    armyName:        { page: 0, top: 18.1, left: 42.4, width: 31.5 },
     pointsLimit:     { page: 0, top: 24.5, left: 74.5, width: 17.9 },
-    faction:         { page: 0, top: 29,   left: 6.5,  width: 32 },
-    battleFormation: { page: 0, top: 29,   left: 39.4, width: 34.5 },
+    faction:         { page: 0, top: 27.4, left: 9.5,  width: 29 },
+    battleFormation: { page: 0, top: 27.4, left: 42.4, width: 31.5 },
   },
   regiments: [
     { page: 0, general: 41.91, units: [44.99, 48.01, 51.03, 54.06] },
@@ -764,7 +768,7 @@ function RosterSlotRow({ mode, label, instanceKey, slotRef, unitsById, onMove, t
     <div className={`ab-roster-overlay-row${instanceKey ? '' : ' ab-roster-overlay-row-empty'}`} style={{ top: `${top}%` }} {...dragProps}>
       <span className="ab-roster-overlay-cell" style={{ left: `${ROSTER_ROW_COLS.name.left}%`, width: `${ROSTER_ROW_COLS.name.width}%` }}>{name}</span>
       <span className="ab-roster-overlay-cell ab-roster-overlay-center" style={{ left: `${ROSTER_ROW_COLS.size.left}%`, width: `${ROSTER_ROW_COLS.size.width}%` }}>{size}</span>
-      <span className="ab-roster-overlay-cell" style={{ left: `${ROSTER_ROW_COLS.notes.left}%`, width: `${ROSTER_ROW_COLS.notes.width}%` }}>{notes}</span>
+      <span className="ab-roster-overlay-cell ab-roster-overlay-center" style={{ left: `${ROSTER_ROW_COLS.notes.left}%`, width: `${ROSTER_ROW_COLS.notes.width}%` }}>{notes}</span>
       <span className="ab-roster-overlay-cell ab-roster-overlay-center" style={{ left: `${ROSTER_ROW_COLS.points.left}%`, width: `${ROSTER_ROW_COLS.points.width}%` }}>{instanceKey ? points : ''}</span>
     </div>
   );
@@ -779,7 +783,7 @@ function ArmyRosterModal({
   listName, factionName, pointsLimit, setPointsLimit, battleFormation, totalPoints,
   doc, setDoc, unitsById, moveToSlot,
   regimentsTotal, auxTotal, armyUnitsTotal,
-  onCommanderNameChange,
+  onCommanderNameChange, onRenameList,
   // Split-view usage (every stage except Select Units): rendered as a plain
   // pane alongside the stage content instead of a fixed-position modal —
   // no overlay, no close button, no Escape handling (it's always visible,
@@ -789,6 +793,18 @@ function ArmyRosterModal({
 }) {
   const modalRef = useRef(null);
   const [printPreview, setPrintPreview] = useState(false);
+
+  // Army Name is really the active list's name (renamed via the same
+  // mechanism as the banner's list manager) rather than its own doc field —
+  // a local draft gives responsive typing without firing a rename request on
+  // every keystroke; onBlur commits, mirroring ListManager's own rename input.
+  const [armyNameDraft, setArmyNameDraft] = useState(listName);
+  useEffect(() => { setArmyNameDraft(listName); }, [listName]);
+  const commitArmyName = () => {
+    const trimmed = armyNameDraft.trim();
+    if (trimmed && onRenameList) onRenameList(trimmed);
+    else setArmyNameDraft(listName);
+  };
 
   useEffect(() => {
     if (inline) return;
@@ -820,7 +836,10 @@ function ArmyRosterModal({
             onBlur={e => onCommanderNameChange && onCommanderNameChange(e.target.value)}
           />
         </div>
-        <div className="ptg-field ptg-army-name"><label>Army Name</label><input type="text" value={listName} readOnly title="Set by renaming the list in the banner" /></div>
+        <div className="ptg-field ptg-army-name">
+          <label>Army Name</label>
+          <input type="text" value={armyNameDraft} onChange={e => setArmyNameDraft(e.target.value)} onBlur={commitArmyName} />
+        </div>
         <div className="ptg-field ptg-army-points-limit">
           <label>Points Limit</label>
           <div className="ab-roster-points-limit-row">
@@ -904,8 +923,18 @@ function ArmyRosterModal({
                 <div className="ab-roster-image-view ab-roster-print-target">
                   <div className="ab-roster-image-page">
                     <ProgressiveImg src="/ptg/army-roster-1.jpg" micro={ARMY_ROSTER_MICRO.page1} avgColor={ARMY_ROSTER_AVG_COLOR.page1} alt="Army Roster page 1" className="ab-roster-page-img" />
-                    <div className="ab-roster-overlay-field" style={overlayFieldStyle(ROSTER_LAYOUT.header.commander)}>{doc.commander}</div>
-                    <div className="ab-roster-overlay-field" style={overlayFieldStyle(ROSTER_LAYOUT.header.armyName)}>{listName}</div>
+                    <input
+                      type="text" className="ab-roster-overlay-input" style={overlayFieldStyle(ROSTER_LAYOUT.header.commander)}
+                      value={doc.commander}
+                      onChange={e => setDoc(d => ({ ...d, commander: e.target.value }))}
+                      onBlur={e => onCommanderNameChange && onCommanderNameChange(e.target.value)}
+                    />
+                    <input
+                      type="text" className="ab-roster-overlay-input" style={overlayFieldStyle(ROSTER_LAYOUT.header.armyName)}
+                      value={armyNameDraft}
+                      onChange={e => setArmyNameDraft(e.target.value)}
+                      onBlur={commitArmyName}
+                    />
                     <div className={`ab-roster-overlay-field ab-roster-overlay-center${overLimit ? ' ab-roster-overlay-over' : ''}`} style={overlayFieldStyle(ROSTER_LAYOUT.header.pointsLimit)}>{totalPoints.toLocaleString()} / {pointsLimit}</div>
                     <div className="ab-roster-overlay-field" style={overlayFieldStyle(ROSTER_LAYOUT.header.faction)}>{factionName}</div>
                     <div className="ab-roster-overlay-field" style={overlayFieldStyle(ROSTER_LAYOUT.header.battleFormation)}>{battleFormation}</div>
@@ -926,12 +955,12 @@ function ArmyRosterModal({
                         {rl.units.map((top, ui) => renderSlot('image', `Unit ${ui + 1}`, slots.regiments[ri].units[ui], { kind: 'unit', regimentIdx: ri, unitIdx: ui }, top))}
                       </React.Fragment>
                     ))}
-                    <div className="ab-roster-overlay-field ab-roster-overlay-center" style={{ top: `${ROSTER_LAYOUT.regimentsTotal.top}%`, left: `${ROSTER_ROW_COLS.points.left}%`, width: `${ROSTER_ROW_COLS.points.width}%` }}>{regimentsTotal}</div>
+                    <div className="ab-roster-overlay-field ab-roster-overlay-center" style={{ top: `${ROSTER_LAYOUT.regimentsTotal.top}%`, left: `${ROSTER_ROW_COLS.totals.left}%`, width: `${ROSTER_ROW_COLS.totals.width}%` }}>{regimentsTotal}</div>
 
                     {ROSTER_LAYOUT.aux.map((a, ai) => renderSlot('image', `Unit ${ai + 1}`, slots.aux[ai], { kind: 'aux', unitIdx: ai }, a.top))}
                     {overflowAux > 0 && <div className="ab-roster-overlay-note">+{overflowAux} more not shown — see Replica</div>}
-                    <div className="ab-roster-overlay-field ab-roster-overlay-center" style={{ top: `${ROSTER_LAYOUT.auxTotal.top}%`, left: `${ROSTER_ROW_COLS.points.left}%`, width: `${ROSTER_ROW_COLS.points.width}%` }}>{auxTotal}</div>
-                    <div className="ab-roster-overlay-field ab-roster-overlay-center" style={{ top: `${ROSTER_LAYOUT.unitsTotal.top}%`, left: `${ROSTER_ROW_COLS.points.left}%`, width: `${ROSTER_ROW_COLS.points.width}%` }}>{armyUnitsTotal}</div>
+                    <div className="ab-roster-overlay-field ab-roster-overlay-center" style={{ top: `${ROSTER_LAYOUT.auxTotal.top}%`, left: `${ROSTER_ROW_COLS.totals.left}%`, width: `${ROSTER_ROW_COLS.totals.width}%` }}>{auxTotal}</div>
+                    <div className="ab-roster-overlay-field ab-roster-overlay-center" style={{ top: `${ROSTER_LAYOUT.unitsTotal.top}%`, left: `${ROSTER_ROW_COLS.totals.left}%`, width: `${ROSTER_ROW_COLS.totals.width}%` }}>{armyUnitsTotal}</div>
                     <div className="ab-roster-overlay-notes-text" style={{ top: `${ROSTER_LAYOUT.notes.top}%`, left: '8%', width: '84%' }}>{doc.notes}</div>
                   </div>
                 </div>
@@ -948,7 +977,7 @@ function ArmyRosterModal({
 
   return (
     <>
-      <div className="gw-overlay" onClick={printPreview ? () => setPrintPreview(false) : onClose} />
+      <div className="gw-overlay ab-roster-overlay-clickable" onClick={printPreview ? () => setPrintPreview(false) : onClose} />
       <div className={`ptg-wizard${presentMode === 'image' ? ' ab-roster-modal-wide' : ''}`} ref={modalRef} role="dialog" aria-modal="true" aria-label="Army Roster">
         {content}
       </div>
@@ -2129,6 +2158,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
               battleFormation={battleFormation}
               totalPoints={totalPoints}
               onCommanderNameChange={setCommanderName}
+              onRenameList={name => renameList(activeListId, name)}
               doc={armyRosterDoc}
               setDoc={setArmyRosterDoc}
               unitsById={unitsById}
@@ -2171,6 +2201,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
         battleFormation={battleFormation}
         totalPoints={totalPoints}
         onCommanderNameChange={setCommanderName}
+        onRenameList={name => renameList(activeListId, name)}
         doc={armyRosterDoc}
         setDoc={setArmyRosterDoc}
         unitsById={unitsById}
