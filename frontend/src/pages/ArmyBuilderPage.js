@@ -503,13 +503,17 @@ function SelectableAbilityCard({ ab, isSelected, onToggle }) {
   );
 }
 
-function HeroAssignmentStage({ label, sectionKey, selectedHeroes, rulesCache, heroAssignments, setHeroAssignments, primaryFaction, primaryRules }) {
+function HeroAssignmentStage({ label, sectionKey, selectedHeroes, rulesCache, heroAssignments, setHeroAssignments, primaryFaction, primaryRules, selectedOptions, setSelectedOptions }) {
   const [filterSelected, setFilterSelected] = useState(false);
-  const [selectedNames, setSelectedNames] = useState(new Set());
-  const toggleSelected = name => setSelectedNames(prev => {
-    const next = new Set(prev);
-    if (next.has(name)) next.delete(name); else next.add(name);
-    return next;
+  // Lifted to the list's own synced state (see selectedOptions in
+  // ArmyBuilderPage) rather than local component state — this is part of
+  // the list's plan, same as battleFormation/heroAssignments, so it needs
+  // to save and live-sync across devices instead of resetting on reload.
+  const selectedNames = new Set(selectedOptions[sectionKey] ?? []);
+  const toggleSelected = name => setSelectedOptions(prev => {
+    const current = new Set(prev[sectionKey] ?? []);
+    if (current.has(name)) current.delete(name); else current.add(name);
+    return { ...prev, [sectionKey]: [...current] };
   });
   const coreConfig = sectionKey === 'heroic_traits' ? CORE_HEROIC_TRAITS : sectionKey === 'artefacts' ? CORE_ARTEFACTS : null;
 
@@ -1063,7 +1067,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
   }
 
   function makeBlankList(name) {
-    return { name, faction: '', pointsLimit: 2000, roster: {}, rosterOrder: [], battleFormation: '', heroAssignments: {}, activeStage: 'units', armyRosterDoc: makeBlankArmyRosterDoc() };
+    return { name, faction: '', pointsLimit: 2000, roster: {}, rosterOrder: [], battleFormation: '', heroAssignments: {}, activeStage: 'units', armyRosterDoc: makeBlankArmyRosterDoc(), selectedOptions: {} };
   }
   // The subset of a list's fields that live in the server row's `data` blob
   // (name/faction_slug/faction_name are their own columns, set separately).
@@ -1098,6 +1102,11 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
   const [heroAssignments, setHeroAssignments] = useState({}); // { [heroId]: { heroic_traits, artefacts, spell_lore, prayer_lore, manifestation_lore } }
   const [activeStage, setActiveStage] = useState('units');
   const [armyRosterDoc, setArmyRosterDoc] = useState(makeBlankArmyRosterDoc());
+  // "Filter to Selection" checkmarks for Heroic Traits/Artefacts of Power —
+  // { [sectionKey]: string[] } — part of the list's own plan, so it saves
+  // and live-syncs across devices the same way battleFormation/
+  // heroAssignments do (see HeroAssignmentStage).
+  const [selectedOptions, setSelectedOptions] = useState({});
 
   // Set whenever loadListIntoState runs (initial load, list switch, or a
   // remote live-sync update) and checked once by the autosave effect below —
@@ -1117,6 +1126,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
     setHeroAssignments(list.heroAssignments ?? {});
     setActiveStage(list.activeStage ?? 'units');
     setArmyRosterDoc(sanitizeArmyRosterDoc(list.armyRosterDoc));
+    setSelectedOptions(list.selectedOptions ?? {});
   }, []);
 
   // One-time load: fetch this account's saved lists from the server. If none
@@ -1206,7 +1216,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
     if (listsLoading || !activeListId) return;
     if (justLoadedRef.current) { justLoadedRef.current = false; return; }
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
-    const snapshot = { faction, pointsLimit, roster, rosterOrder, battleFormation, heroAssignments, activeStage, armyRosterDoc };
+    const snapshot = { faction, pointsLimit, roster, rosterOrder, battleFormation, heroAssignments, activeStage, armyRosterDoc, selectedOptions };
     autosaveTimer.current = setTimeout(() => {
       const id = activeListIdRef.current;
       if (!id || id === 'local-fallback') return;
@@ -1216,7 +1226,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
       }, clientIdHeader()).catch(err => console.error('Army Builder autosave failed:', err));
     }, 700);
     return () => { if (autosaveTimer.current) clearTimeout(autosaveTimer.current); };
-  }, [faction, pointsLimit, roster, rosterOrder, battleFormation, heroAssignments, activeStage, armyRosterDoc, listsLoading, activeListId, factions]);
+  }, [faction, pointsLimit, roster, rosterOrder, battleFormation, heroAssignments, activeStage, armyRosterDoc, selectedOptions, listsLoading, activeListId, factions]);
 
   // Live sync across devices: an SSE push channel notifies this account's
   // OTHER connected devices whenever a list changes here (create/rename/
@@ -1308,7 +1318,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
         const factionName = factions.find(f => f.faction_slug === faction)?.faction ?? null;
         await axios.put(`/api/army-builder-lists/${id}`, {
           faction_slug: faction || null, faction_name: factionName,
-          data: listToDataBlob({ faction, pointsLimit, roster, rosterOrder, battleFormation, heroAssignments, activeStage, armyRosterDoc }),
+          data: listToDataBlob({ faction, pointsLimit, roster, rosterOrder, battleFormation, heroAssignments, activeStage, armyRosterDoc, selectedOptions }),
         }, clientIdHeader());
       }
       const { data: dup } = await axios.post(`/api/army-builder-lists/${id}/duplicate`, null, clientIdHeader());
@@ -2175,6 +2185,8 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
                     setHeroAssignments={setHeroAssignments}
                     primaryFaction={faction}
                     primaryRules={faction ? rulesCache.current[faction] : null}
+                    selectedOptions={selectedOptions}
+                    setSelectedOptions={setSelectedOptions}
                   />
                 )}
               </div>
