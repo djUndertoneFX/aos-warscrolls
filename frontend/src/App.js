@@ -28,25 +28,38 @@ const NAV_PAGES = [
 const SAVE_OPTIONS  = ['-', 2, 3, 4, 5, 6];
 const WARD_OPTIONS  = ['-', 4, 5, 6];
 
-function SettingsPanel({ onClose }) {
+function SettingsPanel({ onClose, wrapRef }) {
   const {
     showFlavorText, presumedSave, presumedWard, roundingMode, includeSaveWardInADO,
     showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore,
     linkPageSelections, useSpearheadAbilities,
     setSetting,
   } = useSettings();
-  const ref = useRef(null);
+  const { user } = useAuth();
 
+  // wrapRef (from Navbar) covers both the gear button AND this panel, not
+  // just the panel — a click on the gear button itself needs to count as
+  // "inside" here, or this mousedown handler fires onClose() a beat before
+  // the button's own onClick toggle runs, which then immediately reopens it
+  // (closed -> toggle sees closed -> flips back open). Net effect: clicking
+  // the gear to close it while open visibly did nothing. Same class of bug
+  // as the modal outside-click issue — the trigger control has to be inside
+  // the boundary the mousedown listener checks against.
   useEffect(() => {
     function handler(e) {
-      if (ref.current && !ref.current.contains(e.target)) onClose();
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) onClose();
     }
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [onClose]);
+  }, [onClose, wrapRef]);
 
   return (
-    <div className="settings-panel" ref={ref}>
+    <div className="settings-panel">
+      {/* .navbar-username hides itself under 1100px (iPad and narrower) to
+          save space in the nav bar — surfaced here instead so there's still
+          a way to confirm which account is logged in on a device where it's
+          not otherwise visible. */}
+      <div className="settings-panel-username">{user?.username}</div>
       <div className="settings-panel-title">Display Settings</div>
       <label className="settings-cb-row">
         <input type="checkbox" checked={showFlavorText}
@@ -124,6 +137,8 @@ function Navbar({ headerCollapsed, onToggleCollapse }) {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsWrapRef = useRef(null);
+  const mobileSettingsWrapRef = useRef(null);
   const isWarscrolls = location.pathname === '/warscrolls' || location.pathname === '/simulacrum' || location.pathname === '/spearhead' || location.pathname === '/path-to-glory' || location.pathname === '/army-builder';
   if (!user) return null;
   return (
@@ -146,7 +161,7 @@ function Navbar({ headerCollapsed, onToggleCollapse }) {
           ))}
         </div>
         <div className="navbar-right">
-          <div className="settings-gear-wrap">
+          <div className="settings-gear-wrap" ref={settingsWrapRef}>
             <button
               className="btn-settings-gear"
               onClick={() => setSettingsOpen(o => !o)}
@@ -154,7 +169,7 @@ function Navbar({ headerCollapsed, onToggleCollapse }) {
             >
               ⚙
             </button>
-            {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
+            {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} wrapRef={settingsWrapRef} />}
           </div>
           <button className="hamburger" onClick={() => setMenuOpen(o => !o)} aria-label="Menu">
             <span /><span /><span />
@@ -175,11 +190,11 @@ function Navbar({ headerCollapsed, onToggleCollapse }) {
               open (unlike the page links, which close it) — closing the menu
               here would unmount SettingsPanel along with it, since it's
               nested inside for anchoring. */}
-          <div className="settings-gear-wrap mobile-settings-wrap">
+          <div className="settings-gear-wrap mobile-settings-wrap" ref={mobileSettingsWrapRef}>
             <button type="button" className="mobile-settings-toggle" onClick={() => setSettingsOpen(o => !o)}>
               ⚙ Display Settings
             </button>
-            {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
+            {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} wrapRef={mobileSettingsWrapRef} />}
           </div>
           <button className="mobile-signout" onClick={() => { setMenuOpen(false); logout(); }}>Sign Out</button>
         </div>

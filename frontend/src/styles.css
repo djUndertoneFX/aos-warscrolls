@@ -293,6 +293,15 @@ input, select {
   padding-bottom: 0.4rem;
   border-bottom: 1px solid var(--border);
 }
+/* Only actually needed under 1100px, where .navbar-username hides itself —
+   shown unconditionally here anyway since "which account is this" is a
+   harmless thing to confirm at any width. */
+.settings-panel-username {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  letter-spacing: 0.04em;
+  margin-bottom: 0.5rem;
+}
 .settings-panel-title--sub {
   margin-top: 0.8rem;
   font-size: 0.65rem;
