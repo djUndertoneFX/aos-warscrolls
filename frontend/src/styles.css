@@ -5031,33 +5031,39 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 .bb-unit-row-name { text-transform: capitalize; }
 .bb-unit-row-pts { color: var(--text-dim); }
 
-/* ── Fight! stage ── */
-.bb-fight-layout { display: flex; flex: 1; min-height: 0; }
-.bb-phase-ribbon {
-  flex: 0 0 150px;
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  padding: 1rem 0.5rem 1rem 0;
-  border-right: 1px solid var(--border);
-}
-.bb-phase-btn {
+/* ── Header: centered "Steps:" tabs ── */
+.bb-header { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
+.bb-steps { grid-column: 2; display: flex; align-items: center; gap: 0.7rem; }
+.bb-steps-label {
   font-family: 'Cinzel', serif;
-  font-size: 0.72rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+.bb-step-btn {
+  font-family: 'Cinzel', serif;
+  font-size: 0.95rem;
   letter-spacing: 0.03em;
-  text-align: left;
-  padding: 0.55rem 0.6rem;
-  border: 1px solid transparent;
-  border-radius: 4px;
+  padding: 0.6rem 1.4rem;
+  min-width: 190px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
   background: transparent;
   color: var(--text-dim);
   cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
 }
-.bb-phase-btn:hover { color: var(--text); border-color: var(--border); }
-.bb-phase-btn.active { background: var(--gold); color: #1a1614; font-weight: 700; }
-.bb-fight-main { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 1rem; overflow-y: auto; }
-.bb-fight-view-toggle { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.9rem; }
-.bb-fight-view-toggle button {
+.bb-step-btn strong { color: var(--gold); margin-right: 0.3em; }
+.bb-step-btn:hover { border-color: var(--border-gold); color: var(--text); }
+.bb-step-btn.active { background: var(--gold); border-color: var(--gold); color: #1a1614; font-weight: 600; }
+.bb-step-btn.active strong { color: #1a1614; }
+
+/* ── Fight! stage ── */
+.bb-fight-wrap { display: flex; flex-direction: column; flex: 1; min-height: 0; padding: 1rem 0.2rem 2rem; }
+.bb-fight-controls { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 0.9rem; flex-wrap: wrap; }
+.bb-fight-view-toggle, .bb-fight-layout-toggle { display: flex; align-items: center; gap: 0.6rem; }
+.bb-fight-view-toggle button, .bb-fight-layout-toggle button {
   font-family: 'Cinzel', serif;
   font-size: 0.68rem;
   letter-spacing: 0.03em;
@@ -5069,8 +5075,53 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   color: var(--text-dim);
   cursor: pointer;
 }
-.bb-fight-view-toggle button.active { background: var(--gold); border-color: var(--gold); color: #1a1614; }
+.bb-fight-view-toggle button.active, .bb-fight-layout-toggle button.active { background: var(--gold); border-color: var(--gold); color: #1a1614; }
 .bb-fight-single-side-toggle { display: flex; gap: 0.3rem; margin-left: 0.5rem; }
+
+/* Ribbon: vertical list by default (Toggle mode's big picker), horizontal
+   bar in Vertical mode's top section. Each button's color comes from an
+   inline style (PHASE_COLORS, matching the site-wide phase palette) rather
+   than a fixed class color. */
+.bb-phase-ribbon { display: flex; flex-direction: column; gap: 0.4rem; }
+.bb-phase-ribbon-horizontal { flex-direction: row; flex-wrap: wrap; }
+.bb-phase-btn {
+  font-family: 'Cinzel', serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  text-align: left;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.bb-phase-ribbon-horizontal .bb-phase-btn { flex: 1 1 auto; text-align: center; }
+.bb-phase-btn.active { font-weight: 700; }
+
+.bb-fight-vertical { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.bb-fight-hr { height: 1px; background: linear-gradient(to right, transparent, rgba(200,168,64,0.5), transparent); margin: 1rem 0; }
+.bb-fight-main { flex: 1; min-width: 0; overflow-y: auto; }
+
+.bb-fight-toggle { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.bb-swap-btn {
+  align-self: center;
+  font-family: 'Cinzel', serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.5rem 1.2rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--border-gold);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--gold);
+  cursor: pointer;
+}
+.bb-swap-btn:hover { background: rgba(200,168,64,0.18); }
+.bb-phase-picker-big { flex: 1; display: flex; align-items: center; justify-content: center; }
+.bb-phase-picker-big .bb-phase-ribbon { width: 100%; max-width: 480px; }
+.bb-phase-picker-big .bb-phase-btn { padding: 1.1rem 1rem; font-size: 1rem; text-align: center; }
+
 .bb-fight-dual { display: flex; gap: 1rem; flex: 1; min-height: 0; }
 .bb-fight-pane { flex: 1 1 50%; min-width: 0; }
 .bb-fight-pane-title {
@@ -5091,6 +5142,14 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   color: var(--gold);
   margin-bottom: 0.6rem;
 }
+.bb-fight-section-subtitle {
+  font-family: 'Cinzel', serif;
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin: 0.7rem 0 0.5rem;
+}
 .bb-fight-grid { grid-template-columns: 1fr !important; }
 .bb-fight-dual .bb-fight-grid { grid-template-columns: 1fr !important; }
 .bb-fight-ability-unit {
@@ -5103,7 +5162,8 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 }
 @media (max-width: 900px) {
   .bb-dual-view { flex-direction: column; }
-  .bb-fight-layout { flex-direction: column; }
-  .bb-phase-ribbon { flex-direction: row; flex-wrap: wrap; border-right: none; border-bottom: 1px solid var(--border); }
   .bb-fight-dual { flex-direction: column; }
+  .bb-header { grid-template-columns: 1fr; text-align: center; }
+  .bb-steps { grid-column: 1; justify-content: center; flex-wrap: wrap; margin-top: 0.5rem; }
+  .bb-step-btn { min-width: 0; }
 }

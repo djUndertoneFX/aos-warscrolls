@@ -66,6 +66,18 @@ const PHASE_PRESETS = [
   { keys: ['ovr-movement-grey'],                                style: { hdrBg: '#525252', hdrTxt: '#e0e0e0', border: '#787878' } },
   { keys: ['ovr-eot-purple'],                                   style: { hdrBg: '#500848', hdrTxt: '#f0b8e8', border: '#a01888' } },
   { keys: ['ovr-deploy-black'],                                 style: { hdrBg: '#161616', hdrTxt: '#c8c8c8', border: '#3a3a3a' } },
+  // Battle Buddy: a "Passive" ability whose own timing carries no phase, but
+  // whose effect text turns out to reference one specific phase (detected by
+  // BattleBuddyPage.js's discoverPhaseFromText) — half the header stays the
+  // normal passive brown, half switches to that discovered phase's colour,
+  // as a visual "this is passive, but really only relevant here" flag.
+  { keys: ['ovr-split-hero'],        style: { hdrBg: 'linear-gradient(to right, #3a3220 50%, #7a6010 50%)', hdrTxt: '#f0e8c8', border: '#c8a020' } },
+  { keys: ['ovr-split-movement'],    style: { hdrBg: 'linear-gradient(to right, #3a3220 50%, #0e4020 50%)', hdrTxt: '#e8d898', border: '#208848' } },
+  { keys: ['ovr-split-shooting'],    style: { hdrBg: 'linear-gradient(to right, #3a3220 50%, #0c2a60 50%)', hdrTxt: '#e8d898', border: '#2060c8' } },
+  { keys: ['ovr-split-charge'],      style: { hdrBg: 'linear-gradient(to right, #3a3220 50%, #6a2c00 50%)', hdrTxt: '#e8d898', border: '#c86010' } },
+  { keys: ['ovr-split-combat'],      style: { hdrBg: 'linear-gradient(to right, #3a3220 50%, #6a0808 50%)', hdrTxt: '#e8d898', border: '#c02020' } },
+  { keys: ['ovr-split-deployment'],  style: { hdrBg: 'linear-gradient(to right, #3a3220 50%, #280858 50%)', hdrTxt: '#e8d898', border: '#6040c0' } },
+  { keys: ['ovr-split-endofturn'],   style: { hdrBg: 'linear-gradient(to right, #3a3220 50%, #202020 50%)', hdrTxt: '#e8d898', border: '#505050' } },
   { keys: ['passive'],                                          style: { hdrBg: '#3a3220', hdrTxt: '#e8d898', border: '#7a6830' } },
   { keys: ['hero phase'],                                       style: { hdrBg: '#7a6010', hdrTxt: '#ffffff', border: '#c8a020' } },
   { keys: ['movement', 'move phase'],                           style: { hdrBg: '#0e4020', hdrTxt: '#a0f0b8', border: '#208848' } },
