@@ -8,6 +8,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import WarscrollsPage from './pages/WarscrollsPage';
 import ArmyBuilderPage from './pages/ArmyBuilderPage';
+import BattleBuddyPage from './pages/BattleBuddyPage';
 import SimulacrumPage from './pages/SimulacrumPage';
 import SpearheadPage from './pages/SpearheadPage';
 import PathToGloryPage from './pages/PathToGloryPage';
@@ -16,7 +17,7 @@ import './styles.css';
 const NAV_PAGES = [
   { label: 'Warscrolls',         path: '/warscrolls' },
   { label: 'Army Builder',       path: '/army-builder' },
-  { label: 'Battle Buddy',       path: '/battle-buddy',    soon: true },
+  { label: 'Battle Buddy',       path: '/battle-buddy' },
   { label: 'Matched Play',       path: '/matched-play',    soon: true },
   { label: 'Spearhead',          path: '/spearhead' },
   { label: 'Path to Glory',      path: '/path-to-glory' },
@@ -245,7 +246,7 @@ function AppRoutes() {
           <ProtectedRoute><WarscrollsPage headerCollapsed={headerCollapsed} /></ProtectedRoute>
         } />
         <Route path="/army-builder"  element={<ProtectedRoute><ArmyBuilderPage headerCollapsed={headerCollapsed} /></ProtectedRoute>} />
-        <Route path="/battle-buddy"  element={<ProtectedRoute><ComingSoon title="Battle Buddy" /></ProtectedRoute>} />
+        <Route path="/battle-buddy"  element={<ProtectedRoute><BattleBuddyPage /></ProtectedRoute>} />
         <Route path="/matched-play"  element={<ProtectedRoute><ComingSoon title="Matched Play" /></ProtectedRoute>} />
         <Route path="/spearhead"     element={<ProtectedRoute><SpearheadPage headerCollapsed={headerCollapsed} /></ProtectedRoute>} />
         <Route path="/path-to-glory"  element={<ProtectedRoute><PathToGloryPage headerCollapsed={headerCollapsed} /></ProtectedRoute>} />

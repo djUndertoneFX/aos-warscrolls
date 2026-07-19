@@ -4943,3 +4943,167 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   .cb-group-center { justify-content: flex-start; flex: unset; flex-direction: column; align-items: flex-start; }
   .cb-group-right  { justify-content: flex-start; margin-left: 1.5rem; flex-direction: column; align-items: flex-start; }
 }
+
+/* ── Battle Buddy ──────────────────────────────────────────────────────── */
+.bb-dual-view { display: flex; flex: 1; min-height: 0; gap: 1rem; padding: 1rem 0.2rem 2rem; overflow-y: auto; }
+.bb-pane {
+  flex: 1 1 50%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1rem;
+  background: rgba(0,0,0,0.12);
+}
+.bb-pane-title {
+  font-family: 'Cinzel', serif;
+  font-size: 1.1rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: center;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+.bb-pane:first-child .bb-pane-title { color: var(--friendly-color); }
+.bb-pane:last-child .bb-pane-title { color: var(--enemy-color); }
+.bb-source-row { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.bb-source-btn {
+  flex: 1 1 auto;
+  font-family: 'Cinzel', serif;
+  font-size: 0.68rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 0.45rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.bb-source-btn:hover { border-color: var(--border-gold); color: var(--text); }
+.bb-source-btn.active { background: var(--gold); border-color: var(--gold); color: #1a1614; font-weight: 700; }
+.bb-pane-empty { color: var(--text-dim); font-style: italic; padding: 1.5rem 1rem; text-align: center; }
+.bb-source-list { display: flex; flex-direction: column; gap: 0.6rem; }
+.bb-source-list-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.bb-source-list-name { flex: 1; font-weight: 600; }
+.bb-source-list-faction { color: var(--text-dim); font-size: 0.85rem; }
+.bb-load-btn {
+  font-family: 'Cinzel', serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--border-gold);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--gold);
+  cursor: pointer;
+}
+.bb-load-btn:hover:not(:disabled) { background: rgba(200,168,64,0.18); }
+.bb-load-btn:disabled { opacity: 0.5; cursor: default; }
+.bb-spearhead-select {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-panel, #1a1614);
+  color: var(--text);
+  font-family: inherit;
+}
+.bb-unit-list { display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.5rem; }
+.bb-unit-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.35rem 0.6rem;
+  border-bottom: 1px solid rgba(200,168,64,0.12);
+  font-size: 0.9rem;
+}
+.bb-unit-row-name { text-transform: capitalize; }
+.bb-unit-row-pts { color: var(--text-dim); }
+
+/* ── Fight! stage ── */
+.bb-fight-layout { display: flex; flex: 1; min-height: 0; }
+.bb-phase-ribbon {
+  flex: 0 0 150px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 1rem 0.5rem 1rem 0;
+  border-right: 1px solid var(--border);
+}
+.bb-phase-btn {
+  font-family: 'Cinzel', serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  text-align: left;
+  padding: 0.55rem 0.6rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.bb-phase-btn:hover { color: var(--text); border-color: var(--border); }
+.bb-phase-btn.active { background: var(--gold); color: #1a1614; font-weight: 700; }
+.bb-fight-main { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 1rem; overflow-y: auto; }
+.bb-fight-view-toggle { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.9rem; }
+.bb-fight-view-toggle button {
+  font-family: 'Cinzel', serif;
+  font-size: 0.68rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.bb-fight-view-toggle button.active { background: var(--gold); border-color: var(--gold); color: #1a1614; }
+.bb-fight-single-side-toggle { display: flex; gap: 0.3rem; margin-left: 0.5rem; }
+.bb-fight-dual { display: flex; gap: 1rem; flex: 1; min-height: 0; }
+.bb-fight-pane { flex: 1 1 50%; min-width: 0; }
+.bb-fight-pane-title {
+  font-family: 'Cinzel', serif;
+  font-size: 1rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-align: center;
+  margin-bottom: 0.6rem;
+}
+.bb-fight-dual .bb-fight-pane:first-child .bb-fight-pane-title { color: var(--friendly-color); }
+.bb-fight-dual .bb-fight-pane:last-child .bb-fight-pane-title { color: var(--enemy-color); }
+.bb-fight-section-title {
+  font-family: 'Cinzel', serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 0.6rem;
+}
+.bb-fight-grid { grid-template-columns: 1fr !important; }
+.bb-fight-dual .bb-fight-grid { grid-template-columns: 1fr !important; }
+.bb-fight-ability-unit {
+  font-family: 'Cinzel', serif;
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 0.2rem;
+}
+@media (max-width: 900px) {
+  .bb-dual-view { flex-direction: column; }
+  .bb-fight-layout { flex-direction: column; }
+  .bb-phase-ribbon { flex-direction: row; flex-wrap: wrap; border-right: none; border-bottom: 1px solid var(--border); }
+  .bb-fight-dual { flex-direction: column; }
+}
