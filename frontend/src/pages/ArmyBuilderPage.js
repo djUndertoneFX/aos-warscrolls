@@ -113,7 +113,7 @@ const ROSTER_ROW_COLS = {
   name:   { left: 18.2, width: 28.3 },
   size:   { left: 49.5, width: 6.2 },
   notes:  { left: 57,   width: 26 },
-  points: { left: 87.1, width: 11 },
+  points: { left: 88.7, width: 11 },
   // Regiment/Aux/Units totals share the row grid's vertical rhythm but sit in
   // their own left-shifted column (measured separately from the per-row
   // Points column above, which was pushed right of these by the same fix).
