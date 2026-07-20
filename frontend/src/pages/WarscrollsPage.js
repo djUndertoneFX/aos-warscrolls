@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import axios from 'axios';
-import WarscrollGW from '../components/WarscrollGW';
+import WarscrollGW, { prefetchFactionRules } from '../components/WarscrollGW';
 import ImageLightbox, { nameSlug } from '../components/ImageLightbox';
 import { useSettings } from '../SettingsContext';
 import { useAuth } from '../AuthContext';
@@ -352,8 +352,34 @@ export default function WarscrollsPage({ headerCollapsed }) {
     return () => { cancelled = true; };
   }, [enemyIds, enemyFaction]);
 
-  const splitFriendlyNavList = friendlyIds.length > 0 ? friendlyFlaggedFull : friendlyFactionFallback;
-  const splitEnemyNavList    = enemyIds.length > 0    ? enemyFlaggedFull    : enemyFactionFallback;
+  // When marks AND a Friendly/Enemy Faction dropdown value exist, the main
+  // table's backend query ANDs the faction filter against BOTH mark flags
+  // together (server.js: `faction_slug = ?` when only one of
+  // faction/enemyFaction is set, `faction_slug IN (?, ?)` when both are —
+  // either way applied to the single `(is_friendly OR is_enemy)` condition,
+  // not scoped per side). So setting only the Friendly Faction dropdown
+  // also restricts which Enemy-marked units the table shows, not just
+  // Friendly ones. The split-pane nav lists need that exact same combined
+  // restriction, not an independent per-side filter, or the warscroll popup
+  // shows units that were already filtered out of the table you clicked
+  // from (or hides ones the table still shows).
+  const activeFactionSlugs = [faction, enemyFaction].filter(Boolean);
+  const filterByActiveFactions = units => activeFactionSlugs.length > 0
+    ? units.filter(u => activeFactionSlugs.includes(u.faction_slug))
+    : units;
+  const splitFriendlyNavList = friendlyIds.length > 0 ? filterByActiveFactions(friendlyFlaggedFull) : friendlyFactionFallback;
+  const splitEnemyNavList    = enemyIds.length > 0    ? filterByActiveFactions(enemyFlaggedFull)    : enemyFactionFallback;
+
+  // Kick off /api/faction-rules/:slug for every faction represented among
+  // Friendly/Enemy flagged units as soon as they're known — well before the
+  // user actually opens a unit's detail view, so by the time WarscrollGW's
+  // own fetch effect runs, every represented faction's purple info is
+  // already sitting in the shared module-level cache instead of racing a
+  // fresh set of network requests at modal-open time.
+  useEffect(() => {
+    const slugs = [...new Set([...friendlyFlaggedFull, ...enemyFlaggedFull].map(u => u.faction_slug).filter(Boolean))];
+    if (slugs.length > 0) prefetchFactionRules(slugs);
+  }, [friendlyFlaggedFull, enemyFlaggedFull]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);

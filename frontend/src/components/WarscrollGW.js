@@ -4,6 +4,32 @@ import axios from 'axios';
 import { useSettings } from '../SettingsContext';
 import { calcWeaponADO } from '../awoCalc';
 
+// Module-level, not per-modal-instance — WarscrollGW's own `rulesCache` used
+// to be a fresh `useRef(new Map())` that reset to empty every time the modal
+// opened, so even a faction whose purple info you'd just viewed moments
+// earlier re-fetched from scratch the next time you opened a different
+// unit's detail view (the "first faction loads instantly, the rest take a
+// moment or need you to navigate to them" symptom). Hoisting the Map here
+// makes it survive across modal open/close cycles for the lifetime of the
+// page. `prefetchFactionRules` lets a parent page (e.g. WarscrollsPage, as
+// soon as it knows which factions are represented among Friendly/Enemy
+// flagged units) kick these fetches off *before* the modal is even opened,
+// so by the time the user actually clicks a unit every represented
+// faction's rules are already sitting in cache instead of starting a fresh
+// race of network requests at modal-open time.
+const globalRulesCache = new Map();
+const globalRulesLoading = new Set();
+export function prefetchFactionRules(slugs) {
+  for (const slug of slugs) {
+    if (!slug || globalRulesCache.has(slug) || globalRulesLoading.has(slug)) continue;
+    globalRulesLoading.add(slug);
+    axios.get(`/api/faction-rules/${slug}`)
+      .then(r => { globalRulesCache.set(slug, r.data); })
+      .catch(() => { globalRulesCache.set(slug, { traits: [], formations: [] }); })
+      .finally(() => { globalRulesLoading.delete(slug); });
+  }
+}
+
 // ── White-removal canvas image ───────────────────────────────────────────────
 function TransparentImage({ src, alt, className, onError }) {
   const canvasRef = useRef(null);
@@ -1172,8 +1198,10 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
   const prevActivePage = useRef(null); // tracks previous activePage for slide-clear logic
   const unitChangeClear = useRef(false); // true when activePage→null came from unit change (not user nav)
 
-  // Per-faction rules cache (populated for all slugs in navList)
-  const rulesCache = useRef(new Map());
+  // Per-faction rules cache (populated for all slugs in navList) — points at
+  // the module-level globalRulesCache (see top of file) so it survives
+  // across modal open/close instead of resetting to empty every time.
+  const rulesCache = useRef(globalRulesCache);
   const [loadedSlugs, setLoadedSlugs] = useState(new Set());
 
   // Compute contiguous faction groups from navList
@@ -1265,9 +1293,11 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
     if (isSpMode || !navList?.length || sortBy !== 'faction') return;
     const slugs = [...new Set(navList.map(u => u.faction_slug).filter(Boolean))];
     slugs.forEach(slug => {
-      if (rulesCache.current.has(slug)) return;
-      // Optimistic placeholder so we don't double-fetch
-      rulesCache.current.set(slug, null);
+      // rulesCache.current is the shared module-level cache — also check
+      // globalRulesLoading so this doesn't fire a redundant fetch for a slug
+      // a page-level prefetchFactionRules() call already has in flight.
+      if (rulesCache.current.has(slug) || globalRulesLoading.has(slug)) return;
+      globalRulesLoading.add(slug);
       axios.get(`/api/faction-rules/${slug}`)
         .then(r => {
           rulesCache.current.set(slug, r.data);
@@ -1276,7 +1306,8 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
         .catch(() => {
           rulesCache.current.set(slug, { traits: [], formations: [] });
           setLoadedSlugs(prev => new Set([...prev, slug]));
-        });
+        })
+        .finally(() => { globalRulesLoading.delete(slug); });
     });
   }, [navList, spearheadData]);
 
@@ -1285,8 +1316,8 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
   useEffect(() => {
     const slugs = [...new Set([...(friendlyNavList || []), ...(enemyNavList || [])].map(u => u.faction_slug).filter(Boolean))];
     slugs.forEach(slug => {
-      if (rulesCache.current.has(slug)) return;
-      rulesCache.current.set(slug, null);
+      if (rulesCache.current.has(slug) || globalRulesLoading.has(slug)) return;
+      globalRulesLoading.add(slug);
       axios.get(`/api/faction-rules/${slug}`)
         .then(r => {
           rulesCache.current.set(slug, r.data);
@@ -1295,7 +1326,8 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
         .catch(() => {
           rulesCache.current.set(slug, { traits: [], formations: [] });
           setLoadedSlugs(prev => new Set([...prev, slug]));
-        });
+        })
+        .finally(() => { globalRulesLoading.delete(slug); });
     });
   }, [friendlyNavList, enemyNavList]);
 
