@@ -983,7 +983,7 @@ app.get('/api/army-builder-lists', requireAuth, (req, res) => {
   const db = getDb();
   try {
     const rows = db.prepare(
-      'SELECT id, name, faction_slug, faction_name, updated_at FROM army_builder_lists WHERE user_id = ? ORDER BY id ASC'
+      'SELECT id, name, faction_slug, faction_name, list_type, updated_at FROM army_builder_lists WHERE user_id = ? ORDER BY id ASC'
     ).all(req.user.id);
     res.json(rows);
   } finally {
@@ -1005,16 +1005,17 @@ app.get('/api/army-builder-lists/:id', requireAuth, (req, res) => {
 
 // POST /api/army-builder-lists — create a new list
 app.post('/api/army-builder-lists', requireAuth, (req, res) => {
-  const { name, faction_slug, faction_name, data } = req.body;
+  const { name, faction_slug, faction_name, data, list_type } = req.body;
   if (!name || !data) return res.status(400).json({ error: 'name and data are required' });
+  const type = list_type === 'enemy' ? 'enemy' : 'own';
   const db = getDb();
   try {
     const info = db.prepare(
-      'INSERT INTO army_builder_lists (user_id, name, faction_slug, faction_name, data) VALUES (?, ?, ?, ?, ?)'
-    ).run(req.user.id, name, faction_slug || null, faction_name || null, JSON.stringify(data));
+      'INSERT INTO army_builder_lists (user_id, name, faction_slug, faction_name, data, list_type) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run(req.user.id, name, faction_slug || null, faction_name || null, JSON.stringify(data), type);
     res.json({ id: info.lastInsertRowid });
     broadcastListChange(req.user.id, req.headers['x-client-id'], 'list-upsert', {
-      id: info.lastInsertRowid, name, faction_slug: faction_slug || null, faction_name: faction_name || null, data,
+      id: info.lastInsertRowid, name, faction_slug: faction_slug || null, faction_name: faction_name || null, data, list_type: type,
     });
   } finally {
     db.close();
@@ -1058,11 +1059,11 @@ app.post('/api/army-builder-lists/:id/duplicate', requireAuth, (req, res) => {
     const row = db.prepare('SELECT * FROM army_builder_lists WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
     if (!row) return res.status(404).json({ error: 'List not found' });
     const info = db.prepare(
-      'INSERT INTO army_builder_lists (user_id, name, faction_slug, faction_name, data) VALUES (?, ?, ?, ?, ?)'
-    ).run(req.user.id, `${row.name} (Copy)`, row.faction_slug, row.faction_name, row.data);
+      'INSERT INTO army_builder_lists (user_id, name, faction_slug, faction_name, data, list_type) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run(req.user.id, `${row.name} (Copy)`, row.faction_slug, row.faction_name, row.data, row.list_type);
     res.json({ id: info.lastInsertRowid });
     broadcastListChange(req.user.id, req.headers['x-client-id'], 'list-upsert', {
-      id: info.lastInsertRowid, name: `${row.name} (Copy)`, faction_slug: row.faction_slug, faction_name: row.faction_name, data: JSON.parse(row.data),
+      id: info.lastInsertRowid, name: `${row.name} (Copy)`, faction_slug: row.faction_slug, faction_name: row.faction_name, data: JSON.parse(row.data), list_type: row.list_type,
     });
   } finally {
     db.close();

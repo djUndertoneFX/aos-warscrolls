@@ -162,7 +162,21 @@ function useFactionRules() {
 }
 
 // ── Warscrolls source: whatever's currently flagged Friendly/Enemy on the
-// Warscrolls page (server-backed via user_units, not localStorage). ───────
+// Warscrolls page (server-backed via user_units, not localStorage), further
+// narrowed by that page's Friendly/Enemy Faction dropdowns (which ARE only
+// in localStorage, under 'aos-filters' — see WarscrollsPage.js's FILTER_KEY).
+// Mirrors WarscrollsPage's own combined-filter behavior exactly: either
+// dropdown alone restricts BOTH sides' flagged units, not just its own side
+// (see feedback_backend_faction_filter_combined memory) — so without this,
+// Battle Buddy would show flagged units the Warscrolls table itself has
+// already filtered out.
+function activeFactionSlugsFromWarscrollsFilters() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('aos-filters')) || {};
+    return [saved.faction, saved.enemyFaction].filter(Boolean);
+  } catch { return []; }
+}
+
 function WarscrollsSource({ side, state, setState, factionRules }) {
   useEffect(() => {
     let cancelled = false;
@@ -178,7 +192,12 @@ function WarscrollsSource({ side, state, setState, factionRules }) {
         }
         const { data } = await axios.get(`/api/warscrolls?ids=${ids.join(',')}&pageSize=300&sortBy=faction`);
         if (cancelled) return;
-        const units = data.data || [];
+        // user_units doesn't carry faction_slug, so the faction filter can only
+        // be applied here, against the /api/warscrolls response.
+        const activeFactionSlugs = activeFactionSlugsFromWarscrollsFilters();
+        const units = activeFactionSlugs.length > 0
+          ? (data.data || []).filter(u => activeFactionSlugs.includes(u.faction_slug))
+          : (data.data || []);
         const slug = units[0]?.faction_slug ?? null;
         const name = units[0]?.faction ?? null;
         setState(s => ({ ...s, loading: false, units, factionSlug: slug, factionName: name, battleFormation: null, selection: null }));
@@ -202,16 +221,21 @@ function WarscrollsSource({ side, state, setState, factionRules }) {
   return <UnitList units={state.units} />;
 }
 
-// ── Built Army List source ─────────────────────────────────────────────────
+// ── Built Army List source — Army Builder's List/Enemy List pulldowns save
+// into the same table tagged by list_type ('own' vs 'enemy'); this side's
+// pool is picked to match, same as the Warscrolls source's flag filtering. ──
 function ArmyListSource({ side, state, setState, factionRules }) {
   const [lists, setLists] = useState(null);
   const [loadingId, setLoadingId] = useState(null);
+  const wantType = side === 'friendly' ? 'own' : 'enemy';
 
   useEffect(() => {
     let cancelled = false;
-    axios.get('/api/army-builder-lists').then(({ data }) => { if (!cancelled) setLists(data); }).catch(() => { if (!cancelled) setLists([]); });
+    axios.get('/api/army-builder-lists').then(({ data }) => {
+      if (!cancelled) setLists(data.filter(l => (l.list_type || 'own') === wantType));
+    }).catch(() => { if (!cancelled) setLists([]); });
     return () => { cancelled = true; };
-  }, []);
+  }, [wantType]);
 
   const load = async (id) => {
     setLoadingId(id);
@@ -252,7 +276,12 @@ function ArmyListSource({ side, state, setState, factionRules }) {
 
   if (lists === null) return <div className="bb-pane-empty">Loading…</div>;
   if (lists.length === 0) {
-    return <div className="bb-pane-empty">No saved lists yet — build one on the <Link to="/army-builder">Army Builder</Link> page first.</div>;
+    return (
+      <div className="bb-pane-empty">
+        No saved {wantType === 'enemy' ? 'Enemy Lists' : 'lists'} yet — build one on the <Link to="/army-builder">Army Builder</Link> page first
+        {wantType === 'enemy' ? ' (the Enemy List pulldown)' : ''}.
+      </div>
+    );
   }
   return (
     <div className="bb-source-list">

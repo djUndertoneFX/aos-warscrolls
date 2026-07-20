@@ -206,6 +206,11 @@ function initDb() {
   // nothing real to store/autofill for those.
   try { db.exec('ALTER TABLE faction_apotheosis_steps ADD COLUMN starting_weapon TEXT DEFAULT NULL'); } catch {}
   try { db.exec('ALTER TABLE faction_apotheosis_steps ADD COLUMN starting_keywords TEXT DEFAULT NULL'); } catch {}
+  // Lets the same saved-list mechanism hold either the player's own lists or
+  // an opponent's lists they're tracking for reference — 'own' (default) or
+  // 'enemy'. Army Builder's List/Enemy List dropdowns each show one pool;
+  // Battle Buddy's Built Army List source reads the matching pool per side.
+  try { db.exec("ALTER TABLE army_builder_lists ADD COLUMN list_type TEXT NOT NULL DEFAULT 'own'"); } catch {}
 
   // Saved Path to Glory rosters — one shared pool per user, selectable from
   // either the "My Roster" or "Enemy Roster" dropdown (a build isn't

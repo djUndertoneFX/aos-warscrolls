@@ -488,9 +488,17 @@ function applyPhaseKeyOverrides(options, sectionKey, factionSlug) {
 // have a Battle Formation-style radio pick to derive "selected" from, so
 // "Filter to Selection" needs its own explicit, manually-checked marker
 // instead of inferring it from hero assignments further down the page.
+// Also draggable — dropping a card onto a hero row further down the page
+// assigns it to that hero directly, as a faster alternative to that row's
+// own dropdown (see the row's onDrop handler below).
 function SelectableAbilityCard({ ab, isSelected, onToggle }) {
   return (
-    <div className="gw-formation-group">
+    <div
+      className="gw-formation-group ab-draggable-card"
+      draggable
+      onDragStart={e => { e.dataTransfer.setData('text/plain', ab.name); e.dataTransfer.effectAllowed = 'copy'; }}
+      title="Drag onto a Hero below to assign"
+    >
       <div className="gw-formation-group-header-row">
         <button
           className={`gw-ab-checkbox${isSelected ? ' gw-ab-checkbox-on' : ''}`}
@@ -505,6 +513,10 @@ function SelectableAbilityCard({ ab, isSelected, onToggle }) {
 
 function HeroAssignmentStage({ label, sectionKey, selectedHeroes, rulesCache, heroAssignments, setHeroAssignments, primaryFaction, primaryRules, selectedOptions, setSelectedOptions }) {
   const [filterSelected, setFilterSelected] = useState(false);
+  // Which hero row a dragged card is currently over, for the drop-target
+  // highlight — cleared on drop, drag-leave, or drag-end (in case the drag
+  // is released outside any valid drop target entirely).
+  const [dragOverHeroId, setDragOverHeroId] = useState(null);
   // Lifted to the list's own synced state (see selectedOptions in
   // ArmyBuilderPage) rather than local component state — this is part of
   // the list's plan, same as battleFormation/heroAssignments, so it needs
@@ -516,6 +528,15 @@ function HeroAssignmentStage({ label, sectionKey, selectedHeroes, rulesCache, he
     return { ...prev, [sectionKey]: [...current] };
   });
   const coreConfig = sectionKey === 'heroic_traits' ? CORE_HEROIC_TRAITS : sectionKey === 'artefacts' ? CORE_ARTEFACTS : null;
+
+  // If the user unchecks every card while "Filter to Selection" is active,
+  // the grid would otherwise stay empty forever with the button greyed out
+  // (disabled below since there's nothing left to filter to) and no way
+  // back except leaving and re-entering the stage. Unchecking down to zero
+  // while filtered is treated the same as clicking "Show All" itself.
+  useEffect(() => {
+    if (filterSelected && selectedNames.size === 0) setFilterSelected(false);
+  }, [filterSelected, selectedNames.size]); // eslint-disable-line
 
   // Overview card grid for the army's primary faction — core traits/
   // artefacts in the book's 2x2 layout, a divider, then any additional ones
@@ -593,8 +614,28 @@ function HeroAssignmentStage({ label, sectionKey, selectedHeroes, rulesCache, he
           if (rules && options.length === 0) return null; // this hero's faction has no such option category
           const current = heroAssignments[hero.id]?.[sectionKey] ?? '';
           const currentAb = options?.find(o => o.name === current);
+          // Drag-and-drop assignment: dropping a card from the overview grid
+          // above is only accepted if this hero's OWN options list (which may
+          // differ from the primary faction's, for an allied hero) actually
+          // contains a matching name — otherwise the drop is silently
+          // rejected rather than assigning something this hero can't use.
           return (
-            <div key={hero.id} className="ab-hero-assign-row">
+            <div
+              key={hero.id}
+              className={`ab-hero-assign-row${dragOverHeroId === hero.id ? ' ab-hero-assign-row-dragover' : ''}`}
+              onDragOver={e => { if (options?.length) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } }}
+              onDragEnter={e => { if (options?.length) { e.preventDefault(); setDragOverHeroId(hero.id); } }}
+              onDragLeave={() => setDragOverHeroId(id => (id === hero.id ? null : id))}
+              onDragEnd={() => setDragOverHeroId(null)}
+              onDrop={e => {
+                e.preventDefault();
+                setDragOverHeroId(null);
+                const name = e.dataTransfer.getData('text/plain');
+                const match = options?.find(o => o.name === name);
+                if (!match) return;
+                setHeroAssignments(prev => ({ ...prev, [hero.id]: { ...prev[hero.id], [sectionKey]: match.name } }));
+              }}
+            >
               <div className="ab-hero-assign-head">
                 <span className="ab-hero-assign-name">{hero.name}</span>
                 <span className="ab-hero-assign-faction">{hero.faction}</span>
@@ -668,8 +709,12 @@ function LoreCardsStage({ label, sectionKey, primaryFaction, primaryRules }) {
 }
 
 // ── Saved-list manager: switch between named army lists, each with its own
-// faction/roster/formation/hero-assignment/points-limit snapshot ───────────
-function ListManager({ listsStore, activeListId, onSelect, onCreate, onDuplicate, onRename, onDelete }) {
+// faction/roster/formation/hero-assignment/points-limit snapshot. Also used
+// for the Enemy List pulldown — same component, given a different `lists`
+// pool (filtered by list_type) and labels, but sharing the single active
+// editing session (activeListId/loadListIntoState) with the main list picker,
+// since Army Builder only ever edits one list — own or enemy — at a time. ──
+function ListManager({ lists, activeListId, emptyLabel, newLabel, allowEmpty, onSelect, onCreate, onDuplicate, onRename, onDelete }) {
   const [open, setOpen] = useState(false);
   const [renamingId, setRenamingId] = useState(null);
   const [renameValue, setRenameValue] = useState('');
@@ -694,8 +739,8 @@ function ListManager({ listsStore, activeListId, onSelect, onCreate, onDuplicate
     }
   }, [renamingId]);
 
-  const ids = Object.keys(listsStore.lists);
-  const activeName = listsStore.lists[activeListId]?.name ?? 'List name…';
+  const ids = Object.keys(lists);
+  const activeName = lists[activeListId]?.name ?? emptyLabel;
 
   const startRename = (id, name) => { setRenamingId(id); setRenameValue(name); };
   const commitRename = () => {
@@ -726,21 +771,21 @@ function ListManager({ listsStore, activeListId, onSelect, onCreate, onDuplicate
                 />
               ) : (
                 <span className="ab-list-item-name" onClick={() => { onSelect(id); setOpen(false); }}>
-                  {listsStore.lists[id].name}
+                  {lists[id].name}
                 </span>
               )}
               <span className="ab-list-item-actions">
-                <button type="button" title="Rename" onClick={e => { e.stopPropagation(); startRename(id, listsStore.lists[id].name); }}>✎</button>
+                <button type="button" title="Rename" onClick={e => { e.stopPropagation(); startRename(id, lists[id].name); }}>✎</button>
                 <button type="button" title="Duplicate" onClick={e => { e.stopPropagation(); onDuplicate(id); setOpen(false); }}>⧉</button>
                 <button
-                  type="button" title={ids.length <= 1 ? 'At least one list is required' : 'Delete'}
-                  disabled={ids.length <= 1}
+                  type="button" title={(!allowEmpty && ids.length <= 1) ? 'At least one list is required' : 'Delete'}
+                  disabled={!allowEmpty && ids.length <= 1}
                   onClick={e => { e.stopPropagation(); onDelete(id); }}
                 >🗑</button>
               </span>
             </div>
           ))}
-          <button type="button" className="ab-list-new-btn" onClick={() => { onCreate(); setOpen(false); }}>+ New List</button>
+          <button type="button" className="ab-list-new-btn" onClick={() => { onCreate(); setOpen(false); }}>{newLabel}</button>
         </div>
       )}
     </div>
@@ -1184,14 +1229,17 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
         }
 
         const listsMeta = {};
-        for (const r of finalRows) listsMeta[r.id] = { name: r.name, faction_slug: r.faction_slug, faction_name: r.faction_name };
+        for (const r of finalRows) listsMeta[r.id] = { name: r.name, faction_slug: r.faction_slug, faction_name: r.faction_name, list_type: r.list_type || 'own' };
         let lastActive = null;
         try { lastActive = localStorage.getItem(LAST_ACTIVE_KEY); } catch {}
         // activeListId is always kept as a string — Object.keys() (used
         // throughout for the id list / "is this the active one" checks)
         // always returns strings, and comparing that against a raw numeric
-        // id from an API response would silently fail (1 !== "1").
-        const activeId = (lastActive && listsMeta[lastActive]) ? lastActive : String(finalRows[0].id);
+        // id from an API response would silently fail (1 !== "1"). Falls back
+        // to the first OWN-type list (never an enemy list) — a brand new
+        // account always has at least one own list, so this is always safe.
+        const fallbackRow = finalRows.find(r => (r.list_type || 'own') !== 'enemy') || finalRows[0];
+        const activeId = (lastActive && listsMeta[lastActive]) ? lastActive : String(fallbackRow.id);
 
         const { data: full } = await axios.get(`/api/army-builder-lists/${activeId}`);
         setListsStore({ activeListId: activeId, lists: listsMeta });
@@ -1251,7 +1299,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
       const id = String(row.id);
       setListsStore(prev => ({
         ...prev,
-        lists: { ...prev.lists, [id]: { name: row.name, faction_slug: row.faction_slug, faction_name: row.faction_name } },
+        lists: { ...prev.lists, [id]: { name: row.name, faction_slug: row.faction_slug, faction_name: row.faction_name, list_type: row.list_type || 'own' } },
       }));
       if (id === activeListIdRef.current) loadListIntoState(row.data);
     });
@@ -1292,13 +1340,14 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
     }
   };
 
-  const createList = async () => {
-    const name = `New List ${Object.keys(listsStore.lists).length + 1}`;
+  const createList = async (type = 'own') => {
+    const sameTypeCount = Object.values(listsStore.lists).filter(l => (l.list_type || 'own') === type).length;
+    const name = type === 'enemy' ? `New Enemy List ${sameTypeCount + 1}` : `New List ${sameTypeCount + 1}`;
     const blank = makeBlankList(name);
     try {
-      const { data: res } = await axios.post('/api/army-builder-lists', { name, faction_slug: null, faction_name: null, data: listToDataBlob(blank) }, clientIdHeader());
+      const { data: res } = await axios.post('/api/army-builder-lists', { name, faction_slug: null, faction_name: null, data: listToDataBlob(blank), list_type: type }, clientIdHeader());
       const newId = String(res.id);
-      setListsStore(prev => ({ activeListId: newId, lists: { ...prev.lists, [newId]: { name, faction_slug: null, faction_name: null } } }));
+      setListsStore(prev => ({ activeListId: newId, lists: { ...prev.lists, [newId]: { name, faction_slug: null, faction_name: null, list_type: type } } }));
       loadListIntoState(blank);
       try { localStorage.setItem(LAST_ACTIVE_KEY, newId); } catch {}
     } catch (err) {
@@ -1326,7 +1375,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
       const { data: full } = await axios.get(`/api/army-builder-lists/${dupId}`);
       setListsStore(prev => ({
         activeListId: dupId,
-        lists: { ...prev.lists, [dupId]: { name: full.name, faction_slug: full.faction_slug, faction_name: full.faction_name } },
+        lists: { ...prev.lists, [dupId]: { name: full.name, faction_slug: full.faction_slug, faction_name: full.faction_name, list_type: full.list_type || 'own' } },
       }));
       loadListIntoState(full.data);
       try { localStorage.setItem(LAST_ACTIVE_KEY, dupId); } catch {}
@@ -1341,8 +1390,16 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
   };
 
   const deleteList = async (id) => {
-    const ids = Object.keys(listsStore.lists);
-    if (ids.length <= 1) return;
+    const meta = listsStore.lists[id];
+    if (!meta) return;
+    const type = meta.list_type || 'own';
+    // Enemy lists may be freely deleted down to zero — only the own-list pool
+    // must always keep at least one, since that's what the builder itself is
+    // always actively editing.
+    if (type !== 'enemy') {
+      const sameTypeCount = Object.values(listsStore.lists).filter(l => (l.list_type || 'own') === type).length;
+      if (sameTypeCount <= 1) return;
+    }
     try {
       await axios.delete(`/api/army-builder-lists/${id}`, clientIdHeader());
     } catch (err) {
@@ -1353,7 +1410,13 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
     delete nextLists[id];
     let nextActiveId = activeListId;
     if (nextActiveId === id) {
-      nextActiveId = Object.keys(nextLists)[0];
+      // Prefer another list of the same pool, then any own-type list, then
+      // whatever's left — an own-type list is always the safest fallback
+      // since the builder itself always has one to fall back to.
+      const remaining = Object.entries(nextLists);
+      nextActiveId = remaining.find(([, l]) => (l.list_type || 'own') === type)?.[0]
+        ?? remaining.find(([, l]) => (l.list_type || 'own') === 'own')?.[0]
+        ?? remaining[0]?.[0];
       try {
         const { data: full } = await axios.get(`/api/army-builder-lists/${nextActiveId}`);
         loadListIntoState(full.data);
@@ -1938,6 +2001,11 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
     );
   };
 
+  // Two independent pools sharing the one active editing session: picking a
+  // list from either pulldown loads it as the list currently being built.
+  const ownLists   = Object.fromEntries(Object.entries(listsStore.lists).filter(([, l]) => (l.list_type || 'own') !== 'enemy'));
+  const enemyLists = Object.fromEntries(Object.entries(listsStore.lists).filter(([, l]) => l.list_type === 'enemy'));
+
   return (
     <>
     <div className="table-page ab-page">
@@ -1949,10 +2017,27 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
 
         <div className="ab-header-cell ab-header-list">
           <ListManager
-            listsStore={listsStore}
+            lists={ownLists}
             activeListId={activeListId}
+            emptyLabel="List name…"
+            newLabel="+ New List"
             onSelect={selectList}
-            onCreate={createList}
+            onCreate={() => createList('own')}
+            onDuplicate={duplicateList}
+            onRename={renameList}
+            onDelete={deleteList}
+          />
+        </div>
+
+        <div className="ab-header-cell ab-header-list ab-header-enemy-list">
+          <ListManager
+            lists={enemyLists}
+            activeListId={activeListId}
+            emptyLabel="Enemy List…"
+            newLabel="+ New Enemy List"
+            allowEmpty
+            onSelect={selectList}
+            onCreate={() => createList('enemy')}
             onDuplicate={duplicateList}
             onRename={renameList}
             onDelete={deleteList}
