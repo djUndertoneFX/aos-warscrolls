@@ -2029,21 +2029,6 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
           />
         </div>
 
-        <div className="ab-header-cell ab-header-list ab-header-enemy-list">
-          <ListManager
-            lists={enemyLists}
-            activeListId={activeListId}
-            emptyLabel="Enemy List…"
-            newLabel="+ New Enemy List"
-            allowEmpty
-            onSelect={selectList}
-            onCreate={() => createList('enemy')}
-            onDuplicate={duplicateList}
-            onRename={renameList}
-            onDelete={deleteList}
-          />
-        </div>
-
         <div className="ab-header-cell ab-header-stages">
           <div className="ab-stage-tabs">
             {STAGES.map(s => (
@@ -2059,6 +2044,21 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
         <div className="ab-header-cell ab-header-roster">
           <ArmyRosterThumb onClick={() => setRosterDocOpen(true)} />
           <div className="ab-roster-thumb-label">Army Roster</div>
+        </div>
+
+        <div className="ab-header-cell ab-header-list ab-header-enemy-list">
+          <ListManager
+            lists={enemyLists}
+            activeListId={activeListId}
+            emptyLabel="Enemy List…"
+            newLabel="+ New Enemy List"
+            allowEmpty
+            onSelect={selectList}
+            onCreate={() => createList('enemy')}
+            onDuplicate={duplicateList}
+            onRename={renameList}
+            onDelete={deleteList}
+          />
         </div>
 
         <div className="ab-points-block">
