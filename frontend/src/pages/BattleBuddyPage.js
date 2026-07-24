@@ -1,7 +1,59 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { AbilityCard } from '../components/WarscrollGW';
+
+// Space reserved for a unit's thumbnail when it fits (image width + gap) —
+// shared between the actual CSS layout and the layout-impact measurement
+// below, so what gets measured matches what actually renders.
+const UNIT_THUMB_RESERVED_PX = 76;
+
+// Unit Abilities cards embed the unit's thumbnail on the right IF doing so
+// doesn't push the card's own text past 1 extra wrapped line versus its
+// current (full-width, no-thumbnail) layout — measured directly via
+// scrollHeight rather than guessed from character counts, so it accounts for
+// the card's real font/line-height/existing bullets. Runs once per card via
+// a synchronous layout-effect measure/revert (no visible flicker: the
+// thumbnail starts absent and only appears once we know it fits).
+function UnitAbilityCard({ ab, hasImage }) {
+  const cardWrapRef = useRef(null);
+  const [fits, setFits] = useState(false);
+  const measuredRef = useRef(false);
+
+  useLayoutEffect(() => {
+    if (!hasImage || measuredRef.current) return;
+    measuredRef.current = true;
+    const el = cardWrapRef.current?.querySelector('.gw-ability-card');
+    if (!el) return;
+    const naturalHeight = el.scrollHeight;
+    const prevWidth = el.style.width;
+    el.style.width = `calc(100% - ${UNIT_THUMB_RESERVED_PX}px)`;
+    const shrunkHeight = el.scrollHeight;
+    el.style.width = prevWidth;
+    const lineHeight = parseFloat(getComputedStyle(el).lineHeight) || 18;
+    setFits(Math.round((shrunkHeight - naturalHeight) / lineHeight) <= 1);
+  }, [hasImage]);
+
+  const showThumb = hasImage && fits;
+
+  return (
+    <div className="bb-fight-ability">
+      <div className="bb-fight-ability-unit">{ab._unitName}</div>
+      <div className="bb-fight-ability-row" ref={cardWrapRef}>
+        {/* ab.bullets is already a real array (it came from the OUTER
+            JSON.parse of warscrolls.abilities, unlike faction-ability cards
+            whose bullets are a raw unparsed JSON string) */}
+        <AbilityCard ab={ab} keywords={[]} />
+        {showThumb && (
+          <div className="bb-unit-thumb">
+            <img src={`/api/unit-image/${ab._unitId}`} alt={ab._unitName} className="bb-unit-thumb-img" />
+            <img src={`/api/unit-image/${ab._unitId}`} alt="" aria-hidden="true" className="bb-unit-thumb-zoom-img" />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function parseJsonArray(raw) {
   try { return JSON.parse(raw || '[]'); } catch { return []; }
@@ -57,42 +109,21 @@ function abilityIsAlwaysAvailable(ab) {
   return !!t && ALWAYS_MATCH.some(k => t.includes(k));
 }
 
-// A "Passive"-timed ability is, by definition, not tied to any one phase —
-// but some are only really relevant during one, per their own effect text
-// (e.g. "while this unit is within 3\" of an objective in your hero phase").
-// Deliberately conservative: only matches the literal phase name in Declare/
-// Effect text, not indirect language ("made a charge move") that could
-// misattribute a phase. Feeds the half-and-half header treatment via the
-// ovr-split-* PHASE_PRESETS entries in WarscrollGW.js.
-const PHASE_TEXT_HINTS = [
-  { key: 'hero',        terms: ['hero phase'] },
-  { key: 'movement',    terms: ['movement phase'] },
-  { key: 'shooting',    terms: ['shooting phase'] },
-  { key: 'charge',      terms: ['charge phase'] },
-  { key: 'combat',      terms: ['combat phase'] },
-  { key: 'deployment',  terms: ['deployment phase'] },
-  { key: 'end_of_turn', terms: ['end of the turn', 'end of that turn', 'end of your turn', 'end of the battle round'] },
-];
-function discoverPhaseFromText(ab) {
-  const text = `${ab.declare || ''} ${ab.effect || ''}`.toLowerCase();
-  const hit = PHASE_TEXT_HINTS.find(p => p.terms.some(t => text.includes(t)));
-  return hit ? hit.key : null;
-}
-function withDiscoveredSplit(ab) {
-  const t = (ab.timing || '').toLowerCase();
-  if (!t.includes('passive')) return ab;
-  // Battle Formations already carry a pre-computed thematic phase_key
-  // (scrapeRules.js's resolveFormationPhaseKey) — a more reliable signal
-  // than text-mining when it's there, so prefer it before falling back.
-  let discovered = null;
-  if (ab.phase_key) {
-    const known = BATTLE_PHASES.find(p => p.match.some(k => ab.phase_key.toLowerCase().includes(k)));
-    discovered = known?.key ?? null;
-  }
-  if (!discovered) discovered = discoverPhaseFromText(ab);
-  if (!discovered) return ab;
-  const suffix = discovered === 'end_of_turn' ? 'endofturn' : discovered;
-  return { ...ab, phase_key: `ovr-split-${suffix}` };
+// ab.phase_key (backend/phaseKey.js) is a comma-joined list of PHASE_PRESETS-
+// style strings — e.g. "combat" or "movement,charge" or "hero phase,combat,
+// shooting" — populated for any ambiguous-timing (Passive/Reaction/bare
+// Once-Per-X) ability whose effect text still ties it to one or more actual
+// phases (confirmed examples: Idoneth's Armour of the Cythai modifies combat
+// rolls despite Passive timing; Hunter of Souls is picked at deployment but
+// its anti-X bonus applies in combat AND shooting). Translated here into
+// this file's own short BATTLE_PHASES keys for bucketing purposes; the raw
+// string is left untouched on the ability object so AbilityCard's own
+// getPhaseStyle(ab) can build the matching split banner independently.
+function discoveredPhaseKeys(ab) {
+  if (!ab.phase_key) return [];
+  return ab.phase_key.split(',').map(k => k.trim().toLowerCase())
+    .map(k => BATTLE_PHASES.find(p => p.match.some(m => k.includes(m)))?.key)
+    .filter(Boolean);
 }
 
 // Splits a flat ability list into "exactly this phase" vs "always available"
@@ -102,24 +133,23 @@ function withDiscoveredSplit(ab) {
 // one (once per turn) — treated as combat-phase-specific, not duplicated
 // into the always-available bucket too, since it does have one real phase.
 //
-// A Passive ability with a *discovered* phase (see withDiscoveredSplit — e.g.
-// Ferocious Predators' text ties it to the combat phase even though its own
-// timing is bare "Passive") is treated the same way: it only shows up under
-// that one discovered phase, not on every phase via the "always" bucket, even
-// though it keeps the half-and-half passive/phase banner colouring either way.
+// An ambiguous-timing ability with discovered phase key(s) (see
+// discoveredPhaseKeys — e.g. Ferocious Predators' text ties it to the combat
+// phase even though its own timing is bare "Passive"; Hunter of Souls covers
+// BOTH deployment and combat/shooting) shows up under EVERY one of its
+// discovered phases, not just one — same split banner colouring regardless
+// of which phase view it's currently showing under (AbilityCard reads the
+// full multi-key ab.phase_key itself, unaffected by which bucket this put it in).
 function splitAbilitiesForPhase(abilities, phaseKey) {
-  const withKey = abilities.map(ab => {
-    const pk = abilityPhaseKey(ab);
-    if (pk) return { ab, pk };
-    if (!abilityIsAlwaysAvailable(ab)) return { ab, pk: null, drop: true };
-    const split = withDiscoveredSplit(ab);
-    const discoveredKey = split.phase_key?.startsWith('ovr-split-')
-      ? split.phase_key.replace('ovr-split-', '').replace('endofturn', 'end_of_turn')
-      : null;
-    return discoveredKey ? { ab: split, pk: discoveredKey } : { ab: split, pk: null };
+  const withKeys = abilities.map(ab => {
+    const literal = abilityPhaseKey(ab);
+    if (literal) return { ab, keys: [literal] };
+    if (!abilityIsAlwaysAvailable(ab)) return { ab, keys: [], drop: true };
+    const discovered = discoveredPhaseKeys(ab);
+    return { ab, keys: discovered };
   });
-  const inPhase = withKey.filter(x => x.pk === phaseKey).map(x => x.ab);
-  const always = withKey.filter(x => x.pk === null && !x.drop).map(x => x.ab);
+  const inPhase = withKeys.filter(x => x.keys.includes(phaseKey)).map(x => x.ab);
+  const always = withKeys.filter(x => x.keys.length === 0 && !x.drop).map(x => x.ab);
   return { inPhase, always };
 }
 
@@ -641,6 +671,63 @@ function BattleTraitsSection({ inPhase, always, renderCard }) {
   );
 }
 
+// Groups Battle Formation abilities by formation_name so the card's actual
+// source is visible (e.g. "Outflank the Enemy" belongs to the "Deep-sea
+// Stalkers" formation) — previously rendered as one undifferentiated flat
+// list with no indication of which named formation granted each ability.
+function groupFormations(abilities) {
+  const groups = [];
+  const nameToGroup = {};
+  for (const item of abilities) {
+    const gName = item.formation_name || 'General';
+    if (!nameToGroup[gName]) {
+      nameToGroup[gName] = { name: gName, sourceNote: item.source_note || null, items: [] };
+      groups.push(nameToGroup[gName]);
+    }
+    nameToGroup[gName].items.push(item);
+  }
+  return groups;
+}
+
+function BattleFormationsSection({ inPhase, always, renderCard }) {
+  const hasAny = inPhase.length > 0 || always.length > 0;
+  if (!hasAny) {
+    return (
+      <div className="bb-fight-section">
+        <div className="bb-fight-section-title">Battle Formations</div>
+        <div className="bb-pane-empty">Nothing for this phase.</div>
+      </div>
+    );
+  }
+  const renderBucket = (list) => (
+    <div className="bb-formation-groups">
+      {groupFormations(list).map((group, gi) => (
+        <div className="bb-formation-group" key={gi}>
+          {group.name !== 'General' && (
+            <div className="gw-formation-group-header">
+              {group.name}
+              {group.sourceNote && <span className="gw-formation-source-note"> ({group.sourceNote})</span>}
+            </div>
+          )}
+          <div className="gw-abilities-grid bb-fight-grid">{group.items.map(renderCard)}</div>
+        </div>
+      ))}
+    </div>
+  );
+  return (
+    <CollapsibleSection title="Battle Formations" count={inPhase.length + always.length}>
+      {inPhase.length > 0 && renderBucket(inPhase)}
+      {inPhase.length > 0 && always.length > 0 && <div className="gw-formation-divider" />}
+      {always.length > 0 && (
+        <>
+          <div className="bb-fight-section-subtitle">Passive / Any Phase</div>
+          {renderBucket(always)}
+        </>
+      )}
+    </CollapsibleSection>
+  );
+}
+
 function FactionAbilitiesGroup({ state, factionRulesFor, phaseKey, renderCard }) {
   const sections = collectFactionSections(state, factionRulesFor);
   const pathText = (state.selection?.pathAbilityText || '').trim();
@@ -653,6 +740,9 @@ function FactionAbilitiesGroup({ state, factionRulesFor, phaseKey, renderCard })
         const split = splitAbilitiesForPhase(s.abilities, phaseKey);
         if (s.key === 'traits') {
           return <BattleTraitsSection key={s.key} inPhase={split.inPhase} always={split.always} renderCard={renderCard} />;
+        }
+        if (s.key === 'formations') {
+          return <BattleFormationsSection key={s.key} inPhase={split.inPhase} always={split.always} renderCard={renderCard} />;
         }
         return (
           <AbilitySection key={s.key} title={s.label} inPhase={split.inPhase} always={split.always} renderCard={renderCard} />
@@ -667,18 +757,46 @@ function FactionAbilitiesGroup({ state, factionRulesFor, phaseKey, renderCard })
   );
 }
 
-function FightPane({ side, state, factionRulesFor, phaseKey }) {
-  const unitAbilitiesAll = state.units.flatMap(u =>
-    parseJsonArray(u.abilities).map(ab => ({ ...ab, _unitName: u.name }))
-  );
-  const unitSplit = splitAbilitiesForPhase(unitAbilitiesAll, phaseKey);
+// Splits a side's selected units into normal army units vs. Regiment of
+// Renown units (is_regiment_of_renown, see scraper.js's
+// recomputeRegimentOfRenown — inferred from being shared across 3+
+// factions, since Wahapedia has no explicit flag for this), each with
+// Faction Terrain sorted last within its own group. RoR units get their own
+// "Regiment of Renown" sub-heading rather than mixing anonymously into the
+// normal Unit Abilities list.
+function splitUnitsByRoR(units) {
+  const sortTerrainLast = list => [...list].sort((a, b) => (a.is_terrain ? 1 : 0) - (b.is_terrain ? 1 : 0));
+  return {
+    normal: sortTerrainLast(units.filter(u => !u.is_regiment_of_renown)),
+    ror: sortTerrainLast(units.filter(u => u.is_regiment_of_renown)),
+  };
+}
 
-  const renderUnitCard = (ab, i) => (
-    <div key={i} className="bb-fight-ability">
-      <div className="bb-fight-ability-unit">{ab._unitName}</div>
-      <AbilityCard ab={{ ...ab, bullets: parseJsonArray(ab.bullets) }} keywords={[]} />
-    </div>
-  );
+function unitsToAbilities(units) {
+  return units.flatMap(u => parseJsonArray(u.abilities).map(ab => ({ ...ab, _unitName: u.name, _unitId: u.id })));
+}
+
+function FightPane({ side, state, factionRulesFor, phaseKey }) {
+  const { normal: normalUnits, ror: rorUnits } = splitUnitsByRoR(state.units);
+  const unitSplit = splitAbilitiesForPhase(unitsToAbilities(normalUnits), phaseKey);
+  const rorSplit = splitAbilitiesForPhase(unitsToAbilities(rorUnits), phaseKey);
+
+  // Which of this side's units actually have a resolvable thumbnail —
+  // fetched once as a batch (existing /api/unit-images-exist, same one the
+  // ImageLightbox uses to skip imageless units) rather than probing each
+  // card's own <img> individually.
+  const allUnitIds = [...normalUnits, ...rorUnits].map(u => u.id).filter(Boolean);
+  const [imageIds, setImageIds] = useState(new Set());
+  useEffect(() => {
+    if (allUnitIds.length === 0) { setImageIds(new Set()); return; }
+    let cancelled = false;
+    axios.post('/api/unit-images-exist', { ids: allUnitIds })
+      .then(({ data }) => { if (!cancelled) setImageIds(new Set(data.ids || [])); })
+      .catch(() => { if (!cancelled) setImageIds(new Set()); });
+    return () => { cancelled = true; };
+  }, [allUnitIds.join(',')]); // eslint-disable-line
+
+  const renderUnitCard = (ab, i) => <UnitAbilityCard key={i} ab={ab} hasImage={imageIds.has(ab._unitId)} />;
   const renderFactionCard = (ab, i) => (
     <AbilityCard key={i} ab={{ ...ab, bullets: parseJsonArray(ab.bullets) }} keywords={[]} />
   );
@@ -688,6 +806,12 @@ function FightPane({ side, state, factionRulesFor, phaseKey }) {
       <div className="bb-fight-pane-title">{side === 'friendly' ? 'Friendly' : 'Enemy'}</div>
 
       <AbilitySection title="Unit Abilities" inPhase={unitSplit.inPhase} always={unitSplit.always} renderCard={renderUnitCard} />
+      {rorUnits.length > 0 && (
+        <>
+          <div className="gw-formation-divider" />
+          <AbilitySection title="Regiment of Renown" inPhase={rorSplit.inPhase} always={rorSplit.always} renderCard={renderUnitCard} />
+        </>
+      )}
       <div className="gw-formation-divider" />
       <CollapsibleSection title="Faction Abilities">
         <FactionAbilitiesGroup state={state} factionRulesFor={factionRulesFor} phaseKey={phaseKey} renderCard={renderFactionCard} />

@@ -31,7 +31,7 @@ export function prefetchFactionRules(slugs) {
 }
 
 // ── White-removal canvas image ───────────────────────────────────────────────
-function TransparentImage({ src, alt, className, onError }) {
+export function TransparentImage({ src, alt, className, onError }) {
   const canvasRef = useRef(null);
   const [failed, setFailed] = useState(false);
 
@@ -92,18 +92,6 @@ const PHASE_PRESETS = [
   { keys: ['ovr-movement-grey'],                                style: { hdrBg: '#525252', hdrTxt: '#e0e0e0', border: '#787878' } },
   { keys: ['ovr-eot-purple'],                                   style: { hdrBg: '#500848', hdrTxt: '#f0b8e8', border: '#a01888' } },
   { keys: ['ovr-deploy-black'],                                 style: { hdrBg: '#161616', hdrTxt: '#c8c8c8', border: '#3a3a3a' } },
-  // Battle Buddy: a "Passive" ability whose own timing carries no phase, but
-  // whose effect text turns out to reference one specific phase (detected by
-  // BattleBuddyPage.js's discoverPhaseFromText) — left half shows the
-  // discovered phase's colour, right half stays the normal passive brown,
-  // as a visual "this is passive, but really only relevant here" flag.
-  { keys: ['ovr-split-hero'],        style: { hdrBg: 'linear-gradient(to right, #7a6010 50%, #3a3220 50%)', hdrTxt: '#f0e8c8', border: '#c8a020' } },
-  { keys: ['ovr-split-movement'],    style: { hdrBg: 'linear-gradient(to right, #0e4020 50%, #3a3220 50%)', hdrTxt: '#e8d898', border: '#208848' } },
-  { keys: ['ovr-split-shooting'],    style: { hdrBg: 'linear-gradient(to right, #0c2a60 50%, #3a3220 50%)', hdrTxt: '#e8d898', border: '#2060c8' } },
-  { keys: ['ovr-split-charge'],      style: { hdrBg: 'linear-gradient(to right, #6a2c00 50%, #3a3220 50%)', hdrTxt: '#e8d898', border: '#c86010' } },
-  { keys: ['ovr-split-combat'],      style: { hdrBg: 'linear-gradient(to right, #6a0808 50%, #3a3220 50%)', hdrTxt: '#e8d898', border: '#c02020' } },
-  { keys: ['ovr-split-deployment'],  style: { hdrBg: 'linear-gradient(to right, #280858 50%, #3a3220 50%)', hdrTxt: '#e8d898', border: '#6040c0' } },
-  { keys: ['ovr-split-endofturn'],   style: { hdrBg: 'linear-gradient(to right, #202020 50%, #3a3220 50%)', hdrTxt: '#e8d898', border: '#505050' } },
   { keys: ['passive'],                                          style: { hdrBg: '#3a3220', hdrTxt: '#e8d898', border: '#7a6830' } },
   { keys: ['hero phase'],                                       style: { hdrBg: '#7a6010', hdrTxt: '#ffffff', border: '#c8a020' } },
   { keys: ['movement', 'move phase'],                           style: { hdrBg: '#0e4020', hdrTxt: '#a0f0b8', border: '#208848' } },
@@ -119,13 +107,63 @@ const PHASE_PRESETS = [
 ];
 const PHASE_DEFAULT = { hdrBg: '#282010', hdrTxt: '#d0c8a0', border: '#504830' };
 
-function getPhaseStyle(timing) {
-  if (!timing) return PHASE_PRESETS[0].style;
-  const t = timing.toLowerCase();
+// Canonical left-to-right order for the specific-phase segments of a
+// dynamic split banner — matches BattleBuddyPage.js's BATTLE_PHASES order.
+const PHASE_ORDER = ['deployment', 'hero phase', 'movement', 'shooting', 'charge', 'combat', 'end of turn'];
+
+function styleForString(str) {
+  if (!str) return PHASE_PRESETS[0].style;
+  const t = str.toLowerCase();
   for (const { keys, style } of PHASE_PRESETS) {
     if (keys.some(k => t.includes(k))) return style;
   }
   return PHASE_DEFAULT;
+}
+
+// Builds a linear-gradient banner from N style segments (2-4), discovered-
+// phase color(s) first in canonical phase order, the ability's own generic
+// type (Passive/Reaction/Once Per Turn/etc) last on the right — e.g.
+// Sweeping Blows (Reaction, discovered combat) -> combat-red | reaction-teal;
+// Surrender to the Sea (Passive, discovered hero+combat+shooting) ->
+// hero-gold | combat-red | shooting-blue | passive-brown.
+function buildSplitStyle(baseStyle, discoveredStyles) {
+  const segments = [...discoveredStyles, baseStyle];
+  const n = segments.length;
+  const stops = segments.map((s, i) => `${s.hdrBg} ${Math.round((i / n) * 100)}% ${Math.round(((i + 1) / n) * 100)}%`).join(', ');
+  return {
+    hdrBg: `linear-gradient(to right, ${stops})`,
+    hdrTxt: '#e8d898',
+    border: discoveredStyles[discoveredStyles.length - 1].border,
+  };
+}
+
+// ab.phase_key (comma-joined canonical phase name(s), e.g. "combat" or
+// "movement,charge") is only ever populated for genuinely ambiguous-timing
+// abilities (Passive/Reaction/bare Once-Per-X) whose effect text still ties
+// them to one or more specific phases — see backend/phaseKey.js. Abilities
+// with an already-unambiguous timing ("Any Combat Phase") never get a
+// phase_key at all and fall straight through to the plain timing lookup,
+// unchanged from before this ever existed.
+function getPhaseStyle(ab) {
+  const timing = ab?.timing;
+  const rawKey = ab?.phase_key;
+  if (!rawKey) return styleForString(timing);
+
+  const keys = rawKey.split(',').map(k => k.trim()).filter(Boolean);
+  if (keys.length === 0) return styleForString(timing);
+
+  // A single explicit "ovr-*" override (see ArmyBuilderPage.js's
+  // PHASE_KEY_OVERRIDES, e.g. 'ovr-passive-grey') names one exact preset
+  // directly rather than a bare phase name to combine with the base type —
+  // use it as-is, don't fold it into the dynamic split-builder below.
+  if (keys.length === 1 && keys[0].startsWith('ovr-')) return styleForString(keys[0]);
+
+  const baseStyle = styleForString(timing);
+  const discoveredStyles = keys
+    .slice()
+    .sort((a, b) => PHASE_ORDER.indexOf(a) - PHASE_ORDER.indexOf(b))
+    .map(k => styleForString(k));
+  return buildSplitStyle(baseStyle, discoveredStyles);
 }
 
 // ── Known AoS keywords that appear in ability text ───────────────────────────
@@ -336,12 +374,12 @@ function WeaponSection({ weapons, type, unitSize }) {
 // ── Ability card ─────────────────────────────────────────────────────────────
 export function AbilityCard({ ab, keywords }) {
   const { showFlavorText } = useSettings();
-  // Battle Formations are always headed "Passive" on Wahapedia (they're
-  // permanent bonuses, not phase-triggered) but the printed books still
-  // colour-code formation cards by their thematic phase — phase_key carries
-  // that pre-computed colour (see scrapeRules.js resolveFormationPhaseKey)
-  // without changing the displayed timing text below.
-  const ps      = getPhaseStyle(ab.phase_key || ab.timing);
+  // Many ambiguous-timing abilities (Battle Formations, and any Passive/
+  // Reaction Battle Trait/Heroic Trait/Artefact/Lore whose effect text ties
+  // it to a specific phase) carry a pre-computed phase_key (see
+  // backend/phaseKey.js) that builds a split banner without changing the
+  // displayed timing text below.
+  const ps      = getPhaseStyle(ab);
   const bullets = Array.isArray(ab.bullets) ? ab.bullets : [];
 
   return (

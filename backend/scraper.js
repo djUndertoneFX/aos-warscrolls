@@ -3,6 +3,7 @@ const cheerio = require('cheerio');
 const fs = require('fs');
 const path = require('path');
 const { getDb, initDb } = require('./db');
+const { isAmbiguousTiming, resolvePhaseKeyString } = require('./phaseKey');
 
 const IMAGE_DIR = process.env.IMAGE_DIR ||
   (process.env.DB_PATH
@@ -249,6 +250,21 @@ async function scrapeFaction(faction) {
       });
     });
 
+    // Thematic phase colour for ambiguous-timing (Passive/Reaction/bare
+    // Once-Per-X) unit abilities — same detection Battle Traits/Formations/
+    // Heroic Traits/etc get in scrapeRules.js, see backend/phaseKey.js.
+    // Confirmed bugs this covers: Idoneth's Guardians of the Deep/Crushing
+    // Coil/Armour of the Cythai-style "modifies hit/wound/save rolls" text
+    // rendering with no phase tint at all since only formations ever got
+    // this treatment before.
+    const unitNameToTiming = new Map();
+    for (const a of abilities) { if (a.name) unitNameToTiming.set(a.name.toUpperCase(), a.timing); }
+    for (const a of abilities) {
+      a.phase_key = isAmbiguousTiming(a.timing)
+        ? resolvePhaseKeyString(a, { nameToTiming: unitNameToTiming, factionSlug: faction.slug, table: 'unit_abilities' })
+        : null;
+    }
+
     // Flavor text: lore prose stored in .ShowFluff / .wsLegend
     const flavorEl = $(el).find('.ShowFluff').first();
     const flavorText = flavorEl.length
@@ -409,8 +425,26 @@ async function scrapeAll(targetSlug = null) {
     await sleep(1500);
   }
 
+  recomputeRegimentOfRenown(db);
   db.close();
   console.log(`\n✅ Scraping complete! Saved ${totalUnits} warscrolls to database.`);
+}
+
+// Regiment of Renown units have no explicit flag from the source — inferred
+// as "any unit name shared across 3+ distinct factions" (a normal unit only
+// ever belongs to the one faction whose page it was scraped from; RoR units
+// get scraped once per faction whose page lists them as an available ally).
+// Recomputed over the WHOLE table (not just the just-scraped faction) since
+// adding/patching one faction can change which names cross the 3-faction
+// threshold for units shared with it.
+function recomputeRegimentOfRenown(db) {
+  db.exec('UPDATE warscrolls SET is_regiment_of_renown = 0');
+  db.exec(`
+    UPDATE warscrolls SET is_regiment_of_renown = 1
+    WHERE LOWER(name) IN (
+      SELECT LOWER(name) FROM warscrolls GROUP BY LOWER(name) HAVING COUNT(DISTINCT faction_slug) >= 3
+    )
+  `);
 }
 
 // ── Image scraping from Lexicanum ────────────────────────────────────────────
@@ -576,4 +610,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { scrapeImages, scrapeAll };
+module.exports = { scrapeImages, scrapeAll, recomputeRegimentOfRenown };

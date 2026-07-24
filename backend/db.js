@@ -161,6 +161,13 @@ function initDb() {
   try { db.exec('ALTER TABLE warscrolls ADD COLUMN is_manifestation INTEGER DEFAULT 0'); } catch {}
   try { db.exec('ALTER TABLE warscrolls ADD COLUMN flavor_text TEXT DEFAULT NULL'); } catch {}
   try { db.exec('ALTER TABLE warscrolls ADD COLUMN options_text TEXT DEFAULT NULL'); } catch {}
+  // Regiment of Renown units are cross-faction (the same box works as an
+  // ally for several factions, so its warscroll gets scraped once per
+  // compatible faction's own page) — there's no explicit flag for this on
+  // Wahapedia, so it's inferred by recomputeRegimentOfRenown() in scraper.js:
+  // any unit name shared across 3+ distinct faction_slugs. Recomputed after
+  // every scrape (see scrapeAll), not set here.
+  try { db.exec('ALTER TABLE warscrolls ADD COLUMN is_regiment_of_renown INTEGER DEFAULT 0'); } catch {}
   try { db.exec('ALTER TABLE warscrolls ADD COLUMN spearhead TEXT DEFAULT NULL'); } catch {}
   try { db.exec('ALTER TABLE warscrolls ADD COLUMN spearhead_abilities TEXT DEFAULT NULL'); } catch {}
   try { db.exec('ALTER TABLE warscrolls ADD COLUMN spearhead_abilities_v2 TEXT DEFAULT NULL'); } catch {}
@@ -194,6 +201,15 @@ function initDb() {
   // Spell/prayer/manifestation-lore casting value (the 2D6 target number,
   // e.g. "6") — null for every other section (traits, artefacts, etc).
   try { db.exec('ALTER TABLE faction_extra_rules ADD COLUMN casting_value TEXT DEFAULT NULL'); } catch {}
+  // phase_key: comma-separated thematic phase key(s) for ambiguous-timing
+  // (Passive/Reaction/bare Once Per X) abilities whose effect text still
+  // ties them to one or more specific phases — see backend/phaseKey.js.
+  // Only Battle Formations had this before; Battle Traits/Heroic Traits/
+  // Artefacts/Lores need it too (confirmed: several Idoneth artefacts like
+  // Armour of the Cythai modify combat rolls but were rendering as plain
+  // uncoloured Passive cards with no phase tint at all).
+  try { db.exec('ALTER TABLE faction_extra_rules ADD COLUMN phase_key TEXT DEFAULT NULL'); } catch {}
+  try { db.exec('ALTER TABLE faction_battle_traits ADD COLUMN phase_key TEXT DEFAULT NULL'); } catch {}
   // Account-level default Commander name for the Army Roster — starts null
   // (falls back to the username) until the user types something different
   // into the Commander field, at which point that becomes their new default

@@ -244,83 +244,20 @@ function scrapeSection($, sectionTitle, factionSlug, factionName) {
   return results;
 }
 
-// ── Battle Formation phase-colour detection ──────────────────────────────
-// Battle Formation abilities are always headed "Passive" on Wahapedia (they're
-// permanent bonuses, not phase-triggered), so unlike other ability cards we
-// can't just read ab.timing to pick a PHASE_PRESETS colour. The printed books
-// still colour-code formation cards by the phase their effect is thematically
-// tied to (confirmed against 4 known Idoneth Deepkin examples: Namarti Corps'
-// "re-roll run AND charge rolls" is ambiguous between two phases so the book
-// uses the neutral/passive black; Akhelian Beastmasters' "hit rolls for
-// combat attacks" is Combat Phase red; Isharann Council's "casting rolls" is
-// Hero Phase gold; Soul-raid Ambushers references the named ability
-// "Unpredictable Tide", which is itself a Hero Phase battle trait, and
-// inherits that same gold). This mirrors that reasoning: prefer an explicit
-// non-Passive timing verbatim, else scan the formation's own text for a
-// single unambiguous phase keyword group, else follow a quoted ability-name
-// reference into the faction's own battle traits/heroic traits, else fall
-// back to 'passive'. The returned key is a PHASE_PRESETS-compatible string
-// (frontend/src/components/WarscrollGW.js) — keep the two in sync.
-const PHASE_KEYWORD_GROUPS = [
-  { key: 'hero phase', patterns: [/casting roll/, /\bunbind/, /\bdispel/, /prayer roll/, /ritual roll/, /lurelight/, /\bhero phase\b/, /command point/] },
-  { key: 'movement',   patterns: [/run roll/, /\bretreat/, /movement phase/, /\bmove roll/] },
-  { key: 'charge',     patterns: [/charge roll/, /charge phase/] },
-  { key: 'shooting',   patterns: [/shooting attack/, /shoot phase/, /ranged attack/, /shooting phase/] },
-  { key: 'combat',     patterns: [/combat attack/, /fight phase/, /\bpile in\b/, /combat phase/] },
-  { key: 'end of turn', patterns: [/end of (the |any )?turn/, /end of (the )?battle round/] },
-  { key: 'deployment', patterns: [/\bdeploy/, /set up.*battlefield edge/, /\breserves?\b/] },
-];
-
-function timingToPhaseKey(timing) {
-  if (!timing) return null;
-  const t = timing.toLowerCase();
-  if (t.includes('passive')) return null; // uninformative — caller should fall through to text detection
-  if (t.includes('hero phase')) return 'hero phase';
-  if (t.includes('movement') || t.includes('move phase')) return 'movement';
-  if (t.includes('charge')) return 'charge';
-  if (t.includes('shooting')) return 'shooting';
-  if (t.includes('combat')) return 'combat';
-  if (t.includes('end of')) return 'end of turn';
-  if (t.includes('deployment')) return 'deployment';
-  return null;
-}
-
-function detectPhaseFromText(text) {
-  const t = text.toLowerCase();
-  const matched = new Set();
-  for (const grp of PHASE_KEYWORD_GROUPS) {
-    if (grp.patterns.some(re => re.test(t))) matched.add(grp.key);
-  }
-  return matched.size === 1 ? [...matched][0] : null; // null = none or ambiguous
-}
-
-function formationOwnText(formation) {
-  let bullets = [];
-  try { bullets = JSON.parse(formation.bullets || '[]'); } catch {}
-  return [formation.declare, formation.effect, ...bullets].filter(Boolean).join(' ');
-}
-
-function resolveFormationPhaseKey(formation, nameToTiming) {
-  const directKey = timingToPhaseKey(formation.timing);
-  if (directKey) return directKey;
-
-  const ownText = formationOwnText(formation);
-  const textKey = detectPhaseFromText(ownText);
-  if (textKey) return textKey;
-
-  // Follow a quoted ability-name reference (e.g. "the 'Unpredictable Tide'
-  // ability") into the faction's own battle traits/heroic traits/other
-  // formations to inherit a known timing.
-  const refs = [...ownText.matchAll(/['‘’]([A-Z][A-Za-z' -]{2,40})['‘’]/g)].map(m => m[1].toUpperCase());
-  for (const ref of refs) {
-    const refTiming = nameToTiming.get(ref);
-    if (!refTiming) continue;
-    const refKey = timingToPhaseKey(refTiming) || detectPhaseFromText(refTiming);
-    if (refKey) return refKey;
-  }
-
-  return 'passive';
-}
+// ── Phase-colour detection for ambiguous-timing abilities ────────────────
+// Battle Formations are always headed "Passive" on Wahapedia (they're
+// permanent bonuses, not phase-triggered) — and it turns out Battle Traits/
+// Heroic Traits/Artefacts/Lores have the exact same issue for any entry
+// that's genuinely Passive/Reaction/bare-Once-Per-X (confirmed: several
+// Idoneth artefacts modify combat rolls but were rendering as plain
+// uncoloured Passive cards, since only formations ever got this treatment
+// before). The printed books still colour-code these cards by the phase
+// their effect is thematically tied to (confirmed against known Idoneth
+// examples across all these categories — see backend/phaseKey.js's own
+// header comment and MANUAL_OVERRIDES for the specific confirmed cases).
+// Shared with scraper.js (unit abilities) so the same detection applies
+// everywhere an ability can show up, not just here.
+const { isAmbiguousTiming, literalPhaseFromTiming, resolvePhaseKeyString } = require('./phaseKey');
 
 async function scrapeFactionRules(faction) {
   const url = `${BASE_URL}/${faction.slug}/`;
@@ -366,16 +303,21 @@ async function scrapeFactionRules(faction) {
   const manifestationLore  = scrapeSection($, 'Manifestation Lore',  s, n).map(a => ({ ...a, section: 'manifestation_lore' }));
   const extraRules = [...heroicTraits, ...artefacts, ...spellLore, ...prayerLore, ...manifestationLore];
 
-  // Resolve each formation's thematic phase colour — needs traits/heroic
-  // traits/other formations already scraped so quoted ability-name
-  // references (see resolveFormationPhaseKey) can be looked up by name.
+  // Resolve each ambiguous-timing ability's thematic phase colour — needs
+  // every category already scraped so a quoted ability-name reference (e.g.
+  // "the 'Unpredictable Tide' ability") can be looked up by name regardless
+  // of which section it actually lives in.
   const nameToTiming = new Map();
-  for (const a of [...traits, ...heroicTraits, ...formations]) {
+  for (const a of [...traits, ...formations, ...extraRules]) {
     if (a.name) nameToTiming.set(a.name.toUpperCase(), a.timing);
   }
-  for (const f of formations) {
-    f.phase_key = resolveFormationPhaseKey(f, nameToTiming);
-  }
+  const resolveFor = (item, table, section) => {
+    if (!isAmbiguousTiming(item.timing)) { item.phase_key = null; return; }
+    item.phase_key = resolvePhaseKeyString(item, { nameToTiming, factionSlug: s, table, section });
+  };
+  for (const t of traits)      resolveFor(t, 'traits');
+  for (const f of formations)  resolveFor(f, 'formations');
+  for (const e of extraRules)  resolveFor(e, 'extra_rules', e.section);
 
   console.log(
     `  ${n}: ${traits.length} traits, ${formations.length} formations,` +
@@ -413,9 +355,9 @@ async function scrapeAllRules(targetSlug = null) {
 
   const insertTrait = db.prepare(`
     INSERT INTO faction_battle_traits
-      (faction_slug, faction_name, name, timing, declare, effect, bullets, keywords, lore_text, group_name)
+      (faction_slug, faction_name, name, timing, declare, effect, bullets, keywords, lore_text, group_name, phase_key)
     VALUES
-      (@faction_slug, @faction_name, @name, @timing, @declare, @effect, @bullets, @keywords, @lore_text, @group_name)
+      (@faction_slug, @faction_name, @name, @timing, @declare, @effect, @bullets, @keywords, @lore_text, @group_name, @phase_key)
   `);
 
   const insertFormation = db.prepare(`
@@ -427,9 +369,9 @@ async function scrapeAllRules(targetSlug = null) {
 
   const insertExtra = db.prepare(`
     INSERT INTO faction_extra_rules
-      (faction_slug, faction_name, section, group_name, name, timing, declare, effect, bullets, keywords, lore_text, casting_value)
+      (faction_slug, faction_name, section, group_name, name, timing, declare, effect, bullets, keywords, lore_text, casting_value, phase_key)
     VALUES
-      (@faction_slug, @faction_name, @section, @group_name, @name, @timing, @declare, @effect, @bullets, @keywords, @lore_text, @casting_value)
+      (@faction_slug, @faction_name, @section, @group_name, @name, @timing, @declare, @effect, @bullets, @keywords, @lore_text, @casting_value, @phase_key)
   `);
 
   let totals = { traits: 0, formations: 0, extra: 0 };

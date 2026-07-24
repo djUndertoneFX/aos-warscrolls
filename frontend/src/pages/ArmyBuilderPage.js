@@ -463,17 +463,20 @@ function splitCoreAdditional(options, coreNamesInOrder) {
 // overridden to grey here without touching the site-wide "Movement Phase =
 // green" used correctly elsewhere on every other warscroll). See the
 // matching 'ovr-*' entries in WarscrollGW.js's PHASE_PRESETS.
+// HUNTER OF SOULS/DRITCHLEECH/ARMOUR OF THE CYTHAI used to live here too, but
+// the backend now computes their (better — Hunter of Souls is a genuine
+// deployment+combat+shooting multi-phase split) phase_key directly at scrape
+// time (see backend/phaseKey.js) — a stale override here would silently
+// clobber that with a worse single value, so only the genuinely book-
+// confirmed exceptions auto-detection can't derive stay as manual overrides.
 const PHASE_KEY_OVERRIDES = {
   'idoneth-deepkin': {
     heroic_traits: {
       'FORM OF THE FANGMORA': 'ovr-passive-grey',
       'NIGHTMARE LEGACY': 'ovr-eot-purple',
-      'HUNTER OF SOULS': 'ovr-deploy-black',
     },
     artefacts: {
-      'ARMOUR OF THE CYTHAI': 'ovr-passive-grey',
       'LIFEKELP POD': 'ovr-movement-grey',
-      'DRITCHLEECH': 'hero phase',
     },
   },
 };
