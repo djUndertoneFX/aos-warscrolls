@@ -5097,13 +5097,17 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   letter-spacing: 0.03em;
   text-align: left;
   padding: 0.55rem 0.7rem;
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
   border-radius: 4px;
   cursor: pointer;
-  transition: background 0.12s, border-color 0.12s;
+  transition: border-color 0.12s, box-shadow 0.12s, transform 0.12s;
 }
 .bb-phase-ribbon-horizontal .bb-phase-btn { flex: 1 1 auto; text-align: center; }
-.bb-phase-btn.active { font-weight: 700; }
+.bb-phase-btn.active {
+  font-weight: 700;
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.35);
+  transform: translateY(-1px);
+}
 
 .bb-fight-vertical { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .bb-fight-hr { height: 1px; background: linear-gradient(to right, transparent, rgba(200,168,64,0.5), transparent); margin: 1rem 0; }
@@ -5159,17 +5163,20 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 }
 .bb-fight-grid { grid-template-columns: 1fr !important; }
 .bb-fight-dual .bb-fight-grid { grid-template-columns: 1fr !important; }
+.bb-fight-single .bb-fight-grid { grid-template-columns: repeat(2, 1fr) !important; }
 .bb-fight-ability-unit {
   font-family: 'Cinzel', serif;
-  font-size: 0.62rem;
+  font-size: 0.8rem;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-dim);
+  color: #f5f0e0;
   margin-bottom: 0.2rem;
 }
 @media (max-width: 900px) {
   .bb-dual-view { flex-direction: column; }
   .bb-fight-dual { flex-direction: column; }
+  .bb-fight-single .bb-fight-grid { grid-template-columns: 1fr !important; }
   .bb-header { grid-template-columns: 1fr; text-align: center; }
   .bb-steps { grid-column: 1; justify-content: center; flex-wrap: wrap; margin-top: 0.5rem; }
   .bb-step-btn { min-width: 0; }

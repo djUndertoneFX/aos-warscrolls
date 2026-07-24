@@ -101,10 +101,25 @@ function withDiscoveredSplit(ab) {
 // Phase" carries both a specific-phase word (combat) and an always-available
 // one (once per turn) — treated as combat-phase-specific, not duplicated
 // into the always-available bucket too, since it does have one real phase.
+//
+// A Passive ability with a *discovered* phase (see withDiscoveredSplit — e.g.
+// Ferocious Predators' text ties it to the combat phase even though its own
+// timing is bare "Passive") is treated the same way: it only shows up under
+// that one discovered phase, not on every phase via the "always" bucket, even
+// though it keeps the half-and-half passive/phase banner colouring either way.
 function splitAbilitiesForPhase(abilities, phaseKey) {
-  const withKey = abilities.map(ab => ({ ab, pk: abilityPhaseKey(ab) }));
+  const withKey = abilities.map(ab => {
+    const pk = abilityPhaseKey(ab);
+    if (pk) return { ab, pk };
+    if (!abilityIsAlwaysAvailable(ab)) return { ab, pk: null, drop: true };
+    const split = withDiscoveredSplit(ab);
+    const discoveredKey = split.phase_key?.startsWith('ovr-split-')
+      ? split.phase_key.replace('ovr-split-', '').replace('endofturn', 'end_of_turn')
+      : null;
+    return discoveredKey ? { ab: split, pk: discoveredKey } : { ab: split, pk: null };
+  });
   const inPhase = withKey.filter(x => x.pk === phaseKey).map(x => x.ab);
-  const always = withKey.filter(x => x.pk === null && abilityIsAlwaysAvailable(x.ab)).map(x => withDiscoveredSplit(x.ab));
+  const always = withKey.filter(x => x.pk === null && !x.drop).map(x => x.ab);
   return { inPhase, always };
 }
 
@@ -552,8 +567,10 @@ function FightPane({ side, state, factionRulesFor, phaseKey }) {
 }
 
 // Shared between the "Vertical" layout's top bar and the "Toggle" layout's
-// full-panel phase picker — each phase button is colored with that phase's
-// own site-wide global color (active = filled, inactive = outlined).
+// full-panel phase picker — every phase button is always fully filled with
+// that phase's own site-wide global color + white text (outline-only inactive
+// buttons read too low-contrast); the active phase is marked with a brighter
+// border + lift instead of a color/fill change.
 function PhaseRibbon({ phaseKey, setPhaseKey, onPick, horizontal }) {
   return (
     <div className={`bb-phase-ribbon${horizontal ? ' bb-phase-ribbon-horizontal' : ''}`}>
@@ -564,7 +581,7 @@ function PhaseRibbon({ phaseKey, setPhaseKey, onPick, horizontal }) {
           <button
             key={p.key}
             className={`bb-phase-btn${active ? ' active' : ''}`}
-            style={{ background: active ? c.hdrBg : 'transparent', color: active ? c.hdrTxt : c.hdrBg, borderColor: c.border }}
+            style={{ background: c.hdrBg, color: '#ffffff', borderColor: active ? '#ffffff' : c.border }}
             onClick={() => { setPhaseKey(p.key); onPick && onPick(); }}
           >{p.label}</button>
         );
@@ -573,8 +590,7 @@ function PhaseRibbon({ phaseKey, setPhaseKey, onPick, horizontal }) {
   );
 }
 
-function FightStage({ friendly, enemy, factionRulesFor }) {
-  const [phaseKey, setPhaseKey] = useState(BATTLE_PHASES[0].key);
+function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey }) {
   const [viewMode, setViewMode] = useState('single');
   const [singleSide, setSingleSide] = useState('friendly');
   // Toggle = one panel (phase picker OR abilities) full-screen at a time,
@@ -589,7 +605,9 @@ function FightStage({ friendly, enemy, factionRulesFor }) {
       <FightPane side="enemy" state={enemy} factionRulesFor={factionRulesFor} phaseKey={phaseKey} />
     </div>
   ) : (
-    <FightPane side={singleSide} state={singleSide === 'friendly' ? friendly : enemy} factionRulesFor={factionRulesFor} phaseKey={phaseKey} />
+    <div className="bb-fight-single">
+      <FightPane side={singleSide} state={singleSide === 'friendly' ? friendly : enemy} factionRulesFor={factionRulesFor} phaseKey={phaseKey} />
+    </div>
   );
 
   return (
@@ -641,6 +659,20 @@ export default function BattleBuddyPage() {
   const [enemy, setEnemy] = useState(makeBlankSide());
   const factionRules = useFactionRules();
 
+  // Fight stage's phase selection lives up here (not inside FightStage) so it
+  // survives toggling back to Step 1 and returning to Step 2 — only reset to
+  // Hero Phase when the actual matchup (which units are on the table for
+  // either side) changes, not on every stage switch.
+  const [phaseKey, setPhaseKey] = useState('hero');
+  const matchupSig = `${friendly.units.map(u => u.id).sort((a, b) => a - b).join(',')}||${enemy.units.map(u => u.id).sort((a, b) => a - b).join(',')}`;
+  const matchupSigRef = useRef(null);
+  useEffect(() => {
+    if (matchupSigRef.current !== null && matchupSigRef.current !== matchupSig) {
+      setPhaseKey('hero');
+    }
+    matchupSigRef.current = matchupSig;
+  }, [matchupSig]);
+
   return (
     <div className="table-page bb-page">
       <div className="page-header bb-header">
@@ -661,7 +693,7 @@ export default function BattleBuddyPage() {
           <SourcePane side="enemy" state={enemy} setState={setEnemy} factionRules={factionRules} />
         </div>
       ) : (
-        <FightStage friendly={friendly} enemy={enemy} factionRulesFor={factionRules.get} />
+        <FightStage friendly={friendly} enemy={enemy} factionRulesFor={factionRules.get} phaseKey={phaseKey} setPhaseKey={setPhaseKey} />
       )}
     </div>
   );
