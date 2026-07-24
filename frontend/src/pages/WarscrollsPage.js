@@ -316,41 +316,53 @@ export default function WarscrollsPage({ headerCollapsed }) {
   const [friendlyFactionFallback, setFriendlyFactionFallback] = useState([]);
   const [enemyFactionFallback, setEnemyFactionFallback] = useState([]);
 
+  // Same Hide: filters (Legends/Other Factions/Scourge/RoR) the main table
+  // sends, so the split-pane nav list can't show a unit the table itself is
+  // currently suppressing (confirmed bug: with Regiments of Renown hidden,
+  // the table correctly hid Cogfort Raiders, but the popup's nav list still
+  // included it since this ids= fetch never sent these params at all).
+  const hideFilterParams = {
+    ...(hideLegends         ? { isLegends: '0' }            : {}),
+    ...(hideOtherFactions   ? { hideOtherFactions: '1' }     : {}),
+    ...(hideScourgeOfGhyran ? { hideScourgeOfGhyran: '1' }   : {}),
+    ...(hideRoR             ? { hideRoR: '1' }               : {}),
+  };
+
   useEffect(() => {
     if (friendlyIds.length === 0) { setFriendlyFlaggedFull([]); return; }
     let cancelled = false;
-    axios.get('/api/warscrolls', { params: { ids: friendlyIds.join(','), pageSize: 300, sortBy: 'faction' } })
+    axios.get('/api/warscrolls', { params: { ids: friendlyIds.join(','), pageSize: 300, sortBy: 'faction', ...hideFilterParams } })
       .then(res => { if (!cancelled) setFriendlyFlaggedFull(res.data.data ?? []); })
       .catch(() => { if (!cancelled) setFriendlyFlaggedFull([]); });
     return () => { cancelled = true; };
-  }, [friendlyIds]);
+  }, [friendlyIds, hideLegends, hideOtherFactions, hideScourgeOfGhyran, hideRoR]); // eslint-disable-line
 
   useEffect(() => {
     if (enemyIds.length === 0) { setEnemyFlaggedFull([]); return; }
     let cancelled = false;
-    axios.get('/api/warscrolls', { params: { ids: enemyIds.join(','), pageSize: 300, sortBy: 'faction' } })
+    axios.get('/api/warscrolls', { params: { ids: enemyIds.join(','), pageSize: 300, sortBy: 'faction', ...hideFilterParams } })
       .then(res => { if (!cancelled) setEnemyFlaggedFull(res.data.data ?? []); })
       .catch(() => { if (!cancelled) setEnemyFlaggedFull([]); });
     return () => { cancelled = true; };
-  }, [enemyIds]);
+  }, [enemyIds, hideLegends, hideOtherFactions, hideScourgeOfGhyran, hideRoR]); // eslint-disable-line
 
   useEffect(() => {
     if (friendlyIds.length > 0 || !faction) { setFriendlyFactionFallback([]); return; }
     let cancelled = false;
-    axios.get('/api/warscrolls', { params: { faction, pageSize: 300, sortBy: 'faction' } })
+    axios.get('/api/warscrolls', { params: { faction, pageSize: 300, sortBy: 'faction', ...hideFilterParams } })
       .then(res => { if (!cancelled) setFriendlyFactionFallback(res.data.data ?? []); })
       .catch(() => { if (!cancelled) setFriendlyFactionFallback([]); });
     return () => { cancelled = true; };
-  }, [friendlyIds, faction]);
+  }, [friendlyIds, faction, hideLegends, hideOtherFactions, hideScourgeOfGhyran, hideRoR]); // eslint-disable-line
 
   useEffect(() => {
     if (enemyIds.length > 0 || !enemyFaction) { setEnemyFactionFallback([]); return; }
     let cancelled = false;
-    axios.get('/api/warscrolls', { params: { faction: enemyFaction, pageSize: 300, sortBy: 'faction' } })
+    axios.get('/api/warscrolls', { params: { faction: enemyFaction, pageSize: 300, sortBy: 'faction', ...hideFilterParams } })
       .then(res => { if (!cancelled) setEnemyFactionFallback(res.data.data ?? []); })
       .catch(() => { if (!cancelled) setEnemyFactionFallback([]); });
     return () => { cancelled = true; };
-  }, [enemyIds, enemyFaction]);
+  }, [enemyIds, enemyFaction, hideLegends, hideOtherFactions, hideScourgeOfGhyran, hideRoR]); // eslint-disable-line
 
   // When marks AND a Friendly/Enemy Faction dropdown value exist, the main
   // table's backend query ANDs the faction filter against BOTH mark flags
@@ -516,7 +528,16 @@ export default function WarscrollsPage({ headerCollapsed }) {
     });
     candidates.sort((a, b) => a.dist - b.dist);
     scrollAnchorRef.current = candidates.slice(0, 5);
-  }, [search, faction, enemyFaction, alliance, isHero, isMonster, isInfantry, isCavalry, isBeast, isWarMachine, isTerrain, isManifestation, hideLegends, hideOtherFactions, hideScourgeOfGhyran, hideRoR, showFriendly, showEnemy, sortBy, sortDir]);
+  // hasFriendlyMarks/hasEnemyMarks must be here too, not just in fetchData's
+  // own deps: flagging your first-ever Friendly/Enemy unit flips one of
+  // these from false to true, which changes fetchData's identity and
+  // triggers a refetch (see fetchData's params — showFriendly/showEnemy
+  // behave differently once real marks exist) even though the visible
+  // filters didn't change. Without this dependency, that refetch fires with
+  // no anchor ever captured, so the restore effect below has nothing to
+  // restore and the table snaps to whatever position the fresh render
+  // happens to land on (observed: straight to the top).
+  }, [search, faction, enemyFaction, alliance, isHero, isMonster, isInfantry, isCavalry, isBeast, isWarMachine, isTerrain, isManifestation, hideLegends, hideOtherFactions, hideScourgeOfGhyran, hideRoR, showFriendly, showEnemy, hasFriendlyMarks, hasEnemyMarks, sortBy, sortDir]);
 
   // Restore scroll after new data renders — try candidates in order, use first still present
   useEffect(() => {

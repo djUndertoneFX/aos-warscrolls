@@ -4356,14 +4356,12 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   font-family: Arial, sans-serif;
   font-weight: 700;
   text-align: center;
-  padding-bottom: 8px;
+  padding: 8px 0;
   margin-bottom: 12px;
-  border-bottom: 2px solid;
+  background: #1a5a8c;
+  color: #ffffff;
+  border-radius: 3px;
 }
-/* Alternate two accent colors across columns so adjacent groups read as
-   visually distinct, mirroring the printed page's own color-coded columns. */
-.gw-trait-group[data-col="a"] .gw-trait-group-header { color: #6ab0e8; border-color: #6ab0e8; }
-.gw-trait-group[data-col="b"] .gw-trait-group-header { color: #c8a840; border-color: #c8a840; }
 .gw-trait-group .gw-abilities-grid { grid-template-columns: 1fr; }
 
 /* ── Top band: 3-column (wheel | centered name | right meta) ── */
@@ -5085,12 +5083,11 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 .bb-fight-view-toggle button.active, .bb-fight-layout-toggle button.active { background: var(--gold); border-color: var(--gold); color: #1a1614; }
 .bb-fight-single-side-toggle { display: flex; gap: 0.3rem; margin-left: 0.5rem; }
 
-/* Ribbon: vertical list by default (Toggle mode's big picker), horizontal
-   bar in Vertical mode's top section. Each button's color comes from an
-   inline style (PHASE_COLORS, matching the site-wide phase palette) rather
-   than a fixed class color. */
+/* Ribbon: vertical list — the Vertical layout's left sidebar and Toggle
+   mode's big picker both use this same stacked form now. Each button's
+   color comes from an inline style (PHASE_COLORS, matching the site-wide
+   phase palette) rather than a fixed class color. */
 .bb-phase-ribbon { display: flex; flex-direction: column; gap: 0.4rem; }
-.bb-phase-ribbon-horizontal { flex-direction: row; flex-wrap: wrap; }
 .bb-phase-btn {
   font-family: 'Cinzel', serif;
   font-size: 0.72rem;
@@ -5102,15 +5099,17 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   cursor: pointer;
   transition: border-color 0.12s, box-shadow 0.12s, transform 0.12s;
 }
-.bb-phase-ribbon-horizontal .bb-phase-btn { flex: 1 1 auto; text-align: center; }
 .bb-phase-btn.active {
   font-weight: 700;
   box-shadow: 0 0 0 2px rgba(255,255,255,0.35);
   transform: translateY(-1px);
 }
 
-.bb-fight-vertical { display: flex; flex-direction: column; flex: 1; min-height: 0; }
-.bb-fight-hr { height: 1px; background: linear-gradient(to right, transparent, rgba(200,168,64,0.5), transparent); margin: 1rem 0; }
+/* Left phase sidebar + independently-scrolling ability content, instead of
+   a horizontal bar above the cards — the sidebar sits outside
+   .bb-fight-main's own overflow-y:auto, so it never scrolls out of view. */
+.bb-fight-vertical { display: flex; flex-direction: row; gap: 1.2rem; flex: 1; min-height: 0; }
+.bb-fight-phase-sidebar { flex: 0 0 170px; align-self: stretch; overflow-y: auto; border-right: 1px solid rgba(200,168,64,0.25); padding-right: 1rem; }
 .bb-fight-main { flex: 1; min-width: 0; overflow-y: auto; }
 
 .bb-fight-toggle { display: flex; flex-direction: column; flex: 1; min-height: 0; }
@@ -5202,6 +5201,29 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   padding: 0.05rem 0.5rem;
 }
 .bb-collapsible-body { margin-top: 0.6rem; }
+/* Top-level sections (Unit/Faction/Command Point Abilities, Regiment of
+   Renown) read as bolder/larger and flush left; nested Faction Abilities
+   sub-headings (Battle Traits, Formations, Heroic Traits, etc.) are
+   smaller/lighter and indented under them, so the hierarchy is visible at
+   a glance instead of every level looking identical. */
+.bb-collapsible-top > .bb-collapsible-header .bb-collapsible-title,
+.bb-fight-section.bb-collapsible-top .bb-fight-section-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+.bb-collapsible-top > .bb-collapsible-header .bb-collapse-triangle { font-size: 0.7rem; }
+.bb-collapsible-sub,
+.bb-fight-section.bb-collapsible-sub {
+  padding-left: 1.1rem;
+}
+.bb-collapsible-sub > .bb-collapsible-header .bb-collapsible-title,
+.bb-fight-section.bb-collapsible-sub .bb-fight-section-title {
+  font-size: 0.65rem;
+  font-weight: 400;
+  color: var(--text-dim);
+}
+.bb-collapsible-sub > .bb-collapsible-header .bb-collapse-triangle { font-size: 0.55rem; }
 .bb-path-ability-text {
   font-size: 0.85rem;
   color: var(--text);
@@ -5211,9 +5233,7 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   padding: 0.6rem 0.8rem;
 }
 .bb-formation-group + .bb-formation-group { margin-top: 0.9rem; }
-.bb-fight-grid { grid-template-columns: 1fr !important; }
-.bb-fight-dual .bb-fight-grid { grid-template-columns: 1fr !important; }
-.bb-fight-single .bb-fight-grid { grid-template-columns: repeat(2, 1fr) !important; }
+.bb-fight-grid { grid-template-columns: repeat(2, 1fr) !important; }
 .bb-fight-ability-unit {
   font-family: 'Cinzel', serif;
   font-size: 0.8rem;
@@ -5255,7 +5275,7 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 @media (max-width: 900px) {
   .bb-dual-view { flex-direction: column; }
   .bb-fight-dual { flex-direction: column; }
-  .bb-fight-single .bb-fight-grid { grid-template-columns: 1fr !important; }
+  .bb-fight-grid { grid-template-columns: 1fr !important; }
   .bb-header { grid-template-columns: 1fr; text-align: center; }
   .bb-steps { grid-column: 1; justify-content: center; flex-wrap: wrap; margin-top: 0.5rem; }
   .bb-step-btn { min-width: 0; }

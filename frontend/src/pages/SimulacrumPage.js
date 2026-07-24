@@ -701,7 +701,13 @@ export default function SimulacrumPage({ headerCollapsed }) {
     });
     candidates.sort((a, b) => a.dist - b.dist);
     scrollAnchorRef.current = candidates.slice(0, 5);
-  }, [search, faction, enemyFaction, alliance, isHero, isMonster, isInfantry, isCavalry, isBeast, isWarMachine, isTerrain, isManifestation, hideLegends, hideOtherFactions, hideScourgeOfGhyran, hideRoR, showFriendly, showEnemy, sortBy, sortDir]);
+  // hasFriendlyMarks/hasEnemyMarks must be here too, not just in fetchData's
+  // own deps — see WarscrollsPage.js's matching effect for the full
+  // explanation (flagging your first-ever Friendly/Enemy unit triggers a
+  // refetch via fetchData's identity change even though no visible filter
+  // changed; without this dependency no anchor gets captured for that
+  // refetch and the table snaps to the top instead of holding position).
+  }, [search, faction, enemyFaction, alliance, isHero, isMonster, isInfantry, isCavalry, isBeast, isWarMachine, isTerrain, isManifestation, hideLegends, hideOtherFactions, hideScourgeOfGhyran, hideRoR, showFriendly, showEnemy, hasFriendlyMarks, hasEnemyMarks, sortBy, sortDir]);
 
   useEffect(() => {
     const candidates = scrollAnchorRef.current;

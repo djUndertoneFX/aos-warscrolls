@@ -18,6 +18,16 @@ const UNIT_THUMB_RESERVED_PX = 76;
 function UnitAbilityCard({ ab, hasImage }) {
   const cardWrapRef = useRef(null);
   const [fits, setFits] = useState(false);
+  // Some previously-uploaded image files on the volume are corrupted
+  // (confirmed: valid HTTP 200 + valid JPEG header bytes + plausible file
+  // size, but the browser's decoder still fails — naturalWidth/Height stay
+  // 0 after `complete` — likely truncated mid-download by an earlier
+  // scraping session, unrelated to this feature). /api/unit-images-exist
+  // only checks the file EXISTS, not that it decodes, so hasImage alone
+  // isn't enough — a real onError on the actual <img> is the only reliable
+  // signal, hence this hides the whole thumbnail on failure instead of
+  // showing the browser's broken-image icon + wrapped alt text.
+  const [imgFailed, setImgFailed] = useState(false);
   const measuredRef = useRef(false);
 
   useLayoutEffect(() => {
@@ -34,7 +44,7 @@ function UnitAbilityCard({ ab, hasImage }) {
     setFits(Math.round((shrunkHeight - naturalHeight) / lineHeight) <= 1);
   }, [hasImage]);
 
-  const showThumb = hasImage && fits;
+  const showThumb = hasImage && fits && !imgFailed;
 
   return (
     <div className="bb-fight-ability">
@@ -46,7 +56,7 @@ function UnitAbilityCard({ ab, hasImage }) {
         <AbilityCard ab={ab} keywords={[]} />
         {showThumb && (
           <div className="bb-unit-thumb">
-            <img src={`/api/unit-image/${ab._unitId}`} alt={ab._unitName} className="bb-unit-thumb-img" />
+            <img src={`/api/unit-image/${ab._unitId}`} alt={ab._unitName} className="bb-unit-thumb-img" onError={() => setImgFailed(true)} />
             <img src={`/api/unit-image/${ab._unitId}`} alt="" aria-hidden="true" className="bb-unit-thumb-zoom-img" />
           </div>
         )}
@@ -580,10 +590,10 @@ function groupTraits(abilities) {
 // Fight view — Unit/Faction/Command Point Abilities, and each Faction
 // Abilities sub-heading. Local (uncontrolled) open/closed state per instance,
 // so friendly/enemy panes (and each sub-section) collapse independently.
-function CollapsibleSection({ title, count, defaultOpen = true, children }) {
+function CollapsibleSection({ title, count, defaultOpen = true, level = 'top', children }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="bb-collapsible">
+    <div className={`bb-collapsible bb-collapsible-${level}`}>
       <button type="button" className="bb-collapsible-header" onClick={() => setOpen(o => !o)}>
         <span className={`bb-collapse-triangle${open ? ' open' : ''}`}>▶</span>
         <span className="bb-collapsible-title">{title}</span>
@@ -597,18 +607,18 @@ function CollapsibleSection({ title, count, defaultOpen = true, children }) {
 // Renders one of the ability sections: the phase-specific list, then
 // (if any) a divider and the "Passive / Any Phase" list that's the same
 // regardless of which ribbon phase is selected.
-function AbilitySection({ title, inPhase, always, renderCard, defaultOpen = true }) {
+function AbilitySection({ title, inPhase, always, renderCard, defaultOpen = true, level = 'top' }) {
   const hasAny = inPhase.length > 0 || always.length > 0;
   if (!hasAny) {
     return (
-      <div className="bb-fight-section">
+      <div className={`bb-fight-section bb-collapsible-${level}`}>
         <div className="bb-fight-section-title">{title}</div>
         <div className="bb-pane-empty">Nothing for this phase.</div>
       </div>
     );
   }
   return (
-    <CollapsibleSection title={title} count={inPhase.length + always.length} defaultOpen={defaultOpen}>
+    <CollapsibleSection title={title} count={inPhase.length + always.length} defaultOpen={defaultOpen} level={level}>
       {inPhase.length > 0 && (
         <div className="gw-abilities-grid bb-fight-grid">{inPhase.map(renderCard)}</div>
       )}
@@ -630,7 +640,7 @@ function BattleTraitsSection({ inPhase, always, renderCard }) {
   const hasAny = inPhase.length > 0 || always.length > 0;
   if (!hasAny) {
     return (
-      <div className="bb-fight-section">
+      <div className="bb-fight-section bb-collapsible-sub">
         <div className="bb-fight-section-title">Battle Traits</div>
         <div className="bb-pane-empty">Nothing for this phase.</div>
       </div>
@@ -658,7 +668,7 @@ function BattleTraitsSection({ inPhase, always, renderCard }) {
     );
   };
   return (
-    <CollapsibleSection title="Battle Traits" count={inPhase.length + always.length}>
+    <CollapsibleSection title="Battle Traits" count={inPhase.length + always.length} level="sub">
       {inPhase.length > 0 && renderBucket(inPhase)}
       {inPhase.length > 0 && always.length > 0 && <div className="gw-formation-divider" />}
       {always.length > 0 && (
@@ -693,7 +703,7 @@ function BattleFormationsSection({ inPhase, always, renderCard }) {
   const hasAny = inPhase.length > 0 || always.length > 0;
   if (!hasAny) {
     return (
-      <div className="bb-fight-section">
+      <div className="bb-fight-section bb-collapsible-sub">
         <div className="bb-fight-section-title">Battle Formations</div>
         <div className="bb-pane-empty">Nothing for this phase.</div>
       </div>
@@ -715,7 +725,7 @@ function BattleFormationsSection({ inPhase, always, renderCard }) {
     </div>
   );
   return (
-    <CollapsibleSection title="Battle Formations" count={inPhase.length + always.length}>
+    <CollapsibleSection title="Battle Formations" count={inPhase.length + always.length} level="sub">
       {inPhase.length > 0 && renderBucket(inPhase)}
       {inPhase.length > 0 && always.length > 0 && <div className="gw-formation-divider" />}
       {always.length > 0 && (
@@ -737,6 +747,11 @@ function FactionAbilitiesGroup({ state, factionRulesFor, phaseKey, renderCard })
   return (
     <>
       {sections.map(s => {
+        // A category the faction has NOTHING in at all (e.g. Idoneth Deepkin
+        // publish no Prayer Lore) is suppressed entirely, on every phase —
+        // distinct from "has cards, just none for the current phase", which
+        // still shows the sub-heading with "Nothing for this phase."
+        if (s.abilities.length === 0) return null;
         const split = splitAbilitiesForPhase(s.abilities, phaseKey);
         if (s.key === 'traits') {
           return <BattleTraitsSection key={s.key} inPhase={split.inPhase} always={split.always} renderCard={renderCard} />;
@@ -745,11 +760,11 @@ function FactionAbilitiesGroup({ state, factionRulesFor, phaseKey, renderCard })
           return <BattleFormationsSection key={s.key} inPhase={split.inPhase} always={split.always} renderCard={renderCard} />;
         }
         return (
-          <AbilitySection key={s.key} title={s.label} inPhase={split.inPhase} always={split.always} renderCard={renderCard} />
+          <AbilitySection key={s.key} title={s.label} inPhase={split.inPhase} always={split.always} renderCard={renderCard} level="sub" />
         );
       })}
       {pathText && (
-        <CollapsibleSection title="Path Abilities">
+        <CollapsibleSection title="Path Abilities" level="sub">
           <div className="bb-path-ability-text">{pathText}</div>
         </CollapsibleSection>
       )}
@@ -764,11 +779,21 @@ function FactionAbilitiesGroup({ state, factionRulesFor, phaseKey, renderCard })
 // Faction Terrain sorted last within its own group. RoR units get their own
 // "Regiment of Renown" sub-heading rather than mixing anonymously into the
 // normal Unit Abilities list.
+// "Scourge of X" names a seasonal battle-profile variant — Ghyran was the
+// previous matched-play season, Aqshy is current (same signal server.js's
+// hideScourgeOfGhyran filter and TITLE_PREFIXES already key off) — so a
+// Ghyran-variant unit's abilities would show outdated rules text mid-game
+// even if it's technically still flagged/selected from before this existed.
+function isOutdatedSeason(unit) {
+  return (unit.name || '').toLowerCase().startsWith('scourge of ghyran');
+}
+
 function splitUnitsByRoR(units) {
+  const current = units.filter(u => !isOutdatedSeason(u));
   const sortTerrainLast = list => [...list].sort((a, b) => (a.is_terrain ? 1 : 0) - (b.is_terrain ? 1 : 0));
   return {
-    normal: sortTerrainLast(units.filter(u => !u.is_regiment_of_renown)),
-    ror: sortTerrainLast(units.filter(u => u.is_regiment_of_renown)),
+    normal: sortTerrainLast(current.filter(u => !u.is_regiment_of_renown)),
+    ror: sortTerrainLast(current.filter(u => u.is_regiment_of_renown)),
   };
 }
 
@@ -827,14 +852,14 @@ function FightPane({ side, state, factionRulesFor, phaseKey }) {
   );
 }
 
-// Shared between the "Vertical" layout's top bar and the "Toggle" layout's
-// full-panel phase picker — every phase button is always fully filled with
-// that phase's own site-wide global color + white text (outline-only inactive
-// buttons read too low-contrast); the active phase is marked with a brighter
-// border + lift instead of a color/fill change.
-function PhaseRibbon({ phaseKey, setPhaseKey, onPick, horizontal }) {
+// Shared between the "Vertical" layout's left sidebar and the "Toggle"
+// layout's full-panel phase picker — every phase button is always fully
+// filled with that phase's own site-wide global color + white text
+// (outline-only inactive buttons read too low-contrast); the active phase
+// is marked with a brighter border + lift instead of a color/fill change.
+function PhaseRibbon({ phaseKey, setPhaseKey, onPick }) {
   return (
-    <div className={`bb-phase-ribbon${horizontal ? ' bb-phase-ribbon-horizontal' : ''}`}>
+    <div className="bb-phase-ribbon">
       {BATTLE_PHASES.map(p => {
         const c = PHASE_COLORS[p.key];
         const active = phaseKey === p.key;
@@ -859,6 +884,23 @@ function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey })
   // then abilities below — both visible together.
   const [layoutMode, setLayoutMode] = useState('vertical');
   const [togglePanel, setTogglePanel] = useState('phases');
+
+  // Page Up/Down flip Friendly <-> Enemy while in Single View — a quick
+  // one-handed way to check both sides without reaching for the mouse.
+  // Only active in single view (dual already shows both at once); doesn't
+  // fire while typing in a field elsewhere on the page.
+  useEffect(() => {
+    if (viewMode !== 'single') return;
+    const onKeyDown = (e) => {
+      if (e.key !== 'PageUp' && e.key !== 'PageDown') return;
+      const tag = document.activeElement?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.isContentEditable) return;
+      e.preventDefault();
+      setSingleSide(s => (s === 'friendly' ? 'enemy' : 'friendly'));
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [viewMode]);
 
   const abilityContent = viewMode === 'dual' ? (
     <div className="bb-fight-dual">
@@ -892,8 +934,9 @@ function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey })
 
       {layoutMode === 'vertical' ? (
         <div className="bb-fight-vertical">
-          <PhaseRibbon phaseKey={phaseKey} setPhaseKey={setPhaseKey} horizontal />
-          <div className="bb-fight-hr" />
+          <div className="bb-fight-phase-sidebar">
+            <PhaseRibbon phaseKey={phaseKey} setPhaseKey={setPhaseKey} />
+          </div>
           <div className="bb-fight-main">{abilityContent}</div>
         </div>
       ) : (
