@@ -190,6 +190,19 @@ initDb();
   }
 }
 
+// Auto-scrape Core Rules Command abilities if empty (universal, not
+// faction-specific — same "seed once on a fresh volume" pattern as above).
+{
+  const { scrapeCommandAbilities } = require('./scrapeCommandAbilities');
+  const _db3 = getDb();
+  const cmdCount = _db3.prepare('SELECT COUNT(*) as n FROM core_command_abilities').get().n;
+  _db3.close();
+  if (cmdCount === 0) {
+    console.log('Core command abilities table empty — running scrapeCommandAbilities in background...');
+    scrapeCommandAbilities().catch(err => console.error('scrapeCommandAbilities failed:', err));
+  }
+}
+
 // Always re-seed spearhead data to keep names/assignments current
 {
   console.log('Seeding spearhead data…');
@@ -767,13 +780,13 @@ app.get('/api/faction-rules/:slug', requireAuth, (req, res) => {
   try {
     const slug = req.params.slug;
     const traits = db.prepare(
-      'SELECT id, name, timing, declare, effect, bullets, keywords, lore_text, group_name FROM faction_battle_traits WHERE faction_slug = ? ORDER BY id'
+      'SELECT id, name, timing, declare, effect, bullets, keywords, lore_text, group_name, phase_key FROM faction_battle_traits WHERE faction_slug = ? ORDER BY id'
     ).all(slug);
     const formations = db.prepare(
       'SELECT id, formation_name, name, timing, declare, effect, bullets, keywords, lore_text, source_note, phase_key FROM faction_battle_formations WHERE faction_slug = ? ORDER BY id'
     ).all(slug);
     const extra = db.prepare(
-      'SELECT id, section, group_name, name, timing, declare, effect, bullets, keywords, lore_text, casting_value FROM faction_extra_rules WHERE faction_slug = ? ORDER BY id'
+      'SELECT id, section, group_name, name, timing, declare, effect, bullets, keywords, lore_text, casting_value, phase_key FROM faction_extra_rules WHERE faction_slug = ? ORDER BY id'
     ).all(slug);
 
     // Partition extra rules by section
@@ -787,6 +800,21 @@ app.get('/api/faction-rules/:slug', requireAuth, (req, res) => {
       prayer_lore:        bySection('prayer_lore'),
       manifestation_lore: bySection('manifestation_lore'),
     });
+  } finally {
+    db.close();
+  }
+});
+
+// GET /api/command-abilities — Core Rules "Commands" (Command Point
+// abilities) — universal, not faction-specific, so no :slug param. See
+// backend/scrapeCommandAbilities.js.
+app.get('/api/command-abilities', requireAuth, (req, res) => {
+  const db = getDb();
+  try {
+    const rows = db.prepare(
+      'SELECT id, section, name, timing, declare, effect, bullets, keywords, lore_text, cp_cost, phase_key FROM core_command_abilities ORDER BY id'
+    ).all();
+    res.json(rows);
   } finally {
     db.close();
   }

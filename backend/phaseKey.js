@@ -68,11 +68,11 @@ function literalPhaseFromTiming(timing) {
 
 const PHASE_KEYWORD_GROUPS = [
   { key: 'hero phase', patterns: [/casting roll/, /\bunbind\b/, /\bdispel\b/, /\bbanish/, /prayer roll/, /ritual roll/, /lurelight/, /\bhero phase\b/, /command point/] },
-  { key: 'movement',   patterns: [/run roll/, /\bretreat/, /movement phase/, /\bmove roll/, /ends? (a |its |their )?move\b/, /moves? (through|across)/, /move characteristic/] },
+  { key: 'movement',   patterns: [/run roll/, /\bretreat/, /movement phase/, /\bmove roll/, /ends? (a |its |their )?move\b/, /moves? (through|across)/, /move characteristic/, /declared? an? run/, /\brun ability\b/] },
   // "non-CHARGE move" (confirmed: Kharadron's Transport Skyfarers) means the
   // opposite of charge-relevant — excluded via a negative lookbehind rather
   // than just /\bcharge move\b/, which matched it as a false positive.
-  { key: 'charge',     patterns: [/charge roll/, /charge phase/, /(?<!non-)\bcharge move\b/] },
+  { key: 'charge',     patterns: [/charge roll/, /charge phase/, /(?<!non-)\bcharge move\b/, /declared? an? charge/, /\bcharge ability\b/] },
   { key: 'shooting',   patterns: [/shooting attack/, /shoot phase/, /ranged attack/, /shooting phase/, /declared? an? shoot/, /\bshoot ability\b/] },
   {
     key: 'combat',

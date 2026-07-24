@@ -163,13 +163,6 @@ function splitAbilitiesForPhase(abilities, phaseKey) {
   return { inPhase, always };
 }
 
-// ── Static reference: the four Core Rules Command Abilities every army can
-// use, regardless of faction. Unlike everything else in this app these
-// aren't scraped from anywhere — no command-abilities table/scrape exists
-// yet (checked backend/db.js and scrapeRules.js) — so this section is a
-// placeholder rather than guessed-at rules text, since getting this wrong
-// would actively mislead someone using it mid-game. ─────────────────────────
-const COMMAND_ABILITIES_AVAILABLE = false;
 
 const SOURCES = [
   { key: 'warscrolls',     label: 'Warscrolls' },
@@ -214,6 +207,20 @@ function useFactionRules() {
     }
   }, []);
   return { get: slug => cache.current[slug] ?? null, fetchFor };
+}
+
+// ── Core Rules Command abilities — universal, not faction-specific, so a
+// single fetch (not per-slug like faction rules) shared by both panes.
+function useCommandAbilities() {
+  const [abilities, setAbilities] = useState(null); // null = loading, [] = loaded-empty
+  useEffect(() => {
+    let cancelled = false;
+    axios.get('/api/command-abilities')
+      .then(({ data }) => { if (!cancelled) setAbilities(data); })
+      .catch(() => { if (!cancelled) setAbilities([]); });
+    return () => { cancelled = true; };
+  }, []);
+  return abilities;
 }
 
 // ── Warscrolls source: whatever's currently flagged Friendly/Enemy on the
@@ -801,7 +808,7 @@ function unitsToAbilities(units) {
   return units.flatMap(u => parseJsonArray(u.abilities).map(ab => ({ ...ab, _unitName: u.name, _unitId: u.id })));
 }
 
-function FightPane({ side, state, factionRulesFor, phaseKey }) {
+function FightPane({ side, state, factionRulesFor, phaseKey, commandAbilities }) {
   const { normal: normalUnits, ror: rorUnits } = splitUnitsByRoR(state.units);
   const unitSplit = splitAbilitiesForPhase(unitsToAbilities(normalUnits), phaseKey);
   const rorSplit = splitAbilitiesForPhase(unitsToAbilities(rorUnits), phaseKey);
@@ -825,6 +832,10 @@ function FightPane({ side, state, factionRulesFor, phaseKey }) {
   const renderFactionCard = (ab, i) => (
     <AbilityCard key={i} ab={{ ...ab, bullets: parseJsonArray(ab.bullets) }} keywords={[]} />
   );
+  const renderCommandCard = (ab, i) => (
+    <AbilityCard key={i} ab={{ ...ab, bullets: parseJsonArray(ab.bullets), cost: ab.cp_cost ? `${ab.cp_cost} CP` : null }} keywords={[]} />
+  );
+  const commandSplit = splitAbilitiesForPhase(commandAbilities || [], phaseKey);
 
   return (
     <div className="bb-fight-pane">
@@ -843,11 +854,14 @@ function FightPane({ side, state, factionRulesFor, phaseKey }) {
       </CollapsibleSection>
       <div className="gw-formation-divider" />
 
-      <CollapsibleSection title="Command Point Abilities">
-        {!COMMAND_ABILITIES_AVAILABLE && (
-          <div className="bb-pane-empty">Not tracked yet — the Core Rules Command Abilities aren't in the database, so this section is a placeholder for now.</div>
-        )}
-      </CollapsibleSection>
+      {commandAbilities === null ? (
+        <div className="bb-fight-section">
+          <div className="bb-fight-section-title">Command Point Abilities</div>
+          <div className="bb-pane-empty">Loading…</div>
+        </div>
+      ) : (
+        <AbilitySection title="Command Point Abilities" inPhase={commandSplit.inPhase} always={commandSplit.always} renderCard={renderCommandCard} />
+      )}
     </div>
   );
 }
@@ -876,7 +890,7 @@ function PhaseRibbon({ phaseKey, setPhaseKey, onPick }) {
   );
 }
 
-function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey }) {
+function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey, commandAbilities }) {
   const [viewMode, setViewMode] = useState('single');
   const [singleSide, setSingleSide] = useState('friendly');
 
@@ -899,12 +913,12 @@ function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey })
 
   const abilityContent = viewMode === 'dual' ? (
     <div className="bb-fight-dual">
-      <FightPane side="friendly" state={friendly} factionRulesFor={factionRulesFor} phaseKey={phaseKey} />
-      <FightPane side="enemy" state={enemy} factionRulesFor={factionRulesFor} phaseKey={phaseKey} />
+      <FightPane side="friendly" state={friendly} factionRulesFor={factionRulesFor} phaseKey={phaseKey} commandAbilities={commandAbilities} />
+      <FightPane side="enemy" state={enemy} factionRulesFor={factionRulesFor} phaseKey={phaseKey} commandAbilities={commandAbilities} />
     </div>
   ) : (
     <div className="bb-fight-single">
-      <FightPane side={singleSide} state={singleSide === 'friendly' ? friendly : enemy} factionRulesFor={factionRulesFor} phaseKey={phaseKey} />
+      <FightPane side={singleSide} state={singleSide === 'friendly' ? friendly : enemy} factionRulesFor={factionRulesFor} phaseKey={phaseKey} commandAbilities={commandAbilities} />
     </div>
   );
 
@@ -938,6 +952,7 @@ export default function BattleBuddyPage() {
   const [friendly, setFriendly] = useState(makeBlankSide());
   const [enemy, setEnemy] = useState(makeBlankSide());
   const factionRules = useFactionRules();
+  const commandAbilities = useCommandAbilities();
 
   // Fight stage's phase selection lives up here (not inside FightStage) so it
   // survives toggling back to Step 1 and returning to Step 2 — only reset to
@@ -973,7 +988,7 @@ export default function BattleBuddyPage() {
           <SourcePane side="enemy" state={enemy} setState={setEnemy} factionRules={factionRules} />
         </div>
       ) : (
-        <FightStage friendly={friendly} enemy={enemy} factionRulesFor={factionRules.get} phaseKey={phaseKey} setPhaseKey={setPhaseKey} />
+        <FightStage friendly={friendly} enemy={enemy} factionRulesFor={factionRules.get} phaseKey={phaseKey} setPhaseKey={setPhaseKey} commandAbilities={commandAbilities} />
       )}
     </div>
   );

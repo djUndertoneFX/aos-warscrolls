@@ -264,6 +264,29 @@ function initDb() {
     CREATE INDEX IF NOT EXISTS idx_army_builder_lists_user ON army_builder_lists(user_id);
   `);
 
+  // Core Rules "Commands" (Command Point abilities) — scraped once from
+  // Wahapedia's core-rules page (not faction-specific, so no faction_slug),
+  // grouped by the book's own phase-named sections (Hero/Movement/Shooting/
+  // Charge/Attacking/Defensive/End of Turn Phase Commands). See
+  // scrapeCommandAbilities.js. Battle Buddy's Command Point Abilities
+  // section was a placeholder until this existed.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS core_command_abilities (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      section TEXT NOT NULL,
+      name TEXT NOT NULL,
+      timing TEXT,
+      declare TEXT,
+      effect TEXT,
+      bullets TEXT,
+      keywords TEXT,
+      lore_text TEXT,
+      cp_cost TEXT,
+      phase_key TEXT,
+      scraped_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
   db.close();
   console.log('Database initialized.');
 }

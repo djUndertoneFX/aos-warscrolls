@@ -409,4 +409,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { scrapeAllRules, FACTIONS, BASE_URL, normalizeText, parseAbilityBlock };
+module.exports = { scrapeAllRules, FACTIONS, BASE_URL, normalizeText, parseAbilityBlock, collectSectionBlocks };
