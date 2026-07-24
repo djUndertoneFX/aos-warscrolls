@@ -398,7 +398,13 @@ function PathToGlorySource({ side, state, setState, factionRules }) {
       }
       const selection = {
         heroic_traits: [],
-        artefacts: [blob.warlordPathAbility].filter(Boolean),
+        // warlordEnhancements/warlordPathAbility are free-text fields on the
+        // printed roster (not structured picks from the faction-rules DB —
+        // there's no real "Path Ability" table to match against), so they
+        // can't be name-matched into rules.artefacts like the lores below.
+        // Surfaced separately as plain text under their own sub-heading.
+        artefacts: (blob.warlordEnhancements || '').split(',').map(s => s.trim()).filter(Boolean),
+        pathAbilityText: blob.warlordPathAbility || '',
         spell_lore: (blob.spellLore || []).filter(Boolean),
         prayer_lore: (blob.prayerLore || []).filter(Boolean),
         manifestation_lore: (blob.manifestationLore || []).filter(Boolean),
@@ -488,33 +494,91 @@ function SourcePane({ side, state, setState, factionRules }) {
 }
 
 // ── Fight! stage ─────────────────────────────────────────────────────────────
-// Aggregates every ability in play for a side into the three sections, then
-// filters down to whichever phase the ribbon has selected.
-function collectFactionAbilities(state, factionRulesFor) {
+// Faction Abilities used to be one flat merged list — now kept as separate
+// per-category sections (matching the book's own section names) so each can
+// get its own sub-heading and collapse triangle instead of one undifferentiated
+// wall of cards.
+const FACTION_SECTIONS = [
+  { key: 'traits',             label: 'Battle Traits' },
+  { key: 'formations',         label: 'Battle Formations' },
+  { key: 'heroic_traits',      label: 'Heroic Traits' },
+  { key: 'artefacts',          label: 'Artefacts of Power' },
+  { key: 'spell_lore',         label: 'Spell Lore' },
+  { key: 'prayer_lore',        label: 'Prayer Lore' },
+  { key: 'manifestation_lore', label: 'Manifestations' },
+];
+
+function collectFactionSections(state, factionRulesFor) {
   const rules = factionRulesFor(state.factionSlug);
   if (!rules) return [];
   const sel = state.selection;
   const pick = (arr, names) => (names === undefined || names === null ? arr : arr.filter(a => names.includes(a.name)));
-  return [
-    ...pick(rules.traits, null),
-    ...(state.battleFormation ? rules.formations.filter(f => f.formation_name === state.battleFormation) : rules.formations),
-    ...pick(rules.heroic_traits,      sel?.heroic_traits),
-    ...pick(rules.artefacts,          sel?.artefacts),
-    ...pick(rules.spell_lore,         sel?.spell_lore),
-    ...pick(rules.prayer_lore,        sel?.prayer_lore),
-    ...pick(rules.manifestation_lore, sel?.manifestation_lore),
-  ];
+  return FACTION_SECTIONS.map(s => {
+    let abilities;
+    if (s.key === 'formations') {
+      abilities = state.battleFormation ? rules.formations.filter(f => f.formation_name === state.battleFormation) : rules.formations;
+    } else if (s.key === 'traits') {
+      abilities = rules.traits; // Battle Traits aren't narrowed by a selection, unlike Heroic Traits/Artefacts/Lores
+    } else {
+      abilities = pick(rules[s.key], sel?.[s.key]);
+    }
+    return { ...s, abilities: abilities || [] };
+  });
 }
 
-// Renders one of the three ability sections: the phase-specific list, then
+// Some Battle Traits are grouped under a shared column-header label instead of
+// standing alone (confirmed: Idoneth Deepkin's "Tides of the Sea"/"Tides of
+// the Storm") — the book prints these as two (or more) light-blue/gold-banner
+// columns in a fixed order, not a flat list. Mirrors WarscrollGW.js's
+// TraitGroupColumn/FactionTraitsSlide grouping so it reads the same here.
+function groupTraits(abilities) {
+  const ungrouped = abilities.filter(t => !t.group_name);
+  const groups = [];
+  const nameToGroup = {};
+  for (const t of abilities) {
+    if (!t.group_name) continue;
+    if (!nameToGroup[t.group_name]) {
+      nameToGroup[t.group_name] = { name: t.group_name, items: [] };
+      groups.push(nameToGroup[t.group_name]);
+    }
+    nameToGroup[t.group_name].items.push(t);
+  }
+  return { groups, ungrouped };
+}
+
+// Shared collapse-triangle wrapper for every "section with a separator" in the
+// Fight view — Unit/Faction/Command Point Abilities, and each Faction
+// Abilities sub-heading. Local (uncontrolled) open/closed state per instance,
+// so friendly/enemy panes (and each sub-section) collapse independently.
+function CollapsibleSection({ title, count, defaultOpen = true, children }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="bb-collapsible">
+      <button type="button" className="bb-collapsible-header" onClick={() => setOpen(o => !o)}>
+        <span className={`bb-collapse-triangle${open ? ' open' : ''}`}>▶</span>
+        <span className="bb-collapsible-title">{title}</span>
+        {count != null && <span className="bb-collapsible-count">{count}</span>}
+      </button>
+      {open && <div className="bb-collapsible-body">{children}</div>}
+    </div>
+  );
+}
+
+// Renders one of the ability sections: the phase-specific list, then
 // (if any) a divider and the "Passive / Any Phase" list that's the same
 // regardless of which ribbon phase is selected.
-function AbilitySection({ title, inPhase, always, renderCard }) {
+function AbilitySection({ title, inPhase, always, renderCard, defaultOpen = true }) {
   const hasAny = inPhase.length > 0 || always.length > 0;
+  if (!hasAny) {
+    return (
+      <div className="bb-fight-section">
+        <div className="bb-fight-section-title">{title}</div>
+        <div className="bb-pane-empty">Nothing for this phase.</div>
+      </div>
+    );
+  }
   return (
-    <div className="bb-fight-section">
-      <div className="bb-fight-section-title">{title}</div>
-      {!hasAny && <div className="bb-pane-empty">Nothing for this phase.</div>}
+    <CollapsibleSection title={title} count={inPhase.length + always.length} defaultOpen={defaultOpen}>
       {inPhase.length > 0 && (
         <div className="gw-abilities-grid bb-fight-grid">{inPhase.map(renderCard)}</div>
       )}
@@ -525,7 +589,81 @@ function AbilitySection({ title, inPhase, always, renderCard }) {
           <div className="gw-abilities-grid bb-fight-grid">{always.map(renderCard)}</div>
         </>
       )}
-    </div>
+    </CollapsibleSection>
+  );
+}
+
+// Battle Traits get grouped-column rendering (book order + banner headers)
+// instead of a flat card grid — same idea as AbilitySection but splitting
+// each of inPhase/always by group_name first.
+function BattleTraitsSection({ inPhase, always, renderCard }) {
+  const hasAny = inPhase.length > 0 || always.length > 0;
+  if (!hasAny) {
+    return (
+      <div className="bb-fight-section">
+        <div className="bb-fight-section-title">Battle Traits</div>
+        <div className="bb-pane-empty">Nothing for this phase.</div>
+      </div>
+    );
+  }
+  const renderBucket = (list) => {
+    const { groups, ungrouped } = groupTraits(list);
+    return (
+      <>
+        {groups.length > 0 && (
+          <div className="gw-trait-groups" style={{ gridTemplateColumns: `repeat(${groups.length}, 1fr)` }}>
+            {groups.map((group, gi) => (
+              <div className="gw-trait-group" data-col={gi % 2 === 0 ? 'a' : 'b'} key={gi}>
+                <div className="gw-trait-group-header">{group.name}</div>
+                <div className="gw-abilities-grid">{group.items.map(renderCard)}</div>
+              </div>
+            ))}
+          </div>
+        )}
+        {groups.length > 0 && ungrouped.length > 0 && <div className="gw-formation-divider" />}
+        {ungrouped.length > 0 && (
+          <div className="gw-abilities-grid bb-fight-grid">{ungrouped.map(renderCard)}</div>
+        )}
+      </>
+    );
+  };
+  return (
+    <CollapsibleSection title="Battle Traits" count={inPhase.length + always.length}>
+      {inPhase.length > 0 && renderBucket(inPhase)}
+      {inPhase.length > 0 && always.length > 0 && <div className="gw-formation-divider" />}
+      {always.length > 0 && (
+        <>
+          <div className="bb-fight-section-subtitle">Passive / Any Phase</div>
+          {renderBucket(always)}
+        </>
+      )}
+    </CollapsibleSection>
+  );
+}
+
+function FactionAbilitiesGroup({ state, factionRulesFor, phaseKey, renderCard }) {
+  const sections = collectFactionSections(state, factionRulesFor);
+  const pathText = (state.selection?.pathAbilityText || '').trim();
+  const hasAnySection = sections.some(s => s.abilities.length > 0) || pathText;
+  if (!hasAnySection) return <div className="bb-pane-empty">Nothing for this phase.</div>;
+
+  return (
+    <>
+      {sections.map(s => {
+        const split = splitAbilitiesForPhase(s.abilities, phaseKey);
+        if (s.key === 'traits') {
+          return <BattleTraitsSection key={s.key} inPhase={split.inPhase} always={split.always} renderCard={renderCard} />;
+        }
+        return (
+          <AbilitySection key={s.key} title={s.label} inPhase={split.inPhase} always={split.always} renderCard={renderCard} />
+        );
+      })}
+      {pathText && (
+        <CollapsibleSection title="Path Abilities">
+          <div className="bb-path-ability-text">{pathText}</div>
+        </CollapsibleSection>
+      )}
+    </>
   );
 }
 
@@ -533,9 +671,7 @@ function FightPane({ side, state, factionRulesFor, phaseKey }) {
   const unitAbilitiesAll = state.units.flatMap(u =>
     parseJsonArray(u.abilities).map(ab => ({ ...ab, _unitName: u.name }))
   );
-  const factionAbilitiesAll = collectFactionAbilities(state, factionRulesFor);
   const unitSplit = splitAbilitiesForPhase(unitAbilitiesAll, phaseKey);
-  const factionSplit = splitAbilitiesForPhase(factionAbilitiesAll, phaseKey);
 
   const renderUnitCard = (ab, i) => (
     <div key={i} className="bb-fight-ability">
@@ -553,15 +689,16 @@ function FightPane({ side, state, factionRulesFor, phaseKey }) {
 
       <AbilitySection title="Unit Abilities" inPhase={unitSplit.inPhase} always={unitSplit.always} renderCard={renderUnitCard} />
       <div className="gw-formation-divider" />
-      <AbilitySection title="Faction Abilities" inPhase={factionSplit.inPhase} always={factionSplit.always} renderCard={renderFactionCard} />
+      <CollapsibleSection title="Faction Abilities">
+        <FactionAbilitiesGroup state={state} factionRulesFor={factionRulesFor} phaseKey={phaseKey} renderCard={renderFactionCard} />
+      </CollapsibleSection>
       <div className="gw-formation-divider" />
 
-      <div className="bb-fight-section">
-        <div className="bb-fight-section-title">Command Point Abilities</div>
+      <CollapsibleSection title="Command Point Abilities">
         {!COMMAND_ABILITIES_AVAILABLE && (
           <div className="bb-pane-empty">Not tracked yet — the Core Rules Command Abilities aren't in the database, so this section is a placeholder for now.</div>
         )}
-      </div>
+      </CollapsibleSection>
     </div>
   );
 }

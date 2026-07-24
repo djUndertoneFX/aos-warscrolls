@@ -5161,6 +5161,55 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   color: var(--text-dim);
   margin: 0.7rem 0 0.5rem;
 }
+
+/* Collapse-triangle wrapper — used for Unit/Faction/Command Point Abilities
+   and each Faction Abilities sub-heading (Battle Traits, Formations, etc.),
+   letting the player narrow how much of the Fight view is on screen. */
+.bb-collapsible, .bb-fight-section { margin-top: 0.9rem; }
+.bb-collapsible:first-child, .bb-fight-section:first-child { margin-top: 0; }
+.bb-collapsible-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+.bb-collapse-triangle {
+  display: inline-block;
+  font-size: 0.6rem;
+  color: var(--gold);
+  transition: transform 0.15s;
+  flex-shrink: 0;
+}
+.bb-collapse-triangle.open { transform: rotate(90deg); }
+.bb-collapsible-title {
+  font-family: 'Cinzel', serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.bb-collapsible-count {
+  font-family: 'Cinzel', serif;
+  font-size: 0.62rem;
+  color: var(--text-dim);
+  background: rgba(255,255,255,0.06);
+  border-radius: 8px;
+  padding: 0.05rem 0.5rem;
+}
+.bb-collapsible-body { margin-top: 0.6rem; }
+.bb-path-ability-text {
+  font-size: 0.85rem;
+  color: var(--text);
+  background: rgba(0,0,0,0.25);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.6rem 0.8rem;
+}
 .bb-fight-grid { grid-template-columns: 1fr !important; }
 .bb-fight-dual .bb-fight-grid { grid-template-columns: 1fr !important; }
 .bb-fight-single .bb-fight-grid { grid-template-columns: repeat(2, 1fr) !important; }
