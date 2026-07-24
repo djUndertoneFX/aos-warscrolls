@@ -879,11 +879,6 @@ function PhaseRibbon({ phaseKey, setPhaseKey, onPick }) {
 function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey }) {
   const [viewMode, setViewMode] = useState('single');
   const [singleSide, setSingleSide] = useState('friendly');
-  // Toggle = one panel (phase picker OR abilities) full-screen at a time,
-  // swapped via a button. Vertical = phases in a bar up top, then a divider,
-  // then abilities below — both visible together.
-  const [layoutMode, setLayoutMode] = useState('vertical');
-  const [togglePanel, setTogglePanel] = useState('phases');
 
   // Page Up/Down flip Friendly <-> Enemy while in Single View — a quick
   // one-handed way to check both sides without reaching for the mouse.
@@ -926,33 +921,14 @@ function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey })
             </span>
           )}
         </div>
-        <div className="bb-fight-layout-toggle">
-          <button className={layoutMode === 'toggle' ? 'active' : ''} onClick={() => setLayoutMode('toggle')}>Toggle</button>
-          <button className={layoutMode === 'vertical' ? 'active' : ''} onClick={() => setLayoutMode('vertical')}>Vertical</button>
-        </div>
       </div>
 
-      {layoutMode === 'vertical' ? (
-        <div className="bb-fight-vertical">
-          <div className="bb-fight-phase-sidebar">
-            <PhaseRibbon phaseKey={phaseKey} setPhaseKey={setPhaseKey} />
-          </div>
-          <div className="bb-fight-main">{abilityContent}</div>
+      <div className="bb-fight-vertical">
+        <div className="bb-fight-phase-sidebar">
+          <PhaseRibbon phaseKey={phaseKey} setPhaseKey={setPhaseKey} />
         </div>
-      ) : (
-        <div className="bb-fight-toggle">
-          <button className="bb-swap-btn" onClick={() => setTogglePanel(p => p === 'phases' ? 'warscroll' : 'phases')}>
-            ⇄ Swap to {togglePanel === 'phases' ? 'Warscrolls' : 'Phases'}
-          </button>
-          {togglePanel === 'phases' ? (
-            <div className="bb-phase-picker-big">
-              <PhaseRibbon phaseKey={phaseKey} setPhaseKey={setPhaseKey} onPick={() => setTogglePanel('warscroll')} />
-            </div>
-          ) : (
-            <div className="bb-fight-main">{abilityContent}</div>
-          )}
-        </div>
-      )}
+        <div className="bb-fight-main">{abilityContent}</div>
+      </div>
     </div>
   );
 }

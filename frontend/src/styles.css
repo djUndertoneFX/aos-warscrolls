@@ -5067,8 +5067,8 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 /* ── Fight! stage ── */
 .bb-fight-wrap { display: flex; flex-direction: column; flex: 1; min-height: 0; padding: 1rem 0.2rem 2rem; }
 .bb-fight-controls { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 0.9rem; flex-wrap: wrap; }
-.bb-fight-view-toggle, .bb-fight-layout-toggle { display: flex; align-items: center; gap: 0.6rem; }
-.bb-fight-view-toggle button, .bb-fight-layout-toggle button {
+.bb-fight-view-toggle { display: flex; align-items: center; gap: 0.6rem; }
+.bb-fight-view-toggle button {
   font-family: 'Cinzel', serif;
   font-size: 0.68rem;
   letter-spacing: 0.03em;
@@ -5080,13 +5080,12 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   color: var(--text-dim);
   cursor: pointer;
 }
-.bb-fight-view-toggle button.active, .bb-fight-layout-toggle button.active { background: var(--gold); border-color: var(--gold); color: #1a1614; }
+.bb-fight-view-toggle button.active { background: var(--gold); border-color: var(--gold); color: #1a1614; }
 .bb-fight-single-side-toggle { display: flex; gap: 0.3rem; margin-left: 0.5rem; }
 
-/* Ribbon: vertical list — the Vertical layout's left sidebar and Toggle
-   mode's big picker both use this same stacked form now. Each button's
-   color comes from an inline style (PHASE_COLORS, matching the site-wide
-   phase palette) rather than a fixed class color. */
+/* Ribbon: vertical list — the Fight stage's left phase sidebar. Each
+   button's color comes from an inline style (PHASE_COLORS, matching the
+   site-wide phase palette) rather than a fixed class color. */
 .bb-phase-ribbon { display: flex; flex-direction: column; gap: 0.4rem; }
 .bb-phase-btn {
   font-family: 'Cinzel', serif;
@@ -5111,26 +5110,6 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 .bb-fight-vertical { display: flex; flex-direction: row; gap: 1.2rem; flex: 1; min-height: 0; }
 .bb-fight-phase-sidebar { flex: 0 0 170px; align-self: stretch; overflow-y: auto; border-right: 1px solid rgba(200,168,64,0.25); padding-right: 1rem; }
 .bb-fight-main { flex: 1; min-width: 0; overflow-y: auto; }
-
-.bb-fight-toggle { display: flex; flex-direction: column; flex: 1; min-height: 0; }
-.bb-swap-btn {
-  align-self: center;
-  font-family: 'Cinzel', serif;
-  font-size: 0.75rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  padding: 0.5rem 1.2rem;
-  margin-bottom: 1rem;
-  border: 1px solid var(--border-gold);
-  border-radius: 5px;
-  background: transparent;
-  color: var(--gold);
-  cursor: pointer;
-}
-.bb-swap-btn:hover { background: rgba(200,168,64,0.18); }
-.bb-phase-picker-big { flex: 1; display: flex; align-items: center; justify-content: center; }
-.bb-phase-picker-big .bb-phase-ribbon { width: 100%; max-width: 480px; }
-.bb-phase-picker-big .bb-phase-btn { padding: 1.1rem 1rem; font-size: 1rem; text-align: center; }
 
 .bb-fight-dual { display: flex; gap: 1rem; flex: 1; min-height: 0; }
 .bb-fight-pane { flex: 1 1 50%; min-width: 0; }
