@@ -31,6 +31,7 @@ const FACTIONS = [
   { slug: 'maggotkin-of-nurgle',  name: 'Maggotkin of Nurgle',   alliance: 'Chaos' },
   { slug: 'skaven',               name: 'Skaven',                alliance: 'Chaos' },
   { slug: 'slaves-to-darkness',   name: 'Slaves to Darkness',    alliance: 'Chaos' },
+  { slug: 'helsmiths-of-hashut',  name: 'Helsmiths of Hashut',   alliance: 'Chaos' },
   // Death
   { slug: 'flesh-eater-courts',   name: 'Flesh-eater Courts',    alliance: 'Death' },
   { slug: 'nighthaunt',           name: 'Nighthaunt',            alliance: 'Death' },

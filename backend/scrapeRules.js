@@ -20,6 +20,7 @@ const FACTIONS = [
   { slug: 'maggotkin-of-nurgle',   name: 'Maggotkin of Nurgle',   alliance: 'Chaos' },
   { slug: 'skaven',                name: 'Skaven',                alliance: 'Chaos' },
   { slug: 'slaves-to-darkness',    name: 'Slaves to Darkness',    alliance: 'Chaos' },
+  { slug: 'helsmiths-of-hashut',   name: 'Helsmiths of Hashut',   alliance: 'Chaos' },
   { slug: 'flesh-eater-courts',    name: 'Flesh-eater Courts',    alliance: 'Death' },
   { slug: 'nighthaunt',            name: 'Nighthaunt',            alliance: 'Death' },
   { slug: 'ossiarch-bonereapers',  name: 'Ossiarch Bonereapers',  alliance: 'Death' },
@@ -184,7 +185,16 @@ function collectSectionBlocks($, html, sectionTitle) {
   const results = []; // { formationName, sourceNote, block, skipNestGuard }
   let inSection = false;
 
-  $('h2.outline_header3, div.datasheet, div.BreakInsideAvoid').each((_, el) => {
+  // Any h2 ends the current section, not just h2.outline_header3 — some
+  // factions (confirmed: Helsmiths of Hashut, Skaven) follow the standard
+  // Battle Traits/Heroic Traits/.../Prayer Lore run with sub-army sections
+  // (e.g. "Taar's Grand Forgehost") that reuse those same h3 sub-heading
+  // names but sit under a plain h2.outline_header, not outline_header3. The
+  // old selector never matched those headers, so inSection stayed true and
+  // leaked all of that sub-army's content into whichever top-level section
+  // happened to be scraped last (observed: everything after "Prayer Lore"
+  // through the Path to Glory/Spearhead headers got mislabeled prayer_lore).
+  $('h2, div.datasheet, div.BreakInsideAvoid').each((_, el) => {
     const tag = el.tagName ? el.tagName.toLowerCase() : '';
     const $el = $(el);
 
