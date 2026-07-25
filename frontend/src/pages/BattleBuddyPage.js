@@ -684,6 +684,54 @@ function AbilitySection({ title, inPhase, always, renderCard, defaultOpen = true
   );
 }
 
+// Groups a unit-ability list (Unit Abilities / Regiment of Renown) by
+// _unitName so each unit starts a fresh row instead of a flat 2-col grid
+// interleaving different units' cards into the same row (e.g. a unit with
+// an odd number of abilities left its last card sharing a row with the
+// NEXT unit's first card). Each unit's own cards still share a 2-col grid
+// with each other — there's no over-narrowing risk here like the Battle
+// Formations fix, since a unit's row spans the full pane width, not a
+// pre-halved column.
+function groupUnitAbilities(abilities) {
+  const groups = [];
+  const nameToGroup = {};
+  for (const item of abilities) {
+    const uName = item._unitName || '';
+    if (!nameToGroup[uName]) {
+      nameToGroup[uName] = { name: uName, items: [] };
+      groups.push(nameToGroup[uName]);
+    }
+    nameToGroup[uName].items.push(item);
+  }
+  return groups;
+}
+
+function UnitAbilitiesSection({ title, inPhase, always, renderCard }) {
+  const hasAny = inPhase.length > 0 || always.length > 0;
+  if (!hasAny) return null;
+  const renderBucket = (list) => (
+    <div className="bb-unit-ability-groups">
+      {groupUnitAbilities(list).map((group, gi) => (
+        <div className="bb-unit-ability-group" key={gi}>
+          <div className="gw-abilities-grid bb-fight-grid">{group.items.map(renderCard)}</div>
+        </div>
+      ))}
+    </div>
+  );
+  return (
+    <CollapsibleSection title={title} count={inPhase.length + always.length}>
+      {inPhase.length > 0 && renderBucket(inPhase)}
+      {inPhase.length > 0 && always.length > 0 && <div className="gw-formation-divider" />}
+      {always.length > 0 && (
+        <>
+          <div className="bb-fight-section-subtitle">Passive / Any Phase</div>
+          {renderBucket(always)}
+        </>
+      )}
+    </CollapsibleSection>
+  );
+}
+
 // Battle Traits get grouped-column rendering (book order + banner headers)
 // instead of a flat card grid — same idea as AbilitySection but splitting
 // each of inPhase/always by group_name first.
@@ -905,11 +953,11 @@ function FightPane({ side, state, factionRulesFor, phaseKey, commandAbilities, h
     <div className="bb-fight-pane">
       <div className="bb-fight-pane-title">{side === 'friendly' ? 'Friendly' : 'Enemy'}</div>
 
-      <AbilitySection title="Unit Abilities" inPhase={unitSplit.inPhase} always={unitSplit.always} renderCard={renderUnitCard} />
+      <UnitAbilitiesSection title="Unit Abilities" inPhase={unitSplit.inPhase} always={unitSplit.always} renderCard={renderUnitCard} />
       {rorUnits.length > 0 && (
         <>
           <div className="gw-formation-divider" />
-          <AbilitySection title="Regiment of Renown" inPhase={rorSplit.inPhase} always={rorSplit.always} renderCard={renderUnitCard} />
+          <UnitAbilitiesSection title="Regiment of Renown" inPhase={rorSplit.inPhase} always={rorSplit.always} renderCard={renderUnitCard} />
         </>
       )}
       <div className="gw-formation-divider" />

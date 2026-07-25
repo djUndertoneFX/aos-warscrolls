@@ -5099,6 +5099,8 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   cursor: pointer;
 }
 .bb-fight-view-toggle button.active { background: var(--gold); border-color: var(--gold); color: #1a1614; }
+.bb-unit-ability-group { margin-bottom: 18px; }
+.bb-unit-ability-group:last-child { margin-bottom: 0; }
 .bb-fight-outdated-toggles { display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap; }
 .bb-fight-outdated-toggles-label {
   font-size: 0.82rem;
@@ -5163,7 +5165,9 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 }
 /* Big "advance to next phase" button — roughly double a normal phase
    button's height, set off with its own top gap after End of Turn so it
-   doesn't read as just another phase in the list. */
+   doesn't read as just another phase in the list. Deliberately unfilled/
+   neutral (not gold) — a solid gold fill read as a Hero Phase button, since
+   gold is that phase's own color elsewhere in the ribbon. */
 .bb-phase-next-btn {
   margin-top: 0.9rem;
   width: 100%;
@@ -5171,14 +5175,14 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   font-size: 1.7rem;
   line-height: 1;
   font-weight: 700;
-  border: 2px solid var(--gold);
+  border: 2px solid var(--border);
   border-radius: 4px;
-  background: rgba(200,168,64,0.16);
-  color: var(--gold);
+  background: transparent;
+  color: var(--text-dim);
   cursor: pointer;
-  transition: background 0.12s, transform 0.12s;
+  transition: background 0.12s, border-color 0.12s, color 0.12s, transform 0.12s;
 }
-.bb-phase-next-btn:hover { background: rgba(200,168,64,0.3); }
+.bb-phase-next-btn:hover { background: rgba(255,255,255,0.06); border-color: var(--text-dim); color: var(--parchment); }
 .bb-phase-next-btn:active { transform: translateY(1px); }
 
 /* Left phase sidebar + independently-scrolling ability content, instead of
