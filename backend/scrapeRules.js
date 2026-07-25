@@ -164,7 +164,14 @@ function extractSourceNote($el) {
     .replace(/\s*\(\d\w{0,2} edition\)\s*$/i, '')
     // Book titles are formatted "{Book Name} - {Faction Name}" — the faction
     // name is redundant with whichever faction's page you're already on.
-    .replace(/\s*-\s*[^-]+$/, '')
+    // Strip from the FIRST " - " onward (not "trailing non-hyphen run"):
+    // two real faction names (Flesh-eater Courts, Lumineth Realm-lords)
+    // contain their own internal hyphen, which a trailing-run match instead
+    // cuts mid-name (e.g. "Scourge of Aqshy - Flesh-Eater Courts" ->
+    // "Scourge of Aqshy - Flesh"). Confirmed no book name itself contains
+    // " - " for either Expansion or Supplement titles across all 24
+    // factions' live HTML, so the first occurrence is always the separator.
+    .replace(/\s+-\s+.*$/, '')
     .trim() || null;
 }
 
@@ -181,9 +188,40 @@ function extractSourceNote($el) {
 // general: any top-level block containing 2+ .abBody elements is expanded
 // into one result per direct nested .BreakInsideAvoid child, grouped under
 // the block's own "*title*"-class label (if any) instead of an h3.
+// Flat sections (Heroic Traits/Artefacts/Spell/Prayer/Manifestation Lore)
+// can ALSO carry named "themed sub-group" headers — e.g. Idoneth Deepkin's
+// Heroic Traits has "Champions of the Tides" (core) and, tagged with an
+// Expansion img.tooltip, a SECOND "Champions of the Tides" (Scourge of
+// Aqshy) plus "Leaders of the Raid" (Scourge of Ghyran). Unlike Battle
+// Formations' h3 (nested INSIDE its own ability wrapper, see extractSourceNote
+// above), these h3s are a PRECEDING SIBLING of a plain <div class="Columns2">
+// containing: a .PitchedBattleProfile summary table (name/points list, no
+// ability content) followed by that group's actual ability blocks. A per-
+// block descendant search (extractSourceNote) can never find a preceding
+// sibling, which is why every ability in these groups previously scraped
+// with source_note=null regardless of season — confirmed live on Idoneth
+// (Abyssal Dweller/Adherent of Kir-Nadarr under the Aqshy-tagged group,
+// Lord of Storm and Sea/Merciless Raider under the Ghyran-tagged one, all
+// silently untagged). Tracked here as "last top-level h3.h2_pge seen, plus
+// its member-name list read straight off the summary table" so it can be
+// applied FORWARD to the blocks that follow, bounded by exact name match
+// (not mere adjacency) so it can never bleed into a later ungrouped item.
+function extractH3Marker($el) {
+  const title = $el.find('img.tooltip').first().attr('title');
+  const name = normalizeText($el.text()) || null;
+  if (!title) return { name, sourceNote: null };
+  const sourceNote = title
+    .replace(/^(Expansion|Supplement)\.\s*/i, '')
+    .replace(/\s*\(\d\w{0,2} edition\)\s*$/i, '')
+    .replace(/\s+-\s+.*$/, '')
+    .trim() || null;
+  return { name, sourceNote };
+}
+
 function collectSectionBlocks($, html, sectionTitle) {
   const results = []; // { formationName, sourceNote, block, skipNestGuard }
   let inSection = false;
+  let pendingGroup = null; // { name, sourceNote, members: Set<UPPER NAME> } | null
 
   // Any h2 ends the current section, not just h2.outline_header3 — some
   // factions (confirmed: Helsmiths of Hashut, Skaven) follow the standard
@@ -194,24 +232,45 @@ function collectSectionBlocks($, html, sectionTitle) {
   // leaked all of that sub-army's content into whichever top-level section
   // happened to be scraped last (observed: everything after "Prayer Lore"
   // through the Path to Glory/Spearhead headers got mislabeled prayer_lore).
-  $('h2, div.datasheet, div.BreakInsideAvoid').each((_, el) => {
+  $('h2, h3.h2_pge, div.datasheet, div.BreakInsideAvoid').each((_, el) => {
     const tag = el.tagName ? el.tagName.toLowerCase() : '';
     const $el = $(el);
 
     if (tag === 'h2') {
       const text = $el.text().trim();
       inSection = text === sectionTitle;
+      pendingGroup = null;
       return;
     }
 
     if (!inSection) return;
 
     // A datasheet block means we've entered the warscroll units section — stop.
-    if ($el.hasClass('datasheet')) { inSection = false; return; }
+    if ($el.hasClass('datasheet')) { inSection = false; pendingGroup = null; return; }
+
+    if (tag === 'h3') {
+      // A formation/grouped-trait h3 nested inside its own ability wrapper is
+      // already handled by that wrapper's own descendant search — only a
+      // genuine preceding-sibling h3 (no BreakInsideAvoid ancestor) starts a
+      // new pending group.
+      if ($el.parents('.BreakInsideAvoid').length > 0) return;
+      pendingGroup = { ...extractH3Marker($el), members: new Set() };
+      return;
+    }
 
     if ($el.hasClass('BreakInsideAvoid')) {
       if ($el.parents('.BreakInsideAvoid').length > 0) return;
       if ($el.parents('.datasheet').length > 0) return; // nested inside a warscroll
+
+      // The summary table (name + points, no ability content) that follows a
+      // pending group's h3 — capture its member names, don't emit a result.
+      if (pendingGroup && $el.hasClass('PitchedBattleProfile')) {
+        $el.find('.ShowBaseSize tr td:first-child').each((__, td) => {
+          const n = normalizeText($(td).text()).toUpperCase();
+          if (n && n !== 'NAME') pendingGroup.members.add(n);
+        });
+        return;
+      }
 
       const abBodyCount = $el.find('.abBody').length;
       if (abBodyCount > 1) {
@@ -219,7 +278,7 @@ function collectSectionBlocks($, html, sectionTitle) {
         $el.children('.BreakInsideAvoid').each((__, child) => {
           const $child = $(child);
           if ($child.find('.abBody').length >= 1) {
-            results.push({ formationName: groupName, sourceNote: null, block: child, skipNestGuard: true });
+            results.push({ formationName: groupName, sourceNote: null, block: child, skipNestGuard: true, pendingGroup });
           }
         });
         return;
@@ -227,7 +286,7 @@ function collectSectionBlocks($, html, sectionTitle) {
 
       const formationName = normalizeText($el.find('h3.h2_pge').first().text());
       const sourceNote = extractSourceNote($el);
-      results.push({ formationName, sourceNote, block: el, skipNestGuard: false });
+      results.push({ formationName, sourceNote, block: el, skipNestGuard: false, pendingGroup });
     }
   });
 
@@ -237,9 +296,26 @@ function collectSectionBlocks($, html, sectionTitle) {
 // Scrape all BreakInsideAvoid blocks under a heading, grouped by h3 sub-headings
 function scrapeSection($, sectionTitle, factionSlug, factionName) {
   const results = [];
-  for (const { formationName: groupName, sourceNote, block, skipNestGuard } of collectSectionBlocks($, null, sectionTitle)) {
+  for (const { formationName: groupName, sourceNote, block, skipNestGuard, pendingGroup } of collectSectionBlocks($, null, sectionTitle)) {
     const ability = parseAbilityBlock($, block, skipNestGuard);
-    if (ability) results.push({ ...ability, faction_slug: factionSlug, faction_name: factionName, group_name: groupName || null, source_note: sourceNote });
+    if (!ability) continue;
+    // Fall back to the pending preceding-sibling h3 group's sourceNote ONLY
+    // when this block's own name is one of that group's captured members —
+    // an exact match, not mere adjacency, so a later ungrouped item can
+    // never inherit a stale group's tag. Deliberately NOT propagating
+    // pendingGroup.name into group_name: Wahapedia reuses the identical
+    // sub-group name across editions (Idoneth's core "Champions of the
+    // Tides" and its Scourge of Aqshy "Champions of the Tides" are two
+    // distinct member sets under the same text) — group_name is read
+    // elsewhere (FactionTraitsSlide) as a display-grouping key, and
+    // colliding two same-named-but-different groups into one column would
+    // wrongly merge them.
+    let finalGroupName = groupName || null;
+    let finalSourceNote = sourceNote;
+    if (!finalSourceNote && pendingGroup && pendingGroup.members.has(ability.name.toUpperCase())) {
+      finalSourceNote = pendingGroup.sourceNote;
+    }
+    results.push({ ...ability, faction_slug: factionSlug, faction_name: factionName, group_name: finalGroupName, source_note: finalSourceNote });
   }
   return results;
 }

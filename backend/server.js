@@ -826,13 +826,14 @@ app.get('/api/command-abilities', requireAuth, (req, res) => {
 app.get('/api/battle-buddy-state', requireAuth, (req, res) => {
   const db = getDb();
   try {
-    const row = db.prepare('SELECT stage, friendly, enemy, phase_key FROM battle_buddy_state WHERE user_id = ?').get(req.user.id);
-    if (!row) return res.json({ stage: 'select', friendly: null, enemy: null, phase_key: null });
+    const row = db.prepare('SELECT stage, friendly, enemy, phase_key, view_mode FROM battle_buddy_state WHERE user_id = ?').get(req.user.id);
+    if (!row) return res.json({ stage: 'select', friendly: null, enemy: null, phase_key: null, view_mode: null });
     res.json({
       stage: row.stage,
       friendly: row.friendly ? JSON.parse(row.friendly) : null,
       enemy: row.enemy ? JSON.parse(row.enemy) : null,
       phase_key: row.phase_key,
+      view_mode: row.view_mode,
     });
   } finally {
     db.close();
@@ -841,21 +842,22 @@ app.get('/api/battle-buddy-state', requireAuth, (req, res) => {
 
 // PUT /api/battle-buddy-state — upsert the current matchup snapshot.
 app.put('/api/battle-buddy-state', requireAuth, (req, res) => {
-  const { stage, friendly, enemy, phase_key } = req.body;
+  const { stage, friendly, enemy, phase_key, view_mode } = req.body;
   const db = getDb();
   try {
     db.prepare(`
-      INSERT INTO battle_buddy_state (user_id, stage, friendly, enemy, phase_key, updated_at)
-      VALUES (@user_id, @stage, @friendly, @enemy, @phase_key, CURRENT_TIMESTAMP)
+      INSERT INTO battle_buddy_state (user_id, stage, friendly, enemy, phase_key, view_mode, updated_at)
+      VALUES (@user_id, @stage, @friendly, @enemy, @phase_key, @view_mode, CURRENT_TIMESTAMP)
       ON CONFLICT(user_id) DO UPDATE SET
         stage = excluded.stage, friendly = excluded.friendly, enemy = excluded.enemy,
-        phase_key = excluded.phase_key, updated_at = CURRENT_TIMESTAMP
+        phase_key = excluded.phase_key, view_mode = excluded.view_mode, updated_at = CURRENT_TIMESTAMP
     `).run({
       user_id: req.user.id,
       stage: stage || 'select',
       friendly: friendly ? JSON.stringify(friendly) : null,
       enemy: enemy ? JSON.stringify(enemy) : null,
       phase_key: phase_key || null,
+      view_mode: view_mode || null,
     });
     res.json({ ok: true });
   } finally {

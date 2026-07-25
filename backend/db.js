@@ -313,6 +313,10 @@ function initDb() {
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
   `);
+  // Single View vs Dual View toggle on the Fight step — persisted alongside
+  // the rest of the matchup snapshot so refreshing/returning on any device
+  // reinstates it instead of always resetting to Single View.
+  try { db.exec("ALTER TABLE battle_buddy_state ADD COLUMN view_mode TEXT DEFAULT NULL"); } catch {}
 
   db.close();
   console.log('Database initialized.');

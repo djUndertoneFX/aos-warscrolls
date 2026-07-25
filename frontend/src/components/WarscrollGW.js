@@ -398,6 +398,9 @@ export function AbilityCard({ ab, keywords }) {
           {ab.cost && (
             <span className={`gw-ability-cost${ab.cost.trim().startsWith('+') ? ' gw-ability-cost-refund' : ''}`}>{ab.cost}</span>
           )}
+          {ab.source_note && (
+            <span className="gw-ability-source-note" title="Source">{ab.source_note}</span>
+          )}
         </div>
         {showFlavorText && ab.lore_text && (
           <p className="gw-ability-lore">{ab.lore_text}</p>

@@ -4633,6 +4633,24 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   color: #b8f0c8;
   border-color: rgba(80,180,100,0.4);
 }
+/* Non-core source flag (Scourge of Ghyran/Aqshy, a Battletome Supplement,
+   etc.) — visible directly on the card next to its name, not just usable as
+   a hide-filter, so it's identifiable without looking it up elsewhere. */
+.gw-ability-source-note {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 1px 7px;
+  border-radius: 3px;
+  font-family: Arial, sans-serif;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  vertical-align: middle;
+  background: rgba(160,100,220,0.18);
+  color: #c8a8f0;
+  border: 1px solid rgba(160,100,220,0.4);
+}
 .gw-ability-lore {
   font-style: italic;
   color: #b0a070;
@@ -5082,6 +5100,14 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 }
 .bb-fight-view-toggle button.active { background: var(--gold); border-color: var(--gold); color: #1a1614; }
 .bb-fight-outdated-toggles { display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap; }
+.bb-fight-outdated-toggles-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
 .bb-fight-outdated-toggle {
   display: flex;
   align-items: center;
@@ -5135,6 +5161,25 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   box-shadow: 0 0 0 2px rgba(255,255,255,0.35);
   transform: translateY(-1px);
 }
+/* Big "advance to next phase" button — roughly double a normal phase
+   button's height, set off with its own top gap after End of Turn so it
+   doesn't read as just another phase in the list. */
+.bb-phase-next-btn {
+  margin-top: 0.9rem;
+  width: 100%;
+  padding: 1.1rem 0.7rem;
+  font-size: 1.7rem;
+  line-height: 1;
+  font-weight: 700;
+  border: 2px solid var(--gold);
+  border-radius: 4px;
+  background: rgba(200,168,64,0.16);
+  color: var(--gold);
+  cursor: pointer;
+  transition: background 0.12s, transform 0.12s;
+}
+.bb-phase-next-btn:hover { background: rgba(200,168,64,0.3); }
+.bb-phase-next-btn:active { transform: translateY(1px); }
 
 /* Left phase sidebar + independently-scrolling ability content, instead of
    a horizontal bar above the cards — the sidebar sits outside
@@ -5143,8 +5188,11 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 .bb-fight-phase-sidebar { flex: 0 0 170px; align-self: stretch; overflow-y: auto; border-right: 1px solid rgba(200,168,64,0.25); padding-right: 1rem; }
 .bb-fight-main { flex: 1; min-width: 0; overflow-y: auto; }
 
-.bb-fight-dual { display: flex; gap: 1rem; flex: 1; min-height: 0; }
-.bb-fight-pane { flex: 1 1 50%; min-width: 0; }
+.bb-fight-dual { display: flex; flex: 1; min-height: 0; }
+.bb-fight-pane { flex: 1 1 50%; min-width: 0; padding: 0 1rem; }
+.bb-fight-pane:first-child { padding-left: 0; }
+.bb-fight-pane:last-child { padding-right: 0; }
+.bb-fight-dual .bb-fight-pane + .bb-fight-pane { border-left: 1px solid rgba(200,168,64,0.35); }
 .bb-fight-pane-title {
   font-family: 'Cinzel', serif;
   font-size: 1rem;

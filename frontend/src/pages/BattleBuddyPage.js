@@ -79,13 +79,13 @@ function parseJsonArray(raw) {
 // splitAbilitiesForPhase), shown under a divider on every phase rather than
 // mixed into the phase-specific list. ───────────────────────────────────────
 const BATTLE_PHASES = [
-  { key: 'deployment', label: 'Deployment',      match: ['deployment'] },
-  { key: 'hero',       label: 'Hero Phase',       match: ['hero phase'] },
-  { key: 'movement',   label: 'Movement Phase',   match: ['movement', 'move phase'] },
-  { key: 'shooting',   label: 'Shooting Phase',   match: ['shooting'] },
-  { key: 'charge',     label: 'Charge Phase',     match: ['charge'] },
-  { key: 'combat',     label: 'Combat Phase',     match: ['combat'] },
-  { key: 'end_of_turn',label: 'End of Turn',      match: ['end of turn', 'end of any turn', 'end of battle'] },
+  { key: 'deployment', label: 'Deployment', match: ['deployment'] },
+  { key: 'hero',       label: 'Hero',       match: ['hero phase'] },
+  { key: 'movement',   label: 'Movement',   match: ['movement', 'move phase'] },
+  { key: 'shooting',   label: 'Shooting',   match: ['shooting'] },
+  { key: 'charge',     label: 'Charge',     match: ['charge'] },
+  { key: 'combat',     label: 'Combat',     match: ['combat'] },
+  { key: 'end_of_turn',label: 'End of Turn',match: ['end of turn', 'end of any turn', 'end of battle'] },
 ];
 const ALWAYS_MATCH = ['passive', 'reaction', 'any phase', 'once per turn', 'once per battle', 'once per battle round', 'start of battle round'];
 
@@ -663,14 +663,11 @@ function CollapsibleSection({ title, count, defaultOpen = true, level = 'top', c
 // regardless of which ribbon phase is selected.
 function AbilitySection({ title, inPhase, always, renderCard, defaultOpen = true, level = 'top' }) {
   const hasAny = inPhase.length > 0 || always.length > 0;
-  if (!hasAny) {
-    return (
-      <div className={`bb-fight-section bb-collapsible-${level}`}>
-        <div className="bb-fight-section-title">{title}</div>
-        <div className="bb-pane-empty">Nothing for this phase.</div>
-      </div>
-    );
-  }
+  // Nothing for the current phase — collapse the whole section (heading
+  // included) rather than showing an empty placeholder; a section with
+  // some cards just none active this phase reads the same as a section the
+  // faction has nothing in at all, so there's no information lost.
+  if (!hasAny) return null;
   return (
     <CollapsibleSection title={title} count={inPhase.length + always.length} defaultOpen={defaultOpen} level={level}>
       {inPhase.length > 0 && (
@@ -692,14 +689,7 @@ function AbilitySection({ title, inPhase, always, renderCard, defaultOpen = true
 // each of inPhase/always by group_name first.
 function BattleTraitsSection({ inPhase, always, renderCard }) {
   const hasAny = inPhase.length > 0 || always.length > 0;
-  if (!hasAny) {
-    return (
-      <div className="bb-fight-section bb-collapsible-sub">
-        <div className="bb-fight-section-title">Battle Traits</div>
-        <div className="bb-pane-empty">Nothing for this phase.</div>
-      </div>
-    );
-  }
+  if (!hasAny) return null;
   const renderBucket = (list) => {
     const { groups, ungrouped } = groupTraits(list);
     return (
@@ -755,14 +745,7 @@ function groupFormations(abilities) {
 
 function BattleFormationsSection({ inPhase, always, renderCard }) {
   const hasAny = inPhase.length > 0 || always.length > 0;
-  if (!hasAny) {
-    return (
-      <div className="bb-fight-section bb-collapsible-sub">
-        <div className="bb-fight-section-title">Battle Formations</div>
-        <div className="bb-pane-empty">Nothing for this phase.</div>
-      </div>
-    );
-  }
+  if (!hasAny) return null;
   const renderBucket = (list) => (
     <div className="gw-formation-groups-2col">
       {groupFormations(list).map((group, gi) => (
@@ -796,15 +779,15 @@ function FactionAbilitiesGroup({ state, factionRulesFor, phaseKey, renderCard, h
   const sections = collectFactionSections(state, factionRulesFor, hiddenSeasons);
   const pathText = (state.selection?.pathAbilityText || '').trim();
   const hasAnySection = sections.some(s => s.abilities.length > 0) || pathText;
-  if (!hasAnySection) return <div className="bb-pane-empty">Nothing for this phase.</div>;
+  if (!hasAnySection) return null;
 
   return (
     <>
       {sections.map(s => {
         // A category the faction has NOTHING in at all (e.g. Idoneth Deepkin
-        // publish no Prayer Lore) is suppressed entirely, on every phase —
-        // distinct from "has cards, just none for the current phase", which
-        // still shows the sub-heading with "Nothing for this phase."
+        // publish no Prayer Lore) is suppressed entirely — and, per each
+        // section component above, so is one that has cards but none active
+        // for the current phase, so there's nothing further to gate here.
         if (s.abilities.length === 0) return null;
         const split = splitAbilitiesForPhase(s.abilities, phaseKey);
         if (s.key === 'traits') {
@@ -854,17 +837,19 @@ function unitSeason(unit) {
 
 // Faction-ability equivalent of unitSeason above, for Battle Traits/
 // Formations/Heroic Traits/Artefacts/Lores. source_note (scrapeRules.js's
-// extractSourceNote) comes from a per-item h3 sub-heading's "Expansion.
-// Scourge of X - ..." tooltip — but Wahapedia only wraps items in such an h3
-// for Battle Formations and grouped multi-item Battle Trait blocks (Idoneth's
-// Tides). Flat sections (Heroic Traits/Artefacts/Spell/Prayer/Manifestation
-// Lore) have no per-item marker on the page at all, so an ability confirmed
-// to belong to a given season by an authoritative source but not derivable
-// from the scrape is listed here instead — same "book-confirmed, not
-// derivable from text" precedent as phaseKey.js's MANUAL_OVERRIDES.
+// extractSourceNote/extractH3Marker) comes from Wahapedia's own "Expansion.
+// Scourge of X - ..." tooltip — flat sections (Heroic Traits/Artefacts/
+// Spell/Prayer/Manifestation Lore) can group several items under a named
+// preceding-sibling h3 (e.g. Idoneth's "Champions of the Tides"/"Leaders of
+// the Raid") that a naive per-item descendant search can't see; the scraper
+// now tracks that h3 forward and applies it by exact member-name match (see
+// collectSectionBlocks), so this is derivable for every faction now. Kept as
+// an empty fallback (same "book-confirmed, not derivable from text"
+// precedent as phaseKey.js's MANUAL_OVERRIDES) in case a future item is
+// genuinely unmarked on the page.
 const MANUAL_SEASON_ABILITY_NAMES = {
-  ghyran: new Set(['ENDLESS SEA-STORM']), // Idoneth Deepkin Heroic Trait
-  aqshy: new Set(['ABYSSAL DWELLER']), // Idoneth Deepkin Heroic Trait
+  ghyran: new Set(),
+  aqshy: new Set(),
 };
 function abilitySeason(ab) {
   const note = (ab.source_note || '').toLowerCase();
@@ -969,8 +954,7 @@ function PhaseRibbon({ phaseKey, setPhaseKey, onPick }) {
   );
 }
 
-function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey, commandAbilities }) {
-  const [viewMode, setViewMode] = useState('single');
+function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey, commandAbilities, viewMode, setViewMode }) {
   const [singleSide, setSingleSide] = useState('friendly');
   // Ghyran defaults to hidden — matches the previous unconditional behavior
   // (Scourge of Ghyran-named content was always dropped before this checkbox
@@ -996,6 +980,28 @@ function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey, c
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [viewMode]);
 
+  // Up/Down step through the phase ribbon in book order, wrapping past
+  // either end — active in both Single and Dual View (unlike PageUp/Down
+  // above, which only means something in Single View).
+  const advancePhase = useCallback((dir) => {
+    setPhaseKey(k => {
+      const idx = BATTLE_PHASES.findIndex(p => p.key === k);
+      const nextIdx = (idx + dir + BATTLE_PHASES.length) % BATTLE_PHASES.length;
+      return BATTLE_PHASES[nextIdx].key;
+    });
+  }, [setPhaseKey]);
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+      const tag = document.activeElement?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.isContentEditable) return;
+      e.preventDefault();
+      advancePhase(e.key === 'ArrowDown' ? 1 : -1);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [advancePhase]);
+
   const abilityContent = viewMode === 'dual' ? (
     <div className="bb-fight-dual">
       <FightPane side="friendly" state={friendly} factionRulesFor={factionRulesFor} phaseKey={phaseKey} commandAbilities={commandAbilities} hiddenSeasons={hiddenSeasons} />
@@ -1015,6 +1021,7 @@ function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey, c
           <button className={viewMode === 'dual' ? 'active' : ''} onClick={() => setViewMode('dual')}>Dual View</button>
         </div>
         <div className="bb-fight-outdated-toggles">
+          <span className="bb-fight-outdated-toggles-label">Hide:</span>
           {Object.keys(SEASON_LABELS).map(season => (
             <label className="bb-fight-outdated-toggle" key={season}>
               <input
@@ -1022,7 +1029,7 @@ function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey, c
                 checked={hiddenSeasons[season]}
                 onChange={e => setHiddenSeasons(s => ({ ...s, [season]: e.target.checked }))}
               />
-              Hide {SEASON_LABELS[season]}
+              {SEASON_LABELS[season]}
             </label>
           ))}
         </div>
@@ -1039,6 +1046,12 @@ function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey, c
       <div className="bb-fight-vertical">
         <div className="bb-fight-phase-sidebar">
           <PhaseRibbon phaseKey={phaseKey} setPhaseKey={setPhaseKey} />
+          <button
+            type="button"
+            className="bb-phase-next-btn"
+            title="Next Phase (Down arrow)"
+            onClick={() => advancePhase(1)}
+          >▼</button>
         </div>
         <div className="bb-fight-main">{abilityContent}</div>
       </div>
@@ -1058,6 +1071,10 @@ export default function BattleBuddyPage() {
   // Hero Phase when the actual matchup (which units are on the table for
   // either side) changes, not on every stage switch.
   const [phaseKey, setPhaseKey] = useState('hero');
+  // Single View vs Dual View on the Fight step — lives up here (like
+  // phaseKey) so it round-trips through the same server-side snapshot
+  // instead of resetting to Single View on every refresh/new session.
+  const [viewMode, setViewMode] = useState('single');
   const matchupSig = `${friendly.units.map(u => u.id).sort((a, b) => a - b).join(',')}||${enemy.units.map(u => u.id).sort((a, b) => a - b).join(',')}`;
   const matchupSigRef = useRef(null);
   useEffect(() => {
@@ -1086,6 +1103,7 @@ export default function BattleBuddyPage() {
         setFriendly(f);
         setEnemy(e);
         if (data.phase_key) setPhaseKey(data.phase_key);
+        if (data.view_mode === 'single' || data.view_mode === 'dual') setViewMode(data.view_mode);
         if (data.stage === 'fight') setStage('fight');
       }
       setRestored(true);
@@ -1106,10 +1124,11 @@ export default function BattleBuddyPage() {
         friendly: sideSnapshot(friendly),
         enemy: sideSnapshot(enemy),
         phase_key: phaseKey,
+        view_mode: viewMode,
       }).catch(() => {});
     }, 600);
     return () => clearTimeout(saveTimerRef.current);
-  }, [restored, stage, friendly, enemy, phaseKey]);
+  }, [restored, stage, friendly, enemy, phaseKey, viewMode]);
 
   if (!restored) {
     return (
@@ -1139,7 +1158,7 @@ export default function BattleBuddyPage() {
           <SourcePane side="enemy" state={enemy} setState={setEnemy} factionRules={factionRules} />
         </div>
       ) : (
-        <FightStage friendly={friendly} enemy={enemy} factionRulesFor={factionRules.get} phaseKey={phaseKey} setPhaseKey={setPhaseKey} commandAbilities={commandAbilities} />
+        <FightStage friendly={friendly} enemy={enemy} factionRulesFor={factionRules.get} phaseKey={phaseKey} setPhaseKey={setPhaseKey} commandAbilities={commandAbilities} viewMode={viewMode} setViewMode={setViewMode} />
       )}
     </div>
   );
