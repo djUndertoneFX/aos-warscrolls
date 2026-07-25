@@ -355,9 +355,9 @@ async function scrapeAllRules(targetSlug = null) {
 
   const insertTrait = db.prepare(`
     INSERT INTO faction_battle_traits
-      (faction_slug, faction_name, name, timing, declare, effect, bullets, keywords, lore_text, group_name, phase_key)
+      (faction_slug, faction_name, name, timing, declare, effect, bullets, keywords, lore_text, group_name, source_note, phase_key)
     VALUES
-      (@faction_slug, @faction_name, @name, @timing, @declare, @effect, @bullets, @keywords, @lore_text, @group_name, @phase_key)
+      (@faction_slug, @faction_name, @name, @timing, @declare, @effect, @bullets, @keywords, @lore_text, @group_name, @source_note, @phase_key)
   `);
 
   const insertFormation = db.prepare(`
@@ -369,9 +369,9 @@ async function scrapeAllRules(targetSlug = null) {
 
   const insertExtra = db.prepare(`
     INSERT INTO faction_extra_rules
-      (faction_slug, faction_name, section, group_name, name, timing, declare, effect, bullets, keywords, lore_text, casting_value, phase_key)
+      (faction_slug, faction_name, section, group_name, name, timing, declare, effect, bullets, keywords, lore_text, casting_value, source_note, phase_key)
     VALUES
-      (@faction_slug, @faction_name, @section, @group_name, @name, @timing, @declare, @effect, @bullets, @keywords, @lore_text, @casting_value, @phase_key)
+      (@faction_slug, @faction_name, @section, @group_name, @name, @timing, @declare, @effect, @bullets, @keywords, @lore_text, @casting_value, @source_note, @phase_key)
   `);
 
   let totals = { traits: 0, formations: 0, extra: 0 };

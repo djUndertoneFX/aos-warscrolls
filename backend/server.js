@@ -780,13 +780,13 @@ app.get('/api/faction-rules/:slug', requireAuth, (req, res) => {
   try {
     const slug = req.params.slug;
     const traits = db.prepare(
-      'SELECT id, name, timing, declare, effect, bullets, keywords, lore_text, group_name, phase_key FROM faction_battle_traits WHERE faction_slug = ? ORDER BY id'
+      'SELECT id, name, timing, declare, effect, bullets, keywords, lore_text, group_name, source_note, phase_key FROM faction_battle_traits WHERE faction_slug = ? ORDER BY id'
     ).all(slug);
     const formations = db.prepare(
       'SELECT id, formation_name, name, timing, declare, effect, bullets, keywords, lore_text, source_note, phase_key FROM faction_battle_formations WHERE faction_slug = ? ORDER BY id'
     ).all(slug);
     const extra = db.prepare(
-      'SELECT id, section, group_name, name, timing, declare, effect, bullets, keywords, lore_text, casting_value, phase_key FROM faction_extra_rules WHERE faction_slug = ? ORDER BY id'
+      'SELECT id, section, group_name, name, timing, declare, effect, bullets, keywords, lore_text, casting_value, source_note, phase_key FROM faction_extra_rules WHERE faction_slug = ? ORDER BY id'
     ).all(slug);
 
     // Partition extra rules by section
@@ -815,6 +815,49 @@ app.get('/api/command-abilities', requireAuth, (req, res) => {
       'SELECT id, section, name, timing, declare, effect, bullets, keywords, lore_text, cp_cost, phase_key FROM core_command_abilities ORDER BY id'
     ).all();
     res.json(rows);
+  } finally {
+    db.close();
+  }
+});
+
+// GET /api/battle-buddy-state — the user's last-used Battle Buddy matchup,
+// so returning to the page (even from a different device) can resume
+// straight into the Fight step. Returns null fields when nothing's saved yet.
+app.get('/api/battle-buddy-state', requireAuth, (req, res) => {
+  const db = getDb();
+  try {
+    const row = db.prepare('SELECT stage, friendly, enemy, phase_key FROM battle_buddy_state WHERE user_id = ?').get(req.user.id);
+    if (!row) return res.json({ stage: 'select', friendly: null, enemy: null, phase_key: null });
+    res.json({
+      stage: row.stage,
+      friendly: row.friendly ? JSON.parse(row.friendly) : null,
+      enemy: row.enemy ? JSON.parse(row.enemy) : null,
+      phase_key: row.phase_key,
+    });
+  } finally {
+    db.close();
+  }
+});
+
+// PUT /api/battle-buddy-state — upsert the current matchup snapshot.
+app.put('/api/battle-buddy-state', requireAuth, (req, res) => {
+  const { stage, friendly, enemy, phase_key } = req.body;
+  const db = getDb();
+  try {
+    db.prepare(`
+      INSERT INTO battle_buddy_state (user_id, stage, friendly, enemy, phase_key, updated_at)
+      VALUES (@user_id, @stage, @friendly, @enemy, @phase_key, CURRENT_TIMESTAMP)
+      ON CONFLICT(user_id) DO UPDATE SET
+        stage = excluded.stage, friendly = excluded.friendly, enemy = excluded.enemy,
+        phase_key = excluded.phase_key, updated_at = CURRENT_TIMESTAMP
+    `).run({
+      user_id: req.user.id,
+      stage: stage || 'select',
+      friendly: friendly ? JSON.stringify(friendly) : null,
+      enemy: enemy ? JSON.stringify(enemy) : null,
+      phase_key: phase_key || null,
+    });
+    res.json({ ok: true });
   } finally {
     db.close();
   }

@@ -197,6 +197,13 @@ function initDb() {
   // resolveFormationPhaseKey / WarscrollGW.js PHASE_PRESETS).
   try { db.exec('ALTER TABLE faction_battle_formations ADD COLUMN source_note TEXT DEFAULT NULL'); } catch {}
   try { db.exec('ALTER TABLE faction_battle_formations ADD COLUMN phase_key TEXT DEFAULT NULL'); } catch {}
+  // source_note was previously only persisted for Battle Formations even
+  // though collectSectionBlocks() (scrapeRules.js) already computes it for
+  // every section — Battle Traits/Heroic Traits/Artefacts/Lores can be
+  // "Scourge of Ghyran"-tagged (outdated season) too, e.g. Idoneth Deepkin's
+  // "Endless Sea-Storm" Heroic Trait, just had nowhere to store it.
+  try { db.exec('ALTER TABLE faction_battle_traits ADD COLUMN source_note TEXT DEFAULT NULL'); } catch {}
+  try { db.exec('ALTER TABLE faction_extra_rules ADD COLUMN source_note TEXT DEFAULT NULL'); } catch {}
   try { db.exec('ALTER TABLE faction_extra_rules ADD COLUMN lore_text TEXT DEFAULT NULL'); } catch {}
   // Spell/prayer/manifestation-lore casting value (the 2D6 target number,
   // e.g. "6") — null for every other section (traits, artefacts, etc).
@@ -284,6 +291,26 @@ function initDb() {
       cp_cost TEXT,
       phase_key TEXT,
       scraped_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  // Battle Buddy's last-used matchup — one row per user, so returning to the
+  // page (even from a different device) can resume straight into the Fight
+  // step instead of always landing back on Step 1. friendly/enemy are JSON
+  // snapshots ({ source, unitIds, factionSlug, factionName, battleFormation,
+  // selection, spearheadName, loadedListId, loadedRosterId }) rehydrated via
+  // the same /api/warscrolls?ids= lookup the sources themselves already use,
+  // not a copy of the full unit records (keeps this row small and always
+  // in sync with the live warscroll data).
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS battle_buddy_state (
+      user_id INTEGER PRIMARY KEY,
+      stage TEXT NOT NULL DEFAULT 'select',
+      friendly TEXT,
+      enemy TEXT,
+      phase_key TEXT,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id)
     );
   `);
 

@@ -188,6 +188,51 @@ function makeBlankSide() {
   };
 }
 
+// ── Cross-device session resume (battle_buddy_state table) ─────────────────
+// A side's state is snapshotted as a small "recipe" (which units, not the
+// full unit records) rather than the raw `units` array — mirrors exactly
+// what ArmyListSource/PathToGlorySource already store (a unitId list) so
+// restoring is just the same /api/warscrolls?ids= lookup every source
+// already does, and the row stays tiny and never goes stale relative to the
+// live warscroll data.
+function sideSnapshot(state) {
+  return {
+    source: state.source,
+    unitIds: state.units.map(u => u.id),
+    factionSlug: state.factionSlug,
+    factionName: state.factionName,
+    battleFormation: state.battleFormation,
+    selection: state.selection,
+    spearheadName: state.spearheadName || null,
+    loadedListId: state.loadedListId || null,
+    loadedRosterId: state.loadedRosterId || null,
+  };
+}
+
+async function restoreSide(snapshot) {
+  const blank = makeBlankSide();
+  if (!snapshot) return blank;
+  let units = [];
+  if (snapshot.unitIds && snapshot.unitIds.length > 0) {
+    try {
+      const { data } = await axios.get(`/api/warscrolls?ids=${snapshot.unitIds.join(',')}&pageSize=300&sortBy=faction`);
+      units = data.data || [];
+    } catch { units = []; }
+  }
+  return {
+    ...blank,
+    source: snapshot.source || 'warscrolls',
+    units,
+    factionSlug: snapshot.factionSlug || null,
+    factionName: snapshot.factionName || null,
+    battleFormation: snapshot.battleFormation || null,
+    selection: snapshot.selection || null,
+    spearheadName: snapshot.spearheadName || undefined,
+    loadedListId: snapshot.loadedListId || undefined,
+    loadedRosterId: snapshot.loadedRosterId || undefined,
+  };
+}
+
 // ── Faction rules fetch/cache — shared across both panes so picking the
 // same faction on both sides (mirror matches, proxy games) doesn't double-
 // fetch. ─────────────────────────────────────────────────────────────────
@@ -327,6 +372,7 @@ function ArmyListSource({ side, state, setState, factionRules }) {
         factionName: full.faction_name || null,
         battleFormation: blob.battleFormation || null,
         selection,
+        loadedListId: id,
       }));
       if (blob.faction) factionRules.fetchFor(blob.faction);
     } catch {
@@ -555,11 +601,12 @@ const FACTION_SECTIONS = [
   { key: 'manifestation_lore', label: 'Manifestations' },
 ];
 
-function collectFactionSections(state, factionRulesFor) {
+function collectFactionSections(state, factionRulesFor, hideOutdated) {
   const rules = factionRulesFor(state.factionSlug);
   if (!rules) return [];
   const sel = state.selection;
   const pick = (arr, names) => (names === undefined || names === null ? arr : arr.filter(a => names.includes(a.name)));
+  const filterOutdated = arr => hideOutdated ? arr.filter(a => !isOutdatedAbility(a)) : arr;
   return FACTION_SECTIONS.map(s => {
     let abilities;
     if (s.key === 'formations') {
@@ -569,7 +616,7 @@ function collectFactionSections(state, factionRulesFor) {
     } else {
       abilities = pick(rules[s.key], sel?.[s.key]);
     }
-    return { ...s, abilities: abilities || [] };
+    return { ...s, abilities: filterOutdated(abilities || []) };
   });
 }
 
@@ -717,9 +764,9 @@ function BattleFormationsSection({ inPhase, always, renderCard }) {
     );
   }
   const renderBucket = (list) => (
-    <div className="bb-formation-groups">
+    <div className="gw-formation-groups-2col">
       {groupFormations(list).map((group, gi) => (
-        <div className="bb-formation-group" key={gi}>
+        <div className="gw-formation-group" key={gi}>
           {group.name !== 'General' && (
             <div className="gw-formation-group-header">
               {group.name}
@@ -745,8 +792,8 @@ function BattleFormationsSection({ inPhase, always, renderCard }) {
   );
 }
 
-function FactionAbilitiesGroup({ state, factionRulesFor, phaseKey, renderCard }) {
-  const sections = collectFactionSections(state, factionRulesFor);
+function FactionAbilitiesGroup({ state, factionRulesFor, phaseKey, renderCard, hideOutdated }) {
+  const sections = collectFactionSections(state, factionRulesFor, hideOutdated);
   const pathText = (state.selection?.pathAbilityText || '').trim();
   const hasAnySection = sections.some(s => s.abilities.length > 0) || pathText;
   if (!hasAnySection) return <div className="bb-pane-empty">Nothing for this phase.</div>;
@@ -795,8 +842,28 @@ function isOutdatedSeason(unit) {
   return (unit.name || '').toLowerCase().startsWith('scourge of ghyran');
 }
 
-function splitUnitsByRoR(units) {
-  const current = units.filter(u => !isOutdatedSeason(u));
+// Faction-ability equivalent of isOutdatedSeason above, for Battle Traits/
+// Formations/Heroic Traits/Artefacts/Lores. source_note (scrapeRules.js's
+// extractSourceNote) comes from a per-item h3 sub-heading's "Expansion.
+// Scourge of Ghyran - ..." tooltip — but Wahapedia only wraps items in such
+// an h3 for Battle Formations and grouped multi-item Battle Trait blocks
+// (Idoneth's Tides). Flat sections (Heroic Traits/Artefacts/Spell/Prayer/
+// Manifestation Lore) have no per-item marker on the page at all, so an
+// ability confirmed outdated there by an authoritative source but not
+// derivable from the scrape is listed here instead — same "book-confirmed,
+// not derivable from text" precedent as phaseKey.js's MANUAL_OVERRIDES.
+const MANUAL_OUTDATED_ABILITY_NAMES = new Set([
+  'ENDLESS SEA-STORM', // Idoneth Deepkin Heroic Trait — confirmed Scourge of Ghyran-era per book PDF
+]);
+function isOutdatedSourceNote(note) {
+  return !!note && note.toLowerCase().includes('ghyran');
+}
+function isOutdatedAbility(ab) {
+  return isOutdatedSourceNote(ab.source_note) || MANUAL_OUTDATED_ABILITY_NAMES.has((ab.name || '').toUpperCase());
+}
+
+function splitUnitsByRoR(units, hideOutdated) {
+  const current = hideOutdated ? units.filter(u => !isOutdatedSeason(u)) : units;
   const sortTerrainLast = list => [...list].sort((a, b) => (a.is_terrain ? 1 : 0) - (b.is_terrain ? 1 : 0));
   return {
     normal: sortTerrainLast(current.filter(u => !u.is_regiment_of_renown)),
@@ -808,8 +875,8 @@ function unitsToAbilities(units) {
   return units.flatMap(u => parseJsonArray(u.abilities).map(ab => ({ ...ab, _unitName: u.name, _unitId: u.id })));
 }
 
-function FightPane({ side, state, factionRulesFor, phaseKey, commandAbilities }) {
-  const { normal: normalUnits, ror: rorUnits } = splitUnitsByRoR(state.units);
+function FightPane({ side, state, factionRulesFor, phaseKey, commandAbilities, hideOutdated }) {
+  const { normal: normalUnits, ror: rorUnits } = splitUnitsByRoR(state.units, hideOutdated);
   const unitSplit = splitAbilitiesForPhase(unitsToAbilities(normalUnits), phaseKey);
   const rorSplit = splitAbilitiesForPhase(unitsToAbilities(rorUnits), phaseKey);
 
@@ -850,7 +917,7 @@ function FightPane({ side, state, factionRulesFor, phaseKey, commandAbilities })
       )}
       <div className="gw-formation-divider" />
       <CollapsibleSection title="Faction Abilities">
-        <FactionAbilitiesGroup state={state} factionRulesFor={factionRulesFor} phaseKey={phaseKey} renderCard={renderFactionCard} />
+        <FactionAbilitiesGroup state={state} factionRulesFor={factionRulesFor} phaseKey={phaseKey} renderCard={renderFactionCard} hideOutdated={hideOutdated} />
       </CollapsibleSection>
       <div className="gw-formation-divider" />
 
@@ -893,6 +960,10 @@ function PhaseRibbon({ phaseKey, setPhaseKey, onPick }) {
 function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey, commandAbilities }) {
   const [viewMode, setViewMode] = useState('single');
   const [singleSide, setSingleSide] = useState('friendly');
+  // Defaults to hiding — matches the previous unconditional behavior
+  // (Scourge of Ghyran-named units were always dropped before this checkbox
+  // existed), just now visible/toggleable instead of silently hard-coded.
+  const [hideOutdated, setHideOutdated] = useState(true);
 
   // Page Up/Down flip Friendly <-> Enemy while in Single View — a quick
   // one-handed way to check both sides without reaching for the mouse.
@@ -913,12 +984,12 @@ function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey, c
 
   const abilityContent = viewMode === 'dual' ? (
     <div className="bb-fight-dual">
-      <FightPane side="friendly" state={friendly} factionRulesFor={factionRulesFor} phaseKey={phaseKey} commandAbilities={commandAbilities} />
-      <FightPane side="enemy" state={enemy} factionRulesFor={factionRulesFor} phaseKey={phaseKey} commandAbilities={commandAbilities} />
+      <FightPane side="friendly" state={friendly} factionRulesFor={factionRulesFor} phaseKey={phaseKey} commandAbilities={commandAbilities} hideOutdated={hideOutdated} />
+      <FightPane side="enemy" state={enemy} factionRulesFor={factionRulesFor} phaseKey={phaseKey} commandAbilities={commandAbilities} hideOutdated={hideOutdated} />
     </div>
   ) : (
     <div className="bb-fight-single">
-      <FightPane side={singleSide} state={singleSide === 'friendly' ? friendly : enemy} factionRulesFor={factionRulesFor} phaseKey={phaseKey} commandAbilities={commandAbilities} />
+      <FightPane side={singleSide} state={singleSide === 'friendly' ? friendly : enemy} factionRulesFor={factionRulesFor} phaseKey={phaseKey} commandAbilities={commandAbilities} hideOutdated={hideOutdated} />
     </div>
   );
 
@@ -928,14 +999,20 @@ function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey, c
         <div className="bb-fight-view-toggle">
           <button className={viewMode === 'single' ? 'active' : ''} onClick={() => setViewMode('single')}>Single View</button>
           <button className={viewMode === 'dual' ? 'active' : ''} onClick={() => setViewMode('dual')}>Dual View</button>
-          {viewMode === 'single' && (
-            <span className="bb-fight-single-side-toggle">
-              <button className={singleSide === 'friendly' ? 'active' : ''} onClick={() => setSingleSide('friendly')}>Friendly</button>
-              <button className={singleSide === 'enemy' ? 'active' : ''} onClick={() => setSingleSide('enemy')}>Enemy</button>
-            </span>
-          )}
         </div>
+        <label className="bb-fight-outdated-toggle">
+          <input type="checkbox" checked={hideOutdated} onChange={e => setHideOutdated(e.target.checked)} />
+          Hide Outdated Season Abilities
+        </label>
       </div>
+      {viewMode === 'single' && (
+        <div className="bb-fight-side-toggle-row">
+          <div className="bb-fight-single-side-toggle">
+            <button className={singleSide === 'friendly' ? 'active' : ''} onClick={() => setSingleSide('friendly')}>Friendly</button>
+            <button className={singleSide === 'enemy' ? 'active' : ''} onClick={() => setSingleSide('enemy')}>Enemy</button>
+          </div>
+        </div>
+      )}
 
       <div className="bb-fight-vertical">
         <div className="bb-fight-phase-sidebar">
@@ -967,6 +1044,58 @@ export default function BattleBuddyPage() {
     }
     matchupSigRef.current = matchupSig;
   }, [matchupSig]);
+
+  // ── Resume the last matchup on mount, even from a different device — the
+  // stage/friendly/enemy/phase snapshot lives server-side (battle_buddy_state
+  // table), not localStorage. matchupSigRef is set to the restored sig BEFORE
+  // the state update lands so the "reset to Hero on matchup change" effect
+  // above doesn't immediately stomp the restored phaseKey.
+  const [restored, setRestored] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    axios.get('/api/battle-buddy-state').then(async ({ data }) => {
+      if (cancelled) return;
+      if (data && (data.friendly || data.enemy)) {
+        const [f, e] = await Promise.all([restoreSide(data.friendly), restoreSide(data.enemy)]);
+        if (cancelled) return;
+        if (f.factionSlug) factionRules.fetchFor(f.factionSlug);
+        if (e.factionSlug) factionRules.fetchFor(e.factionSlug);
+        matchupSigRef.current = `${f.units.map(u => u.id).sort((a, b) => a - b).join(',')}||${e.units.map(u => u.id).sort((a, b) => a - b).join(',')}`;
+        setFriendly(f);
+        setEnemy(e);
+        if (data.phase_key) setPhaseKey(data.phase_key);
+        if (data.stage === 'fight') setStage('fight');
+      }
+      setRestored(true);
+    }).catch(() => { if (!cancelled) setRestored(true); });
+    return () => { cancelled = true; };
+  }, []); // eslint-disable-line
+
+  // Persist whenever the matchup/stage/phase actually changes, debounced —
+  // gated on `restored` so the blank initial state can't race the restore
+  // fetch above and overwrite what was actually saved.
+  const saveTimerRef = useRef(null);
+  useEffect(() => {
+    if (!restored) return;
+    clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      axios.put('/api/battle-buddy-state', {
+        stage,
+        friendly: sideSnapshot(friendly),
+        enemy: sideSnapshot(enemy),
+        phase_key: phaseKey,
+      }).catch(() => {});
+    }, 600);
+    return () => clearTimeout(saveTimerRef.current);
+  }, [restored, stage, friendly, enemy, phaseKey]);
+
+  if (!restored) {
+    return (
+      <div className="table-page bb-page">
+        <div className="bb-pane-empty">Loading…</div>
+      </div>
+    );
+  }
 
   return (
     <div className="table-page bb-page">
