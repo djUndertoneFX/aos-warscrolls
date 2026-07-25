@@ -48,7 +48,6 @@ function UnitAbilityCard({ ab, hasImage }) {
 
   return (
     <div className="bb-fight-ability">
-      <div className="bb-fight-ability-unit">{ab._unitName}</div>
       <div className="bb-fight-ability-row" ref={cardWrapRef}>
         {/* ab.bullets is already a real array (it came from the OUTER
             JSON.parse of warscrolls.abilities, unlike faction-ability cards
@@ -709,11 +708,19 @@ function groupUnitAbilities(abilities) {
 function UnitAbilitiesSection({ title, inPhase, always, renderCard }) {
   const hasAny = inPhase.length > 0 || always.length > 0;
   if (!hasAny) return null;
+  // The unit name renders once per group (not once per card, like a plain
+  // AbilitySection would via UnitAbilityCard) — indented below it so the
+  // parent/child relationship reads visually, and boxed only when there's
+  // more than 1 card so a single-ability unit doesn't get an empty-feeling
+  // border around just one card.
   const renderBucket = (list) => (
     <div className="bb-unit-ability-groups">
       {groupUnitAbilities(list).map((group, gi) => (
         <div className="bb-unit-ability-group" key={gi}>
-          <div className="gw-abilities-grid bb-fight-grid">{group.items.map(renderCard)}</div>
+          <div className="bb-fight-ability-unit">{group.name}</div>
+          <div className={`bb-unit-ability-cards${group.items.length > 1 ? ' bb-unit-ability-cards-boxed' : ''}`}>
+            <div className="gw-abilities-grid bb-fight-grid">{group.items.map(renderCard)}</div>
+          </div>
         </div>
       ))}
     </div>
