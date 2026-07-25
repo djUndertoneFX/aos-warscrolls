@@ -601,12 +601,12 @@ const FACTION_SECTIONS = [
   { key: 'manifestation_lore', label: 'Manifestations' },
 ];
 
-function collectFactionSections(state, factionRulesFor, hideOutdated) {
+function collectFactionSections(state, factionRulesFor, hiddenSeasons) {
   const rules = factionRulesFor(state.factionSlug);
   if (!rules) return [];
   const sel = state.selection;
   const pick = (arr, names) => (names === undefined || names === null ? arr : arr.filter(a => names.includes(a.name)));
-  const filterOutdated = arr => hideOutdated ? arr.filter(a => !isOutdatedAbility(a)) : arr;
+  const filterOutdated = arr => arr.filter(a => !hiddenSeasons[abilitySeason(a)]);
   return FACTION_SECTIONS.map(s => {
     let abilities;
     if (s.key === 'formations') {
@@ -773,7 +773,7 @@ function BattleFormationsSection({ inPhase, always, renderCard }) {
               {group.sourceNote && <span className="gw-formation-source-note"> ({group.sourceNote})</span>}
             </div>
           )}
-          <div className="gw-abilities-grid bb-fight-grid">{group.items.map(renderCard)}</div>
+          <div className="gw-abilities-grid">{group.items.map(renderCard)}</div>
         </div>
       ))}
     </div>
@@ -792,8 +792,8 @@ function BattleFormationsSection({ inPhase, always, renderCard }) {
   );
 }
 
-function FactionAbilitiesGroup({ state, factionRulesFor, phaseKey, renderCard, hideOutdated }) {
-  const sections = collectFactionSections(state, factionRulesFor, hideOutdated);
+function FactionAbilitiesGroup({ state, factionRulesFor, phaseKey, renderCard, hiddenSeasons }) {
+  const sections = collectFactionSections(state, factionRulesFor, hiddenSeasons);
   const pathText = (state.selection?.pathAbilityText || '').trim();
   const hasAnySection = sections.some(s => s.abilities.length > 0) || pathText;
   if (!hasAnySection) return <div className="bb-pane-empty">Nothing for this phase.</div>;
@@ -833,37 +833,49 @@ function FactionAbilitiesGroup({ state, factionRulesFor, phaseKey, renderCard, h
 // Faction Terrain sorted last within its own group. RoR units get their own
 // "Regiment of Renown" sub-heading rather than mixing anonymously into the
 // normal Unit Abilities list.
-// "Scourge of X" names a seasonal battle-profile variant — Ghyran was the
-// previous matched-play season, Aqshy is current (same signal server.js's
-// hideScourgeOfGhyran filter and TITLE_PREFIXES already key off) — so a
-// Ghyran-variant unit's abilities would show outdated rules text mid-game
-// even if it's technically still flagged/selected from before this existed.
-function isOutdatedSeason(unit) {
-  return (unit.name || '').toLowerCase().startsWith('scourge of ghyran');
+// "Scourge of X" names a seasonal battle-profile variant. Each known season
+// gets its own independently-toggleable "Hide" checkbox (SEASONS below)
+// rather than one blanket switch, since e.g. Ghyran (previous season) and
+// Aqshy (current, per server.js's TITLE_PREFIXES) aren't equally "outdated"
+// — a user may want the current season's variants visible while still
+// hiding the old one.
+const SEASON_UNIT_PREFIXES = {
+  ghyran: 'scourge of ghyran',
+  aqshy: 'scourge of aqshy',
+};
+const SEASON_LABELS = {
+  ghyran: 'Scourge of Ghyran',
+  aqshy: 'Scourge of Aqshy',
+};
+function unitSeason(unit) {
+  const n = (unit.name || '').toLowerCase();
+  return Object.keys(SEASON_UNIT_PREFIXES).find(season => n.startsWith(SEASON_UNIT_PREFIXES[season])) || null;
 }
 
-// Faction-ability equivalent of isOutdatedSeason above, for Battle Traits/
+// Faction-ability equivalent of unitSeason above, for Battle Traits/
 // Formations/Heroic Traits/Artefacts/Lores. source_note (scrapeRules.js's
 // extractSourceNote) comes from a per-item h3 sub-heading's "Expansion.
-// Scourge of Ghyran - ..." tooltip — but Wahapedia only wraps items in such
-// an h3 for Battle Formations and grouped multi-item Battle Trait blocks
-// (Idoneth's Tides). Flat sections (Heroic Traits/Artefacts/Spell/Prayer/
-// Manifestation Lore) have no per-item marker on the page at all, so an
-// ability confirmed outdated there by an authoritative source but not
-// derivable from the scrape is listed here instead — same "book-confirmed,
-// not derivable from text" precedent as phaseKey.js's MANUAL_OVERRIDES.
-const MANUAL_OUTDATED_ABILITY_NAMES = new Set([
-  'ENDLESS SEA-STORM', // Idoneth Deepkin Heroic Trait — confirmed Scourge of Ghyran-era per book PDF
-]);
-function isOutdatedSourceNote(note) {
-  return !!note && note.toLowerCase().includes('ghyran');
-}
-function isOutdatedAbility(ab) {
-  return isOutdatedSourceNote(ab.source_note) || MANUAL_OUTDATED_ABILITY_NAMES.has((ab.name || '').toUpperCase());
+// Scourge of X - ..." tooltip — but Wahapedia only wraps items in such an h3
+// for Battle Formations and grouped multi-item Battle Trait blocks (Idoneth's
+// Tides). Flat sections (Heroic Traits/Artefacts/Spell/Prayer/Manifestation
+// Lore) have no per-item marker on the page at all, so an ability confirmed
+// to belong to a given season by an authoritative source but not derivable
+// from the scrape is listed here instead — same "book-confirmed, not
+// derivable from text" precedent as phaseKey.js's MANUAL_OVERRIDES.
+const MANUAL_SEASON_ABILITY_NAMES = {
+  ghyran: new Set(['ENDLESS SEA-STORM']), // Idoneth Deepkin Heroic Trait
+  aqshy: new Set(['ABYSSAL DWELLER']), // Idoneth Deepkin Heroic Trait
+};
+function abilitySeason(ab) {
+  const note = (ab.source_note || '').toLowerCase();
+  const bySource = Object.keys(SEASON_UNIT_PREFIXES).find(season => note.includes(season));
+  if (bySource) return bySource;
+  const upperName = (ab.name || '').toUpperCase();
+  return Object.keys(MANUAL_SEASON_ABILITY_NAMES).find(season => MANUAL_SEASON_ABILITY_NAMES[season].has(upperName)) || null;
 }
 
-function splitUnitsByRoR(units, hideOutdated) {
-  const current = hideOutdated ? units.filter(u => !isOutdatedSeason(u)) : units;
+function splitUnitsByRoR(units, hiddenSeasons) {
+  const current = units.filter(u => !hiddenSeasons[unitSeason(u)]);
   const sortTerrainLast = list => [...list].sort((a, b) => (a.is_terrain ? 1 : 0) - (b.is_terrain ? 1 : 0));
   return {
     normal: sortTerrainLast(current.filter(u => !u.is_regiment_of_renown)),
@@ -875,8 +887,8 @@ function unitsToAbilities(units) {
   return units.flatMap(u => parseJsonArray(u.abilities).map(ab => ({ ...ab, _unitName: u.name, _unitId: u.id })));
 }
 
-function FightPane({ side, state, factionRulesFor, phaseKey, commandAbilities, hideOutdated }) {
-  const { normal: normalUnits, ror: rorUnits } = splitUnitsByRoR(state.units, hideOutdated);
+function FightPane({ side, state, factionRulesFor, phaseKey, commandAbilities, hiddenSeasons }) {
+  const { normal: normalUnits, ror: rorUnits } = splitUnitsByRoR(state.units, hiddenSeasons);
   const unitSplit = splitAbilitiesForPhase(unitsToAbilities(normalUnits), phaseKey);
   const rorSplit = splitAbilitiesForPhase(unitsToAbilities(rorUnits), phaseKey);
 
@@ -917,7 +929,7 @@ function FightPane({ side, state, factionRulesFor, phaseKey, commandAbilities, h
       )}
       <div className="gw-formation-divider" />
       <CollapsibleSection title="Faction Abilities">
-        <FactionAbilitiesGroup state={state} factionRulesFor={factionRulesFor} phaseKey={phaseKey} renderCard={renderFactionCard} hideOutdated={hideOutdated} />
+        <FactionAbilitiesGroup state={state} factionRulesFor={factionRulesFor} phaseKey={phaseKey} renderCard={renderFactionCard} hiddenSeasons={hiddenSeasons} />
       </CollapsibleSection>
       <div className="gw-formation-divider" />
 
@@ -960,10 +972,12 @@ function PhaseRibbon({ phaseKey, setPhaseKey, onPick }) {
 function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey, commandAbilities }) {
   const [viewMode, setViewMode] = useState('single');
   const [singleSide, setSingleSide] = useState('friendly');
-  // Defaults to hiding — matches the previous unconditional behavior
-  // (Scourge of Ghyran-named units were always dropped before this checkbox
-  // existed), just now visible/toggleable instead of silently hard-coded.
-  const [hideOutdated, setHideOutdated] = useState(true);
+  // Ghyran defaults to hidden — matches the previous unconditional behavior
+  // (Scourge of Ghyran-named content was always dropped before this checkbox
+  // existed). Aqshy is the current season (see the unitSeason/abilitySeason
+  // comment above) so it defaults to visible; either can be toggled
+  // independently.
+  const [hiddenSeasons, setHiddenSeasons] = useState({ ghyran: true, aqshy: false });
 
   // Page Up/Down flip Friendly <-> Enemy while in Single View — a quick
   // one-handed way to check both sides without reaching for the mouse.
@@ -984,12 +998,12 @@ function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey, c
 
   const abilityContent = viewMode === 'dual' ? (
     <div className="bb-fight-dual">
-      <FightPane side="friendly" state={friendly} factionRulesFor={factionRulesFor} phaseKey={phaseKey} commandAbilities={commandAbilities} hideOutdated={hideOutdated} />
-      <FightPane side="enemy" state={enemy} factionRulesFor={factionRulesFor} phaseKey={phaseKey} commandAbilities={commandAbilities} hideOutdated={hideOutdated} />
+      <FightPane side="friendly" state={friendly} factionRulesFor={factionRulesFor} phaseKey={phaseKey} commandAbilities={commandAbilities} hiddenSeasons={hiddenSeasons} />
+      <FightPane side="enemy" state={enemy} factionRulesFor={factionRulesFor} phaseKey={phaseKey} commandAbilities={commandAbilities} hiddenSeasons={hiddenSeasons} />
     </div>
   ) : (
     <div className="bb-fight-single">
-      <FightPane side={singleSide} state={singleSide === 'friendly' ? friendly : enemy} factionRulesFor={factionRulesFor} phaseKey={phaseKey} commandAbilities={commandAbilities} hideOutdated={hideOutdated} />
+      <FightPane side={singleSide} state={singleSide === 'friendly' ? friendly : enemy} factionRulesFor={factionRulesFor} phaseKey={phaseKey} commandAbilities={commandAbilities} hiddenSeasons={hiddenSeasons} />
     </div>
   );
 
@@ -1000,10 +1014,18 @@ function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey, c
           <button className={viewMode === 'single' ? 'active' : ''} onClick={() => setViewMode('single')}>Single View</button>
           <button className={viewMode === 'dual' ? 'active' : ''} onClick={() => setViewMode('dual')}>Dual View</button>
         </div>
-        <label className="bb-fight-outdated-toggle">
-          <input type="checkbox" checked={hideOutdated} onChange={e => setHideOutdated(e.target.checked)} />
-          Hide Outdated Season Abilities
-        </label>
+        <div className="bb-fight-outdated-toggles">
+          {Object.keys(SEASON_LABELS).map(season => (
+            <label className="bb-fight-outdated-toggle" key={season}>
+              <input
+                type="checkbox"
+                checked={hiddenSeasons[season]}
+                onChange={e => setHiddenSeasons(s => ({ ...s, [season]: e.target.checked }))}
+              />
+              Hide {SEASON_LABELS[season]}
+            </label>
+          ))}
+        </div>
       </div>
       {viewMode === 'single' && (
         <div className="bb-fight-side-toggle-row">
