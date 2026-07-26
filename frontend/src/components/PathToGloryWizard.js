@@ -29,6 +29,11 @@ const REALMS = [
     desc: 'The celestial realm of Sigmar and his Stormcast Eternals, a bastion of order among the stars from which the God-King directs the reconquest of the Mortal Realms.' },
 ];
 
+// Generic starting Hero baseline shared by every Path to Glory warlord
+// (Ascension battlepack core rules) — see the warlordMove/Health/Save/Control
+// state comment in PathToGloryWizard for why this isn't scraped per-faction.
+const GENERIC_WARLORD_PROFILE = { move: '6"', health: '5', save: '5+', control: '2' };
+
 const STEPS = [
   'Select your Campaign',
   'Pick your Faction',
@@ -371,13 +376,17 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
 
   // ── Warlord Warscroll ──
   const [warlordName, setWarlordName] = useState(() => saved.warlordName ?? '');
-  const [warlordKeywords, setWarlordKeywords] = useState(() => saved.warlordKeywords ?? '');
+  const [warlordKeywordsLine1, setWarlordKeywordsLine1] = useState(() => saved.warlordKeywordsLine1 ?? '');
+  const [warlordKeywordsLine2, setWarlordKeywordsLine2] = useState(() => saved.warlordKeywordsLine2 ?? '');
   const [rangedWeapons, addRanged, updateRanged, removeRanged, setRangedWeapons] = useRowList(saved.rangedWeapons ?? []);
   const [meleeWeapons, addMelee, updateMelee, removeMelee, setMeleeWeapons] = useRowList(saved.meleeWeapons ?? []);
-  // Move/Health/Save/Control have no fixed "starting" value in the source —
-  // the Anvil of Apotheosis is built entirely from Destiny Point purchases
-  // across later steps, so these stay blank/editable rather than autofilled
-  // (matches how the physical paper form works: you pencil these in as you buy them).
+  // Every Path to Glory warlord starts from the same generic Hero baseline
+  // (6" Move, 5 Health, 5+ Save, 2 Control, no Ward) before Destiny Point
+  // purchases customize them in later steps — Wahapedia omits these from the
+  // per-faction page (they print as asterisk placeholders there, see
+  // parseStartingWeapon's comment in scrapePathToGlory.js) since they're not
+  // faction-specific, so the wizard fills them in itself rather than
+  // scraping them. Still freely editable in case a faction ever differs.
   const [warlordMove, setWarlordMove] = useState(() => saved.warlordMove ?? '');
   const [warlordHealth, setWarlordHealth] = useState(() => saved.warlordHealth ?? '');
   const [warlordSave, setWarlordSave] = useState(() => saved.warlordSave ?? '');
@@ -471,7 +480,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     const changed = prevFaction !== selectedFaction;
 
     if (changed && prevFaction) {
-      const leaving = { warlordName, warlordKeywords, rangedWeapons, meleeWeapons, warlordMove, warlordHealth, warlordSave, warlordControl, warlordSubStep, destinyPointChoice };
+      const leaving = { warlordName, warlordKeywordsLine1, warlordKeywordsLine2, rangedWeapons, meleeWeapons, warlordMove, warlordHealth, warlordSave, warlordControl, warlordSubStep, destinyPointChoice };
       setWarlordSnapshotsByFaction(prev => ({ ...prev, [prevFaction]: leaving }));
     }
     prevSelectedFactionRef.current = selectedFaction;
@@ -481,7 +490,8 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     const existing = warlordSnapshotsByFaction[selectedFaction];
     if (existing) {
       setWarlordName(existing.warlordName ?? '');
-      setWarlordKeywords(existing.warlordKeywords ?? '');
+      setWarlordKeywordsLine1(existing.warlordKeywordsLine1 ?? '');
+      setWarlordKeywordsLine2(existing.warlordKeywordsLine2 ?? '');
       setRangedWeapons(existing.rangedWeapons ?? []);
       setMeleeWeapons(existing.meleeWeapons ?? []);
       setWarlordMove(existing.warlordMove ?? '');
@@ -494,10 +504,12 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     }
 
     // Never visited this faction before — clean slate, then auto-fill from
-    // whatever concrete starting data the source actually provides.
+    // whatever concrete starting data the source actually provides, plus the
+    // generic Move/Health/Save/Control baseline every warlord starts with.
     let cancelled = false;
     setWarlordName('');
-    setWarlordKeywords('');
+    setWarlordKeywordsLine1('');
+    setWarlordKeywordsLine2('');
     setRangedWeapons([]);
     setMeleeWeapons([]);
     setWarlordMove('');
@@ -515,7 +527,16 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
         const row = { name: w.name, rng: w.rng || '', atk: w.atk || '', hit: w.hit || '', wnd: w.wnd || '', rnd: w.rnd || '', dmg: w.dmg || '' };
         if (w.type === 'ranged') addRanged(row); else addMelee(row);
       }
-      if (step2?.starting_keywords?.length) setWarlordKeywords(step2.starting_keywords.join(', '));
+      if (step2?.starting_keywords?.length) {
+        setWarlordKeywordsLine1((step2.starting_keywords[0] || []).join(', '));
+        setWarlordKeywordsLine2((step2.starting_keywords[1] || []).join(', '));
+      }
+      if (step2) {
+        setWarlordMove(GENERIC_WARLORD_PROFILE.move);
+        setWarlordHealth(GENERIC_WARLORD_PROFILE.health);
+        setWarlordSave(GENERIC_WARLORD_PROFILE.save);
+        setWarlordControl(GENERIC_WARLORD_PROFILE.control);
+      }
       const factionObj = factions.find(f => f.faction_slug === selectedFaction);
       setWarlordName(`${factionObj ? factionObj.faction : selectedFaction} Hero`);
     }).catch(() => {});
@@ -602,7 +623,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   useEffect(() => {
     const snapshot = {
       step, activeDoc, presentMode, campaign, customCampaignName, selectedFaction, warlordSubStep,
-      warlordName, warlordKeywords, rangedWeapons, meleeWeapons,
+      warlordName, warlordKeywordsLine1, warlordKeywordsLine2, rangedWeapons, meleeWeapons,
       warlordMove, warlordHealth, warlordSave, warlordControl, warlordSnapshotsByFaction, destinyPointChoice,
       armyName, heraldryImage, realmOfOrigin, customRealmName, faction, battleFormation, gloryPoints, gloryRounds,
       currentQuest, questPoints, questNotes, questsCompleted, background, notableEvents,
@@ -613,7 +634,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot)); } catch {}
   }, [
     step, activeDoc, presentMode, campaign, customCampaignName, selectedFaction, warlordSubStep,
-    warlordName, warlordKeywords, rangedWeapons, meleeWeapons,
+    warlordName, warlordKeywordsLine1, warlordKeywordsLine2, rangedWeapons, meleeWeapons,
     warlordMove, warlordHealth, warlordSave, warlordControl, warlordSnapshotsByFaction, destinyPointChoice,
     armyName, heraldryImage, realmOfOrigin, customRealmName, faction, battleFormation, gloryPoints, gloryRounds,
     currentQuest, questPoints, questNotes, questsCompleted, background, notableEvents,
@@ -664,9 +685,6 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
         <label>Warlord Name</label>
         <input type="text" value={warlordName} onChange={e => setWarlordName(e.target.value)} placeholder="e.g. Iladrien the Bright" />
       </div>
-      {/* Move/Health/Save/Control have no fixed starting value — Anvil of
-          Apotheosis builds them entirely from later Destiny Point purchases,
-          so these are blank/editable, same as on the physical paper form. */}
       <div className="ptg-warlord-characteristics">
         <div className="ptg-field"><label>Move</label><input type="text" value={warlordMove} onChange={e => setWarlordMove(e.target.value)} placeholder="—" /></div>
         <div className="ptg-field"><label>Health</label><input type="text" value={warlordHealth} onChange={e => setWarlordHealth(e.target.value)} placeholder="—" /></div>
@@ -677,7 +695,8 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
       {renderWeaponTable('Melee Weapons', meleeWeapons, addMelee, updateMelee, removeMelee, false)}
       <div className="ptg-field">
         <label>Keywords</label>
-        <input type="text" value={warlordKeywords} onChange={e => setWarlordKeywords(e.target.value)} placeholder="HERO, INFANTRY, …" />
+        <input type="text" value={warlordKeywordsLine1} onChange={e => setWarlordKeywordsLine1(e.target.value)} placeholder="HERO, INFANTRY, …" />
+        <input type="text" value={warlordKeywordsLine2} onChange={e => setWarlordKeywordsLine2(e.target.value)} placeholder="ORDER, IDONETH DEEPKIN, AELF, …" />
       </div>
     </>
   );
@@ -1088,7 +1107,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                         </div>
                         <div className="ptg-step-warlord-title">{warlordSubStep + 1}. {warlordSteps[warlordSubStep]}</div>
                         {/^fill out the starting warscroll$/i.test(warlordSteps[warlordSubStep] || '')
-                          ? <div className="ptg-wizard-body-placeholder">Your starting warscroll is shown to the right — the weapon and keywords are filled in automatically; Move/Health/Save/Control have no fixed starting value and are built up entirely from the choices in later steps.</div>
+                          ? <div className="ptg-wizard-body-placeholder">Your starting warscroll is already filled in on the right — every field is auto-populated from your faction. Nothing to do here; just check it over and move on to the next step.</div>
                           : (apotheosisLoading
                             ? <div className="ptg-wizard-body-placeholder">Loading…</div>
                             : renderApotheosisStep(apotheosisSteps[warlordSubStep]))}

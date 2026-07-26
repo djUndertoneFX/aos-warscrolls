@@ -20,9 +20,12 @@ function ownRows($, $table) {
 
 // Step 2 ("Fill Out The Starting Warscroll") shows a real blank warscroll
 // datasheet — Move/Wounds/Save/Bravery(Control) are literal asterisk-icon
-// placeholders in the source (there's no fixed starting value for those;
-// they're entirely built up via later Destiny Point purchases), but the
-// starting weapon profile and keyword list ARE concrete fixed data.
+// placeholders in the per-faction source (Wahapedia omits them here because
+// they're the same generic Hero baseline for every Path to Glory warlord
+// regardless of faction, not something faction-specific to print — the
+// frontend fills these in with that fixed baseline rather than scraping
+// them). The starting weapon profile and keyword list ARE concrete
+// faction-specific fixed data and get scraped here.
 function parseStartingWeapon($, stepBlock) {
   const $table = $(stepBlock).find('table.wTable').first();
   if (!$table.length) return null;
@@ -47,10 +50,15 @@ function parseStartingWeapon($, stepBlock) {
   return weapon;
 }
 
+// Wahapedia prints the keyword list across 2 lines on the physical warscroll
+// (wsKeywordLine1 = model type keywords, wsKeywordLine2 = faction keywords) —
+// preserved as an array of line-arrays so the frontend can reproduce the
+// same 2-line layout instead of flattening it into one comma-joined line.
 function parseStartingKeywords($, stepBlock) {
-  const text = $(stepBlock).find('.wsKeywordLine1, .wsKeywordLine2')
-    .map((_, td) => normalizeText($(td).text())).get().join(', ');
-  return text.split(',').map(k => normalizeText(k)).filter(Boolean);
+  const toList = cls => normalizeText($(stepBlock).find(`.${cls}`).first().text())
+    .split(',').map(k => normalizeText(k)).filter(Boolean);
+  const lines = [toList('wsKeywordLine1'), toList('wsKeywordLine2')].filter(l => l.length);
+  return lines.length ? lines : null;
 }
 
 // Pull the "-2DP" / "0DP" / "+4DP" cost badge out of a cloned subtree,
