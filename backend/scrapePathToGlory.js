@@ -360,7 +360,18 @@ function parseApotheosisHtml(html, faction) {
       introClone.find('h3.h2_pge').first().remove();
       introClone.find('table').remove();
       introClone.find('br, p, div').each((_, node) => { $(node).replaceWith('\n' + $(node).text()); });
-      const intro = normalizeText(introClone.text()).split('\n').map(l => l.trim()).filter(Boolean).slice(0, 3).join(' ');
+      // Wahapedia inconsistently marks the boundary between this intro's
+      // sentences with a real <br>/<p>/<div> for some factions (Stormcast:
+      // properly split, gets a space here from the join below) and with
+      // nothing at all for others (Idoneth/Daughters of Khaine: two
+      // sentences run together in one text node, e.g. "...cost will
+      // be.Pick 1 of the following:Over the next few steps..." with no
+      // separator to split on at all, after both a period AND a colon).
+      // Neither is ever intentionally followed directly by a capital letter
+      // in this prose, so insert a space wherever it's missing rather than
+      // relying solely on the (unreliable) DOM boundary.
+      const intro = normalizeText(introClone.text()).split('\n').map(l => l.trim()).filter(Boolean).slice(0, 3).join(' ')
+        .replace(/([.:])(?=[A-Z])/g, '$1 ');
       current = { step_number: parseInt(m[1], 10), step_title: normalizeText(m[2]), intro_text: intro || null, blocks: [kid] };
       continue;
     }

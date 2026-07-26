@@ -3541,6 +3541,25 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 0.6rem;
 }
+/* "Set a Destiny Point Limit" wraps its 3 cards in a real button instead of
+   a static AbilityCard — reset all default button chrome so it reads as
+   the same card, just clickable, with a gold ring on whichever is chosen. */
+.ptg-apotheosis-option-btn {
+  all: unset;
+  display: block;
+  cursor: pointer;
+  border-radius: 2px;
+}
+.ptg-apotheosis-option-btn .gw-ability-card {
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+.ptg-apotheosis-option-btn:hover .gw-ability-card {
+  border-color: var(--gold);
+}
+.ptg-apotheosis-option-selected .gw-ability-card {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px var(--gold);
+}
 .ptg-campaign-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

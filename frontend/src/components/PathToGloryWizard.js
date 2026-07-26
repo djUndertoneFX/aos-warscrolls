@@ -382,6 +382,11 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   const [warlordHealth, setWarlordHealth] = useState(() => saved.warlordHealth ?? '');
   const [warlordSave, setWarlordSave] = useState(() => saved.warlordSave ?? '');
   const [warlordControl, setWarlordControl] = useState(() => saved.warlordControl ?? '');
+  // "Set a Destiny Point Limit" step's 3 options, by index — defaults to the
+  // 3rd/highest tier (Ethersea Regent-equivalent: most destiny points, most
+  // battle profile points) rather than nothing picked, since the paper form
+  // doesn't really have a "no limit chosen" state either.
+  const [destinyPointChoice, setDestinyPointChoice] = useState(() => saved.destinyPointChoice ?? 2);
 
   // Per-faction snapshots of the warlord fields above (+ sub-step position),
   // keyed by faction slug — so switching faction A → B → back to A restores
@@ -466,7 +471,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     const changed = prevFaction !== selectedFaction;
 
     if (changed && prevFaction) {
-      const leaving = { warlordName, warlordKeywords, rangedWeapons, meleeWeapons, warlordMove, warlordHealth, warlordSave, warlordControl, warlordSubStep };
+      const leaving = { warlordName, warlordKeywords, rangedWeapons, meleeWeapons, warlordMove, warlordHealth, warlordSave, warlordControl, warlordSubStep, destinyPointChoice };
       setWarlordSnapshotsByFaction(prev => ({ ...prev, [prevFaction]: leaving }));
     }
     prevSelectedFactionRef.current = selectedFaction;
@@ -484,6 +489,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
       setWarlordSave(existing.warlordSave ?? '');
       setWarlordControl(existing.warlordControl ?? '');
       setWarlordSubStep(existing.warlordSubStep ?? 0);
+      setDestinyPointChoice(existing.destinyPointChoice ?? 2);
       return;
     }
 
@@ -499,6 +505,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     setWarlordSave('');
     setWarlordControl('');
     setWarlordSubStep(0);
+    setDestinyPointChoice(2);
     axios.get(`/api/apotheosis/${selectedFaction}`).then(res => {
       if (cancelled) return;
       const steps = res.data.steps ?? [];
@@ -596,7 +603,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     const snapshot = {
       step, activeDoc, presentMode, campaign, customCampaignName, selectedFaction, warlordSubStep,
       warlordName, warlordKeywords, rangedWeapons, meleeWeapons,
-      warlordMove, warlordHealth, warlordSave, warlordControl, warlordSnapshotsByFaction,
+      warlordMove, warlordHealth, warlordSave, warlordControl, warlordSnapshotsByFaction, destinyPointChoice,
       armyName, heraldryImage, realmOfOrigin, customRealmName, faction, battleFormation, gloryPoints, gloryRounds,
       currentQuest, questPoints, questNotes, questsCompleted, background, notableEvents,
       spellLore, prayerLore, manifestationLore,
@@ -607,7 +614,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   }, [
     step, activeDoc, presentMode, campaign, customCampaignName, selectedFaction, warlordSubStep,
     warlordName, warlordKeywords, rangedWeapons, meleeWeapons,
-    warlordMove, warlordHealth, warlordSave, warlordControl, warlordSnapshotsByFaction,
+    warlordMove, warlordHealth, warlordSave, warlordControl, warlordSnapshotsByFaction, destinyPointChoice,
     armyName, heraldryImage, realmOfOrigin, customRealmName, faction, battleFormation, gloryPoints, gloryRounds,
     currentQuest, questPoints, questNotes, questsCompleted, background, notableEvents,
     spellLore, prayerLore, manifestationLore,
@@ -680,7 +687,15 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   // phase-colored timing banners, and Declare/Effect all look identical to
   // every other rules text on the site, whether the option is a full
   // ability-shaped Origin/Flaw or a plain name+cost+effect upgrade row).
-  const renderApotheosisStep = stepData => (
+  // "Set a Destiny Point Limit" (always step 1) is a genuine single-choice
+  // pick between exactly 3 tiers with no per-DP bookkeeping of its own
+  // (unlike later steps, which spend against that budget across several
+  // more picks) — the one step scoped to be clickable so far. Selecting an
+  // option advances to the next sub-step immediately, same as flipping a
+  // physical card over.
+  const renderApotheosisStep = stepData => {
+    const isDpStep = /destiny point limit/i.test(stepData.step_title || '');
+    return (
     <>
       {stepData.intro_text && <p className="ptg-apotheosis-intro">{stepData.intro_text}</p>}
       {stepData.options.length === 0 ? (
@@ -698,20 +713,36 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
             <div key={gi} className="ptg-apotheosis-group">
               {g.group && <div className="ptg-apotheosis-group-title">{g.group}</div>}
               <div className="ptg-apotheosis-options-grid">
-                {g.items.map((opt, oi) => (
-                  <AbilityCard
-                    key={oi}
-                    ab={{ ...opt, bullets: Array.isArray(opt.bullets) ? opt.bullets : JSON.parse(opt.bullets || '[]') }}
-                    keywords={Array.isArray(opt.keywords) ? opt.keywords : JSON.parse(opt.keywords || '[]')}
-                  />
-                ))}
+                {g.items.map((opt, oi) => {
+                  const card = (
+                    <AbilityCard
+                      ab={{ ...opt, bullets: Array.isArray(opt.bullets) ? opt.bullets : JSON.parse(opt.bullets || '[]') }}
+                      keywords={Array.isArray(opt.keywords) ? opt.keywords : JSON.parse(opt.keywords || '[]')}
+                    />
+                  );
+                  if (!isDpStep) return <React.Fragment key={oi}>{card}</React.Fragment>;
+                  return (
+                    <button
+                      key={oi}
+                      type="button"
+                      className={`ptg-apotheosis-option-btn${oi === destinyPointChoice ? ' ptg-apotheosis-option-selected' : ''}`}
+                      onClick={() => {
+                        setDestinyPointChoice(oi);
+                        setWarlordSubStep(s => Math.min(warlordSteps.length - 1, s + 1));
+                      }}
+                    >
+                      {card}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           ));
         })()
       )}
     </>
-  );
+    );
+  };
 
   const renderImageView = doc => (
     <div className="ptg-doc-image-view">
