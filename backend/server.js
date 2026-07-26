@@ -133,23 +133,38 @@ initDb();
 
 // Sync warscroll data from the bundled git DB to the volume DB on startup,
 // whenever the bundled copy is newer. Preserves user/auth data on the volume.
+// Freshness is the MAX(scraped_at) across ALL FOUR synced tables, not just
+// warscrolls — warscrolls.js and scrapeRules.js are two independent
+// scrapers that don't run together, so a scrapeRules-only update (new
+// faction_extra_rules/battle_traits/formations data, e.g. the Scourge of
+// Aqshy enhancement-table fix) left warscrolls' own timestamp untouched and
+// this gate, checking only that one table, silently skipped syncing
+// anything at all — the live site kept serving the stale rules tables no
+// matter how many times the bundled DB was updated and redeployed.
+const SYNCED_TABLES = ['warscrolls', 'faction_battle_traits', 'faction_battle_formations', 'faction_extra_rules'];
 {
   const Database = require('better-sqlite3');
   const bundledPath = path.join(__dirname, 'warscrolls.db');
   const volumePath  = process.env.DB_PATH;
   if (volumePath && bundledPath !== volumePath && fs.existsSync(bundledPath)) {
     try {
+      const maxScrapedAt = (db) => SYNCED_TABLES
+        .map(tbl => (db.prepare(`SELECT MAX(scraped_at) as ts FROM ${tbl}`).get() || {}).ts)
+        .filter(Boolean)
+        .sort()
+        .pop();
+
       const bdb = new Database(bundledPath, { readonly: true });
-      const bundledTs = (bdb.prepare('SELECT MAX(scraped_at) as ts FROM warscrolls').get() || {}).ts;
+      const bundledTs = maxScrapedAt(bdb);
       bdb.close();
 
       const vdb = getDb();
-      const volumeTs = (vdb.prepare('SELECT MAX(scraped_at) as ts FROM warscrolls').get() || {}).ts;
+      const volumeTs = maxScrapedAt(vdb);
 
       if (!volumeTs || (bundledTs && bundledTs > volumeTs)) {
         console.log(`Syncing warscroll data: bundled=${bundledTs} volume=${volumeTs}`);
         vdb.exec(`ATTACH DATABASE '${bundledPath}' AS src`);
-        for (const tbl of ['warscrolls','faction_battle_traits','faction_battle_formations','faction_extra_rules']) {
+        for (const tbl of SYNCED_TABLES) {
           vdb.exec(`DELETE FROM ${tbl}`);
           vdb.exec(`INSERT INTO ${tbl} SELECT * FROM src.${tbl}`);
         }
