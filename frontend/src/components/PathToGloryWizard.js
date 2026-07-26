@@ -77,20 +77,29 @@ const PATHS = [
     desc: 'With an unshakable faith to guide them, this warlord has been chosen by their patron deity for a greater purpose (or so they claim!).' },
 ];
 
-// Explicit [row, col] placement (1-indexed) for the faction grid on a 6-col x
-// 4-row layout — Order fills a 3x3 block top-left, Chaos a 3x2 block
-// top-right, Death a 1x4 strip bottom-left, Destruction the remaining
-// L-shaped 5 cells toward the bottom-right. A perfect 4-way rectangle split
-// isn't possible for these exact counts (9/6/4/5 — the ratios conflict), so
-// Destruction's block is the one that isn't a clean rectangle. If the
-// per-alliance faction count ever changes, entries beyond this map fall
-// back to normal grid auto-flow rather than breaking.
-const FACTION_GRID_POSITIONS = {
-  Order:       [[1,1],[1,2],[1,3],[2,1],[2,2],[2,3],[3,1],[3,2],[3,3]],
-  Chaos:       [[1,4],[1,5],[1,6],[2,4],[2,5],[2,6]],
-  Destruction: [[3,4],[3,5],[3,6],[4,5],[4,6]],
-  Death:       [[4,1],[4,2],[4,3],[4,4]],
-};
+// Explicit [row, col] placement (1-indexed) for the faction grid, computed
+// rather than hardcoded so it self-adjusts when a faction count changes
+// (broke before: adding Helsmiths of Hashut as Chaos' 7th faction had no
+// 7th coordinate in the old static per-alliance map, so it silently fell
+// back to browser auto-flow and landed wherever, visually colliding with
+// Death/Destruction's own explicit cells). Left 3 columns cascade Order
+// then Death top-to-bottom; right 3 columns cascade Chaos then Destruction
+// the same way — matches the book's own Order/Chaos/Death/Destruction
+// grouping while tolerating any future per-alliance count change.
+function computeFactionGridPositions(factionsByAlliance) {
+  const listFor = alliance => factionsByAlliance.find(g => g.alliance === alliance)?.list || [];
+  const leftList  = [...listFor('Order'), ...listFor('Death')];
+  const rightList = [...listFor('Chaos'), ...listFor('Destruction')];
+  const positions = {};
+  const place = (list, colOffset) => {
+    list.forEach((f, i) => {
+      positions[f.faction_slug] = [Math.floor(i / 3) + 1, (i % 3) + 1 + colOffset];
+    });
+  };
+  place(leftList, 0);
+  place(rightList, 3);
+  return positions;
+}
 
 // Tiny (24px-wide, ~400-byte) blur-up placeholders for the 5 scanned page
 // images below, inlined as data URIs so they paint instantly with zero
@@ -720,6 +729,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   const factionsByAlliance = ALLIANCE_ORDER
     .map(alliance => ({ alliance, list: factions.filter(f => f.grand_alliance === alliance) }))
     .filter(g => g.list.length > 0);
+  const factionGridPositions = computeFactionGridPositions(factionsByAlliance);
 
   const warlordSteps = apotheosisSteps.length ? apotheosisSteps.map(s => s.step_title) : null;
 
@@ -1015,7 +1025,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
               ) : step === 1 ? (
                 <div className="ptg-faction-grid">
                   {factionsByAlliance.flatMap(g => g.list.map((f, i) => {
-                    const pos = FACTION_GRID_POSITIONS[g.alliance]?.[i];
+                    const pos = factionGridPositions[f.faction_slug];
                     return (
                       <button
                         key={f.faction_slug}

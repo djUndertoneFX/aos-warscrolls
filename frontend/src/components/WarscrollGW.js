@@ -401,6 +401,9 @@ export function AbilityCard({ ab, keywords }) {
           {ab.source_note && (
             <span className="gw-ability-source-note" title="Source">({ab.source_note})</span>
           )}
+          {ab.assigned_unit_name && (
+            <span className="gw-ability-source-note gw-ability-assigned-note" title="Assigned to">({ab.assigned_unit_name})</span>
+          )}
         </div>
         {showFlavorText && ab.lore_text && (
           <p className="gw-ability-lore">{ab.lore_text}</p>

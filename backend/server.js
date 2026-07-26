@@ -141,7 +141,10 @@ initDb();
 // this gate, checking only that one table, silently skipped syncing
 // anything at all — the live site kept serving the stale rules tables no
 // matter how many times the bundled DB was updated and redeployed.
-const SYNCED_TABLES = ['warscrolls', 'faction_battle_traits', 'faction_battle_formations', 'faction_extra_rules'];
+const SYNCED_TABLES = [
+  'warscrolls', 'faction_battle_traits', 'faction_battle_formations', 'faction_extra_rules',
+  'faction_apotheosis_steps', 'faction_apotheosis_options',
+];
 {
   const Database = require('better-sqlite3');
   const bundledPath = path.join(__dirname, 'warscrolls.db');
@@ -215,6 +218,25 @@ const SYNCED_TABLES = ['warscrolls', 'faction_battle_traits', 'faction_battle_fo
   if (cmdCount === 0) {
     console.log('Core command abilities table empty — running scrapeCommandAbilities in background...');
     scrapeCommandAbilities().catch(err => console.error('scrapeCommandAbilities failed:', err));
+  }
+}
+
+// Auto-scrape Anvil of Apotheosis (Path to Glory warlord creation) data if
+// empty — this table has no other seeding path (unlike warscrolls/faction
+// rules/command abilities, it was only ever populated by a one-off manual
+// scrape), so if a volume ever loses it (e.g. a fresh/recreated volume) it
+// stays empty forever with no self-heal, even though the bundled DB sync
+// above now also carries it. Confirmed missing for Idoneth Deepkin in
+// production despite the bundled DB having it — same "seed once on a fresh
+// volume" pattern as above catches that case.
+{
+  const { scrapeAllApotheosis } = require('./scrapePathToGlory');
+  const _db4 = getDb();
+  const apoCount = _db4.prepare('SELECT COUNT(*) as n FROM faction_apotheosis_steps').get().n;
+  _db4.close();
+  if (apoCount === 0) {
+    console.log('Apotheosis steps table empty — running scrapeAllApotheosis in background...');
+    scrapeAllApotheosis().catch(err => console.error('scrapeAllApotheosis failed:', err));
   }
 }
 

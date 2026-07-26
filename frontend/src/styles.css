@@ -3599,7 +3599,7 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 .ptg-faction-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  grid-template-rows: repeat(4, 1fr);
+  grid-template-rows: repeat(5, 1fr);
   gap: 0.6rem;
   width: 100%;
 }
@@ -4733,6 +4733,10 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   font-style: italic;
   color: var(--text-dim);
 }
+/* Warscroll unit names are stored lowercase in the DB (rendered via CSS
+   text-transform elsewhere, e.g. .bb-fight-ability-unit) — same treatment
+   here so "volturnos high king of the deep" reads as a real name. */
+.gw-ability-assigned-note { text-transform: capitalize; }
 .gw-ability-lore {
   font-style: italic;
   color: #b0a070;
@@ -5386,6 +5390,7 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   padding: 0.6rem 0.8rem;
 }
 .bb-fight-grid { grid-template-columns: repeat(2, 1fr) !important; }
+.bb-fight-grid-wide-first > :first-child { grid-column: 1 / -1; }
 .bb-fight-ability-unit {
   font-family: 'Cinzel', serif;
   font-size: 0.8rem;

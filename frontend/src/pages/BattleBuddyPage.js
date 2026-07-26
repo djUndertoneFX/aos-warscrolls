@@ -359,12 +359,30 @@ function ArmyListSource({ side, state, setState, factionRules }) {
       }
       const heroAssignments = blob.heroAssignments || {};
       const collectAssigned = key => [...new Set(Object.values(heroAssignments).map(h => h?.[key]).filter(Boolean))];
+      // Reverse lookup (ability name -> assigned hero's unit name), so the
+      // card can show who's actually carrying it — only Heroic Traits/
+      // Artefacts are ever assigned to a specific hero here; Spell/Prayer/
+      // Manifestation Lore are army-wide, not per-unit (see LoreCardsStage).
+      const buildAssignedTo = key => {
+        const map = {};
+        for (const [heroId, assign] of Object.entries(heroAssignments)) {
+          const name = assign?.[key];
+          if (!name) continue;
+          const unit = units.find(u => String(u.id) === String(heroId));
+          if (unit) map[name.toUpperCase()] = unit.name;
+        }
+        return map;
+      };
       const selection = {
         heroic_traits:      collectAssigned('heroic_traits'),
         artefacts:           collectAssigned('artefacts'),
         spell_lore:          collectAssigned('spell_lore'),
         prayer_lore:         collectAssigned('prayer_lore'),
         manifestation_lore:  collectAssigned('manifestation_lore'),
+        assignedTo: {
+          heroic_traits: buildAssignedTo('heroic_traits'),
+          artefacts: buildAssignedTo('artefacts'),
+        },
       };
       setState(s => ({
         ...s, loading: false,
@@ -617,7 +635,14 @@ function collectFactionSections(state, factionRulesFor, hiddenSeasons) {
     } else {
       abilities = pick(rules[s.key], sel?.[s.key]);
     }
-    return { ...s, abilities: filterOutdated(abilities || []) };
+    abilities = filterOutdated(abilities || []);
+    // Heroic Traits/Artefacts can be assigned to a specific hero (Army
+    // Builder's heroAssignments) — surfaced as a suffix on the card, same
+    // idea as the source-note tag, so it's visible without cross-checking
+    // the roster separately.
+    const assignedMap = sel?.assignedTo?.[s.key];
+    if (assignedMap) abilities = abilities.map(a => ({ ...a, assigned_unit_name: assignedMap[a.name] || null }));
+    return { ...s, abilities };
   });
   // Faction/supplement-specific tables under their own printed heading
   // (scrapeRules.js's findExtraSectionTitles) — e.g. a Scourge of Aqshy/
@@ -680,23 +705,30 @@ function CollapsibleSection({ title, count, defaultOpen = true, level = 'top', c
 // Renders one of the ability sections: the phase-specific list, then
 // (if any) a divider and the "Passive / Any Phase" list that's the same
 // regardless of which ribbon phase is selected.
-function AbilitySection({ title, inPhase, always, renderCard, defaultOpen = true, level = 'top' }) {
+// wideFirstIfOdd mimics the printed book's Spell/Prayer/Manifestation Lore
+// layout (confirmed: Idoneth's 3-spell "Lore of the Tides" — Steed of Tides
+// spans the full top row, Counter-Current/Pressure of the Deep sit below
+// it as a pair) rather than a plain 2-col grid, which instead leaves a
+// lonely last card with an empty cell beside it whenever the count is odd.
+// Only kicks in for an odd count — an even count already tiles cleanly.
+function AbilitySection({ title, inPhase, always, renderCard, defaultOpen = true, level = 'top', wideFirstIfOdd = false }) {
   const hasAny = inPhase.length > 0 || always.length > 0;
   // Nothing for the current phase — collapse the whole section (heading
   // included) rather than showing an empty placeholder; a section with
   // some cards just none active this phase reads the same as a section the
   // faction has nothing in at all, so there's no information lost.
   if (!hasAny) return null;
+  const gridClass = list => `gw-abilities-grid bb-fight-grid${wideFirstIfOdd && list.length % 2 === 1 ? ' bb-fight-grid-wide-first' : ''}`;
   return (
     <CollapsibleSection title={title} count={inPhase.length + always.length} defaultOpen={defaultOpen} level={level}>
       {inPhase.length > 0 && (
-        <div className="gw-abilities-grid bb-fight-grid">{inPhase.map(renderCard)}</div>
+        <div className={gridClass(inPhase)}>{inPhase.map(renderCard)}</div>
       )}
       {inPhase.length > 0 && always.length > 0 && <div className="gw-formation-divider" />}
       {always.length > 0 && (
         <>
           <div className="bb-fight-section-subtitle">Passive / Any Phase</div>
-          <div className="gw-abilities-grid bb-fight-grid">{always.map(renderCard)}</div>
+          <div className={gridClass(always)}>{always.map(renderCard)}</div>
         </>
       )}
     </CollapsibleSection>
@@ -872,7 +904,7 @@ function FactionAbilitiesGroup({ state, factionRulesFor, phaseKey, renderCard, h
           return <BattleFormationsSection key={s.key} inPhase={split.inPhase} always={split.always} renderCard={renderCard} />;
         }
         return (
-          <AbilitySection key={s.key} title={s.label} inPhase={split.inPhase} always={split.always} renderCard={renderCard} level="sub" />
+          <AbilitySection key={s.key} title={s.label} inPhase={split.inPhase} always={split.always} renderCard={renderCard} level="sub" wideFirstIfOdd={s.key === 'spell_lore'} />
         );
       })}
       {pathText && (
