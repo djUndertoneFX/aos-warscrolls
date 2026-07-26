@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, NavLink, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './AuthContext';
 import { SettingsProvider, useSettings } from './SettingsContext';
+import { VoiceControlProvider } from './VoiceControlContext';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
@@ -264,7 +265,9 @@ export default function App() {
     <BrowserRouter>
       <SettingsProvider>
         <AuthProvider>
-          <AppRoutes />
+          <VoiceControlProvider>
+            <AppRoutes />
+          </VoiceControlProvider>
         </AuthProvider>
       </SettingsProvider>
     </BrowserRouter>

@@ -5,6 +5,7 @@ import WarscrollGW, { FormatText } from '../components/WarscrollGW';
 import { useSettings } from '../SettingsContext';
 import { useAuth } from '../AuthContext';
 import { calcWeaponADO, resolveWeaponLoadout } from '../awoCalc';
+import VoiceControlWidget from '../components/VoiceControlWidget';
 
 // Phase colour lookup — GW canonical AoS 4e colors (mirrors WarscrollGW PHASE_PRESETS)
 const SP_PHASE_PRESETS = [
@@ -427,6 +428,7 @@ export default function SpearheadPage({ headerCollapsed }) {
         <div className="page-header">
           <div className="page-title">Spearhead<span>Age of Sigmar 4th Edition</span></div>
           {allRows && <div className="unit-count">{groups.length} spearhead armies</div>}
+          <VoiceControlWidget />
         </div>
 
         <div className="filters sp-filters-row1">

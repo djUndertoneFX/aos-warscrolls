@@ -7,6 +7,7 @@ import { simulateBattle } from '../simulation/engine';
 import { useSettings } from '../SettingsContext';
 import { useAuth } from '../AuthContext';
 import { calcWeaponADO, resolveWeaponLoadout } from '../awoCalc';
+import VoiceControlWidget from '../components/VoiceControlWidget';
 
 function sumADO(weapons, unitSize, save, ward, rounding) {
   let total = 0, any = false;
@@ -864,6 +865,7 @@ export default function SimulacrumPage({ headerCollapsed }) {
           </button>
         </div>
         {stage === 1 && data && <div className="unit-count">{data.total.toLocaleString()} units found</div>}
+        <VoiceControlWidget />
       </div>
 
       {/* ── Stage 2 options bar ── */}

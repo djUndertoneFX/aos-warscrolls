@@ -5,6 +5,7 @@ import WarscrollGW, { AbilityCard } from '../components/WarscrollGW';
 import { useSettings } from '../SettingsContext';
 import { useAuth } from '../AuthContext';
 import { calcWeaponADO, resolveWeaponLoadout } from '../awoCalc';
+import VoiceControlWidget from '../components/VoiceControlWidget';
 
 function parseBullets(raw) {
   try { return JSON.parse(raw || '[]'); } catch { return []; }
@@ -2076,6 +2077,8 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
             />
           </div>
         </div>
+
+        <VoiceControlWidget />
       </div>
 
       {activeStage === 'units' && (

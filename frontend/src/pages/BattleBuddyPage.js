@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback, useRef, useLayoutEffect } from
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { AbilityCard } from '../components/WarscrollGW';
+import VoiceControlWidget from '../components/VoiceControlWidget';
+import { useVoiceCommands } from '../VoiceControlContext';
 
 // Space reserved for a unit's thumbnail when it fits (image width + gap) —
 // shared between the actual CSS layout and the layout-impact measurement
@@ -1057,6 +1059,19 @@ function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey, c
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [advancePhase]);
 
+  // Voice commands, active only while the Fight step is mounted — same
+  // actions as the Up/Down phase hotkeys and the view/side toggle buttons
+  // above, just reachable hands-free mid-game.
+  useVoiceCommands({
+    'move to the next phase': () => advancePhase(1),
+    'move to the next': () => advancePhase(1),
+    'next phase': () => advancePhase(1),
+    'switch to friendly': () => setSingleSide('friendly'),
+    'switch to enemy': () => setSingleSide('enemy'),
+    'dual view': () => setViewMode('dual'),
+    'single view': () => setViewMode('single'),
+  }, [advancePhase, setSingleSide, setViewMode]);
+
   const abilityContent = viewMode === 'dual' ? (
     <div className="bb-fight-dual">
       <FightPane side="friendly" state={friendly} factionRulesFor={factionRulesFor} phaseKey={phaseKey} commandAbilities={commandAbilities} hiddenSeasons={hiddenSeasons} />
@@ -1205,6 +1220,7 @@ export default function BattleBuddyPage() {
           <button className={`bb-step-btn${stage === 'select' ? ' active' : ''}`} onClick={() => setStage('select')}><strong>1:</strong> Select Units</button>
           <button className={`bb-step-btn${stage === 'fight' ? ' active' : ''}`} onClick={() => setStage('fight')}><strong>2:</strong> Fight!</button>
         </div>
+        <div className="bb-header-voice"><VoiceControlWidget /></div>
       </div>
 
       {stage === 'select' ? (

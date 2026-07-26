@@ -7,6 +7,7 @@ import PathToGloryWizard from '../components/PathToGloryWizard';
 import { useSettings } from '../SettingsContext';
 import { useAuth } from '../AuthContext';
 import { calcWeaponADO, resolveWeaponLoadout } from '../awoCalc';
+import VoiceControlWidget from '../components/VoiceControlWidget';
 
 function sumADO(weapons, unitSize, save, ward, rounding) {
   let total = 0, any = false;
@@ -826,6 +827,8 @@ export default function PathToGloryPage({ headerCollapsed }) {
             {data.total.toLocaleString()} units found
           </div>
         )}
+
+        <VoiceControlWidget />
       </div>
 
       {/* ── Filters ── */}
