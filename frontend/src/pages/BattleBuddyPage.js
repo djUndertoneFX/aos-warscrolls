@@ -608,7 +608,7 @@ function collectFactionSections(state, factionRulesFor, hiddenSeasons) {
   const sel = state.selection;
   const pick = (arr, names) => (names === undefined || names === null ? arr : arr.filter(a => names.includes(a.name)));
   const filterOutdated = arr => arr.filter(a => !hiddenSeasons[abilitySeason(a)]);
-  return FACTION_SECTIONS.map(s => {
+  const fixed = FACTION_SECTIONS.map(s => {
     let abilities;
     if (s.key === 'formations') {
       abilities = state.battleFormation ? rules.formations.filter(f => f.formation_name === state.battleFormation) : rules.formations;
@@ -619,6 +619,24 @@ function collectFactionSections(state, factionRulesFor, hiddenSeasons) {
     }
     return { ...s, abilities: filterOutdated(abilities || []) };
   });
+  // Faction/supplement-specific tables under their own printed heading
+  // (scrapeRules.js's findExtraSectionTitles) — e.g. a Scourge of Aqshy/
+  // Ghyran non-Hero enhancement table. Not narrowed by `sel` (no existing
+  // hero-assignment concept covers these; they're for non-Hero units), and
+  // split into one section per distinct group_name since a faction can
+  // publish more than one (Cities of Sigmar has 3).
+  const otherByGroup = [];
+  const otherIndex = {};
+  for (const item of rules.other || []) {
+    const gName = item.group_name || 'Other';
+    if (!otherIndex[gName]) {
+      otherIndex[gName] = { key: `other:${gName}`, label: gName, abilities: [] };
+      otherByGroup.push(otherIndex[gName]);
+    }
+    otherIndex[gName].abilities.push(item);
+  }
+  for (const s of otherByGroup) s.abilities = filterOutdated(s.abilities);
+  return [...fixed, ...otherByGroup];
 }
 
 // Some Battle Traits are grouped under a shared column-header label instead of

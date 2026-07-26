@@ -799,6 +799,11 @@ app.get('/api/faction-rules/:slug', requireAuth, (req, res) => {
       spell_lore:         bySection('spell_lore'),
       prayer_lore:        bySection('prayer_lore'),
       manifestation_lore: bySection('manifestation_lore'),
+      // Faction/supplement-specific tables under their own printed heading
+      // (group_name) that don't fit the 5 fixed categories above — e.g. a
+      // Scourge of Aqshy/Ghyran non-Hero enhancement table, or a battletome-
+      // unique mechanic. See scrapeRules.js's findExtraSectionTitles.
+      other:              bySection('other'),
     });
   } finally {
     db.close();

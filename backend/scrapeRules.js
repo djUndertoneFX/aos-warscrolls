@@ -222,6 +222,13 @@ function collectSectionBlocks($, html, sectionTitle) {
   const results = []; // { formationName, sourceNote, block, skipNestGuard }
   let inSection = false;
   let pendingGroup = null; // { name, sourceNote, members: Set<UPPER NAME> } | null
+  // A section-level source note (e.g. Cities of Sigmar's "Decorations for
+  // Valour" h2 itself carries "Expansion. Scourge of Aqshy - ..."), distinct
+  // from a per-item preceding-sibling h3 (pendingGroup above) — some dynamic
+  // extra sections (see findExtraSectionTitles/scrapeFactionRules) mark the
+  // WHOLE section as one flat group with no further per-item h3 at all, so
+  // every item needs to inherit this instead.
+  let sectionSourceNote = null;
 
   // Any h2 ends the current section, not just h2.outline_header3 — some
   // factions (confirmed: Helsmiths of Hashut, Skaven) follow the standard
@@ -237,9 +244,10 @@ function collectSectionBlocks($, html, sectionTitle) {
     const $el = $(el);
 
     if (tag === 'h2') {
-      const text = $el.text().trim();
+      const text = normalizeText($el.text());
       inSection = text === sectionTitle;
       pendingGroup = null;
+      sectionSourceNote = inSection ? extractH3Marker($el).sourceNote : null;
       return;
     }
 
@@ -278,7 +286,7 @@ function collectSectionBlocks($, html, sectionTitle) {
         $el.children('.BreakInsideAvoid').each((__, child) => {
           const $child = $(child);
           if ($child.find('.abBody').length >= 1) {
-            results.push({ formationName: groupName, sourceNote: null, block: child, skipNestGuard: true, pendingGroup });
+            results.push({ formationName: groupName, sourceNote: null, block: child, skipNestGuard: true, pendingGroup, sectionSourceNote });
           }
         });
         return;
@@ -286,7 +294,7 @@ function collectSectionBlocks($, html, sectionTitle) {
 
       const formationName = normalizeText($el.find('h3.h2_pge').first().text());
       const sourceNote = extractSourceNote($el);
-      results.push({ formationName, sourceNote, block: el, skipNestGuard: false, pendingGroup });
+      results.push({ formationName, sourceNote, block: el, skipNestGuard: false, pendingGroup, sectionSourceNote });
     }
   });
 
@@ -296,28 +304,60 @@ function collectSectionBlocks($, html, sectionTitle) {
 // Scrape all BreakInsideAvoid blocks under a heading, grouped by h3 sub-headings
 function scrapeSection($, sectionTitle, factionSlug, factionName) {
   const results = [];
-  for (const { formationName: groupName, sourceNote, block, skipNestGuard, pendingGroup } of collectSectionBlocks($, null, sectionTitle)) {
+  for (const { formationName: groupName, sourceNote, block, skipNestGuard, pendingGroup, sectionSourceNote } of collectSectionBlocks($, null, sectionTitle)) {
     const ability = parseAbilityBlock($, block, skipNestGuard);
     if (!ability) continue;
-    // Fall back to the pending preceding-sibling h3 group's sourceNote ONLY
-    // when this block's own name is one of that group's captured members —
-    // an exact match, not mere adjacency, so a later ungrouped item can
-    // never inherit a stale group's tag. Deliberately NOT propagating
-    // pendingGroup.name into group_name: Wahapedia reuses the identical
-    // sub-group name across editions (Idoneth's core "Champions of the
-    // Tides" and its Scourge of Aqshy "Champions of the Tides" are two
-    // distinct member sets under the same text) — group_name is read
-    // elsewhere (FactionTraitsSlide) as a display-grouping key, and
-    // colliding two same-named-but-different groups into one column would
-    // wrongly merge them.
+    // Fall back chain: (1) the block's own descendant h3 (Battle Formations'
+    // nested pattern), (2) a pending preceding-sibling h3 group's sourceNote,
+    // ONLY when this block's own name is one of that group's captured
+    // members — an exact match, not mere adjacency, so a later ungrouped
+    // item can never inherit a stale group's tag — (3) the section's own h2-
+    // level marker (e.g. Cities of Sigmar's "Decorations for Valour" h2
+    // itself carries the Expansion tooltip, with no further per-item h3 at
+    // all). Deliberately NOT propagating pendingGroup.name into group_name:
+    // Wahapedia reuses the identical sub-group name across editions
+    // (Idoneth's core "Champions of the Tides" and its Scourge of Aqshy
+    // "Champions of the Tides" are two distinct member sets under the same
+    // text) — group_name is read elsewhere (FactionTraitsSlide) as a
+    // display-grouping key, and colliding two same-named-but-different
+    // groups into one column would wrongly merge them.
     let finalGroupName = groupName || null;
     let finalSourceNote = sourceNote;
     if (!finalSourceNote && pendingGroup && pendingGroup.members.has(ability.name.toUpperCase())) {
       finalSourceNote = pendingGroup.sourceNote;
     }
+    if (!finalSourceNote) finalSourceNote = sectionSourceNote;
     results.push({ ...ability, faction_slug: factionSlug, faction_name: factionName, group_name: finalGroupName, source_note: finalSourceNote });
   }
   return results;
+}
+
+// Wahapedia can publish EXTRA h2.outline_header3 sections beyond the 5 fixed
+// ones scrapeFactionRules already knows by name, under a faction/supplement-
+// specific title that can't be hardcoded — confirmed on Cities of Sigmar:
+// "Ironweld Innovations" (battletome mechanic) and "Decorations for Valour"
+// (a Scourge of Aqshy non-Hero enhancement table, h2 itself carrying the
+// Expansion marker). These were previously invisible to the whole scraper —
+// scrapeSection only ever gets called with one of the 5 known titles, so an
+// unknown h2 boundary just never became `inSection` for anything. Found via
+// a user-provided PDF cross-check: several factions' Scourge of Aqshy non-
+// Hero enhancement tables (e.g. "Monstrous Traits", "Brands of the Dark
+// Gods", "Noble Pursuits") were entirely missing from the DB for exactly
+// this reason. Returns each such title in document order so the caller can
+// scrapeSection() each one generically — the same collectSectionBlocks
+// machinery already handles arbitrary section titles, h3 sub-grouping, and
+// section-level source notes without any title-specific code.
+const KNOWN_SECTION_TITLES = new Set([
+  'Battle Traits', 'Battle Formations', 'Heroic Traits', 'Artefacts of Power',
+  'Spell Lore', 'Prayer Lore', 'Manifestation Lore',
+]);
+function findExtraSectionTitles($) {
+  const titles = [];
+  $('h2.outline_header3').each((_, el) => {
+    const title = normalizeText($(el).text());
+    if (title && !KNOWN_SECTION_TITLES.has(title) && !titles.includes(title)) titles.push(title);
+  });
+  return titles;
 }
 
 // ── Phase-colour detection for ambiguous-timing abilities ────────────────
@@ -377,7 +417,18 @@ async function scrapeFactionRules(faction) {
   const spellLore          = scrapeSection($, 'Spell Lore',          s, n).map(a => ({ ...a, section: 'spell_lore' }));
   const prayerLore         = scrapeSection($, 'Prayer Lore',         s, n).map(a => ({ ...a, section: 'prayer_lore' }));
   const manifestationLore  = scrapeSection($, 'Manifestation Lore',  s, n).map(a => ({ ...a, section: 'manifestation_lore' }));
-  const extraRules = [...heroicTraits, ...artefacts, ...spellLore, ...prayerLore, ...manifestationLore];
+
+  // Any further h2.outline_header3 section beyond the 5 known ones above —
+  // faction/supplement-specific tables (a Scourge of Aqshy/Ghyran non-Hero
+  // enhancement table, a battletome-unique mechanic, a White Dwarf
+  // supplement, etc.) with no fixed name to hardcode. group_name carries the
+  // section's own heading text so the frontend can render each one under
+  // its real printed name instead of a generic bucket.
+  const otherSections = findExtraSectionTitles($).flatMap(title =>
+    scrapeSection($, title, s, n).map(a => ({ ...a, section: 'other', group_name: title }))
+  );
+
+  const extraRules = [...heroicTraits, ...artefacts, ...spellLore, ...prayerLore, ...manifestationLore, ...otherSections];
 
   // Resolve each ambiguous-timing ability's thematic phase colour — needs
   // every category already scraped so a quoted ability-name reference (e.g.
