@@ -3762,24 +3762,49 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 .ptg-present-toggle button:hover { color: #d8cca8; }
 .ptg-present-toggle button.ptg-present-active { background: #c8a840; color: #1a1614; }
 
+/* Was max-height + overflow-y:auto with the image sized to its own full
+   intrinsic width (up to 1200px) — on a tall portrait scan that's reliably
+   taller than the 62vh cap, so it always needed an inner scrollbar to see
+   the rest of the page. Confirmed as broken in practice: nested inside the
+   modal shell's OWN scrollbar, that inner one was easy to miss entirely,
+   reading as "the image is just cut off" with no visible way to see more.
+   Default now is a real bounding FRAME (a definite height, not just a cap)
+   that each image scales down to fit inside via object-fit:contain below —
+   no scrolling needed for the common single-page case. A doc with more
+   than one page (only the 2-page Army Roster) still scrolls between pages,
+   each pane already amount to a full occupied frame, but the scrollbar
+   itself starts at the top by default because nothing sets scrollTop —
+   this container just does not need to scroll for the single-page dominant case. */
 .ptg-doc-image-view {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 1rem;
-  max-height: 62vh;
+  height: 62vh;
   overflow-y: auto;
 }
 .ptg-doc-full-img {
-  max-width: 100%;
+  display: block;
+  width: 100%;
+  height: 62vh;
+  flex: 0 0 auto;
+  /* the base rule's blur-up placeholder is transform:scale(1.12) — on this
+     override's definite box (instead of sized-to-its-own-content, the
+     normal case elsewhere) that scale would otherwise paint past this
+     frame's own edges by ~6% each side. */
+  overflow: hidden;
   border: 1px solid rgba(200,168,64,0.3);
   border-radius: 3px;
 }
+.ptg-doc-full-img .ptg-progressive-img-micro,
+.ptg-doc-full-img .ptg-progressive-img-full {
+  object-fit: contain;
+}
 .ptg-doc-full-img .ptg-progressive-img-micro {
-  display: block;
-  width: 1200px;
-  max-width: 100%;
-  height: auto;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 
 .ptg-doc-editor-header {
