@@ -182,6 +182,5 @@ export function useVoiceCommands(commandsMap, deps) {
   useEffect(() => {
     const unregister = registerCommands(commandsMap);
     return unregister;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
+  }, deps); // eslint-disable-line
 }
