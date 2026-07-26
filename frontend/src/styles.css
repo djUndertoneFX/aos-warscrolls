@@ -4635,21 +4635,16 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 }
 /* Non-core source flag (Scourge of Ghyran/Aqshy, a Battletome Supplement,
    etc.) — visible directly on the card next to its name, not just usable as
-   a hide-filter, so it's identifiable without looking it up elsewhere. */
+   a hide-filter, so it's identifiable without looking it up elsewhere. Plain
+   dim/small parenthetical text, not a badge — reads as a footnote on the
+   name rather than competing with it. */
 .gw-ability-source-note {
-  display: inline-block;
-  margin-left: 0.5rem;
-  padding: 1px 7px;
-  border-radius: 3px;
-  font-family: Arial, sans-serif;
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  vertical-align: middle;
-  background: rgba(160,100,220,0.18);
-  color: #c8a8f0;
-  border: 1px solid rgba(160,100,220,0.4);
+  margin-left: 0.4rem;
+  font-family: 'Palatino Linotype', Palatino, Georgia, serif;
+  font-size: 0.7rem;
+  font-weight: 400;
+  font-style: italic;
+  color: var(--text-dim);
 }
 .gw-ability-lore {
   font-style: italic;
