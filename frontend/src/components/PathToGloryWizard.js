@@ -500,6 +500,33 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
       setWarlordControl(existing.warlordControl ?? '');
       setWarlordSubStep(existing.warlordSubStep ?? 0);
       setDestinyPointChoice(existing.destinyPointChoice ?? 2);
+
+      // Snapshots saved before starting-warscroll auto-fill existed have
+      // nothing in these fields even though this faction has apotheosis data
+      // — patch them in without touching anything the user may have already
+      // customized (a snapshot with any of these already set is left alone).
+      const staleSnapshot = !existing.warlordMove && !existing.warlordKeywordsLine1
+        && !(existing.rangedWeapons?.length) && !(existing.meleeWeapons?.length);
+      if (staleSnapshot) {
+        axios.get(`/api/apotheosis/${selectedFaction}`).then(res => {
+          const steps = res.data.steps ?? [];
+          const step2 = steps.find(s => /fill out the starting warscroll/i.test(s.step_title));
+          if (!step2) return;
+          if (step2.starting_weapon) {
+            const w = step2.starting_weapon;
+            const row = { name: w.name, rng: w.rng || '', atk: w.atk || '', hit: w.hit || '', wnd: w.wnd || '', rnd: w.rnd || '', dmg: w.dmg || '' };
+            if (w.type === 'ranged') addRanged(row); else addMelee(row);
+          }
+          if (step2.starting_keywords?.length) {
+            setWarlordKeywordsLine1((step2.starting_keywords[0] || []).join(', '));
+            setWarlordKeywordsLine2((step2.starting_keywords[1] || []).join(', '));
+          }
+          setWarlordMove(GENERIC_WARLORD_PROFILE.move);
+          setWarlordHealth(GENERIC_WARLORD_PROFILE.health);
+          setWarlordSave(GENERIC_WARLORD_PROFILE.save);
+          setWarlordControl(GENERIC_WARLORD_PROFILE.control);
+        }).catch(() => {});
+      }
       return;
     }
 
@@ -542,6 +569,39 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     }).catch(() => {});
     return () => { cancelled = true; };
   }, [selectedFaction]); // eslint-disable-line
+
+  // One-time migration, mount only: the effect above only backfills a
+  // faction when you SWITCH to it during this session — a returning user
+  // who already had a faction selected when the wizard loaded never
+  // triggers that "changed" check at all, so their saved-before-this-fix
+  // blank Move/Health/Save/Control/keywords would otherwise stay blank
+  // forever. Runs once against whatever faction was already active at
+  // mount; a no-op for anyone whose starting warscroll is already filled.
+  const mountFactionRef = useRef(saved.selectedFaction ?? null);
+  useEffect(() => {
+    const mountFaction = mountFactionRef.current;
+    if (!mountFaction) return;
+    const needsBackfill = !warlordMove && !warlordKeywordsLine1 && rangedWeapons.length === 0 && meleeWeapons.length === 0;
+    if (!needsBackfill) return;
+    axios.get(`/api/apotheosis/${mountFaction}`).then(res => {
+      const steps = res.data.steps ?? [];
+      const step2 = steps.find(s => /fill out the starting warscroll/i.test(s.step_title));
+      if (!step2) return;
+      if (step2.starting_weapon) {
+        const w = step2.starting_weapon;
+        const row = { name: w.name, rng: w.rng || '', atk: w.atk || '', hit: w.hit || '', wnd: w.wnd || '', rnd: w.rnd || '', dmg: w.dmg || '' };
+        if (w.type === 'ranged') addRanged(row); else addMelee(row);
+      }
+      if (step2.starting_keywords?.length) {
+        setWarlordKeywordsLine1((step2.starting_keywords[0] || []).join(', '));
+        setWarlordKeywordsLine2((step2.starting_keywords[1] || []).join(', '));
+      }
+      setWarlordMove(GENERIC_WARLORD_PROFILE.move);
+      setWarlordHealth(GENERIC_WARLORD_PROFILE.health);
+      setWarlordSave(GENERIC_WARLORD_PROFILE.save);
+      setWarlordControl(GENERIC_WARLORD_PROFILE.control);
+    }).catch(() => {});
+  }, []); // eslint-disable-line
 
   const heraldryInputRef = useRef(null);
   const handleHeraldryFile = (file) => {
