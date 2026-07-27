@@ -396,6 +396,12 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   // battle profile points) rather than nothing picked, since the paper form
   // doesn't really have a "no limit chosen" state either.
   const [destinyPointChoice, setDestinyPointChoice] = useState(() => saved.destinyPointChoice ?? 2);
+  // "Choose an Archetype" is likewise a genuine single-choice pick (always
+  // exactly 1 of the options shown) — defaults to the first archetype
+  // listed (Akhelian for Idoneth Deepkin, whatever a faction lists first
+  // otherwise) rather than nothing chosen. Picking one rewrites the
+  // starting warscroll's weapon/keywords via applyArchetypeChoice below.
+  const [archetypeChoice, setArchetypeChoice] = useState(() => saved.archetypeChoice ?? 0);
 
   // Per-faction snapshots of the warlord fields above (+ sub-step position),
   // keyed by faction slug — so switching faction A → B → back to A restores
@@ -468,6 +474,48 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
       .finally(() => setApotheosisLoading(false));
   }, [effectiveFactionSlug]);
 
+  // Applies the chosen Archetype on top of the faction's baseline starting
+  // warscroll (Step 2's starting_weapon/starting_keywords) — always
+  // re-derives from that baseline rather than editing in place, so
+  // switching between archetypes lands on the right result instead of
+  // stacking a previous pick's changes on top. `step2`/`step3` are the raw
+  // step objects from GET /api/apotheosis/:slug (step3.options is the
+  // Archetype list). Weapon overrides come from bullet lines shaped like
+  // "Thalassic Weapon — Atk 5, Hit 3+, Wnd 4+, Rnd 1, Dmg 2"; keyword
+  // grants come from effect text shaped like "has the X and Y keywords".
+  const applyArchetypeChoice = (step2, step3, idx) => {
+    const baseWeapon = step2?.starting_weapon;
+    const baseKwLine1 = step2?.starting_keywords?.[0] || [];
+    const opt = step3?.options?.[idx];
+    if (baseWeapon) {
+      const reset = rows => rows.map(r => r.name?.trim().toLowerCase() === baseWeapon.name.trim().toLowerCase()
+        ? { ...r, rng: baseWeapon.rng || '', atk: baseWeapon.atk || '', hit: baseWeapon.hit || '', wnd: baseWeapon.wnd || '', rnd: baseWeapon.rnd || '', dmg: baseWeapon.dmg || '' }
+        : r);
+      setMeleeWeapons(reset);
+      setRangedWeapons(reset);
+    }
+    const addedKeywords = [];
+    if (opt) {
+      const bullets = Array.isArray(opt.bullets) ? opt.bullets : JSON.parse(opt.bullets || '[]');
+      for (const b of bullets) {
+        const m = b.match(/^(.+?)\s*[—-]\s*Atk\s+([^,]+),\s*Hit\s+([^,]+),\s*Wnd\s+([^,]+),\s*Rnd\s+([^,]+),\s*Dmg\s+(.+)$/i);
+        if (!m) continue;
+        const [, wname, atk, hit, wnd, rnd, dmg] = m;
+        const override = rows => rows.map(r => r.name?.trim().toLowerCase() === wname.trim().toLowerCase()
+          ? { ...r, atk: atk.trim(), hit: hit.trim(), wnd: wnd.trim(), rnd: rnd.trim(), dmg: dmg.trim() }
+          : r);
+        setMeleeWeapons(override);
+        setRangedWeapons(override);
+      }
+      const kwMatch = (opt.effect || '').match(/has the ([A-Z][A-Z0-9 ]*?(?:\s*\(\d+\))?)(?:\s+and\s+(?:the\s+)?([A-Z][A-Z0-9 ]*?(?:\s*\(\d+\))?))?\s+keywords?/);
+      if (kwMatch) {
+        if (kwMatch[1]) addedKeywords.push(kwMatch[1].trim());
+        if (kwMatch[2]) addedKeywords.push(kwMatch[2].trim());
+      }
+    }
+    setWarlordKeywordsLine1([...baseKwLine1, ...addedKeywords].join(', '));
+  };
+
   // Fires only on a genuine change of Step 1's faction pick (not on every
   // render, and not on re-clicking the same faction — the ref comparison
   // below is what distinguishes those). Snapshots the warlord fields we're
@@ -480,7 +528,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     const changed = prevFaction !== selectedFaction;
 
     if (changed && prevFaction) {
-      const leaving = { warlordName, warlordKeywordsLine1, warlordKeywordsLine2, rangedWeapons, meleeWeapons, warlordMove, warlordHealth, warlordSave, warlordControl, warlordSubStep, destinyPointChoice };
+      const leaving = { warlordName, warlordKeywordsLine1, warlordKeywordsLine2, rangedWeapons, meleeWeapons, warlordMove, warlordHealth, warlordSave, warlordControl, warlordSubStep, destinyPointChoice, archetypeChoice };
       setWarlordSnapshotsByFaction(prev => ({ ...prev, [prevFaction]: leaving }));
     }
     prevSelectedFactionRef.current = selectedFaction;
@@ -500,6 +548,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
       setWarlordControl(existing.warlordControl ?? '');
       setWarlordSubStep(existing.warlordSubStep ?? 0);
       setDestinyPointChoice(existing.destinyPointChoice ?? 2);
+      setArchetypeChoice(existing.archetypeChoice ?? 0);
 
       // Snapshots saved before starting-warscroll auto-fill existed have
       // nothing in these fields even though this faction has apotheosis data
@@ -525,6 +574,8 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
           setWarlordHealth(GENERIC_WARLORD_PROFILE.health);
           setWarlordSave(GENERIC_WARLORD_PROFILE.save);
           setWarlordControl(GENERIC_WARLORD_PROFILE.control);
+          const step3 = steps.find(s => /choose an archetype/i.test(s.step_title));
+          if (step3?.options?.length) applyArchetypeChoice(step2, step3, 0);
         }).catch(() => {});
       }
       return;
@@ -545,6 +596,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     setWarlordControl('');
     setWarlordSubStep(0);
     setDestinyPointChoice(2);
+    setArchetypeChoice(0);
     axios.get(`/api/apotheosis/${selectedFaction}`).then(res => {
       if (cancelled) return;
       const steps = res.data.steps ?? [];
@@ -564,6 +616,8 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
         setWarlordSave(GENERIC_WARLORD_PROFILE.save);
         setWarlordControl(GENERIC_WARLORD_PROFILE.control);
       }
+      const step3 = steps.find(s => /choose an archetype/i.test(s.step_title));
+      if (step3?.options?.length) applyArchetypeChoice(step2, step3, 0);
       const factionObj = factions.find(f => f.faction_slug === selectedFaction);
       setWarlordName(`${factionObj ? factionObj.faction : selectedFaction} Hero`);
     }).catch(() => {});
@@ -600,6 +654,8 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
       setWarlordHealth(GENERIC_WARLORD_PROFILE.health);
       setWarlordSave(GENERIC_WARLORD_PROFILE.save);
       setWarlordControl(GENERIC_WARLORD_PROFILE.control);
+      const step3 = steps.find(s => /choose an archetype/i.test(s.step_title));
+      if (step3?.options?.length) applyArchetypeChoice(step2, step3, 0);
     }).catch(() => {});
   }, []); // eslint-disable-line
 
@@ -684,7 +740,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     const snapshot = {
       step, activeDoc, presentMode, campaign, customCampaignName, selectedFaction, warlordSubStep,
       warlordName, warlordKeywordsLine1, warlordKeywordsLine2, rangedWeapons, meleeWeapons,
-      warlordMove, warlordHealth, warlordSave, warlordControl, warlordSnapshotsByFaction, destinyPointChoice,
+      warlordMove, warlordHealth, warlordSave, warlordControl, warlordSnapshotsByFaction, destinyPointChoice, archetypeChoice,
       armyName, heraldryImage, realmOfOrigin, customRealmName, faction, battleFormation, gloryPoints, gloryRounds,
       currentQuest, questPoints, questNotes, questsCompleted, background, notableEvents,
       spellLore, prayerLore, manifestationLore,
@@ -766,14 +822,15 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   // phase-colored timing banners, and Declare/Effect all look identical to
   // every other rules text on the site, whether the option is a full
   // ability-shaped Origin/Flaw or a plain name+cost+effect upgrade row).
-  // "Set a Destiny Point Limit" (always step 1) is a genuine single-choice
-  // pick between exactly 3 tiers with no per-DP bookkeeping of its own
-  // (unlike later steps, which spend against that budget across several
-  // more picks) — the one step scoped to be clickable so far. Selecting an
-  // option advances to the next sub-step immediately, same as flipping a
-  // physical card over.
+  // "Set a Destiny Point Limit" and "Choose an Archetype" are both genuine
+  // single-choice picks (always exactly 1 of the options shown, no partial
+  // bookkeeping) — the two steps scoped to be clickable buttons. Selecting
+  // an option advances to the next sub-step immediately, same as flipping a
+  // physical card over. Archetype additionally rewrites the starting
+  // warscroll's weapon/keywords via applyArchetypeChoice.
   const renderApotheosisStep = stepData => {
     const isDpStep = /destiny point limit/i.test(stepData.step_title || '');
+    const isArchetypeStep = /choose an archetype/i.test(stepData.step_title || '');
     return (
     <>
       {stepData.intro_text && <p className="ptg-apotheosis-intro">{stepData.intro_text}</p>}
@@ -799,14 +856,21 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                       keywords={Array.isArray(opt.keywords) ? opt.keywords : JSON.parse(opt.keywords || '[]')}
                     />
                   );
-                  if (!isDpStep) return <React.Fragment key={oi}>{card}</React.Fragment>;
+                  if (!isDpStep && !isArchetypeStep) return <React.Fragment key={oi}>{card}</React.Fragment>;
+                  const selected = isDpStep ? oi === destinyPointChoice : oi === archetypeChoice;
                   return (
                     <button
                       key={oi}
                       type="button"
-                      className={`ptg-apotheosis-option-btn${oi === destinyPointChoice ? ' ptg-apotheosis-option-selected' : ''}`}
+                      className={`ptg-apotheosis-option-btn${selected ? ' ptg-apotheosis-option-selected' : ''}`}
                       onClick={() => {
-                        setDestinyPointChoice(oi);
+                        if (isDpStep) {
+                          setDestinyPointChoice(oi);
+                        } else {
+                          setArchetypeChoice(oi);
+                          const step2 = apotheosisSteps.find(s => /fill out the starting warscroll/i.test(s.step_title));
+                          applyArchetypeChoice(step2, stepData, oi);
+                        }
                         setWarlordSubStep(s => Math.min(warlordSteps.length - 1, s + 1));
                       }}
                     >
@@ -842,6 +906,15 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   const factionGridPositions = computeFactionGridPositions(factionsByAlliance);
 
   const warlordSteps = apotheosisSteps.length ? apotheosisSteps.map(s => s.step_title) : null;
+
+  // Auto-fill leaves the Warlord Name at its generic "<Faction> Hero"
+  // default rather than a real name — nudge the player to personalize it
+  // while they're already looking at this step, but only until they do.
+  const warlordDefaultName = (() => {
+    const factionObj = factions.find(f => f.faction_slug === selectedFaction);
+    return factionObj ? `${factionObj.faction} Hero` : '';
+  })();
+  const warlordNotYetNamed = !warlordName.trim() || warlordName === warlordDefaultName;
 
   return (
     <>
@@ -1167,7 +1240,12 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                         </div>
                         <div className="ptg-step-warlord-title">{warlordSubStep + 1}. {warlordSteps[warlordSubStep]}</div>
                         {/^fill out the starting warscroll$/i.test(warlordSteps[warlordSubStep] || '')
-                          ? <div className="ptg-wizard-body-placeholder">Your starting warscroll is already filled in on the right — every field is auto-populated from your faction. Nothing to do here; just check it over and move on to the next step.</div>
+                          ? (
+                            <div className="ptg-wizard-body-placeholder">
+                              <p>Your starting warscroll is already filled in on the right — every field is auto-populated from your faction. Nothing to do here; just check it over and move on to the next step.</p>
+                              {warlordNotYetNamed && <p>Name Them!</p>}
+                            </div>
+                          )
                           : (apotheosisLoading
                             ? <div className="ptg-wizard-body-placeholder">Loading…</div>
                             : renderApotheosisStep(apotheosisSteps[warlordSubStep]))}
