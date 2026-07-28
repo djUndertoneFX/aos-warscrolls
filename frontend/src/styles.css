@@ -4030,6 +4030,30 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 
 /* ── Warlord Warscroll replica ── */
 .ptg-warscroll-table-block { margin-bottom: 1.25rem; }
+/* Summary of every stateful "Train Your Warlord" pick (Companion, Origin/
+   Flaw, Battle Mount, its Upgrades, Other Upgrades) — sits between the
+   weapon tables and Keywords so those choices stay visible without
+   flipping back through the wizard's own sub-step tabs. */
+.ptg-warlord-choices-summary {
+  margin: 0.25rem 0 1.25rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid rgba(200,168,64,0.25);
+  border-radius: 3px;
+  background: rgba(200,168,64,0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.ptg-warlord-choice-row {
+  font-size: 0.8rem;
+  color: var(--text-dim, #b8b0a0);
+  line-height: 1.4;
+}
+.ptg-warlord-choice-label {
+  font-family: 'Cinzel', serif;
+  color: #c8a840;
+  letter-spacing: 0.03em;
+}
 .ptg-warscroll-table-title {
   font-family: 'Cinzel', serif;
   font-size: 0.75rem;

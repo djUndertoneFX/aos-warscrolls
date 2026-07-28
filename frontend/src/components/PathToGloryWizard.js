@@ -1079,6 +1079,15 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
       </div>
       {renderWeaponTable('Ranged Weapons', rangedWeapons, addRanged, updateRanged, removeRanged, true)}
       {renderWeaponTable('Melee Weapons', meleeWeapons, addMelee, updateMelee, removeMelee, false)}
+      {chosenOptionsSummary.length > 0 && (
+        <div className="ptg-warlord-choices-summary">
+          {chosenOptionsSummary.map((c, i) => (
+            <div key={i} className="ptg-warlord-choice-row">
+              <span className="ptg-warlord-choice-label">{c.label}:</span> {c.value}
+            </div>
+          ))}
+        </div>
+      )}
       <div className="ptg-field">
         <label>Keywords</label>
         <input type="text" value={warlordKeywordsLine1} onChange={e => setWarlordKeywordsLine1(e.target.value)} placeholder="HERO, INFANTRY, …" />
@@ -1147,6 +1156,44 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
 
     return { spent, total, remaining: total - spent };
   }, [apotheosisSteps, destinyPointChoice, archetypeChoice, companionChoice, mountChoice, originFlawChoice, battleMountUpgradesChoice, otherUpgradesChoice]);
+
+  // Resolves the same stateful "Train Your Warlord" picks dpTally sums
+  // costs from, but as a readable name list — shown on the Warlord
+  // Warscroll panel so the choices made across all those sub-steps stay
+  // visible in one place instead of only living in the wizard's own tabs.
+  const chosenOptionsSummary = React.useMemo(() => {
+    if (!apotheosisSteps.length) return [];
+    const companionStepData = apotheosisSteps.find(s => /choose a companion/i.test(s.step_title || ''));
+    const originFlawStepData = apotheosisSteps.find(s => /origin.*flaw/i.test(s.step_title || ''));
+    const mountStepData = apotheosisSteps.find(s => /choose a battle mount/i.test(s.step_title || ''));
+    const mountUpgradesStepData = apotheosisSteps.find(s => /pick any battle mount upgrades/i.test(s.step_title || ''));
+    const otherUpgradesStepData = apotheosisSteps.find(s => /pick any other upgrades/i.test(s.step_title || ''));
+
+    const lines = [];
+    if (companionChoice >= 0 && companionStepData?.options?.[companionChoice]) {
+      lines.push({ label: 'Companion', value: companionStepData.options[companionChoice].name });
+    }
+    if (originFlawStepData) {
+      const byGroup = {};
+      for (const o of originFlawStepData.options) { (byGroup[o.option_group] ??= []).push(o); }
+      const originIdx = originFlawChoice?.Origins;
+      const flawIdx = originFlawChoice?.Flaws;
+      if (originIdx != null && byGroup.Origins?.[originIdx]) lines.push({ label: 'Origin', value: byGroup.Origins[originIdx].name });
+      if (flawIdx != null && byGroup.Flaws?.[flawIdx]) lines.push({ label: 'Flaw', value: byGroup.Flaws[flawIdx].name });
+    }
+    if (mountChoice >= 0 && mountStepData?.options?.[mountChoice]) {
+      lines.push({ label: 'Battle Mount', value: mountStepData.options[mountChoice].name });
+    }
+    if (mountUpgradesStepData && battleMountUpgradesChoice.length) {
+      const names = battleMountUpgradesChoice.map(i => mountUpgradesStepData.options[i]?.name).filter(Boolean);
+      if (names.length) lines.push({ label: 'Battle Mount Upgrades', value: names.join(', ') });
+    }
+    if (otherUpgradesStepData && otherUpgradesChoice.length) {
+      const names = otherUpgradesChoice.map(i => otherUpgradesStepData.options[i]?.name).filter(Boolean);
+      if (names.length) lines.push({ label: 'Other Upgrades', value: names.join(', ') });
+    }
+    return lines;
+  }, [apotheosisSteps, companionChoice, originFlawChoice, mountChoice, battleMountUpgradesChoice, otherUpgradesChoice]);
 
   // One "Anvil of Apotheosis" step's content — an intro line plus its
   // options rendered as ability cards (reusing AbilityCard so cost badges,
