@@ -229,6 +229,11 @@ function initDb() {
   // nothing real to store/autofill for those.
   try { db.exec('ALTER TABLE faction_apotheosis_steps ADD COLUMN starting_weapon TEXT DEFAULT NULL'); } catch {}
   try { db.exec('ALTER TABLE faction_apotheosis_steps ADD COLUMN starting_keywords TEXT DEFAULT NULL'); } catch {}
+  // Some option cards (e.g. Idoneth's Abyssal Cephalopod Companion) grant 2+
+  // separate abilities with their own Passive/Reaction/timing banners rather
+  // than one flat effect paragraph — captured as their own ability-card-shaped
+  // JSON array so the frontend can render each with the normal phase-colored banner.
+  try { db.exec('ALTER TABLE faction_apotheosis_options ADD COLUMN sub_abilities TEXT DEFAULT NULL'); } catch {}
   // Lets the same saved-list mechanism hold either the player's own lists or
   // an opponent's lists they're tracking for reference — 'own' (default) or
   // 'enemy'. Army Builder's List/Enemy List dropdowns each show one pool;

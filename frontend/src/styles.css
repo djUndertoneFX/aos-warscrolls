@@ -3560,6 +3560,17 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   border-color: var(--gold);
   box-shadow: 0 0 0 2px var(--gold);
 }
+/* Companion (and similar) options that grant 2+ separate abilities — each
+   rendered as its own full phase-colored AbilityCard, indented under the
+   option's own card to show the parent/child relationship, same convention
+   as Battle Buddy's multi-card Unit Abilities grouping. */
+.ptg-apotheosis-sub-abilities {
+  margin-top: 0.5rem;
+  margin-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
 .ptg-campaign-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

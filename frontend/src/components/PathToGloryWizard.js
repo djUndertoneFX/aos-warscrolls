@@ -402,6 +402,11 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   // otherwise) rather than nothing chosen. Picking one rewrites the
   // starting warscroll's weapon/keywords via applyArchetypeChoice below.
   const [archetypeChoice, setArchetypeChoice] = useState(() => saved.archetypeChoice ?? 0);
+  // "Choose a Companion" is "up to 1" — genuinely optional, unlike Archetype
+  // — so -1 ("Skip Companion") is the sensible default rather than forcing
+  // one of the real options. companionChoice is an index into that step's
+  // options array, or -1 for skipped.
+  const [companionChoice, setCompanionChoice] = useState(() => saved.companionChoice ?? -1);
 
   // Per-faction snapshots of the warlord fields above (+ sub-step position),
   // keyed by faction slug — so switching faction A → B → back to A restores
@@ -528,7 +533,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     const changed = prevFaction !== selectedFaction;
 
     if (changed && prevFaction) {
-      const leaving = { warlordName, warlordKeywordsLine1, warlordKeywordsLine2, rangedWeapons, meleeWeapons, warlordMove, warlordHealth, warlordSave, warlordControl, warlordSubStep, destinyPointChoice, archetypeChoice };
+      const leaving = { warlordName, warlordKeywordsLine1, warlordKeywordsLine2, rangedWeapons, meleeWeapons, warlordMove, warlordHealth, warlordSave, warlordControl, warlordSubStep, destinyPointChoice, archetypeChoice, companionChoice };
       setWarlordSnapshotsByFaction(prev => ({ ...prev, [prevFaction]: leaving }));
     }
     prevSelectedFactionRef.current = selectedFaction;
@@ -549,6 +554,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
       setWarlordSubStep(existing.warlordSubStep ?? 0);
       setDestinyPointChoice(existing.destinyPointChoice ?? 2);
       setArchetypeChoice(existing.archetypeChoice ?? 0);
+      setCompanionChoice(existing.companionChoice ?? -1);
 
       // Snapshots saved before starting-warscroll auto-fill existed have
       // nothing in these fields even though this faction has apotheosis data
@@ -597,6 +603,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     setWarlordSubStep(0);
     setDestinyPointChoice(2);
     setArchetypeChoice(0);
+    setCompanionChoice(-1);
     axios.get(`/api/apotheosis/${selectedFaction}`).then(res => {
       if (cancelled) return;
       const steps = res.data.steps ?? [];
@@ -740,7 +747,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     const snapshot = {
       step, activeDoc, presentMode, campaign, customCampaignName, selectedFaction, warlordSubStep,
       warlordName, warlordKeywordsLine1, warlordKeywordsLine2, rangedWeapons, meleeWeapons,
-      warlordMove, warlordHealth, warlordSave, warlordControl, warlordSnapshotsByFaction, destinyPointChoice, archetypeChoice,
+      warlordMove, warlordHealth, warlordSave, warlordControl, warlordSnapshotsByFaction, destinyPointChoice, archetypeChoice, companionChoice,
       armyName, heraldryImage, realmOfOrigin, customRealmName, faction, battleFormation, gloryPoints, gloryRounds,
       currentQuest, questPoints, questNotes, questsCompleted, background, notableEvents,
       spellLore, prayerLore, manifestationLore,
@@ -751,7 +758,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   }, [
     step, activeDoc, presentMode, campaign, customCampaignName, selectedFaction, warlordSubStep,
     warlordName, warlordKeywordsLine1, warlordKeywordsLine2, rangedWeapons, meleeWeapons,
-    warlordMove, warlordHealth, warlordSave, warlordControl, warlordSnapshotsByFaction, destinyPointChoice,
+    warlordMove, warlordHealth, warlordSave, warlordControl, warlordSnapshotsByFaction, destinyPointChoice, archetypeChoice, companionChoice,
     armyName, heraldryImage, realmOfOrigin, customRealmName, faction, battleFormation, gloryPoints, gloryRounds,
     currentQuest, questPoints, questNotes, questsCompleted, background, notableEvents,
     spellLore, prayerLore, manifestationLore,
@@ -824,13 +831,17 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   // ability-shaped Origin/Flaw or a plain name+cost+effect upgrade row).
   // "Set a Destiny Point Limit" and "Choose an Archetype" are both genuine
   // single-choice picks (always exactly 1 of the options shown, no partial
-  // bookkeeping) — the two steps scoped to be clickable buttons. Selecting
-  // an option advances to the next sub-step immediately, same as flipping a
-  // physical card over. Archetype additionally rewrites the starting
-  // warscroll's weapon/keywords via applyArchetypeChoice.
+  // bookkeeping) — clickable buttons that advance to the next sub-step
+  // immediately, same as flipping a physical card over. Archetype
+  // additionally rewrites the starting warscroll's weapon/keywords via
+  // applyArchetypeChoice. "Choose a Companion" is "up to 1" (genuinely
+  // optional) — same single-select button treatment, but with an explicit
+  // "Skip Companion" option prepended and selected by default instead of
+  // forcing one of the real picks.
   const renderApotheosisStep = stepData => {
     const isDpStep = /destiny point limit/i.test(stepData.step_title || '');
     const isArchetypeStep = /choose an archetype/i.test(stepData.step_title || '');
+    const isCompanionStep = /choose a companion/i.test(stepData.step_title || '');
     return (
     <>
       {stepData.intro_text && <p className="ptg-apotheosis-intro">{stepData.intro_text}</p>}
@@ -849,15 +860,37 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
             <div key={gi} className="ptg-apotheosis-group">
               {g.group && <div className="ptg-apotheosis-group-title">{g.group}</div>}
               <div className="ptg-apotheosis-options-grid">
+                {isCompanionStep && gi === 0 && (
+                  <button
+                    type="button"
+                    className={`ptg-apotheosis-option-btn ptg-apotheosis-skip-btn${companionChoice === -1 ? ' ptg-apotheosis-option-selected' : ''}`}
+                    onClick={() => {
+                      setCompanionChoice(-1);
+                      setWarlordSubStep(s => Math.min(warlordSteps.length - 1, s + 1));
+                    }}
+                  >
+                    Skip Companion
+                  </button>
+                )}
                 {g.items.map((opt, oi) => {
+                  const subAbilities = Array.isArray(opt.sub_abilities) ? opt.sub_abilities : JSON.parse(opt.sub_abilities || '[]');
                   const card = (
-                    <AbilityCard
-                      ab={{ ...opt, bullets: Array.isArray(opt.bullets) ? opt.bullets : JSON.parse(opt.bullets || '[]') }}
-                      keywords={Array.isArray(opt.keywords) ? opt.keywords : JSON.parse(opt.keywords || '[]')}
-                    />
+                    <>
+                      <AbilityCard
+                        ab={{ ...opt, bullets: Array.isArray(opt.bullets) ? opt.bullets : JSON.parse(opt.bullets || '[]') }}
+                        keywords={Array.isArray(opt.keywords) ? opt.keywords : JSON.parse(opt.keywords || '[]')}
+                      />
+                      {subAbilities.length > 0 && (
+                        <div className="ptg-apotheosis-sub-abilities">
+                          {subAbilities.map((sub, si) => (
+                            <AbilityCard key={si} ab={sub} keywords={sub.keywords || []} />
+                          ))}
+                        </div>
+                      )}
+                    </>
                   );
-                  if (!isDpStep && !isArchetypeStep) return <React.Fragment key={oi}>{card}</React.Fragment>;
-                  const selected = isDpStep ? oi === destinyPointChoice : oi === archetypeChoice;
+                  if (!isDpStep && !isArchetypeStep && !isCompanionStep) return <React.Fragment key={oi}>{card}</React.Fragment>;
+                  const selected = isDpStep ? oi === destinyPointChoice : isArchetypeStep ? oi === archetypeChoice : oi === companionChoice;
                   return (
                     <button
                       key={oi}
@@ -866,10 +899,12 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                       onClick={() => {
                         if (isDpStep) {
                           setDestinyPointChoice(oi);
-                        } else {
+                        } else if (isArchetypeStep) {
                           setArchetypeChoice(oi);
                           const step2 = apotheosisSteps.find(s => /fill out the starting warscroll/i.test(s.step_title));
                           applyArchetypeChoice(step2, stepData, oi);
+                        } else {
+                          setCompanionChoice(oi);
                         }
                         setWarlordSubStep(s => Math.min(warlordSteps.length - 1, s + 1));
                       }}

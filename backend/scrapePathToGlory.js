@@ -169,6 +169,26 @@ function parseCardOptions($, block, group) {
       const categoryLabel = normalizeText($nameEl.text());
       $nameEl.remove();
 
+      // Some cards (e.g. Idoneth's Abyssal Cephalopod Companion) grant 2+
+      // separate abilities, each its own full Passive/Reaction-timed card —
+      // pull those out via the shared ability parser BEFORE flattening the
+      // rest to plain prose, so they render as proper phase-colored ability
+      // cards instead of getting mashed into one paragraph of run-on text.
+      const subAbilities = [];
+      $scope.find('.abBody').each((_, abBodyEl) => {
+        const $wrap = $frag(abBodyEl).closest('.BreakInsideAvoid');
+        const wrapEl = $wrap.length ? $wrap.get(0) : $frag(abBodyEl).parent().get(0);
+        const parsed = parseAbilityBlock($frag, wrapEl, true);
+        if (parsed) {
+          subAbilities.push({
+            ...parsed,
+            bullets: JSON.parse(parsed.bullets || '[]'),
+            keywords: parsed.keywords ? parsed.keywords.split(',').map(k => k.trim()).filter(Boolean) : [],
+          });
+        }
+        ($wrap.length ? $wrap : $frag(abBodyEl)).remove();
+      });
+
       const { text: effect, bullets } = flattenEffect($frag, $scope);
       // Pull a leading "NAME: rest of text" pattern out as the real name when
       // the hi_custom label is just a generic category (Companion, Flaw, etc).
@@ -180,7 +200,7 @@ function parseCardOptions($, block, group) {
         finalEffect = normalizeText(leadMatch[2]);
       }
       if (!name) continue;
-      options.push({ option_group: group, name, cost, timing: null, declare: null, effect: finalEffect, bullets, keywords: [], lore_text: null });
+      options.push({ option_group: group, name, cost, timing: null, declare: null, effect: finalEffect, bullets, keywords: [], lore_text: null, sub_abilities: subAbilities });
     }
   }
   return options;
@@ -415,9 +435,9 @@ async function scrapeAllApotheosis(targetSlug = null) {
   `);
   const insertOption = db.prepare(`
     INSERT INTO faction_apotheosis_options
-      (faction_slug, faction_name, step_number, option_group, name, cost, timing, declare, effect, bullets, keywords, lore_text, sort_order)
+      (faction_slug, faction_name, step_number, option_group, name, cost, timing, declare, effect, bullets, keywords, lore_text, sort_order, sub_abilities)
     VALUES
-      (@faction_slug, @faction_name, @step_number, @option_group, @name, @cost, @timing, @declare, @effect, @bullets, @keywords, @lore_text, @sort_order)
+      (@faction_slug, @faction_name, @step_number, @option_group, @name, @cost, @timing, @declare, @effect, @bullets, @keywords, @lore_text, @sort_order, @sub_abilities)
   `);
 
   let totalSteps = 0, totalOptions = 0, factionsWithData = 0;
@@ -448,6 +468,7 @@ async function scrapeAllApotheosis(targetSlug = null) {
         bullets: JSON.stringify(o.bullets || []),
         keywords: JSON.stringify(o.keywords || []),
         lore_text: o.lore_text || null,
+        sub_abilities: o.sub_abilities?.length ? JSON.stringify(o.sub_abilities) : null,
       });
     })();
     console.log(`  ${steps.length} steps, ${options.length} options`);

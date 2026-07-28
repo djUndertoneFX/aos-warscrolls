@@ -90,10 +90,17 @@ function parseAbilityBlock($, block, skipNestGuard = false) {
     $(node).replaceWith('\n' + $(node).text());
   });
 
+  // Trailing prose that follows a <ul> list (a sibling text node, not its own
+  // <li>/<p>/<br>/<div>) gets no newline/space from the block-element pass
+  // above and runs straight into the last list item's text with no
+  // separator at all — same "missing space after . or :" gap fixed for
+  // intro_text in scrapePathToGlory.js, applied here too since every ability
+  // card site-wide goes through this parser.
   const bodyText = bodyClone.text()
     .replace(/[ \t]+/g, ' ')
     .replace(/\n[ \t]+/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
+    .replace(/([.:])(?=[A-Z])/g, '$1 ')
     .trim();
 
   const declareMatch = bodyText.match(/Declare:\s*([\s\S]+?)(?=\n*Effect:)/i);
