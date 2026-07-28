@@ -3464,7 +3464,7 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
    title doesn't double up its own. */
 .ptg-step-warlord-title-row {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: center;
   gap: 0.75rem;
   margin-bottom: 1.25rem;
@@ -3477,16 +3477,27 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   border-bottom: none;
 }
 .ptg-dp-tally {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
   font-family: 'Cinzel', serif;
-  font-size: 1rem;
-  letter-spacing: 0.04em;
   color: #c8a840;
   white-space: nowrap;
 }
-/* Overspent — bright bold red, unmistakable at a glance. */
-.ptg-dp-tally-over {
-  color: #ff2020;
+.ptg-dp-tally-lbl {
+  font-size: 0.6rem;
+  letter-spacing: 0.15em;
+}
+.ptg-dp-tally-val {
+  font-size: 1.05rem;
   font-weight: 700;
+}
+/* Overspent — bright bold red, unmistakable at a glance. */
+.ptg-dp-tally-over,
+.ptg-dp-tally-over .ptg-dp-tally-lbl,
+.ptg-dp-tally-over .ptg-dp-tally-val {
+  color: #ff2020;
   text-shadow: 0 0 8px rgba(255,32,32,0.55);
 }
 /* "Train your Warlord" 2-panel layout: left = the sub-step wizard flow
