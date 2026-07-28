@@ -3595,12 +3595,18 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
    buttons it needs its own card-like chrome to read as equally substantial
    and full-width in the grid, not just bare unstyled text. */
 .ptg-apotheosis-skip-btn {
+  /* .ptg-apotheosis-option-btn's `all: unset` resets box-sizing back to the
+     content-box initial value, overriding the site-wide border-box reset —
+     without this, width:100% + this padding/border render wider than the
+     grid cell (sibling cards avoid it since their border/padding live on
+     the inner .gw-ability-card div instead of the button itself). */
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
-  min-height: 88px;
-  padding: 1rem 1.25rem;
+  min-height: 44px;
+  padding: 0.5rem 1.25rem;
   border: 1px solid rgba(200,168,64,0.3);
   border-radius: 2px;
   background: rgba(200,168,64,0.05);
@@ -3858,8 +3864,7 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 .ptg-doc-full-img {
   display: block;
   width: 100%;
-  height: 62vh;
-  flex: 0 0 auto;
+  height: 100%;
   /* the base rule's blur-up placeholder is transform:scale(1.12) — on this
      override's definite box (instead of sized-to-its-own-content, the
      normal case elsewhere) that scale would otherwise paint past this
@@ -3877,6 +3882,30 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   inset: 0;
   width: 100%;
   height: 100%;
+}
+
+/* Officiant view: each doc page + its live-data text overlay, positioned
+   against the image's actual visible rect (see useContainImageBox) rather
+   than this wrapper's own box, since the image itself is pillar/letterboxed
+   inside .ptg-doc-full-img. */
+.ptg-doc-page-wrap {
+  position: relative;
+  width: 100%;
+  height: 62vh;
+  flex: 0 0 auto;
+}
+.ptg-doc-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.ptg-doc-overlay-field {
+  position: absolute;
+  color: #262019;
+  font-family: 'EB Garamond', Georgia, 'Times New Roman', serif;
+  line-height: 1.2;
+  white-space: pre-wrap;
+  overflow: hidden;
 }
 
 .ptg-doc-editor-header {

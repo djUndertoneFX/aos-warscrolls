@@ -159,6 +159,245 @@ function ProgressiveImg({ src, micro, avgColor, alt, className }) {
   );
 }
 
+// All 5 PtG doc scans share the same source aspect ratio (the printed
+// page). `.ptg-doc-full-img` sizes its box to a fixed height with
+// object-fit:contain (see styles.css comment on that rule for why — avoids
+// a scroll-inside-scroll problem), which means the image is pillarboxed or
+// letterboxed inside that box depending on the modal's current width vs
+// height. A field positioned by simple %-of-container coordinates would
+// drift off the actual artwork by however wide those bars are. This hook
+// computes the real visible image rect (in px, relative to the measured
+// container) so the overlay can be positioned against the image itself,
+// not the outer box — recalculated on resize since the bars' width changes
+// with viewport/modal width.
+const PTG_DOC_ASPECT = 1524 / 1985;
+function useContainImageBox(containerRef) {
+  const [box, setBox] = useState({ left: 0, top: 0, width: 0, height: 0 });
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const compute = () => {
+      const cw = el.clientWidth, ch = el.clientHeight;
+      if (!cw || !ch) return;
+      const containerAspect = cw / ch;
+      let w, h, left, top;
+      if (containerAspect > PTG_DOC_ASPECT) {
+        h = ch; w = ch * PTG_DOC_ASPECT; left = (cw - w) / 2; top = 0;
+      } else {
+        w = cw; h = cw / PTG_DOC_ASPECT; left = 0; top = (ch - h) / 2;
+      }
+      setBox({ left, top, width: w, height: h });
+    };
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [containerRef]);
+  return box;
+}
+
+// A single overlaid text field — `spec` gives position/size as a % of the
+// doc image's own dimensions (from useContainImageBox), so it tracks the
+// artwork regardless of viewport size or pillarbox/letterbox bars.
+// fontSize is expressed as a fraction of the image's rendered width for the
+// same reason (a fixed rem value wouldn't scale with the image).
+function OverlayField({ box, spec, children }) {
+  if (!box.width) return null;
+  const style = {
+    position: 'absolute',
+    left: box.left + (spec.left / 100) * box.width,
+    top: box.top + (spec.top / 100) * box.height,
+    width: spec.width != null ? (spec.width / 100) * box.width : undefined,
+    fontSize: (spec.fontSize ?? 0.016) * box.width,
+    textAlign: spec.align || 'left',
+    transform: spec.centerX ? 'translateX(-50%)' : undefined,
+  };
+  return <div className="ptg-doc-overlay-field" style={style}>{children}</div>;
+}
+
+// Field position tables below are first-pass estimates read off the scanned
+// templates (frontend/public/ptg/*.jpg, all 1524x1985) — close, not
+// pixel-calibrated. Expect to nudge individual `left`/`top`/`width` values
+// after seeing them rendered against the real image.
+function centerField(left, top, width, fontSize) {
+  return { left, top, width, align: 'center', centerX: true, fontSize };
+}
+
+function buildWarlordOverlayFields(d) {
+  const fields = [];
+  fields.push({ spec: centerField(10, 8.3, 10, 0.026), value: d.warlordMove });
+  fields.push({ spec: centerField(5.5, 13, 8, 0.026), value: d.warlordHealth });
+  fields.push({ spec: centerField(19.5, 13, 8, 0.026), value: d.warlordSave });
+  fields.push({ spec: centerField(10, 17.2, 10, 0.026), value: d.warlordControl });
+  fields.push({ spec: centerField(37, 13, 46, 0.028), value: d.warlordName });
+
+  const rangedRowTops = [24.6, 28.6, 32.6];
+  (d.rangedWeapons || []).slice(0, 3).forEach((w, i) => {
+    const top = rangedRowTops[i];
+    const nameVal = [w.name, w.abilities].filter(Boolean).join('\n');
+    fields.push({ spec: { left: 10, top, width: 44, fontSize: 0.016 }, value: nameVal });
+    fields.push({ spec: centerField(55.5, top, 5.5, 0.016), value: w.rng });
+    fields.push({ spec: centerField(61.5, top, 5.5, 0.016), value: w.atk });
+    fields.push({ spec: centerField(67.5, top, 5.5, 0.016), value: w.hit });
+    fields.push({ spec: centerField(73.5, top, 5.5, 0.016), value: w.wnd });
+    fields.push({ spec: centerField(79.5, top, 5.5, 0.016), value: w.rnd });
+    fields.push({ spec: centerField(86, top, 6, 0.016), value: w.dmg });
+  });
+
+  const meleeRowTops = [36.8, 40.8, 44.8, 48.8];
+  (d.meleeWeapons || []).slice(0, 4).forEach((w, i) => {
+    const top = meleeRowTops[i];
+    const nameVal = [w.name, w.abilities].filter(Boolean).join('\n');
+    fields.push({ spec: { left: 10, top, width: 51, fontSize: 0.016 }, value: nameVal });
+    fields.push({ spec: centerField(62.5, top, 5.5, 0.016), value: w.atk });
+    fields.push({ spec: centerField(68.5, top, 5.5, 0.016), value: w.hit });
+    fields.push({ spec: centerField(74.5, top, 5.5, 0.016), value: w.wnd });
+    fields.push({ spec: centerField(80.5, top, 5.5, 0.016), value: w.rnd });
+    fields.push({ spec: centerField(87, top, 6, 0.016), value: w.dmg });
+  });
+
+  const kwText = [d.warlordKeywordsLine1, d.warlordKeywordsLine2].filter(Boolean).join('\n');
+  fields.push({ spec: { left: 24, top: 95, width: 68, fontSize: 0.015 }, value: kwText });
+  return fields;
+}
+
+function buildRosterOverlayFields(d) {
+  const fields = [];
+  fields.push({ spec: { left: 27, top: 19, width: 20, fontSize: 0.022 }, value: d.armyName });
+  fields.push({ spec: { left: 52, top: 19, width: 20, fontSize: 0.022 }, value: d.realmOfOrigin === 'custom' ? d.customRealmName : d.realmLabel });
+  fields.push({ spec: centerField(76, 18, 16, 0.032), value: d.gloryPoints });
+  fields.push({ spec: { left: 27, top: 27.5, width: 20, fontSize: 0.022 }, value: d.factionLabel });
+  fields.push({ spec: { left: 52, top: 27.5, width: 20, fontSize: 0.022 }, value: d.battleFormation });
+
+  fields.push({ spec: { left: 9, top: 41, width: 33, fontSize: 0.018 }, value: d.currentQuest });
+  fields.push({ spec: { left: 44, top: 41, width: 20, fontSize: 0.018 }, value: d.questPoints });
+  fields.push({ spec: { left: 9, top: 46.5, width: 33, fontSize: 0.018 }, value: d.questNotes });
+  fields.push({ spec: { left: 44, top: 46.5, width: 20, fontSize: 0.018 }, value: d.questsCompleted });
+
+  fields.push({ spec: { left: 53, top: 38, width: 42, fontSize: 0.015 }, value: d.background });
+  fields.push({ spec: { left: 53, top: 46, width: 42, fontSize: 0.015 }, value: d.notableEvents });
+
+  const loreCols = [
+    { rows: d.spellLore, left: 9 },
+    { rows: d.prayerLore, left: 40 },
+    { rows: d.manifestationLore, left: 70 },
+  ];
+  for (const col of loreCols) {
+    (col.rows || []).slice(0, 6).forEach((v, i) => {
+      fields.push({ spec: { left: col.left, top: 72.5 + i * 4.15, width: 27, fontSize: 0.015 }, value: v });
+    });
+  }
+  return fields;
+}
+
+function buildOobOverlayFields(d) {
+  const fields = [];
+  fields.push({ spec: { left: 8, top: 17.8, width: 26, fontSize: 0.02 }, value: d.warlordName });
+  fields.push({ spec: { left: 37, top: 17.8, width: 24, fontSize: 0.02 }, value: d.warlordWarscroll });
+  fields.push({ spec: { left: 64, top: 17.8, width: 14, fontSize: 0.02 }, value: d.warlordRank });
+  fields.push({ spec: centerField(80, 17.8, 12, 0.02), value: d.warlordRenown });
+  fields.push({ spec: { left: 8, top: 22.5, width: 26, fontSize: 0.018 }, value: d.warlordEnhancements });
+  fields.push({ spec: { left: 37, top: 22.5, width: 24, fontSize: 0.018 }, value: d.warlordPathLabel });
+  fields.push({ spec: { left: 64, top: 22.5, width: 29, fontSize: 0.018 }, value: d.warlordPathAbility });
+
+  const unitBlockTops = [33.2, 46.2, 59.3, 72.3, 85.3];
+  (d.oobUnits || []).slice(0, 5).forEach((u, i) => {
+    const row1 = unitBlockTops[i];
+    const row2 = row1 + 5;
+    fields.push({ spec: { left: 8, top: row1, width: 26, fontSize: 0.018 }, value: u.name });
+    fields.push({ spec: { left: 37, top: row1, width: 24, fontSize: 0.018 }, value: u.warscroll });
+    fields.push({ spec: { left: 64, top: row1, width: 14, fontSize: 0.018 }, value: u.rank });
+    fields.push({ spec: centerField(80, row1, 12, 0.018), value: u.renown });
+    fields.push({ spec: { left: 8, top: row2, width: 26, fontSize: 0.016 }, value: u.enhancements });
+    fields.push({ spec: { left: 37, top: row2, width: 38, fontSize: 0.016 }, value: u.pathAbility });
+    fields.push({ spec: centerField(80, row2, 12, 0.016), value: u.reinforced });
+  });
+  return fields;
+}
+
+// Regiments Table 1 (5 slots: 5-row General's Regiment + two 4-row
+// Regiments) live on Army Roster page 1; Regiments 4-5 + Auxiliary Units +
+// totals + Notes live on page 2 — matches the printed 2-page split.
+function buildArmyOverlayFields(d, pageIndex) {
+  const fields = [];
+  const regimentRow = (r, top) => {
+    if (!r) return;
+    fields.push({ spec: { left: 22, top, width: 37, fontSize: 0.017 }, value: r.name });
+    fields.push({ spec: centerField(60, top, 8, 0.017), value: r.size });
+    fields.push({ spec: { left: 69, top, width: 17, fontSize: 0.017 }, value: r.notes });
+    fields.push({ spec: centerField(87, top, 9, 0.017), value: r.points });
+  };
+
+  if (pageIndex === 0) {
+    fields.push({ spec: { left: 16, top: 15.8, width: 30, fontSize: 0.02 }, value: d.commander });
+    fields.push({ spec: { left: 41, top: 15.8, width: 30, fontSize: 0.02 }, value: d.armyRosterName });
+    fields.push({ spec: centerField(74, 15.8, 16, 0.02), value: d.pointsLimit });
+    fields.push({ spec: { left: 16, top: 23.5, width: 30, fontSize: 0.02 }, value: d.armyRosterFaction });
+    fields.push({ spec: { left: 41, top: 23.5, width: 30, fontSize: 0.02 }, value: d.armyRosterFormation });
+
+    const reg1 = d.regiments[0];
+    const reg1Tops = [40.7, 43.9, 47.1, 50.3, 53.5];
+    (reg1?.units || []).slice(0, 5).forEach((u, i) => regimentRow(u, reg1Tops[i]));
+
+    const reg2 = d.regiments[1];
+    const reg2Tops = [60.9, 64.1, 67.3, 70.5];
+    (reg2?.units || []).slice(0, 4).forEach((u, i) => regimentRow(u, reg2Tops[i]));
+
+    const reg3 = d.regiments[2];
+    const reg3Tops = [80.9, 84.1, 87.3, 90.5];
+    (reg3?.units || []).slice(0, 4).forEach((u, i) => regimentRow(u, reg3Tops[i]));
+  } else {
+    const reg4 = d.regiments[3];
+    const reg4Tops = [15.9, 19.1, 22.3, 25.5];
+    (reg4?.units || []).slice(0, 4).forEach((u, i) => regimentRow(u, reg4Tops[i]));
+
+    const reg5 = d.regiments[4];
+    const reg5Tops = [33.4, 36.6, 39.8, 43];
+    (reg5?.units || []).slice(0, 4).forEach((u, i) => regimentRow(u, reg5Tops[i]));
+
+    fields.push({ spec: centerField(80, 50.3, 15, 0.02), value: d.regimentsTotal != null ? `${d.regimentsTotal}pts` : null });
+
+    const auxTops = [61.3, 64.5, 67.7, 70.9, 74.1];
+    (d.auxUnits || []).slice(0, 5).forEach((u, i) => regimentRow(u, auxTops[i]));
+
+    fields.push({ spec: centerField(80, 80.3, 15, 0.02), value: d.auxTotal != null ? `${d.auxTotal}pts` : null });
+    fields.push({ spec: centerField(80, 83, 15, 0.02), value: d.armyUnitsTotal != null ? `${d.armyUnitsTotal}pts` : null });
+    fields.push({ spec: { left: 20, top: 87.5, width: 70, fontSize: 0.017 }, value: d.armyNotes });
+  }
+  return fields;
+}
+
+function buildOverlayFields(docKey, pageIndex, d) {
+  switch (docKey) {
+    case 'warlord': return buildWarlordOverlayFields(d);
+    case 'roster':  return buildRosterOverlayFields(d);
+    case 'oob':     return buildOobOverlayFields(d);
+    case 'army':    return buildArmyOverlayFields(d, pageIndex);
+    default: return [];
+  }
+}
+
+// One doc page: the scan image plus its live-data overlay. A real component
+// (not a plain render-helper closure like the rest of this file's
+// render*() functions) because it needs its own useContainImageBox hook —
+// hooks can't live in a function that's sometimes not called at all
+// (this whole page is skipped whenever presentMode is 'replica').
+function DocPage({ img, alt, docKey, pageIndex, data }) {
+  const containerRef = useRef(null);
+  const box = useContainImageBox(containerRef);
+  const fields = buildOverlayFields(docKey, pageIndex, data).filter(f => f.value);
+  return (
+    <div className="ptg-doc-page-wrap" ref={containerRef}>
+      <ProgressiveImg src={img.src} micro={img.micro} avgColor={img.avgColor} alt={alt} className="ptg-doc-full-img" />
+      <div className="ptg-doc-overlay">
+        {fields.map((f, i) => (
+          <OverlayField key={i} box={box} spec={f.spec}>{f.value}</OverlayField>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function DocThumb({ doc, active, onClick }) {
   return (
     <button
@@ -420,6 +659,9 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   // mutually exclusive) — an array of selected option indices, toggled
   // independently, empty by default.
   const [otherUpgradesChoice, setOtherUpgradesChoice] = useState(() => saved.otherUpgradesChoice ?? []);
+  // "Pick any Battle Mount Upgrades" — same shape/semantics as Other
+  // Upgrades above (true multi-select, any number, no mutual exclusivity).
+  const [battleMountUpgradesChoice, setBattleMountUpgradesChoice] = useState(() => saved.battleMountUpgradesChoice ?? []);
 
   // Per-faction snapshots of the warlord fields above (+ sub-step position),
   // keyed by faction slug — so switching faction A → B → back to A restores
@@ -546,7 +788,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     const changed = prevFaction !== selectedFaction;
 
     if (changed && prevFaction) {
-      const leaving = { warlordName, warlordKeywordsLine1, warlordKeywordsLine2, rangedWeapons, meleeWeapons, warlordMove, warlordHealth, warlordSave, warlordControl, warlordSubStep, destinyPointChoice, archetypeChoice, companionChoice, originFlawChoice, mountChoice, otherUpgradesChoice };
+      const leaving = { warlordName, warlordKeywordsLine1, warlordKeywordsLine2, rangedWeapons, meleeWeapons, warlordMove, warlordHealth, warlordSave, warlordControl, warlordSubStep, destinyPointChoice, archetypeChoice, companionChoice, originFlawChoice, mountChoice, otherUpgradesChoice, battleMountUpgradesChoice };
       setWarlordSnapshotsByFaction(prev => ({ ...prev, [prevFaction]: leaving }));
     }
     prevSelectedFactionRef.current = selectedFaction;
@@ -571,6 +813,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
       setOriginFlawChoice(existing.originFlawChoice ?? {});
       setMountChoice(existing.mountChoice ?? -1);
       setOtherUpgradesChoice(existing.otherUpgradesChoice ?? []);
+      setBattleMountUpgradesChoice(existing.battleMountUpgradesChoice ?? []);
 
       // Snapshots saved before starting-warscroll auto-fill existed have
       // nothing in these fields even though this faction has apotheosis data
@@ -623,6 +866,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     setOriginFlawChoice({});
     setMountChoice(-1);
     setOtherUpgradesChoice([]);
+    setBattleMountUpgradesChoice([]);
     axios.get(`/api/apotheosis/${selectedFaction}`).then(res => {
       if (cancelled) return;
       const steps = res.data.steps ?? [];
@@ -766,7 +1010,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     const snapshot = {
       step, activeDoc, presentMode, campaign, customCampaignName, selectedFaction, warlordSubStep,
       warlordName, warlordKeywordsLine1, warlordKeywordsLine2, rangedWeapons, meleeWeapons,
-      warlordMove, warlordHealth, warlordSave, warlordControl, warlordSnapshotsByFaction, destinyPointChoice, archetypeChoice, companionChoice, originFlawChoice, mountChoice, otherUpgradesChoice,
+      warlordMove, warlordHealth, warlordSave, warlordControl, warlordSnapshotsByFaction, destinyPointChoice, archetypeChoice, companionChoice, originFlawChoice, mountChoice, otherUpgradesChoice, battleMountUpgradesChoice,
       armyName, heraldryImage, realmOfOrigin, customRealmName, faction, battleFormation, gloryPoints, gloryRounds,
       currentQuest, questPoints, questNotes, questsCompleted, background, notableEvents,
       spellLore, prayerLore, manifestationLore,
@@ -777,7 +1021,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   }, [
     step, activeDoc, presentMode, campaign, customCampaignName, selectedFaction, warlordSubStep,
     warlordName, warlordKeywordsLine1, warlordKeywordsLine2, rangedWeapons, meleeWeapons,
-    warlordMove, warlordHealth, warlordSave, warlordControl, warlordSnapshotsByFaction, destinyPointChoice, archetypeChoice, companionChoice, originFlawChoice, mountChoice, otherUpgradesChoice,
+    warlordMove, warlordHealth, warlordSave, warlordControl, warlordSnapshotsByFaction, destinyPointChoice, archetypeChoice, companionChoice, originFlawChoice, mountChoice, otherUpgradesChoice, battleMountUpgradesChoice,
     armyName, heraldryImage, realmOfOrigin, customRealmName, faction, battleFormation, gloryPoints, gloryRounds,
     currentQuest, questPoints, questNotes, questsCompleted, background, notableEvents,
     spellLore, prayerLore, manifestationLore,
@@ -853,13 +1097,12 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     return m[1] === '+' ? n : -n;
   };
 
-  // Running Destiny Point spent/total across every stateful choice in "Train
-  // Your Warlord" — total starts at the chosen DP-limit tier's value and
-  // grows with Flaw bonuses (flaws grant extra points to spend elsewhere,
-  // per the step's own intro text); spent is the sum of every consuming
-  // pick's cost magnitude. Battle Mount Upgrades isn't included since that
-  // step is still read-only (never wired to selection state), so anything
-  // picked there on paper won't show up here.
+  // Running Destiny Point remaining/total across every stateful choice in
+  // "Train Your Warlord" — total starts at the chosen DP-limit tier's value
+  // and grows with Flaw bonuses (flaws grant extra points to spend
+  // elsewhere, per the step's own intro text); remaining is total minus the
+  // sum of every consuming pick's cost magnitude — a spend-down, not an
+  // accumulator, matching how the paper form tracks it.
   const dpTally = React.useMemo(() => {
     if (!apotheosisSteps.length) return null;
     const dpStepData        = apotheosisSteps.find(s => /destiny point limit/i.test(s.step_title || ''));
@@ -867,6 +1110,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     const companionStepData = apotheosisSteps.find(s => /choose a companion/i.test(s.step_title || ''));
     const originFlawStepData = apotheosisSteps.find(s => /origin.*flaw/i.test(s.step_title || ''));
     const mountStepData     = apotheosisSteps.find(s => /choose a battle mount/i.test(s.step_title || ''));
+    const mountUpgradesStepData = apotheosisSteps.find(s => /pick any battle mount upgrades/i.test(s.step_title || ''));
     const otherUpgradesStepData = apotheosisSteps.find(s => /pick any other upgrades/i.test(s.step_title || ''));
 
     let total = 0;
@@ -890,14 +1134,19 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
       if (originIdx != null && byGroup.Origins?.[originIdx]) applyCost(byGroup.Origins[originIdx].cost);
       if (flawIdx != null && byGroup.Flaws?.[flawIdx]) applyCost(byGroup.Flaws[flawIdx].cost);
     }
+    if (mountUpgradesStepData) {
+      for (const idx of battleMountUpgradesChoice) {
+        if (mountUpgradesStepData.options[idx]) applyCost(mountUpgradesStepData.options[idx].cost);
+      }
+    }
     if (otherUpgradesStepData) {
       for (const idx of otherUpgradesChoice) {
         if (otherUpgradesStepData.options[idx]) applyCost(otherUpgradesStepData.options[idx].cost);
       }
     }
 
-    return { spent, total };
-  }, [apotheosisSteps, destinyPointChoice, archetypeChoice, companionChoice, mountChoice, originFlawChoice, otherUpgradesChoice]);
+    return { spent, total, remaining: total - spent };
+  }, [apotheosisSteps, destinyPointChoice, archetypeChoice, companionChoice, mountChoice, originFlawChoice, battleMountUpgradesChoice, otherUpgradesChoice]);
 
   // One "Anvil of Apotheosis" step's content — an intro line plus its
   // options rendered as ability cards (reusing AbilityCard so cost badges,
@@ -923,8 +1172,10 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     // forced/auto-advancing single choice like the steps above.
     const isOriginFlawStep = /origin.*flaw/i.test(stepData.step_title || '');
     // True multi-select ("pick any number") — every card toggles
-    // independently, no mutual exclusivity, no auto-advance.
+    // independently, no mutual exclusivity, no auto-advance. Same treatment
+    // for both upgrade steps.
     const isOtherUpgradesStep = /pick any other upgrades/i.test(stepData.step_title || '');
+    const isMountUpgradesStep = /pick any battle mount upgrades/i.test(stepData.step_title || '');
     const isSingleSelect = isDpStep || isArchetypeStep || isCompanionStep || isMountStep;
     return (
     <>
@@ -985,7 +1236,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                       )}
                     </>
                   );
-                  if (!isSingleSelect && !isOriginFlawStep && !isOtherUpgradesStep) return <React.Fragment key={oi}>{card}</React.Fragment>;
+                  if (!isSingleSelect && !isOriginFlawStep && !isOtherUpgradesStep && !isMountUpgradesStep) return <React.Fragment key={oi}>{card}</React.Fragment>;
 
                   if (isOriginFlawStep) {
                     const selected = originFlawChoice?.[g.group] === oi;
@@ -1012,6 +1263,22 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                         className={`ptg-apotheosis-option-btn${selected ? ' ptg-apotheosis-option-selected' : ''}`}
                         onClick={() => {
                           setOtherUpgradesChoice(prev => prev.includes(oi) ? prev.filter(x => x !== oi) : [...prev, oi]);
+                        }}
+                      >
+                        {card}
+                      </button>
+                    );
+                  }
+
+                  if (isMountUpgradesStep) {
+                    const selected = battleMountUpgradesChoice.includes(oi);
+                    return (
+                      <button
+                        key={oi}
+                        type="button"
+                        className={`ptg-apotheosis-option-btn${selected ? ' ptg-apotheosis-option-selected' : ''}`}
+                        onClick={() => {
+                          setBattleMountUpgradesChoice(prev => prev.includes(oi) ? prev.filter(x => x !== oi) : [...prev, oi]);
                         }}
                       >
                         {card}
@@ -1056,10 +1323,29 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     );
   };
 
+  // Everything the Officiant (image) view's overlays can draw from, bundled
+  // once per render rather than threading ~30 individual props down through
+  // DocPage/buildOverlayFields.
+  const officiantData = {
+    warlordName, warlordMove, warlordHealth, warlordSave, warlordControl,
+    rangedWeapons, meleeWeapons, warlordKeywordsLine1, warlordKeywordsLine2,
+    armyName, realmOfOrigin, customRealmName,
+    realmLabel: REALMS.find(r => r.key === realmOfOrigin)?.name || '',
+    gloryPoints, battleFormation,
+    factionLabel: factions.find(f => f.faction_slug === effectiveFactionSlug)?.faction || '',
+    currentQuest, questPoints, questNotes, questsCompleted, background, notableEvents,
+    spellLore, prayerLore, manifestationLore,
+    warlordWarscroll, warlordRank, warlordRenown, warlordEnhancements,
+    warlordPathLabel: PATHS.find(p => p.key === warlordPath)?.name || '',
+    warlordPathAbility, oobUnits,
+    commander, armyRosterName, pointsLimit, armyRosterFaction, armyRosterFormation,
+    regiments, auxUnits, armyNotes, regimentsTotal, auxTotal, armyUnitsTotal,
+  };
+
   const renderImageView = doc => (
     <div className="ptg-doc-image-view">
-      {doc.images.map(img => (
-        <ProgressiveImg key={img.src} src={img.src} micro={img.micro} avgColor={img.avgColor} alt={doc.title} className="ptg-doc-full-img" />
+      {doc.images.map((img, i) => (
+        <DocPage key={img.src} img={img} alt={doc.title} docKey={doc.key} pageIndex={i} data={officiantData} />
       ))}
     </div>
   );
@@ -1411,8 +1697,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                         {/^fill out the starting warscroll$/i.test(warlordSteps[warlordSubStep] || '')
                           ? (
                             <div className="ptg-wizard-body-placeholder">
-                              <p>We've Filled out this step for you.</p>
-                              {warlordNotYetNamed && <p>Just Name Your Hero!  And move on!</p>}
+                              <p>We've Filled out this step for you.{warlordNotYetNamed && <><br /><br />Name your Hero!!</>}</p>
                             </div>
                           )
                           : (apotheosisLoading
@@ -1436,8 +1721,9 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                   <div className="ptg-step-warlord-right">
                     <div className="ptg-step-warlord-title-row">
                       {dpTally && (
-                        <div className={`ptg-dp-tally${dpTally.spent > dpTally.total ? ' ptg-dp-tally-over' : ''}`} title="Destiny Points spent / available">
-                          DP {dpTally.spent}/{dpTally.total}
+                        <div className={`ptg-dp-tally${dpTally.remaining < 0 ? ' ptg-dp-tally-over' : ''}`} title="Destiny Points remaining / available">
+                          <span className="ptg-dp-tally-lbl">DP</span>
+                          <span className="ptg-dp-tally-val">{dpTally.remaining}/{dpTally.total}</span>
                         </div>
                       )}
                       <div className="ptg-step-warlord-title">Warlord Warscroll</div>
