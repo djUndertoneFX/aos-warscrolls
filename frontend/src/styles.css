@@ -3484,6 +3484,7 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   font-family: 'Cinzel', serif;
   color: #c8a840;
   white-space: nowrap;
+  cursor: context-menu;
 }
 .ptg-dp-tally-lbl {
   font-size: 0.6rem;

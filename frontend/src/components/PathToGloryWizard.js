@@ -1266,6 +1266,18 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                     Skip Battle Mount
                   </button>
                 )}
+                {isMountUpgradesStep && gi === 0 && (
+                  <button
+                    type="button"
+                    className={`ptg-apotheosis-option-btn ptg-apotheosis-skip-btn${battleMountUpgradesChoice.length === 0 ? ' ptg-apotheosis-option-selected' : ''}`}
+                    onClick={() => {
+                      setBattleMountUpgradesChoice([]);
+                      setWarlordSubStep(s => Math.min(warlordSteps.length - 1, s + 1));
+                    }}
+                  >
+                    Skip Battle Mount Upgrades
+                  </button>
+                )}
                 {g.items.map((opt, oi) => {
                   const subAbilities = Array.isArray(opt.sub_abilities) ? opt.sub_abilities : JSON.parse(opt.sub_abilities || '[]');
                   const card = (
@@ -1759,7 +1771,18 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                   <div className="ptg-step-warlord-right">
                     <div className="ptg-step-warlord-title-row">
                       {dpTally && (
-                        <div className={`ptg-dp-tally${dpTally.remaining < 0 ? ' ptg-dp-tally-over' : ''}`} title="Destiny Points remaining / available">
+                        <div
+                          className={`ptg-dp-tally${dpTally.remaining < 0 ? ' ptg-dp-tally-over' : ''}`}
+                          title="Destiny Points remaining / available — right-click to unselect every DP-spending pick"
+                          onContextMenu={e => {
+                            e.preventDefault();
+                            setCompanionChoice(-1);
+                            setOriginFlawChoice({});
+                            setMountChoice(-1);
+                            setBattleMountUpgradesChoice([]);
+                            setOtherUpgradesChoice([]);
+                          }}
+                        >
                           <span className="ptg-dp-tally-lbl">DP</span>
                           <span className="ptg-dp-tally-val">{dpTally.remaining}/{dpTally.total}</span>
                         </div>
