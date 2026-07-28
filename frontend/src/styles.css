@@ -3459,6 +3459,36 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   padding-bottom: 0.75rem;
   border-bottom: 1px solid rgba(200,168,64,0.3);
 }
+/* Right-panel variant: the running DP tally sits to the left of the title,
+   on the same line — the divider/spacing moves to the row so the nested
+   title doesn't double up its own. */
+.ptg-step-warlord-title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(200,168,64,0.3);
+}
+.ptg-step-warlord-title-row .ptg-step-warlord-title {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+.ptg-dp-tally {
+  font-family: 'Cinzel', serif;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+  color: #c8a840;
+  white-space: nowrap;
+}
+/* Overspent — bright bold red, unmistakable at a glance. */
+.ptg-dp-tally-over {
+  color: #ff2020;
+  font-weight: 700;
+  text-shadow: 0 0 8px rgba(255,32,32,0.55);
+}
 /* "Train your Warlord" 2-panel layout: left = the sub-step wizard flow
    (as before), right = the Warlord Warscroll docked permanently so it's
    visible while making choices, instead of swapping views. */
@@ -3559,6 +3589,37 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 .ptg-apotheosis-option-selected .gw-ability-card {
   border-color: var(--gold);
   box-shadow: 0 0 0 2px var(--gold);
+}
+/* Skip Companion has no AbilityCard to wrap (there's nothing to display —
+   it's an explicit "choose none of these"), so unlike its sibling option
+   buttons it needs its own card-like chrome to read as equally substantial
+   and full-width in the grid, not just bare unstyled text. */
+.ptg-apotheosis-skip-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 88px;
+  padding: 1rem 1.25rem;
+  border: 1px solid rgba(200,168,64,0.3);
+  border-radius: 2px;
+  background: rgba(200,168,64,0.05);
+  color: var(--gold);
+  font-family: 'Cinzel', serif;
+  font-size: 1.05rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-align: center;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.ptg-apotheosis-skip-btn:hover {
+  border-color: var(--gold);
+  background: rgba(200,168,64,0.1);
+}
+.ptg-apotheosis-skip-btn.ptg-apotheosis-option-selected {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px var(--gold);
+  background: rgba(200,168,64,0.12);
 }
 /* Companion (and similar) options that grant 2+ separate abilities — each
    rendered as its own full phase-colored AbilityCard, indented under the
@@ -4546,14 +4607,24 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 .gw-ward-pip-val { display: block; font-size: 0.88rem; font-weight: 700; color: #f2e8c0; font-family: 'Palatino Linotype', Georgia, serif; }
 .gw-ward-pip-lbl { display: block; font-size: 0.44rem; letter-spacing: 0.15em; color: #c8a840; font-family: Arial, sans-serif; text-transform: uppercase; }
 
-/* Center: faction subtitle + unit name, centered over full popup width */
+/* Center: faction subtitle + unit name (text-col, centered), plus a
+   right-justified thumbnail that floats to the far right of this section —
+   next to the header-right column, past both text lines. */
 .gw-header-center {
   flex: 1;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 12px 8px;
+  gap: 12px;
+}
+
+.gw-header-text-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
 }
 
@@ -4564,13 +4635,6 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   text-transform: uppercase;
   font-family: Arial, sans-serif;
   margin-bottom: 4px;
-}
-
-.gw-header-name-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
 }
 
 .gw-header-name {
@@ -4584,10 +4648,11 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 }
 
 .gw-header-thumb {
-  width: 46px;
-  height: 60px;
+  width: 92px;
+  height: 120px;
   object-fit: contain;
   flex-shrink: 0;
+  margin-left: auto;
   filter: drop-shadow(0 1px 5px rgba(0,0,0,0.7));
 }
 
@@ -5055,8 +5120,8 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   .gw-header-type { font-size: 0.58rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .gw-header-warscroll-label { display: none; }
   .gw-header-name { font-size: 1.05rem; }
-  .gw-header-name-row { gap: 6px; }
-  .gw-header-thumb { width: 26px; height: 34px; }
+  .gw-header-center { gap: 6px; }
+  .gw-header-thumb { width: 52px; height: 68px; }
   .gw-header-right { flex: 0 0 auto; border-left: 1px solid rgba(200,168,64,0.22); border-top: none; flex-direction: column; align-items: center; justify-content: center; padding: 6px 10px; gap: 4px; }
   /* Base size is a nice-to-have, not essential like Points/Size — drop it
      on phone-width screens where header real estate is tight. */

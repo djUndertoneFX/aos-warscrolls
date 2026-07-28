@@ -407,6 +407,19 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   // one of the real options. companionChoice is an index into that step's
   // options array, or -1 for skipped.
   const [companionChoice, setCompanionChoice] = useState(() => saved.companionChoice ?? -1);
+  // "Pick Your Hero's Origin And/Or Flaw" is up to 1 of EACH, independently
+  // — not a single-select group like the others above — so each click just
+  // toggles that option on/off within its own group (Origins vs Flaws)
+  // rather than forcing a pick or auto-advancing. Keyed by option_group name
+  // ("Origins"/"Flaws"), value is the index within that group or null.
+  const [originFlawChoice, setOriginFlawChoice] = useState(() => saved.originFlawChoice ?? {});
+  // "Choose a Battle Mount" is "up to 1", same shape as Companion — index
+  // into that step's options array, or -1 for "Skip Battle Mount".
+  const [mountChoice, setMountChoice] = useState(() => saved.mountChoice ?? -1);
+  // "Pick any Other Upgrades" is true multi-select ("pick any number", not
+  // mutually exclusive) — an array of selected option indices, toggled
+  // independently, empty by default.
+  const [otherUpgradesChoice, setOtherUpgradesChoice] = useState(() => saved.otherUpgradesChoice ?? []);
 
   // Per-faction snapshots of the warlord fields above (+ sub-step position),
   // keyed by faction slug — so switching faction A → B → back to A restores
@@ -533,7 +546,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     const changed = prevFaction !== selectedFaction;
 
     if (changed && prevFaction) {
-      const leaving = { warlordName, warlordKeywordsLine1, warlordKeywordsLine2, rangedWeapons, meleeWeapons, warlordMove, warlordHealth, warlordSave, warlordControl, warlordSubStep, destinyPointChoice, archetypeChoice, companionChoice };
+      const leaving = { warlordName, warlordKeywordsLine1, warlordKeywordsLine2, rangedWeapons, meleeWeapons, warlordMove, warlordHealth, warlordSave, warlordControl, warlordSubStep, destinyPointChoice, archetypeChoice, companionChoice, originFlawChoice, mountChoice, otherUpgradesChoice };
       setWarlordSnapshotsByFaction(prev => ({ ...prev, [prevFaction]: leaving }));
     }
     prevSelectedFactionRef.current = selectedFaction;
@@ -555,6 +568,9 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
       setDestinyPointChoice(existing.destinyPointChoice ?? 2);
       setArchetypeChoice(existing.archetypeChoice ?? 0);
       setCompanionChoice(existing.companionChoice ?? -1);
+      setOriginFlawChoice(existing.originFlawChoice ?? {});
+      setMountChoice(existing.mountChoice ?? -1);
+      setOtherUpgradesChoice(existing.otherUpgradesChoice ?? []);
 
       // Snapshots saved before starting-warscroll auto-fill existed have
       // nothing in these fields even though this faction has apotheosis data
@@ -604,6 +620,9 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     setDestinyPointChoice(2);
     setArchetypeChoice(0);
     setCompanionChoice(-1);
+    setOriginFlawChoice({});
+    setMountChoice(-1);
+    setOtherUpgradesChoice([]);
     axios.get(`/api/apotheosis/${selectedFaction}`).then(res => {
       if (cancelled) return;
       const steps = res.data.steps ?? [];
@@ -747,7 +766,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     const snapshot = {
       step, activeDoc, presentMode, campaign, customCampaignName, selectedFaction, warlordSubStep,
       warlordName, warlordKeywordsLine1, warlordKeywordsLine2, rangedWeapons, meleeWeapons,
-      warlordMove, warlordHealth, warlordSave, warlordControl, warlordSnapshotsByFaction, destinyPointChoice, archetypeChoice, companionChoice,
+      warlordMove, warlordHealth, warlordSave, warlordControl, warlordSnapshotsByFaction, destinyPointChoice, archetypeChoice, companionChoice, originFlawChoice, mountChoice, otherUpgradesChoice,
       armyName, heraldryImage, realmOfOrigin, customRealmName, faction, battleFormation, gloryPoints, gloryRounds,
       currentQuest, questPoints, questNotes, questsCompleted, background, notableEvents,
       spellLore, prayerLore, manifestationLore,
@@ -758,7 +777,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   }, [
     step, activeDoc, presentMode, campaign, customCampaignName, selectedFaction, warlordSubStep,
     warlordName, warlordKeywordsLine1, warlordKeywordsLine2, rangedWeapons, meleeWeapons,
-    warlordMove, warlordHealth, warlordSave, warlordControl, warlordSnapshotsByFaction, destinyPointChoice, archetypeChoice, companionChoice,
+    warlordMove, warlordHealth, warlordSave, warlordControl, warlordSnapshotsByFaction, destinyPointChoice, archetypeChoice, companionChoice, originFlawChoice, mountChoice, otherUpgradesChoice,
     armyName, heraldryImage, realmOfOrigin, customRealmName, faction, battleFormation, gloryPoints, gloryRounds,
     currentQuest, questPoints, questNotes, questsCompleted, background, notableEvents,
     spellLore, prayerLore, manifestationLore,
@@ -824,6 +843,62 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     </>
   );
 
+  // "-3DP" -> -3, "+4DP" -> +4, "0DP"/null -> 0. Sign is always explicit in
+  // the scraped cost badge text except for the zero case, where it doesn't matter.
+  const parseDpAmount = costStr => {
+    if (!costStr) return 0;
+    const m = String(costStr).match(/([+-]?)(\d+)/);
+    if (!m) return 0;
+    const n = parseInt(m[2], 10);
+    return m[1] === '+' ? n : -n;
+  };
+
+  // Running Destiny Point spent/total across every stateful choice in "Train
+  // Your Warlord" — total starts at the chosen DP-limit tier's value and
+  // grows with Flaw bonuses (flaws grant extra points to spend elsewhere,
+  // per the step's own intro text); spent is the sum of every consuming
+  // pick's cost magnitude. Battle Mount Upgrades isn't included since that
+  // step is still read-only (never wired to selection state), so anything
+  // picked there on paper won't show up here.
+  const dpTally = React.useMemo(() => {
+    if (!apotheosisSteps.length) return null;
+    const dpStepData        = apotheosisSteps.find(s => /destiny point limit/i.test(s.step_title || ''));
+    const archetypeStepData = apotheosisSteps.find(s => /choose an archetype/i.test(s.step_title || ''));
+    const companionStepData = apotheosisSteps.find(s => /choose a companion/i.test(s.step_title || ''));
+    const originFlawStepData = apotheosisSteps.find(s => /origin.*flaw/i.test(s.step_title || ''));
+    const mountStepData     = apotheosisSteps.find(s => /choose a battle mount/i.test(s.step_title || ''));
+    const otherUpgradesStepData = apotheosisSteps.find(s => /pick any other upgrades/i.test(s.step_title || ''));
+
+    let total = 0;
+    const dpMatch = /DESTINY POINT LIMIT:\s*(\d+)/i.exec(dpStepData?.options?.[destinyPointChoice]?.effect || '');
+    if (dpMatch) total = parseInt(dpMatch[1], 10);
+
+    let spent = 0;
+    const applyCost = costStr => {
+      const amt = parseDpAmount(costStr);
+      if (amt > 0) total += amt; else spent += -amt;
+    };
+
+    if (archetypeStepData?.options?.[archetypeChoice]) applyCost(archetypeStepData.options[archetypeChoice].cost);
+    if (companionChoice >= 0 && companionStepData?.options?.[companionChoice]) applyCost(companionStepData.options[companionChoice].cost);
+    if (mountChoice >= 0 && mountStepData?.options?.[mountChoice]) applyCost(mountStepData.options[mountChoice].cost);
+    if (originFlawStepData) {
+      const byGroup = {};
+      for (const o of originFlawStepData.options) { (byGroup[o.option_group] ??= []).push(o); }
+      const originIdx = originFlawChoice?.Origins;
+      const flawIdx = originFlawChoice?.Flaws;
+      if (originIdx != null && byGroup.Origins?.[originIdx]) applyCost(byGroup.Origins[originIdx].cost);
+      if (flawIdx != null && byGroup.Flaws?.[flawIdx]) applyCost(byGroup.Flaws[flawIdx].cost);
+    }
+    if (otherUpgradesStepData) {
+      for (const idx of otherUpgradesChoice) {
+        if (otherUpgradesStepData.options[idx]) applyCost(otherUpgradesStepData.options[idx].cost);
+      }
+    }
+
+    return { spent, total };
+  }, [apotheosisSteps, destinyPointChoice, archetypeChoice, companionChoice, mountChoice, originFlawChoice, otherUpgradesChoice]);
+
   // One "Anvil of Apotheosis" step's content — an intro line plus its
   // options rendered as ability cards (reusing AbilityCard so cost badges,
   // phase-colored timing banners, and Declare/Effect all look identical to
@@ -842,6 +917,15 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     const isDpStep = /destiny point limit/i.test(stepData.step_title || '');
     const isArchetypeStep = /choose an archetype/i.test(stepData.step_title || '');
     const isCompanionStep = /choose a companion/i.test(stepData.step_title || '');
+    const isMountStep = /choose a battle mount/i.test(stepData.step_title || '');
+    // Up to 1 origin AND up to 1 flaw, independently — a plain toggle per
+    // group (click a selected card to deselect it back to "none"), not a
+    // forced/auto-advancing single choice like the steps above.
+    const isOriginFlawStep = /origin.*flaw/i.test(stepData.step_title || '');
+    // True multi-select ("pick any number") — every card toggles
+    // independently, no mutual exclusivity, no auto-advance.
+    const isOtherUpgradesStep = /pick any other upgrades/i.test(stepData.step_title || '');
+    const isSingleSelect = isDpStep || isArchetypeStep || isCompanionStep || isMountStep;
     return (
     <>
       {stepData.intro_text && <p className="ptg-apotheosis-intro">{stepData.intro_text}</p>}
@@ -872,6 +956,18 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                     Skip Companion
                   </button>
                 )}
+                {isMountStep && gi === 0 && (
+                  <button
+                    type="button"
+                    className={`ptg-apotheosis-option-btn ptg-apotheosis-skip-btn${mountChoice === -1 ? ' ptg-apotheosis-option-selected' : ''}`}
+                    onClick={() => {
+                      setMountChoice(-1);
+                      setWarlordSubStep(s => Math.min(warlordSteps.length - 1, s + 1));
+                    }}
+                  >
+                    Skip Battle Mount
+                  </button>
+                )}
                 {g.items.map((opt, oi) => {
                   const subAbilities = Array.isArray(opt.sub_abilities) ? opt.sub_abilities : JSON.parse(opt.sub_abilities || '[]');
                   const card = (
@@ -889,8 +985,44 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                       )}
                     </>
                   );
-                  if (!isDpStep && !isArchetypeStep && !isCompanionStep) return <React.Fragment key={oi}>{card}</React.Fragment>;
-                  const selected = isDpStep ? oi === destinyPointChoice : isArchetypeStep ? oi === archetypeChoice : oi === companionChoice;
+                  if (!isSingleSelect && !isOriginFlawStep && !isOtherUpgradesStep) return <React.Fragment key={oi}>{card}</React.Fragment>;
+
+                  if (isOriginFlawStep) {
+                    const selected = originFlawChoice?.[g.group] === oi;
+                    return (
+                      <button
+                        key={oi}
+                        type="button"
+                        className={`ptg-apotheosis-option-btn${selected ? ' ptg-apotheosis-option-selected' : ''}`}
+                        onClick={() => {
+                          setOriginFlawChoice(prev => ({ ...prev, [g.group]: prev?.[g.group] === oi ? null : oi }));
+                        }}
+                      >
+                        {card}
+                      </button>
+                    );
+                  }
+
+                  if (isOtherUpgradesStep) {
+                    const selected = otherUpgradesChoice.includes(oi);
+                    return (
+                      <button
+                        key={oi}
+                        type="button"
+                        className={`ptg-apotheosis-option-btn${selected ? ' ptg-apotheosis-option-selected' : ''}`}
+                        onClick={() => {
+                          setOtherUpgradesChoice(prev => prev.includes(oi) ? prev.filter(x => x !== oi) : [...prev, oi]);
+                        }}
+                      >
+                        {card}
+                      </button>
+                    );
+                  }
+
+                  const selected = isDpStep ? oi === destinyPointChoice
+                    : isArchetypeStep ? oi === archetypeChoice
+                    : isMountStep ? oi === mountChoice
+                    : oi === companionChoice;
                   return (
                     <button
                       key={oi}
@@ -903,6 +1035,8 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                           setArchetypeChoice(oi);
                           const step2 = apotheosisSteps.find(s => /fill out the starting warscroll/i.test(s.step_title));
                           applyArchetypeChoice(step2, stepData, oi);
+                        } else if (isMountStep) {
+                          setMountChoice(oi);
                         } else {
                           setCompanionChoice(oi);
                         }
@@ -1277,8 +1411,8 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                         {/^fill out the starting warscroll$/i.test(warlordSteps[warlordSubStep] || '')
                           ? (
                             <div className="ptg-wizard-body-placeholder">
-                              <p>Your starting warscroll is already filled in on the right — every field is auto-populated from your faction. Nothing to do here; just check it over and move on to the next step.</p>
-                              {warlordNotYetNamed && <p>Name Them!</p>}
+                              <p>We've Filled out this step for you.</p>
+                              {warlordNotYetNamed && <p>Just Name Your Hero!  And move on!</p>}
                             </div>
                           )
                           : (apotheosisLoading
@@ -1300,7 +1434,14 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                     )}
                   </div>
                   <div className="ptg-step-warlord-right">
-                    <div className="ptg-step-warlord-title">Warlord Warscroll</div>
+                    <div className="ptg-step-warlord-title-row">
+                      {dpTally && (
+                        <div className={`ptg-dp-tally${dpTally.spent > dpTally.total ? ' ptg-dp-tally-over' : ''}`} title="Destiny Points spent / available">
+                          DP {dpTally.spent}/{dpTally.total}
+                        </div>
+                      )}
+                      <div className="ptg-step-warlord-title">Warlord Warscroll</div>
+                    </div>
                     {renderWarlordForm()}
                   </div>
                 </div>

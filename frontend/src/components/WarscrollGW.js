@@ -793,33 +793,33 @@ function WarscrollBodyMain({ unit, factions = [], onFilterApply }) {
         </div>
 
         <div className="gw-header-center">
-          <div className="gw-header-type">
-            {unit.grand_alliance && onFilterApply ? (
-              <span
-                className="gw-filter-chip gw-filter-chip-alliance"
-                title="Left-click to filter by alliance · Right-click to exclude"
-                onClick={e => { onFilterApply('alliance', unit.grand_alliance, false); e.stopPropagation(); }}
-                onContextMenu={e => { e.preventDefault(); onFilterApply('alliance', unit.grand_alliance, true); }}
-              >{unit.grand_alliance.toUpperCase()}</span>
-            ) : (unit.grand_alliance ? <span>{unit.grand_alliance.toUpperCase()}</span> : null)}
-            {' '}·{unit.faction && onFilterApply ? (
-              <>
-                {' '}
+          <div className="gw-header-text-col">
+            <div className="gw-header-type">
+              {unit.grand_alliance && onFilterApply ? (
                 <span
-                  className="gw-filter-chip"
-                  title="Left-click to filter by faction · Right-click to exclude"
-                  onClick={e => { const f = factions.find(fc => fc.faction === unit.faction); f && onFilterApply('faction', f.faction_slug, false); e.stopPropagation(); }}
-                  onContextMenu={e => { e.preventDefault(); const f = factions.find(fc => fc.faction === unit.faction); f && onFilterApply('faction', f.faction_slug, true); }}
-                >{unit.faction.toUpperCase()}</span>{' '}
-              </>
-            ) : (unit.faction ? ' ' + unit.faction.toUpperCase() + ' ' : ' ')}<span className="gw-header-warscroll-label">{spName ? 'SPEARHEAD WARSCROLL ·' : 'WARSCROLL ·'}</span>
-          </div>
-          <div className="gw-header-name-row">
+                  className="gw-filter-chip gw-filter-chip-alliance"
+                  title="Left-click to filter by alliance · Right-click to exclude"
+                  onClick={e => { onFilterApply('alliance', unit.grand_alliance, false); e.stopPropagation(); }}
+                  onContextMenu={e => { e.preventDefault(); onFilterApply('alliance', unit.grand_alliance, true); }}
+                >{unit.grand_alliance.toUpperCase()}</span>
+              ) : (unit.grand_alliance ? <span>{unit.grand_alliance.toUpperCase()}</span> : null)}
+              {' '}·{unit.faction && onFilterApply ? (
+                <>
+                  {' '}
+                  <span
+                    className="gw-filter-chip"
+                    title="Left-click to filter by faction · Right-click to exclude"
+                    onClick={e => { const f = factions.find(fc => fc.faction === unit.faction); f && onFilterApply('faction', f.faction_slug, false); e.stopPropagation(); }}
+                    onContextMenu={e => { e.preventDefault(); const f = factions.find(fc => fc.faction === unit.faction); f && onFilterApply('faction', f.faction_slug, true); }}
+                  >{unit.faction.toUpperCase()}</span>{' '}
+                </>
+              ) : (unit.faction ? ' ' + unit.faction.toUpperCase() + ' ' : ' ')}<span className="gw-header-warscroll-label">{spName ? 'SPEARHEAD WARSCROLL ·' : 'WARSCROLL ·'}</span>
+            </div>
             <div className="gw-header-name">{unit.name}</div>
-            {imageUrl && (
-              <TransparentImage src={imageUrl} alt={unit.name} className="gw-header-thumb" />
-            )}
           </div>
+          {imageUrl && (
+            <TransparentImage src={imageUrl} alt={unit.name} className="gw-header-thumb" />
+          )}
         </div>
 
         <div className="gw-header-right">
