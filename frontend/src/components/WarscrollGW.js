@@ -814,7 +814,12 @@ function WarscrollBodyMain({ unit, factions = [], onFilterApply }) {
               </>
             ) : (unit.faction ? ' ' + unit.faction.toUpperCase() + ' ' : ' ')}<span className="gw-header-warscroll-label">{spName ? 'SPEARHEAD WARSCROLL ·' : 'WARSCROLL ·'}</span>
           </div>
-          <div className="gw-header-name">{unit.name}</div>
+          <div className="gw-header-name-row">
+            <div className="gw-header-name">{unit.name}</div>
+            {imageUrl && (
+              <TransparentImage src={imageUrl} alt={unit.name} className="gw-header-thumb" />
+            )}
+          </div>
         </div>
 
         <div className="gw-header-right">

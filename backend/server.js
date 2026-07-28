@@ -261,6 +261,19 @@ function requireAuth(req, res, next) {
   const token = auth.slice(7);
   try {
     const payload = jwt.verify(token, JWT_SECRET);
+    // Signature/expiry alone isn't enough — a token stays cryptographically
+    // valid for its full 7-day life even after the account behind it is
+    // deleted (e.g. test-account cleanup), so confirm the user still exists.
+    const db = getDb();
+    let stillExists;
+    try {
+      stillExists = db.prepare('SELECT id FROM users WHERE id = ?').get(payload.id);
+    } finally {
+      db.close();
+    }
+    if (!stillExists) {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
     req.user = payload;
     next();
   } catch {
@@ -1067,6 +1080,18 @@ app.get('/api/army-builder-lists/stream', (req, res) => {
   } catch {
     return res.status(401).end();
   }
+  // Same existence check as requireAuth — the token stays valid for its full
+  // 7-day life even after the account is deleted, and this route can't reuse
+  // requireAuth directly since it authenticates via ?token= instead of the
+  // Authorization header.
+  const authDb = getDb();
+  let stillExists;
+  try {
+    stillExists = authDb.prepare('SELECT id FROM users WHERE id = ?').get(user.id);
+  } finally {
+    authDb.close();
+  }
+  if (!stillExists) return res.status(401).end();
   const clientId = req.query.clientId || crypto.randomUUID();
 
   res.writeHead(200, {

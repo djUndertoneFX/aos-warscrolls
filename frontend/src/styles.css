@@ -4566,6 +4566,13 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   margin-bottom: 4px;
 }
 
+.gw-header-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
 .gw-header-name {
   font-size: 1.65rem;
   font-weight: 700;
@@ -4574,6 +4581,14 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   text-transform: uppercase;
   text-shadow: 0 0 24px rgba(200,168,64,0.25);
   line-height: 1.1;
+}
+
+.gw-header-thumb {
+  width: 46px;
+  height: 60px;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: drop-shadow(0 1px 5px rgba(0,0,0,0.7));
 }
 
 /* Right: points + size, right-justified, same width as wheel col for symmetry */
@@ -5040,6 +5055,8 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   .gw-header-type { font-size: 0.58rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .gw-header-warscroll-label { display: none; }
   .gw-header-name { font-size: 1.05rem; }
+  .gw-header-name-row { gap: 6px; }
+  .gw-header-thumb { width: 26px; height: 34px; }
   .gw-header-right { flex: 0 0 auto; border-left: 1px solid rgba(200,168,64,0.22); border-top: none; flex-direction: column; align-items: center; justify-content: center; padding: 6px 10px; gap: 4px; }
   /* Base size is a nice-to-have, not essential like Points/Size — drop it
      on phone-width screens where header real estate is tight. */
