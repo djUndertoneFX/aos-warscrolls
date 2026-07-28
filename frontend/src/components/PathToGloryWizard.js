@@ -1362,15 +1362,6 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
 
   const warlordSteps = apotheosisSteps.length ? apotheosisSteps.map(s => s.step_title) : null;
 
-  // Auto-fill leaves the Warlord Name at its generic "<Faction> Hero"
-  // default rather than a real name — nudge the player to personalize it
-  // while they're already looking at this step, but only until they do.
-  const warlordDefaultName = (() => {
-    const factionObj = factions.find(f => f.faction_slug === selectedFaction);
-    return factionObj ? `${factionObj.faction} Hero` : '';
-  })();
-  const warlordNotYetNamed = !warlordName.trim() || warlordName === warlordDefaultName;
-
   return (
     <>
       <div className="gw-overlay" />
@@ -1697,7 +1688,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                         {/^fill out the starting warscroll$/i.test(warlordSteps[warlordSubStep] || '')
                           ? (
                             <div className="ptg-wizard-body-placeholder">
-                              <p>We've Filled out this step for you.{warlordNotYetNamed && <><br /><br />Name your Hero!!</>}</p>
+                              <p>We've Filled out this step for you.<br /><br />Name your Hero!!</p>
                             </div>
                           )
                           : (apotheosisLoading
