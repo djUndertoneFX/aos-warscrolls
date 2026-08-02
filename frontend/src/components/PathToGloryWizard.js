@@ -617,6 +617,16 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   const [step, setStep] = useState(() => saved.step ?? 0);
   const [activeDoc, setActiveDoc] = useState(() => saved.activeDoc ?? null); // null | 'warlord' | 'roster' | 'oob' | 'army'
   const [presentMode, setPresentMode] = useState(() => saved.presentMode ?? 'replica'); // 'image' | 'replica'
+  // Whole-modal layout, spans all 9 main steps + their sub-steps and the
+  // doc tray — 'single' is the original one-thing-at-a-time layout
+  // unchanged; 'dual' moves the doc tray + a live preview of whichever doc
+  // is active into a persistent right-hand column (.ptg-wizard-dual-right)
+  // while the step flow stays visible on the left. Only actually renders as
+  // a side-by-side grid above the CSS breakpoint (desktop-width, see
+  // .ptg-wizard-dual in styles.css) — below it, the same markup stacks
+  // vertically instead of disappearing, and the toggle button itself is
+  // hidden by CSS so iPad/phone users never see an option that wouldn't fit.
+  const [wizardViewMode, setWizardViewMode] = useState(() => saved.wizardViewMode ?? 'single');
   const modalRef = useRef(null);
   // Warlord Warscroll print preview — same "gold print ready" light-theme
   // step as Army Builder's Army Roster print button (ArmyBuilderPage.js),
@@ -1203,7 +1213,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   // Persist the whole wizard on every change, so closing and reopening resumes here.
   useEffect(() => {
     const snapshot = {
-      step, activeDoc, presentMode, campaign, customCampaignName, selectedFaction, warlordSubStep,
+      step, activeDoc, presentMode, wizardViewMode, campaign, customCampaignName, selectedFaction, warlordSubStep,
       warlordName, warlordKeywordsLine1, warlordKeywordsLine2, rangedWeapons, meleeWeapons,
       warlordMove, warlordHealth, warlordSave, warlordControl, warlordSnapshotsByFaction, destinyPointChoice, archetypeChoice, companionChoice, originFlawChoice, mountChoice, otherUpgradesChoice, battleMountUpgradesChoice, antiXChoiceByOption,
       armyName, heraldryImage, realmOfOrigin, customRealmName, faction, battleFormation, gloryPoints, gloryRounds,
@@ -1817,30 +1827,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
 
   const warlordSteps = apotheosisSteps.length ? apotheosisSteps.map(s => s.step_title) : null;
 
-  return (
-    <>
-      <div className="gw-overlay" />
-      <div className="ptg-wizard" ref={modalRef} role="dialog" aria-modal="true" aria-label={isEditingExisting ? 'Present the Troops!' : 'Recruit Your Forces'}>
-        <button className="gw-close" onClick={onClose} title="Close (Esc)">✕</button>
-        {activeDoc === 'warlord' && !warlordPrintPreview && (
-          <button className="ab-roster-print-btn" onClick={handleWarlordPrintClick} title="Print">🖨 Print</button>
-        )}
-
-        <div className="ptg-wizard-banner">
-          Path to Glory!{campaignLabel && <span className="ptg-wizard-banner-campaign"> — {campaignLabel}</span>}
-        </div>
-
-        <div className="ptg-wizard-header">
-          <div className="ptg-wizard-title">{isEditingExisting ? 'Present the Troops!' : 'Recruit Your Forces'}</div>
-        </div>
-
-        <div className="ptg-doc-tray">
-          {DOCS.map(doc => (
-            <DocThumb key={doc.key} doc={doc} active={activeDoc === doc.key} onClick={key => { setWarlordPrintPreview(false); setActiveDoc(key); }} />
-          ))}
-        </div>
-
-        {activeDoc ? (() => {
+  const renderDocEditor = () => {
           const doc = DOCS.find(d => d.key === activeDoc);
           if (activeDoc === 'warlord' && warlordPrintPreview) {
             return (
@@ -2077,7 +2064,9 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
               </div>
             </>
           );
-        })() : (
+  };
+
+  const renderStepFlow = () => (
           <>
             <div className="ptg-wizard-steps">
               {STEPS.map((label, i) => (
@@ -2376,6 +2365,67 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                 Next ›
               </button>
             </div>
+          </>
+  );
+
+  return (
+    <>
+      <div className="gw-overlay" />
+      <div className={`ptg-wizard${wizardViewMode === 'dual' ? ' ptg-wizard-dual-mode' : ''}`} ref={modalRef} role="dialog" aria-modal="true" aria-label={isEditingExisting ? 'Present the Troops!' : 'Recruit Your Forces'}>
+        <div className="gw-view-toggle ptg-wizard-view-toggle">
+          <button
+            type="button"
+            className={`gw-view-mode-btn${wizardViewMode === 'single' ? ' gw-view-mode-btn-active' : ''}`}
+            onClick={() => setWizardViewMode('single')}
+            title="Single view"
+          ><span className="gw-view-icon gw-view-icon-single"><i /></span></button>
+          <button
+            type="button"
+            className={`gw-view-mode-btn${wizardViewMode === 'dual' ? ' gw-view-mode-btn-active' : ''}`}
+            onClick={() => setWizardViewMode('dual')}
+            title="Dual view — documents alongside every step"
+          ><span className="gw-view-icon gw-view-icon-split"><i /><i /></span></button>
+        </div>
+        <button className="gw-close" onClick={onClose} title="Close (Esc)">✕</button>
+        {activeDoc === 'warlord' && !warlordPrintPreview && (
+          <button className="ab-roster-print-btn" onClick={handleWarlordPrintClick} title="Print">🖨 Print</button>
+        )}
+
+        <div className="ptg-wizard-banner">
+          Path to Glory!{campaignLabel && <span className="ptg-wizard-banner-campaign"> — {campaignLabel}</span>}
+        </div>
+
+        <div className="ptg-wizard-header">
+          <div className="ptg-wizard-title">{isEditingExisting ? 'Present the Troops!' : 'Recruit Your Forces'}</div>
+        </div>
+
+        {wizardViewMode === 'dual' ? (
+          <div className="ptg-wizard-dual">
+            <div className="ptg-wizard-dual-left">
+              {renderStepFlow()}
+            </div>
+            <div className="ptg-wizard-dual-right">
+              <div className="ptg-doc-tray">
+                {DOCS.map(doc => (
+                  <DocThumb key={doc.key} doc={doc} active={activeDoc === doc.key} onClick={key => { setWarlordPrintPreview(false); setActiveDoc(key); }} />
+                ))}
+              </div>
+              <div className="ptg-wizard-dual-preview">
+                {activeDoc ? renderDocEditor() : (
+                  <div className="ptg-wizard-body-placeholder">Select a document above to view it here.</div>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="ptg-doc-tray">
+              {DOCS.map(doc => (
+                <DocThumb key={doc.key} doc={doc} active={activeDoc === doc.key} onClick={key => { setWarlordPrintPreview(false); setActiveDoc(key); }} />
+              ))}
+            </div>
+
+            {activeDoc ? renderDocEditor() : renderStepFlow()}
           </>
         )}
       </div>

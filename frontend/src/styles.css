@@ -3385,6 +3385,59 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   color: #d8cca8;
   padding: 1.5rem;
 }
+/* Single/Dual view toggle, top-right — reuses .gw-view-toggle/.gw-view-mode-btn
+   verbatim from WarscrollGW's split-pane toggle (WarscrollGW.js), just
+   nudged left of .gw-close since .ptg-wizard's close button sits at the
+   same top-right corner. Hidden below desktop width — dual view needs the
+   room a tablet/phone viewport doesn't have (see .ptg-wizard-dual below),
+   so there's no point offering the option there. */
+.ptg-wizard-view-toggle { right: 46px; }
+@media (max-width: 1399px) {
+  .ptg-wizard-view-toggle { display: none; }
+}
+/* Dual view widens the modal itself (mirrors the existing
+   .ab-roster-modal-wide pattern already used for Army Roster) — only above
+   the same breakpoint the toggle itself requires, so a dual-mode session
+   resized down to tablet width still gets the normal 980px modal, just
+   with its dual-view content stacked instead of side-by-side (see below). */
+@media (min-width: 1400px) {
+  .ptg-wizard.ptg-wizard-dual-mode { width: min(1400px, 96vw); }
+}
+/* Right column defaults to stacking BELOW the left column (mobile-first —
+   never actually seen below 1400px since the toggle is hidden there, but
+   keeps a resized-down session usable instead of collapsing to nothing).
+   Becomes a real side-by-side grid only once there's desktop-width room. */
+.ptg-wizard-dual {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+@media (min-width: 1400px) {
+  .ptg-wizard-dual {
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    align-items: start;
+  }
+}
+.ptg-wizard-dual-left { min-width: 0; }
+.ptg-wizard-dual-right {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+/* 4 thumbnails at their normal 110px width don't fit the 400px right
+   column in one row (single view's tray only ever sits in the full-width
+   980px+ modal) — wrap instead of overflowing. */
+.ptg-wizard-dual-right .ptg-doc-tray { margin: 0; flex-wrap: wrap; }
+.ptg-wizard-dual-preview {
+  border: 1px solid rgba(200,168,64,0.25);
+  border-radius: 3px;
+  padding: 0.9rem;
+  max-height: 78vh;
+  overflow-y: auto;
+}
+
 .ptg-wizard-banner {
   text-align: center;
   font-family: 'Cinzel', serif;
