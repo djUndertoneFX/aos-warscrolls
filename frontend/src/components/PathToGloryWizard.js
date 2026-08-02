@@ -722,6 +722,18 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   const [prayerLore, setPrayerLore] = useState(() => saved.prayerLore ?? Array(6).fill(''));
   const [manifestationLore, setManifestationLore] = useState(() => saved.manifestationLore ?? Array(6).fill(''));
   const setLoreRow = (setter) => (i, value) => setter(rows => rows.map((r, ri) => ri === i ? value : r));
+  // Step 7 "Add your Lores" — clicking a real faction lore card toggles it
+  // into (or out of) the same spellLore/prayerLore/manifestationLore arrays
+  // the Roster doc's Arcane Tome already edits as free text; adding drops it
+  // into the first empty of the 6 slots, removing clears whichever slot it
+  // was in. A full lore (no empty slot left) silently no-ops on add, same
+  // as the physical form having no room.
+  const toggleLoreCard = (rows, setter, name) => {
+    if (rows.includes(name)) { setter(prev => prev.map(r => r === name ? '' : r)); return; }
+    const idx = rows.findIndex(r => !r.trim());
+    if (idx === -1) return;
+    setter(prev => prev.map((r, i) => i === idx ? name : r));
+  };
 
   // Effective faction slug driving the Roster's Faction dropdown default and
   // the Battle Formation lookup: explicit Roster pick wins, else fall back
@@ -738,18 +750,22 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     prevGloryRoundsSumRef.current = gloryRoundsSum;
   }, [gloryRoundsSum]);
 
-  // Battle formations for the currently-known faction (Roster's "Battle
-  // Formation" field becomes a dropdown of these once a faction is set).
-  const [formations, setFormations] = useState([]);
+  // All faction-info slides for the currently-known faction — Battle
+  // Formations (Roster's "Battle Formation" dropdown), plus Heroic Traits/
+  // Artefacts (Step 6 Enhancements) and Spell/Prayer/Manifestation Lore
+  // (Step 7 Lores). One fetch, same shape GET /api/faction-rules/:slug
+  // already returns for WarscrollsPage's purple-bullet info dots.
+  const [factionRules, setFactionRules] = useState({ formations: [], heroic_traits: [], artefacts: [], spell_lore: [], prayer_lore: [], manifestation_lore: [] });
   const [formationsLoading, setFormationsLoading] = useState(false);
   useEffect(() => {
-    if (!effectiveFactionSlug) { setFormations([]); return; }
+    if (!effectiveFactionSlug) { setFactionRules({ formations: [], heroic_traits: [], artefacts: [], spell_lore: [], prayer_lore: [], manifestation_lore: [] }); return; }
     setFormationsLoading(true);
     axios.get(`/api/faction-rules/${effectiveFactionSlug}`)
-      .then(res => setFormations(res.data.formations ?? []))
-      .catch(() => setFormations([]))
+      .then(res => setFactionRules(res.data))
+      .catch(() => setFactionRules({ formations: [], heroic_traits: [], artefacts: [], spell_lore: [], prayer_lore: [], manifestation_lore: [] }))
       .finally(() => setFormationsLoading(false));
   }, [effectiveFactionSlug]);
+  const formations = factionRules.formations ?? [];
 
   // Path to Glory "Anvil of Apotheosis" warlord-creation steps, scraped
   // per-faction (only ~18 of 24 factions currently publish this — it's tied
@@ -765,6 +781,50 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
       .catch(() => setApotheosisSteps([]))
       .finally(() => setApotheosisLoading(false));
   }, [effectiveFactionSlug]);
+
+  // Step 5 "Add your Starting Units" — every real troop choice belonging to
+  // the known faction (server-side faction_slug filter; terrain/
+  // manifestations excluded client-side since they're not the kind of
+  // "unit" this step's Train/Reinforce picker is for).
+  const [factionUnits, setFactionUnits] = useState([]);
+  const [factionUnitsLoading, setFactionUnitsLoading] = useState(false);
+  useEffect(() => {
+    if (!effectiveFactionSlug) { setFactionUnits([]); return; }
+    setFactionUnitsLoading(true);
+    axios.get('/api/warscrolls', { params: { faction: effectiveFactionSlug, pageSize: 9999 } })
+      .then(res => setFactionUnits((res.data.data ?? []).filter(r => !r.is_terrain && !r.is_manifestation)))
+      .catch(() => setFactionUnits([]))
+      .finally(() => setFactionUnitsLoading(false));
+  }, [effectiveFactionSlug]);
+
+  // { [warscrollId]: { train, reinforce } } — Train/Reinforce counts for
+  // the starting roster, same shape/semantics as Army Builder's own
+  // `roster` state (ArmyBuilderPage.js): reinforced = 2x models AND 2x
+  // points. Both setters derive entirely from `prev` inside the functional
+  // updater (never the outer closure) so two rapid clicks before a
+  // re-render can't drop one — see [[feedback_react_stale_closure_gotchas]].
+  const [startingUnits, setStartingUnits] = useState(() => saved.startingUnits ?? {});
+  const bumpStartingUnitCount = (id, field, delta) => {
+    setStartingUnits(prev => {
+      const prevSel = prev[id] ?? { train: 0, reinforce: 0 };
+      const n = Math.max(0, (prevSel[field] || 0) + delta);
+      const nextSel = { ...prevSel, [field]: n };
+      const next = { ...prev };
+      if ((nextSel.train || 0) + (nextSel.reinforce || 0) > 0) next[id] = nextSel;
+      else delete next[id];
+      return next;
+    });
+  };
+  const startingUnitsTotal = React.useMemo(() => {
+    let sum = 0;
+    for (const [id, sel] of Object.entries(startingUnits)) {
+      const unit = factionUnits.find(u => String(u.id) === String(id));
+      if (!unit) continue;
+      const pts = parseInt(unit.points, 10) || 0;
+      sum += (sel.train || 0) * pts + (sel.reinforce || 0) * pts * 2;
+    }
+    return sum;
+  }, [startingUnits, factionUnits]);
 
   // Applies the chosen Archetype on top of the faction's baseline starting
   // warscroll (Step 2's starting_weapon/starting_keywords) — always
@@ -991,8 +1051,59 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   const [warlordEnhancements, setWarlordEnhancements] = useState(() => saved.warlordEnhancements ?? '');
   const [warlordPath, setWarlordPath] = useState(() => saved.warlordPath ?? null);
   const [warlordPathAbility, setWarlordPathAbility] = useState(() => saved.warlordPathAbility ?? '');
-  const [oobUnits, addOobUnit, updateOobUnit, removeOobUnit] = useRowList(saved.oobUnits ?? []);
+  const [oobUnits, addOobUnit, updateOobUnit, removeOobUnit, setOobUnits] = useRowList(saved.oobUnits ?? []);
   const oobTotalPoints = oobUnits.reduce((sum, u) => sum + (parseInt(u.points, 10) || 0), 0);
+
+  // Step 6 "Add your Enhancements" — pick 1 from each enhancement table
+  // (Heroic Traits, Artefacts of Power) and assign it to an eligible Hero.
+  // "warlord" or an oobUnits row id; the chosen name is written straight
+  // into that target's own Enhancements text field (Warlord Warscroll form
+  // or the Order of Battle unit row) — see applyEnhancementPick below.
+  const [heroicTraitChoice, setHeroicTraitChoice] = useState(() => saved.heroicTraitChoice ?? null);
+  const [heroicTraitAssignee, setHeroicTraitAssignee] = useState(() => saved.heroicTraitAssignee ?? 'warlord');
+  const [artefactChoice, setArtefactChoice] = useState(() => saved.artefactChoice ?? null);
+  const [artefactAssignee, setArtefactAssignee] = useState(() => saved.artefactAssignee ?? 'warlord');
+
+  // Adds/removes a single enhancement-name tag on whichever target's
+  // Enhancements text field it belongs to ('warlord' or an oobUnits row
+  // id), same comma-joined-tag approach as the weapon-ability tagging in
+  // applyUpgradeWeaponEffect above — safe to call repeatedly since it only
+  // ever touches its own tag, never the rest of what's typed there.
+  const setEnhancementTag = (target, tag, add) => {
+    if (!target || !tag) return;
+    const apply = text => {
+      const tags = (text || '').split(',').map(s => s.trim()).filter(Boolean).filter(t => t !== tag);
+      if (add) tags.push(tag);
+      return tags.join(', ');
+    };
+    if (target === 'warlord') setWarlordEnhancements(apply);
+    else setOobUnits(rows => rows.map(r => r.id === target ? { ...r, enhancements: apply(r.enhancements) } : r));
+  };
+
+  const pickHeroicTrait = idx => {
+    const prevOpt = heroicTraitChoice != null ? factionRules.heroic_traits?.[heroicTraitChoice] : null;
+    if (prevOpt) setEnhancementTag(heroicTraitAssignee, prevOpt.name, false);
+    setHeroicTraitChoice(idx);
+    const opt = factionRules.heroic_traits?.[idx];
+    if (opt) setEnhancementTag(heroicTraitAssignee, opt.name, true);
+  };
+  const reassignHeroicTrait = newTarget => {
+    const opt = heroicTraitChoice != null ? factionRules.heroic_traits?.[heroicTraitChoice] : null;
+    if (opt) { setEnhancementTag(heroicTraitAssignee, opt.name, false); setEnhancementTag(newTarget, opt.name, true); }
+    setHeroicTraitAssignee(newTarget);
+  };
+  const pickArtefact = idx => {
+    const prevOpt = artefactChoice != null ? factionRules.artefacts?.[artefactChoice] : null;
+    if (prevOpt) setEnhancementTag(artefactAssignee, prevOpt.name, false);
+    setArtefactChoice(idx);
+    const opt = factionRules.artefacts?.[idx];
+    if (opt) setEnhancementTag(artefactAssignee, opt.name, true);
+  };
+  const reassignArtefact = newTarget => {
+    const opt = artefactChoice != null ? factionRules.artefacts?.[artefactChoice] : null;
+    if (opt) { setEnhancementTag(artefactAssignee, opt.name, false); setEnhancementTag(newTarget, opt.name, true); }
+    setArtefactAssignee(newTarget);
+  };
 
   // ── Army Roster ──
   const [commander, setCommander] = useState(() => saved.commander ?? '');
@@ -1018,6 +1129,53 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   const regimentsTotal = regiments.reduce((sum, r) => sum + r.units.reduce((s, u) => s + (parseInt(u.points, 10) || 0), 0), 0);
   const auxTotal = auxUnits.reduce((sum, u) => sum + (parseInt(u.points, 10) || 0), 0);
   const armyUnitsTotal = regimentsTotal + auxTotal;
+
+  // Step 9 "Prepare for Battle" — auto-fills the Army Roster doc from
+  // everything picked earlier in the wizard: Faction/Battle Formation off
+  // the Roster doc's own fields, Army Name if not already set, and every
+  // Order of Battle row becomes a regiment unit (matched back against
+  // factionUnits by name for its real size/points, since oobUnits itself is
+  // free-text with no points field). The Warlord always seeds Regiment 1;
+  // each additional Hero row starts its own new regiment (matches the
+  // physical sheet's "General's Regiment 1 / Regiment 2.../Hero" shape),
+  // non-Hero rows join whichever regiment is currently open. Fully replaces
+  // Regiments each run (safe to re-run after adding more OOB units) but
+  // never touches Auxiliary Units, which stays manually edited.
+  const prepareArmyRoster = () => {
+    setArmyRosterFaction(factions.find(f => f.faction_slug === selectedFaction)?.faction || '');
+    setArmyRosterFormation(battleFormation || '');
+    if (!armyRosterName?.trim() && armyName?.trim()) setArmyRosterName(armyName);
+
+    const warlordUnit = warlordName?.trim() ? {
+      id: `${Date.now()}-warlord`,
+      name: warlordName,
+      size: '1',
+      notes: [warlordEnhancements, PATHS.find(p => p.key === warlordPath)?.name].filter(Boolean).join('; '),
+      points: '',
+    } : null;
+
+    let current = { id: `${Date.now()}-0`, units: warlordUnit ? [warlordUnit] : [] };
+    const newRegiments = [current];
+
+    oobUnits.forEach(row => {
+      const warscrollName = (row.warscroll || row.name || '').trim();
+      if (!warscrollName) return;
+      const match = factionUnits.find(fu => fu.name === warscrollName);
+      const unit = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        name: warscrollName,
+        size: match?.unit_size || '',
+        notes: [row.enhancements, row.pathAbility].filter(Boolean).join('; '),
+        points: match?.points || '',
+      };
+      if (match?.is_hero && current.units.length > 0) {
+        current = { id: `${Date.now()}-${newRegiments.length}-${Math.random().toString(36).slice(2)}`, units: [] };
+        newRegiments.push(current);
+      }
+      current.units.push(unit);
+    });
+    setRegiments(newRegiments);
+  };
 
   useEffect(() => {
     const h = e => {
@@ -1053,6 +1211,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
       spellLore, prayerLore, manifestationLore,
       warlordWarscroll, warlordRank, warlordRenown, warlordEnhancements, warlordPath, warlordPathAbility, oobUnits,
       commander, armyRosterName, pointsLimit, armyRosterFaction, armyRosterFormation, regiments, auxUnits, armyNotes,
+      startingUnits, heroicTraitChoice, heroicTraitAssignee, artefactChoice, artefactAssignee,
     };
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot)); } catch {}
   }, [
@@ -1064,6 +1223,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     spellLore, prayerLore, manifestationLore,
     warlordWarscroll, warlordRank, warlordRenown, warlordEnhancements, warlordPath, warlordPathAbility, oobUnits,
     commander, armyRosterName, pointsLimit, armyRosterFaction, armyRosterFormation, regiments, auxUnits, armyNotes,
+    startingUnits, heroicTraitChoice, heroicTraitAssignee, artefactChoice, artefactAssignee,
   ]);
 
   const renderWeaponTable = (title, rows, add, update, remove, hasRange) => (
@@ -1132,6 +1292,74 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
       </div>
     </>
   );
+
+  // Step 6 "Add your Enhancements" — one enhancement table (Heroic Traits
+  // or Artefacts of Power), single-select pick + an assignee dropdown
+  // ('warlord' or any Order of Battle unit added so far). Mirrors the
+  // single-select AbilityCard button treatment from renderApotheosisStep.
+  const assigneeOptions = [{ value: 'warlord', label: warlordName?.trim() || 'Warlord' },
+    ...oobUnits.filter(u => u.name?.trim()).map(u => ({ value: u.id, label: u.name }))];
+  const renderEnhancementTable = (title, options, choiceIdx, assignee, onPick, onReassign) => (
+    <div className="ptg-enhancement-table">
+      <div className="ptg-apotheosis-group-title">{title}</div>
+      {(options ?? []).length === 0 ? (
+        <div className="ptg-wizard-body-placeholder">No {title} sourced for this faction yet.</div>
+      ) : (
+        <>
+          <div className="ptg-field ptg-enhancement-assignee">
+            <label>Assign to</label>
+            <select value={assignee} onChange={e => onReassign(e.target.value)}>
+              {assigneeOptions.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
+            </select>
+          </div>
+          <div className="ptg-apotheosis-options-grid">
+            {options.map((opt, i) => (
+              <button
+                key={i}
+                type="button"
+                className={`ptg-apotheosis-option-btn${choiceIdx === i ? ' ptg-apotheosis-option-selected' : ''}`}
+                onClick={() => onPick(i)}
+              >
+                <AbilityCard ab={{ ...opt, bullets: parseFormationBullets(opt.bullets) }} keywords={[]} />
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+  // Step 7 "Add your Lores" — one column (Spell/Prayer/Manifestation),
+  // real faction cards as toggle buttons, filling into the same 6-slot
+  // arrays the Roster doc's Arcane Tome shows. Filled slot count doubles as
+  // a lightweight "x/6" progress readout.
+  const renderLoreColumn = (title, options, rows, setter) => {
+    const filled = rows.filter(r => r.trim()).length;
+    return (
+      <div className="ptg-lore-column">
+        <div className="ptg-apotheosis-group-title">{title} <span className="ptg-lore-count">({filled}/6)</span></div>
+        {(options ?? []).length === 0 ? (
+          <div className="ptg-wizard-body-placeholder">No {title} sourced for this faction yet.</div>
+        ) : (
+          <div className="ptg-apotheosis-options-grid">
+            {options.map((opt, i) => {
+              const selected = rows.includes(opt.name);
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  className={`ptg-apotheosis-option-btn${selected ? ' ptg-apotheosis-option-selected' : ''}`}
+                  onClick={() => toggleLoreCard(rows, setter, opt.name)}
+                >
+                  <AbilityCard ab={{ ...opt, bullets: parseFormationBullets(opt.bullets) }} keywords={[]} />
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // "-3DP" -> -3, "+4DP" -> +4, "0DP"/null -> 0. Sign is always explicit in
   // the scraped cost badge text except for the zero case, where it doesn't matter.
@@ -2032,6 +2260,108 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                       No faction-specific Warlord Paths sourced for {factions.find(f => f.faction_slug === selectedFaction)?.faction || 'this faction'} yet.
                     </div>
                   )}
+                </div>
+              ) : step === 4 ? (
+                <div className="ptg-units-step">
+                  <div className="ptg-units-step-header">
+                    <span>Starting units for {factions.find(f => f.faction_slug === selectedFaction)?.faction || 'this faction'}</span>
+                    <span className="ab-points-block">
+                      <span className={`ab-points-value ab-points-current${startingUnitsTotal > (parseInt(pointsLimit, 10) || 1000) ? ' ab-points-over' : ''}`}>{startingUnitsTotal}</span>
+                      <span className="ab-points-sep"> / </span>
+                      <span className="ab-points-value">{parseInt(pointsLimit, 10) || 1000}</span>
+                      <span className="ab-points-label"> pts</span>
+                    </span>
+                  </div>
+                  {factionUnitsLoading ? (
+                    <div className="ptg-wizard-body-placeholder">Loading…</div>
+                  ) : factionUnits.length === 0 ? (
+                    <div className="ptg-wizard-body-placeholder">No warscrolls found for this faction.</div>
+                  ) : (
+                    <table className="ptg-units-table">
+                      <thead>
+                        <tr>
+                          <th className="ab-count-th">Units</th>
+                          <th className="ab-count-th">Reinf.</th>
+                          <th>Name</th>
+                          <th>Pts</th>
+                          <th>Keywords</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[...factionUnits].sort((a, b) => a.name.localeCompare(b.name)).map(u => {
+                          const sel = startingUnits[u.id] ?? { train: 0, reinforce: 0 };
+                          return (
+                            <tr key={u.id}>
+                              <td className="col-count">
+                                <div className="ab-count-stepper">
+                                  <button type="button" className="ab-count-btn" onClick={() => bumpStartingUnitCount(u.id, 'train', -1)}>−</button>
+                                  <span className="ab-count-value">{sel.train || 0}</span>
+                                  <button type="button" className="ab-count-btn" onClick={() => bumpStartingUnitCount(u.id, 'train', 1)}>+</button>
+                                </div>
+                              </td>
+                              <td className="col-count">
+                                {u.is_hero ? (
+                                  <span className="ab-count-na" title="Heroes can't be reinforced">—</span>
+                                ) : (
+                                  <div className="ab-count-stepper">
+                                    <button type="button" className="ab-count-btn" onClick={() => bumpStartingUnitCount(u.id, 'reinforce', -1)}>−</button>
+                                    <span className="ab-count-value">{sel.reinforce || 0}</span>
+                                    <button type="button" className="ab-count-btn" onClick={() => bumpStartingUnitCount(u.id, 'reinforce', 1)}>+</button>
+                                  </div>
+                                )}
+                              </td>
+                              <td className="ptg-units-name">{u.name}</td>
+                              <td className="ptg-units-pts">{u.points || '—'}</td>
+                              <td className="ptg-units-keywords">{(u.keywords || '').split(',').slice(0, 6).join(', ')}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              ) : step === 5 ? (
+                <div className="ptg-enhancements-step">
+                  {renderEnhancementTable('Heroic Traits', factionRules.heroic_traits, heroicTraitChoice, heroicTraitAssignee, pickHeroicTrait, reassignHeroicTrait)}
+                  <div className="ptg-path-section-divider" />
+                  {renderEnhancementTable('Artefacts of Power', factionRules.artefacts, artefactChoice, artefactAssignee, pickArtefact, reassignArtefact)}
+                </div>
+              ) : step === 6 ? (
+                <div className="ptg-lores-step">
+                  {renderLoreColumn('Spell Lore', factionRules.spell_lore, spellLore, setSpellLore)}
+                  <div className="ptg-path-section-divider" />
+                  {renderLoreColumn('Prayer Lore', factionRules.prayer_lore, prayerLore, setPrayerLore)}
+                  <div className="ptg-path-section-divider" />
+                  {renderLoreColumn('Manifestation Lore', factionRules.manifestation_lore, manifestationLore, setManifestationLore)}
+                </div>
+              ) : step === 7 ? (
+                <div className="ptg-quest-step">
+                  <div className="ptg-wizard-body-placeholder">
+                    No quest list has been sourced yet — the core rulebook's Quest Log content isn't in the Anvil of Apotheosis data, and hasn't been photographed separately. "Search for the Artefact" is the one quest name on record as a commonly-cited safe default, with no mechanical text behind it. Type your quest below for now; feed me the source pages (core rules, Path to Glory Quest Log section) and this becomes real selectable cards.
+                  </div>
+                  <div className="ptg-quest-log-grid">
+                    <div className="ptg-field"><label>Current Quest</label><input type="text" value={currentQuest} onChange={e => setCurrentQuest(e.target.value)} placeholder="e.g. Search for the Artefact" /></div>
+                    <div className="ptg-field"><label>Quest Points</label><input type="text" value={questPoints} onChange={e => setQuestPoints(e.target.value)} /></div>
+                    <div className="ptg-field"><label>Notes</label><input type="text" value={questNotes} onChange={e => setQuestNotes(e.target.value)} /></div>
+                    <div className="ptg-field"><label>Quests Completed</label><input type="text" value={questsCompleted} onChange={e => setQuestsCompleted(e.target.value)} /></div>
+                  </div>
+                </div>
+              ) : step === 8 ? (
+                <div className="ptg-prepare-step">
+                  <div className="ptg-wizard-body-placeholder">
+                    Fills in the Army Roster document's Faction, Battle Formation, Army Name, and every Regiment from your Warlord and Order of Battle picks so far — matched back against the faction's real warscrolls for size/points where possible. Safe to run again after adding more units; Auxiliary Units are left alone either way.
+                  </div>
+                  <button type="button" className="ptg-apotheosis-skip-btn" onClick={prepareArmyRoster}>
+                    Auto-fill Army Roster from Order of Battle
+                  </button>
+                  <div className="ptg-prepare-summary">
+                    <div><span>Warlord</span><strong>{warlordName || '—'}</strong></div>
+                    <div><span>Order of Battle units</span><strong>{oobUnits.length}</strong></div>
+                    <div><span>Army Roster regiments</span><strong>{regiments.length} ({armyUnitsTotal}pts)</strong></div>
+                  </div>
+                  <button type="button" className="ptg-wizard-nav-btn" onClick={() => { setWarlordPrintPreview(false); setActiveDoc('army'); }}>
+                    Open Army Roster to review ›
+                  </button>
                 </div>
               ) : (
                 <div className="ptg-wizard-body-placeholder">Coming soon.</div>

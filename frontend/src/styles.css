@@ -3709,6 +3709,61 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   border-top: 1px solid rgba(200,168,64,0.3);
   margin: 1.25rem 0 1rem;
 }
+
+/* ── "Add your Starting Units" step ── */
+.ptg-units-step-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  font-family: 'Cinzel', serif;
+  font-size: 0.85rem;
+  color: var(--parchment, #d8cca8);
+}
+.ptg-units-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.ptg-units-table th {
+  font-family: 'Cinzel', serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.03em;
+  color: var(--text-dim, #8a8578);
+  text-transform: uppercase;
+  text-align: left;
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid rgba(200,168,64,0.25);
+}
+.ptg-units-table td {
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid rgba(200,168,64,0.08);
+  color: var(--parchment, #d8cca8);
+  vertical-align: middle;
+}
+.ptg-units-name { font-weight: 600; }
+.ptg-units-pts { text-align: center; }
+.ptg-units-keywords { color: var(--text-dim, #8a8578); font-size: 0.75rem; }
+
+/* ── "Add your Enhancements" step ── */
+.ptg-enhancement-assignee { max-width: 260px; margin-bottom: 0.75rem; }
+
+/* ── "Add your Lores" step ── */
+.ptg-lore-count { color: var(--text-dim, #8a8578); font-weight: 400; text-transform: none; letter-spacing: 0; }
+
+/* ── "Prepare for Battle" step ── */
+.ptg-prepare-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 1rem 0;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid rgba(200,168,64,0.25);
+  border-radius: 3px;
+  background: rgba(200,168,64,0.04);
+}
+.ptg-prepare-summary div { display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--parchment, #d8cca8); }
+.ptg-prepare-summary span { color: var(--text-dim, #8a8578); }
 /* Companion (and similar) options that grant 2+ separate abilities — each
    rendered as its own full phase-colored AbilityCard, indented under the
    option's own card to show the parent/child relationship, same convention
