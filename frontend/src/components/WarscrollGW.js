@@ -144,7 +144,7 @@ function buildSplitStyle(baseStyle, discoveredStyles) {
 // with an already-unambiguous timing ("Any Combat Phase") never get a
 // phase_key at all and fall straight through to the plain timing lookup,
 // unchanged from before this ever existed.
-function getPhaseStyle(ab) {
+export function getPhaseStyle(ab) {
   const timing = ab?.timing;
   const rawKey = ab?.phase_key;
   if (!rawKey) return styleForString(timing);

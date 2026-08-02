@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { AbilityCard } from './WarscrollGW';
+import { AbilityCard, getPhaseStyle } from './WarscrollGW';
 
 function parseFormationBullets(raw) {
   try { return JSON.parse(raw || '[]'); } catch { return []; }
@@ -353,6 +353,56 @@ function OverlayField({ box, spec, children }) {
   return <div className="ptg-doc-overlay-field" style={style}>{children}</div>;
 }
 
+// The Officiant Warlord Warscroll's Abilities area — same position/size
+// math as OverlayField (spec is left/top/width/height/fontSize, all % of
+// the doc image), but renders real phase-banner ability cards grouped
+// under a source header (COMPANION/ORIGIN/FLAW/etc.) instead of one plain
+// text blob. Deliberately NOT the site's normal AbilityCard component:
+// that one is sized in rem (fixed relative to the page), which would look
+// wrong at whatever size this scanned image happens to be rendered at —
+// everything here is sized in em off a single `fontSize` (in px, computed
+// from spec.fontSize * box.width, same fraction-of-image-width convention
+// as every other overlay field), so the cards scale exactly like the
+// weapon tables and stat wheel do.
+function OverlayAbilitiesBlock({ box, spec, groups }) {
+  if (!box.width || !groups?.length) return null;
+  const style = {
+    position: 'absolute',
+    left: box.left + (spec.left / 100) * box.width,
+    top: box.top + (spec.top / 100) * box.height,
+    width: (spec.width / 100) * box.width,
+    height: spec.height != null ? (spec.height / 100) * box.height : undefined,
+    fontSize: (spec.fontSize ?? 0.019) * box.width,
+    overflowY: 'auto',
+  };
+  return (
+    <div className="ptg-doc-overlay-abilities" style={style}>
+      {groups.map((g, gi) => (
+        <div key={gi} className="ptg-doc-overlay-ability-group">
+          <div className="ptg-doc-overlay-ability-group-hdr">{g.header}</div>
+          {g.abilities.map((a, ai) => {
+            const ps = getPhaseStyle(a);
+            return (
+              <div key={ai} className="ptg-doc-overlay-ability" style={{ borderColor: ps.border }}>
+                {a.timing && (
+                  <div className="ptg-doc-overlay-ability-hdr" style={{ background: ps.hdrBg, color: ps.hdrTxt }}>
+                    {a.timing.toUpperCase()}
+                  </div>
+                )}
+                <div className="ptg-doc-overlay-ability-body">
+                  <div className="ptg-doc-overlay-ability-name">{a.name}</div>
+                  {a.declare && <div><strong>Declare: </strong>{a.declare}</div>}
+                  {a.effect && <div><strong>Effect: </strong>{a.effect}</div>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // Field position tables below are first-pass estimates read off the scanned
 // templates (frontend/public/ptg/*.jpg, all 1524x1985) — close, not
 // pixel-calibrated. Expect to nudge individual `left`/`top`/`width` values
@@ -397,11 +447,12 @@ function buildWarlordOverlayFields(d) {
   // Abilities — the scanned template's own big blank area below the weapon
   // tables (melee weapons' last row ends ~51%, pixel-measured) and above
   // the Keywords footer bar (85.84%-89.42%, pixel-measured via a black-bar
-  // pixel scan). `height` clips overflow at the Keywords bar rather than
-  // running text on top of it once a real hero has accumulated more
-  // abilities than fit. Group headers (COMPANION/ORIGIN/FLAW/etc.) come
-  // pre-formatted in warlordAbilitiesText.
-  fields.push({ spec: { left: 9, top: 52.5, width: 84, height: 31, fontSize: 0.0125 }, value: d.warlordAbilitiesText });
+  // pixel scan). `height` clips overflow (scrolls in the Officiant view,
+  // which is a real DOM element unlike print) rather than running text on
+  // top of the Keywords bar once a hero has accumulated more abilities
+  // than fit at a glance. Rendered as real phase-banner ability cards, not
+  // plain text — see OverlayAbilitiesBlock/type:'abilities' in DocPage.
+  fields.push({ spec: { left: 9, top: 52.5, width: 84, height: 31, fontSize: 0.019 }, value: d.warlordAbilityGroups, type: 'abilities' });
 
   // top:86.3 sits the first of 2 keyword lines right on the bar's own first
   // ruled line (was top:95 — well past the bar entirely, rendering below
@@ -542,7 +593,9 @@ function DocPage({ img, alt, docKey, pageIndex, data }) {
       <ProgressiveImg src={img.src} micro={img.micro} avgColor={img.avgColor} alt={alt} className="ptg-doc-full-img" />
       <div className="ptg-doc-overlay">
         {fields.map((f, i) => (
-          <OverlayField key={i} box={box} spec={f.spec}>{f.value}</OverlayField>
+          f.type === 'abilities'
+            ? <OverlayAbilitiesBlock key={i} box={box} spec={f.spec} groups={f.value} />
+            : <OverlayField key={i} box={box} spec={f.spec}>{f.value}</OverlayField>
         ))}
       </div>
     </div>
@@ -1695,23 +1748,25 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
 
     if (mountChoice >= 0) push('Battle Mount', subAbilitiesOf(mountStepData?.options?.[mountChoice]));
 
+    // Every picked upgrade prints — the ones with a real embedded ability
+    // (e.g. "Mighty Biovoltaic Blast") print THAT; a pure stat tweak (e.g.
+    // "Tactical Acumen", "Focused Hunter") prints its own name/effect
+    // directly instead (defaulting to a Passive banner, since mechanically
+    // that's what an always-on stat change is) rather than being skipped —
+    // the wheel/weapon tables already reflect the stat change itself, but
+    // the player still wants to see WHAT was picked and WHY on the sheet.
+    const upgradeAbilities = opt => {
+      const bullets = Array.isArray(opt?.bullets) ? opt.bullets : JSON.parse(opt?.bullets || '[]');
+      const embedded = bullets.map(parseInlineAbilityBullet).filter(Boolean);
+      if (embedded.length) return embedded;
+      if (!opt) return [];
+      return [{ name: opt.name, timing: opt.timing || 'Passive', declare: opt.declare, effect: opt.effect }];
+    };
     if (mountUpgradesStepData) {
-      const abilities = battleMountUpgradesChoice
-        .map(i => mountUpgradesStepData.options[i])
-        .flatMap(opt => {
-          const bullets = Array.isArray(opt?.bullets) ? opt.bullets : JSON.parse(opt?.bullets || '[]');
-          return bullets.map(parseInlineAbilityBullet).filter(Boolean);
-        });
-      push('Battle Mount Upgrades', abilities);
+      push('Battle Mount Upgrades', battleMountUpgradesChoice.flatMap(i => upgradeAbilities(mountUpgradesStepData.options[i])));
     }
     if (otherUpgradesStepData) {
-      const abilities = otherUpgradesChoice
-        .map(i => otherUpgradesStepData.options[i])
-        .flatMap(opt => {
-          const bullets = Array.isArray(opt?.bullets) ? opt.bullets : JSON.parse(opt?.bullets || '[]');
-          return bullets.map(parseInlineAbilityBullet).filter(Boolean);
-        });
-      push('Other Upgrades', abilities);
+      push('Other Upgrades', otherUpgradesChoice.flatMap(i => upgradeAbilities(otherUpgradesStepData.options[i])));
     }
 
     const enhancements = [];
@@ -1735,21 +1790,6 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
 
     return groups;
   }, [apotheosisSteps, companionChoice, originFlawChoice, mountChoice, battleMountUpgradesChoice, otherUpgradesChoice, heroicTraitChoice, artefactChoice, factionRules, warlordPath, warlordPathRankChoices, selectedFaction]);
-
-  // Flattened to plain text for the Officiant overlay (see OverlayField —
-  // it's a plain positioned <div>, not a card layout, so no AbilityCard
-  // styling here — same "Name — Timing: Effect" shape the weapon Abilities
-  // column already uses). One field for the whole Abilities area rather
-  // than one per ability, since OverlayField specs are fixed positions,
-  // not a reflowing layout — long lists may run past the available space
-  // (same tradeoff as everywhere else in this doc-overlay system).
-  const warlordAbilitiesText = warlordAbilityGroups.map(g => {
-    const lines = g.abilities.map(a => {
-      const bits = [a.timing, a.declare ? `Declare: ${a.declare}` : null, a.effect ? `Effect: ${a.effect}` : null].filter(Boolean).join('. ');
-      return `${a.name}${bits ? ' — ' + bits : ''}`;
-    });
-    return [g.header.toUpperCase(), ...lines].join('\n');
-  }).join('\n\n');
 
   // "Anti-X (+1 Rend)"/"Charge (+1 Damage)" Other/Battle Mount Upgrade
   // options grant their bonus to a specific weapon (or weapon group) named
@@ -2069,7 +2109,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   // DocPage/buildOverlayFields.
   const officiantData = {
     warlordName, warlordMove, warlordHealth, warlordSave, warlordControl,
-    rangedWeapons, meleeWeapons, warlordKeywordsLine1, warlordKeywordsLine2, warlordAbilitiesText,
+    rangedWeapons, meleeWeapons, warlordKeywordsLine1, warlordKeywordsLine2, warlordAbilityGroups,
     armyName, realmOfOrigin, customRealmName,
     realmLabel: REALMS.find(r => r.key === realmOfOrigin)?.name || '',
     gloryPoints, battleFormation,

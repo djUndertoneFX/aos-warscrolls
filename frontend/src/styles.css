@@ -4170,6 +4170,53 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   overflow: hidden;
 }
 
+/* Officiant Warlord Warscroll Abilities area — real phase-banner cards,
+   not plain text (see OverlayAbilitiesBlock). Every size here is `em`
+   (relative to the block's own inline font-size, which IS set in px from
+   the image's own rendered width — see the component) so the whole card
+   stack scales exactly like the rest of the scanned-image overlay system
+   does, instead of a fixed site-wide rem size that would look wrong at
+   whatever size this image happens to be showing at. */
+.ptg-doc-overlay-abilities {
+  color: #262019;
+  font-family: 'EB Garamond', Georgia, 'Times New Roman', serif;
+  line-height: 1.25;
+}
+.ptg-doc-overlay-ability-group-hdr {
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.62em;
+  color: #6b4e1a;
+  margin: 0.5em 0 0.3em;
+}
+.ptg-doc-overlay-ability-group:first-child .ptg-doc-overlay-ability-group-hdr { margin-top: 0; }
+.ptg-doc-overlay-ability {
+  border: 1px solid;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.4);
+  margin-bottom: 0.3em;
+  overflow: hidden;
+}
+.ptg-doc-overlay-ability-hdr {
+  padding: 0.1em 0.5em;
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: 0.5em;
+  letter-spacing: 0.03em;
+}
+.ptg-doc-overlay-ability-body {
+  padding: 0.25em 0.5em 0.3em;
+  font-size: 0.55em;
+}
+.ptg-doc-overlay-ability-name {
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: 1.1em;
+  margin-bottom: 0.2em;
+}
+
 .ptg-doc-editor-header {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
