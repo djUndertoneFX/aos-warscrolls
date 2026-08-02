@@ -6,6 +6,13 @@ function parseFormationBullets(raw) {
   try { return JSON.parse(raw || '[]'); } catch { return []; }
 }
 
+// "WAR MACHINE" -> "War Machine", for the Anti-X unit-type picker buttons —
+// the applied ability text itself stays fully uppercase (matches every real
+// scraped "Anti-X (+1 Rend)" weapon ability already in the database).
+function titleCaseKeyword(s) {
+  return s.replace(/\S+/g, w => w.charAt(0) + w.slice(1).toLowerCase());
+}
+
 // The 8 Mortal Realms. Descriptions below are general, widely-known setting
 // lore written for this UI — NOT verbatim text quoted from a GW rulebook.
 // We don't have a book excerpt describing each realm to draw authentic
@@ -81,6 +88,15 @@ const PATHS = [
   { key: 'devout', name: 'Path of the Devout', restricted: 'Priest only',
     desc: 'With an unshakable faith to guide them, this warlord has been chosen by their patron deity for a greater purpose (or so they claim!).' },
 ];
+
+// Battletome-specific Warlord Paths, additional to the 4 core ones above —
+// keyed by faction_slug, same {key, name, restricted, desc} shape as PATHS.
+// Nothing sourced yet for any faction (no battletome PtG section publishing
+// these has been photographed/scraped, unlike Origins/Flaws/Battle Mounts
+// which come straight off Wahapedia) — left empty on purpose rather than
+// fabricated. "Pick your Warlord Path" shows a "not yet sourced" placeholder
+// under the Faction heading until entries land here.
+const FACTION_PATHS = {};
 
 // Explicit [row, col] placement (1-indexed) for the faction grid, computed
 // rather than hardcoded so it self-adjusts when a faction count changes
@@ -215,6 +231,21 @@ function OverlayField({ box, spec, children }) {
   return <div className="ptg-doc-overlay-field" style={style}>{children}</div>;
 }
 
+// Solid-color patch drawn behind a field's own OverlayField — see maskRect
+// above for why this exists. Same % coordinate space as OverlayField.
+function OverlayMask({ box, spec }) {
+  if (!box.width || !spec) return null;
+  const style = {
+    position: 'absolute',
+    left: box.left + (spec.left / 100) * box.width,
+    top: box.top + (spec.top / 100) * box.height,
+    width: (spec.width / 100) * box.width,
+    height: (spec.height / 100) * box.height,
+    background: spec.color,
+  };
+  return <div className="ptg-doc-overlay-mask" style={style} />;
+}
+
 // Field position tables below are first-pass estimates read off the scanned
 // templates (frontend/public/ptg/*.jpg, all 1524x1985) — close, not
 // pixel-calibrated. Expect to nudge individual `left`/`top`/`width` values
@@ -223,13 +254,29 @@ function centerField(left, top, width, fontSize) {
   return { left, top, width, align: 'center', centerX: true, fontSize };
 }
 
+// Position/size (as a % of the doc image, same coordinate space as
+// centerField) + fill color of a plain rect drawn UNDERNEATH a field's own
+// text — used to blank out the scanned template's own printed grey example
+// text (the stat wheel's "Mv"/"H"/"Sv"/"C" abbreviations, "YOUR WARSCROLL
+// TITLE") once the player's real value takes its place. DocPage only draws
+// a field (and therefore its mask) once `value` is truthy, so the example
+// text stays visible as a hint until then. Colors sampled directly off the
+// scanned template (frontend/public/ptg/warlord-warscroll.jpg) at a clean
+// patch of each region — disc interior is pure white, the name pane is a
+// slightly darker parchment tone.
+function maskRect(left, top, width, height, color) {
+  return { left, top, width, height, color };
+}
+const DISC_WHITE = 'rgb(255,255,255)';
+const PARCHMENT_TAN = 'rgb(233,233,225)';
+
 function buildWarlordOverlayFields(d) {
   const fields = [];
-  fields.push({ spec: centerField(10, 8.3, 10, 0.026), value: d.warlordMove });
-  fields.push({ spec: centerField(5.5, 13, 8, 0.026), value: d.warlordHealth });
-  fields.push({ spec: centerField(19.5, 13, 8, 0.026), value: d.warlordSave });
-  fields.push({ spec: centerField(10, 17.2, 10, 0.026), value: d.warlordControl });
-  fields.push({ spec: centerField(37, 13, 46, 0.028), value: d.warlordName });
+  fields.push({ spec: centerField(15.2, 11.3, 10, 0.026), value: d.warlordMove, mask: maskRect(13.45, 9.9, 3.5, 2.7, DISC_WHITE) });
+  fields.push({ spec: centerField(12.3, 13, 8, 0.026), value: d.warlordHealth, mask: maskRect(11.3, 12.9, 2.0, 1.5, DISC_WHITE) });
+  fields.push({ spec: centerField(19.5, 13, 8, 0.026), value: d.warlordSave, mask: maskRect(16.9, 12.9, 2.4, 1.5, DISC_WHITE) });
+  fields.push({ spec: centerField(15.2, 17.2, 10, 0.026), value: d.warlordControl, mask: maskRect(14.3, 15.4, 1.8, 1.5, DISC_WHITE) });
+  fields.push({ spec: centerField(56, 12.5, 55, 0.056), value: d.warlordName, mask: maskRect(37, 13.3, 37, 3.2, PARCHMENT_TAN) });
 
   const rangedRowTops = [24.6, 28.6, 32.6];
   (d.rangedWeapons || []).slice(0, 3).forEach((w, i) => {
@@ -391,7 +438,10 @@ function DocPage({ img, alt, docKey, pageIndex, data }) {
       <ProgressiveImg src={img.src} micro={img.micro} avgColor={img.avgColor} alt={alt} className="ptg-doc-full-img" />
       <div className="ptg-doc-overlay">
         {fields.map((f, i) => (
-          <OverlayField key={i} box={box} spec={f.spec}>{f.value}</OverlayField>
+          <React.Fragment key={i}>
+            {f.mask && <OverlayMask box={box} spec={f.mask} />}
+            <OverlayField box={box} spec={f.spec}>{f.value}</OverlayField>
+          </React.Fragment>
         ))}
       </div>
     </div>
@@ -602,6 +652,12 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   const [activeDoc, setActiveDoc] = useState(() => saved.activeDoc ?? null); // null | 'warlord' | 'roster' | 'oob' | 'army'
   const [presentMode, setPresentMode] = useState(() => saved.presentMode ?? 'replica'); // 'image' | 'replica'
   const modalRef = useRef(null);
+  // Warlord Warscroll print preview — same "gold print ready" light-theme
+  // step as Army Builder's Army Roster print button (ArmyBuilderPage.js),
+  // reusing its .ab-roster-print-* CSS since it's purely generic despite the
+  // name. Only meaningful in Non Corporeal (replica) mode; Officiant (image)
+  // mode prints straight from the on-screen scan, no preview step needed.
+  const [warlordPrintPreview, setWarlordPrintPreview] = useState(false);
 
   // ── Step 0: Campaign ──
   const [campaign, setCampaign] = useState(() => saved.campaign ?? null);
@@ -662,6 +718,16 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   // "Pick any Battle Mount Upgrades" — same shape/semantics as Other
   // Upgrades above (true multi-select, any number, no mutual exclusivity).
   const [battleMountUpgradesChoice, setBattleMountUpgradesChoice] = useState(() => saved.battleMountUpgradesChoice ?? []);
+  // Some Other/Battle Mount Upgrade options (e.g. Idoneth's "Focused Hunter")
+  // let the player pick which unit-type keyword their hero's weapon gets
+  // Anti-X (+1 Rend) against — INFANTRY/CAVALRY/MONSTER/WAR MACHINE/WIZARD/
+  // PRIEST (occasionally +HERO) — a pattern repeated near-verbatim across
+  // ~13 factions' Anvil of Apotheosis pages. Keyed by option id (in case a
+  // faction ever has more than one such option); defaults to the option's
+  // first-listed keyword (INFANTRY everywhere seen so far) the moment it's
+  // selected. See applyUpgradeWeaponEffect below for how this actually
+  // writes "Anti-X (+1 Rend)" onto the targeted weapon's Abilities text.
+  const [antiXChoiceByOption, setAntiXChoiceByOption] = useState(() => saved.antiXChoiceByOption ?? {});
 
   // Per-faction snapshots of the warlord fields above (+ sub-step position),
   // keyed by faction slug — so switching faction A → B → back to A restores
@@ -788,7 +854,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     const changed = prevFaction !== selectedFaction;
 
     if (changed && prevFaction) {
-      const leaving = { warlordName, warlordKeywordsLine1, warlordKeywordsLine2, rangedWeapons, meleeWeapons, warlordMove, warlordHealth, warlordSave, warlordControl, warlordSubStep, destinyPointChoice, archetypeChoice, companionChoice, originFlawChoice, mountChoice, otherUpgradesChoice, battleMountUpgradesChoice };
+      const leaving = { warlordName, warlordKeywordsLine1, warlordKeywordsLine2, rangedWeapons, meleeWeapons, warlordMove, warlordHealth, warlordSave, warlordControl, warlordSubStep, destinyPointChoice, archetypeChoice, companionChoice, originFlawChoice, mountChoice, otherUpgradesChoice, battleMountUpgradesChoice, antiXChoiceByOption };
       setWarlordSnapshotsByFaction(prev => ({ ...prev, [prevFaction]: leaving }));
     }
     prevSelectedFactionRef.current = selectedFaction;
@@ -814,6 +880,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
       setMountChoice(existing.mountChoice ?? -1);
       setOtherUpgradesChoice(existing.otherUpgradesChoice ?? []);
       setBattleMountUpgradesChoice(existing.battleMountUpgradesChoice ?? []);
+      setAntiXChoiceByOption(existing.antiXChoiceByOption ?? {});
 
       // Snapshots saved before starting-warscroll auto-fill existed have
       // nothing in these fields even though this faction has apotheosis data
@@ -867,6 +934,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     setMountChoice(-1);
     setOtherUpgradesChoice([]);
     setBattleMountUpgradesChoice([]);
+    setAntiXChoiceByOption({});
     axios.get(`/api/apotheosis/${selectedFaction}`).then(res => {
       if (cancelled) return;
       const steps = res.data.steps ?? [];
@@ -987,14 +1055,17 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
 
   useEffect(() => {
     const h = e => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') {
+        if (warlordPrintPreview) setWarlordPrintPreview(false); else onClose();
+        return;
+      }
       if (activeDoc) return; // arrow keys only navigate wizard steps, not while editing a document
       if (e.key === 'ArrowLeft')  { e.preventDefault(); setStep(s => Math.max(0, s - 1)); }
       if (e.key === 'ArrowRight') { e.preventDefault(); setStep(s => Math.min(STEPS.length - 1, s + 1)); }
     };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
-  }, [onClose, activeDoc]);
+  }, [onClose, activeDoc, warlordPrintPreview]);
 
   useEffect(() => {
     const h = e => {
@@ -1010,7 +1081,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     const snapshot = {
       step, activeDoc, presentMode, campaign, customCampaignName, selectedFaction, warlordSubStep,
       warlordName, warlordKeywordsLine1, warlordKeywordsLine2, rangedWeapons, meleeWeapons,
-      warlordMove, warlordHealth, warlordSave, warlordControl, warlordSnapshotsByFaction, destinyPointChoice, archetypeChoice, companionChoice, originFlawChoice, mountChoice, otherUpgradesChoice, battleMountUpgradesChoice,
+      warlordMove, warlordHealth, warlordSave, warlordControl, warlordSnapshotsByFaction, destinyPointChoice, archetypeChoice, companionChoice, originFlawChoice, mountChoice, otherUpgradesChoice, battleMountUpgradesChoice, antiXChoiceByOption,
       armyName, heraldryImage, realmOfOrigin, customRealmName, faction, battleFormation, gloryPoints, gloryRounds,
       currentQuest, questPoints, questNotes, questsCompleted, background, notableEvents,
       spellLore, prayerLore, manifestationLore,
@@ -1021,7 +1092,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   }, [
     step, activeDoc, presentMode, campaign, customCampaignName, selectedFaction, warlordSubStep,
     warlordName, warlordKeywordsLine1, warlordKeywordsLine2, rangedWeapons, meleeWeapons,
-    warlordMove, warlordHealth, warlordSave, warlordControl, warlordSnapshotsByFaction, destinyPointChoice, archetypeChoice, companionChoice, originFlawChoice, mountChoice, otherUpgradesChoice, battleMountUpgradesChoice,
+    warlordMove, warlordHealth, warlordSave, warlordControl, warlordSnapshotsByFaction, destinyPointChoice, archetypeChoice, companionChoice, originFlawChoice, mountChoice, otherUpgradesChoice, battleMountUpgradesChoice, antiXChoiceByOption,
     armyName, heraldryImage, realmOfOrigin, customRealmName, faction, battleFormation, gloryPoints, gloryRounds,
     currentQuest, questPoints, questNotes, questsCompleted, background, notableEvents,
     spellLore, prayerLore, manifestationLore,
@@ -1195,6 +1266,150 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     return lines;
   }, [apotheosisSteps, companionChoice, originFlawChoice, mountChoice, battleMountUpgradesChoice, otherUpgradesChoice]);
 
+  // "Anti-X (+1 Rend)"/"Charge (+1 Damage)" Other/Battle Mount Upgrade
+  // options grant their bonus to a specific weapon (or weapon group) named
+  // right in the option's own effect text — "Your hero's Warblade has...",
+  // "...non-Companion melee weapons have...", "...Choppa or Hacka has...".
+  // Parsed generically rather than hardcoded per faction, so any faction
+  // using this same phrasing picks up the behavior for free. Best-effort
+  // text matching, same spirit as applyArchetypeChoice above — not a full
+  // parser, just enough to cover the phrasings actually seen on scraped
+  // Anvil of Apotheosis pages. Returns null (safe no-op downstream) when the
+  // phrasing doesn't match, e.g. Lumineth's "Pick 1 of your hero's melee
+  // weapons. That weapon has..." two-part choice.
+  const parseWeaponTargetPhrase = effectText => {
+    const m = /hero'?s\s+((?:non-)?(?:companion\s+)?[a-z' ]+?)\s+(?:has|have)\b/i.exec(effectText || '');
+    if (!m) return null;
+    let phrase = m[1].trim();
+    const nonCompanion = /^non-companion\s+/i.test(phrase);
+    const companionOnly = !nonCompanion && /^companion\s+/i.test(phrase);
+    phrase = phrase.replace(/^non-companion\s+/i, '').replace(/^companion\s+/i, '').trim().toLowerCase();
+    const isGenericMelee = /^melee weapons?$/.test(phrase);
+    const isGenericAny = /^weapons?$/.test(phrase);
+    const altNames = (!isGenericMelee && !isGenericAny && /\bor\b/.test(phrase))
+      ? phrase.split(/\s+or\s+/).map(s => s.trim())
+      : [phrase];
+    return { isGenericMelee, isGenericAny, nonCompanion, companionOnly, altNames };
+  };
+
+  // Weapon name(s) granted by the currently-picked Companion — resolves the
+  // "Companion weapons"/"non-Companion melee weapons" phrasing above.
+  const companionWeaponNames = React.useMemo(() => {
+    if (companionChoice < 0 || !apotheosisSteps.length) return [];
+    const companionStepData = apotheosisSteps.find(s => /choose a companion/i.test(s.step_title || ''));
+    const opt = companionStepData?.options?.[companionChoice];
+    if (!opt) return [];
+    const bullets = Array.isArray(opt.bullets) ? opt.bullets : JSON.parse(opt.bullets || '[]');
+    return bullets
+      .map(b => /^(.+?)\s*[—-]\s*Atk/.exec(b)?.[1]?.trim().toLowerCase())
+      .filter(Boolean);
+  }, [apotheosisSteps, companionChoice]);
+
+  const weaponMatchesTarget = (row, target, listIsMelee) => {
+    const name = (row.name || '').trim().toLowerCase();
+    if (!name || !target) return false;
+    const isCompanionWeapon = companionWeaponNames.includes(name);
+    if (target.companionOnly) return isCompanionWeapon;
+    if (target.nonCompanion && isCompanionWeapon) return false;
+    if (target.isGenericAny) return true;
+    if (target.isGenericMelee) return listIsMelee;
+    return target.altNames.includes(name);
+  };
+
+  // Adds/removes one ability-text tag on whichever weapon row(s) `target`
+  // resolves to, replacing any existing tag sharing the same `family` prefix
+  // (so re-picking Focused Hunter's unit type swaps the old keyword out
+  // instead of stacking) without touching the rest of that weapon's freely
+  // typed Abilities text.
+  const setWeaponAbilityTag = (target, family, tagValue, add) => {
+    if (!target) return;
+    const updateList = listIsMelee => rows => rows.map(r => {
+      if (!weaponMatchesTarget(r, target, listIsMelee)) return r;
+      const tags = (r.abilities || '').split(',').map(s => s.trim()).filter(Boolean)
+        .filter(t => !t.toLowerCase().startsWith(family.toLowerCase()));
+      if (add) tags.push(tagValue);
+      return { ...r, abilities: tags.join(', ') };
+    });
+    setMeleeWeapons(updateList(true));
+    setRangedWeapons(updateList(false));
+  };
+
+  const isAntiXOption = opt => /anti-x\s*\(\+1 rend\)/i.test(opt.effect || '');
+  const isChargeDamageOption = opt => /charge\s*\(\+1 damage\)/i.test(opt.effect || '');
+
+  const ANTI_X_FALLBACK_KEYWORDS = ['INFANTRY', 'CAVALRY', 'MONSTER', 'WAR MACHINE', 'WIZARD', 'PRIEST'];
+  const parseAntiXKeywords = effectText => {
+    const m = /keywords?:\s*([^.]+)\./i.exec(effectText || '');
+    if (!m) return ANTI_X_FALLBACK_KEYWORDS;
+    const list = m[1].replace(/\bor\b/gi, ',').split(',')
+      .map(s => s.trim().toUpperCase().replace(/WAR MACH\w*NE/, 'WAR MACHINE'))
+      .filter(s => s && !/^A FACTION KEYWORD$/.test(s));
+    return list.length ? list : ANTI_X_FALLBACK_KEYWORDS;
+  };
+
+  // Applies (or removes) an Anti-X/Charge Other/Battle Mount Upgrade
+  // option's actual weapon effect the instant it's toggled. Every other
+  // upgrade on these two steps stays purely informational (matches how
+  // Duellist/Ornate Armour/etc. already behave — this wizard doesn't try to
+  // enforce every stat change onto the table), but these two effects repeat
+  // near-identically across enough factions to be worth wiring up for real.
+  const applyUpgradeWeaponEffect = (opt, adding) => {
+    if (isChargeDamageOption(opt)) {
+      setWeaponAbilityTag(parseWeaponTargetPhrase(opt.effect), 'charge (+1 damage)', 'Charge (+1 Damage)', adding);
+    } else if (isAntiXOption(opt)) {
+      const keyword = antiXChoiceByOption[opt.id] || parseAntiXKeywords(opt.effect)[0];
+      setWeaponAbilityTag(parseWeaponTargetPhrase(opt.effect), 'anti-', `Anti-${keyword} (+1 Rend)`, adding);
+    }
+  };
+
+  // Shared render for "Pick any Other Upgrades"/"Pick any Battle Mount
+  // Upgrades" cards (true multi-select, toggled independently) — `toggle`
+  // is called with the option's new selected state so each step's own
+  // choice-array setter stays local to its branch above. Anti-X options get
+  // an extra row of mutually-exclusive unit-type buttons beneath the card,
+  // shown only while that option is selected, defaulting to the first
+  // keyword the option itself lists (INFANTRY on every faction seen so
+  // far). The toggle button and the unit-type buttons are siblings, not
+  // nested, so native <button> keyboard/click semantics keep working for
+  // both without a stopPropagation dance.
+  const renderMultiToggleOption = (oi, opt, card, selected, toggle) => {
+    const antiX = isAntiXOption(opt);
+    const keywords = antiX ? parseAntiXKeywords(opt.effect) : null;
+    const chosenKeyword = antiX ? (antiXChoiceByOption[opt.id] || keywords[0]) : null;
+    return (
+      <div key={oi} className="ptg-apotheosis-option-wrap">
+        <button
+          type="button"
+          className={`ptg-apotheosis-option-btn${selected ? ' ptg-apotheosis-option-selected' : ''}`}
+          onClick={() => {
+            const nowSelected = !selected;
+            toggle(nowSelected);
+            applyUpgradeWeaponEffect(opt, nowSelected);
+          }}
+        >
+          {card}
+        </button>
+        {antiX && selected && (
+          <div className="ptg-anti-x-picker">
+            {keywords.map(kw => (
+              <button
+                key={kw}
+                type="button"
+                className={`ptg-anti-x-picker-btn${chosenKeyword === kw ? ' ptg-anti-x-picker-btn-selected' : ''}`}
+                onClick={() => {
+                  setAntiXChoiceByOption(prev => ({ ...prev, [opt.id]: kw }));
+                  setWeaponAbilityTag(parseWeaponTargetPhrase(opt.effect), 'anti-', `Anti-${kw} (+1 Rend)`, true);
+                }}
+              >
+                {titleCaseKeyword(kw)}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // One "Anvil of Apotheosis" step's content — an intro line plus its
   // options rendered as ability cards (reusing AbilityCard so cost badges,
   // phase-colored timing banners, and Declare/Effect all look identical to
@@ -1315,34 +1530,16 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
 
                   if (isOtherUpgradesStep) {
                     const selected = otherUpgradesChoice.includes(oi);
-                    return (
-                      <button
-                        key={oi}
-                        type="button"
-                        className={`ptg-apotheosis-option-btn${selected ? ' ptg-apotheosis-option-selected' : ''}`}
-                        onClick={() => {
-                          setOtherUpgradesChoice(prev => prev.includes(oi) ? prev.filter(x => x !== oi) : [...prev, oi]);
-                        }}
-                      >
-                        {card}
-                      </button>
-                    );
+                    return renderMultiToggleOption(oi, opt, card, selected, nowSelected => {
+                      setOtherUpgradesChoice(prev => nowSelected ? [...prev, oi] : prev.filter(x => x !== oi));
+                    });
                   }
 
                   if (isMountUpgradesStep) {
                     const selected = battleMountUpgradesChoice.includes(oi);
-                    return (
-                      <button
-                        key={oi}
-                        type="button"
-                        className={`ptg-apotheosis-option-btn${selected ? ' ptg-apotheosis-option-selected' : ''}`}
-                        onClick={() => {
-                          setBattleMountUpgradesChoice(prev => prev.includes(oi) ? prev.filter(x => x !== oi) : [...prev, oi]);
-                        }}
-                      >
-                        {card}
-                      </button>
-                    );
+                    return renderMultiToggleOption(oi, opt, card, selected, nowSelected => {
+                      setBattleMountUpgradesChoice(prev => nowSelected ? [...prev, oi] : prev.filter(x => x !== oi));
+                    });
                   }
 
                   const selected = isDpStep ? oi === destinyPointChoice
@@ -1402,12 +1599,17 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   };
 
   const renderImageView = doc => (
-    <div className="ptg-doc-image-view">
+    <div className={`ptg-doc-image-view${doc.key === 'warlord' ? ' ab-roster-print-target' : ''}`}>
       {doc.images.map((img, i) => (
         <DocPage key={img.src} img={img} alt={doc.title} docKey={doc.key} pageIndex={i} data={officiantData} />
       ))}
     </div>
   );
+
+  const handleWarlordPrintClick = () => {
+    if (presentMode === 'replica') setWarlordPrintPreview(true);
+    else window.print();
+  };
 
   const campaignLabel = campaign === 'custom'
     ? (customCampaignName.trim() || 'Foreign War of Aggression')
@@ -1426,6 +1628,9 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
       <div className="gw-overlay" />
       <div className="ptg-wizard" ref={modalRef} role="dialog" aria-modal="true" aria-label={isEditingExisting ? 'Present the Troops!' : 'Recruit Your Forces'}>
         <button className="gw-close" onClick={onClose} title="Close (Esc)">✕</button>
+        {activeDoc === 'warlord' && !warlordPrintPreview && (
+          <button className="ab-roster-print-btn" onClick={handleWarlordPrintClick} title="Print">🖨 Print</button>
+        )}
 
         <div className="ptg-wizard-banner">
           Path to Glory!{campaignLabel && <span className="ptg-wizard-banner-campaign"> — {campaignLabel}</span>}
@@ -1437,16 +1642,32 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
 
         <div className="ptg-doc-tray">
           {DOCS.map(doc => (
-            <DocThumb key={doc.key} doc={doc} active={activeDoc === doc.key} onClick={setActiveDoc} />
+            <DocThumb key={doc.key} doc={doc} active={activeDoc === doc.key} onClick={key => { setWarlordPrintPreview(false); setActiveDoc(key); }} />
           ))}
         </div>
 
         {activeDoc ? (() => {
           const doc = DOCS.find(d => d.key === activeDoc);
+          if (activeDoc === 'warlord' && warlordPrintPreview) {
+            return (
+              <>
+                <div className="ptg-doc-editor-header">
+                  <div className="ptg-doc-editor-title">Print Preview</div>
+                  <div className="ab-roster-print-actions">
+                    <button className="ptg-wizard-nav-btn" onClick={() => setWarlordPrintPreview(false)}>‹ Cancel</button>
+                    <button className="ptg-wizard-nav-btn ab-roster-print-confirm" onClick={() => window.print()}>🖨 Print</button>
+                  </div>
+                </div>
+                <div className="ptg-doc-editor-body ab-roster-print-target ab-roster-print-ready ptg-warlord-print-ready">
+                  {renderWarlordForm()}
+                </div>
+              </>
+            );
+          }
           return (
             <>
               <div className="ptg-doc-editor-header">
-                <button className="ptg-wizard-nav-btn" onClick={() => setActiveDoc(null)}>‹ Back to War Room</button>
+                <button className="ptg-wizard-nav-btn" onClick={() => { setWarlordPrintPreview(false); setActiveDoc(null); }}>‹ Back to War Room</button>
                 <div className="ptg-doc-editor-title">{doc.title}</div>
                 <PresentToggle mode={presentMode} onChange={setPresentMode} />
               </div>
@@ -1791,6 +2012,60 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                     </div>
                     {renderWarlordForm()}
                   </div>
+                </div>
+              ) : step === 3 ? (
+                <div className="ptg-path-step">
+                  <div className="ptg-apotheosis-group-title">Core</div>
+                  <div className="ptg-apotheosis-options-grid">
+                    {PATHS.map(p => (
+                      <button
+                        key={p.key}
+                        type="button"
+                        className={`ptg-apotheosis-option-btn${warlordPath === p.key ? ' ptg-apotheosis-option-selected' : ''}`}
+                        onClick={() => setWarlordPath(p.key)}
+                      >
+                        <div className="gw-ability-card">
+                          <div className="gw-ability-body">
+                            <div className="gw-ability-name">
+                              {p.name}
+                              {p.restricted && <span className="gw-ability-source-note" title="Restriction">({p.restricted})</span>}
+                            </div>
+                            <p className="gw-ability-para">{p.desc}</p>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="ptg-path-section-divider" />
+
+                  <div className="ptg-apotheosis-group-title">Faction</div>
+                  {(FACTION_PATHS[selectedFaction] ?? []).length > 0 ? (
+                    <div className="ptg-apotheosis-options-grid">
+                      {FACTION_PATHS[selectedFaction].map(p => (
+                        <button
+                          key={p.key}
+                          type="button"
+                          className={`ptg-apotheosis-option-btn${warlordPath === p.key ? ' ptg-apotheosis-option-selected' : ''}`}
+                          onClick={() => setWarlordPath(p.key)}
+                        >
+                          <div className="gw-ability-card">
+                            <div className="gw-ability-body">
+                              <div className="gw-ability-name">
+                                {p.name}
+                                {p.restricted && <span className="gw-ability-source-note" title="Restriction">({p.restricted})</span>}
+                              </div>
+                              <p className="gw-ability-para">{p.desc}</p>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="ptg-wizard-body-placeholder">
+                      No faction-specific Warlord Paths sourced for {factions.find(f => f.faction_slug === selectedFaction)?.faction || 'this faction'} yet.
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="ptg-wizard-body-placeholder">Coming soon.</div>

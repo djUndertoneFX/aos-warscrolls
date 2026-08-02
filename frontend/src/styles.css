@@ -1011,6 +1011,27 @@ input, select {
 .ab-roster-print-ready .ptg-oob-cap { border-bottom-color: #cccccc; }
 .ab-roster-print-ready .ab-roster-overlay-over { color: #c00000 !important; }
 
+/* Warlord Warscroll print preview (Path to Glory wizard) reuses
+   .ab-roster-print-ready's .ptg-field label/input overrides above (Name,
+   Move/Health/Save/Control, Keywords are all plain .ptg-field rows) — these
+   extra rules cover the pieces that aren't: the Ranged/Melee weapon tables
+   and the "Train Your Warlord" choices summary block. */
+.ptg-warlord-print-ready .ptg-warscroll-table-title,
+.ptg-warlord-print-ready .ptg-warscroll-table-head span,
+.ptg-warlord-print-ready .ptg-warlord-choice-label {
+  color: #000000;
+}
+.ptg-warlord-print-ready .ptg-warscroll-table-row input {
+  background: #ffffff;
+  color: #000000;
+  border-color: #999999;
+}
+.ptg-warlord-print-ready .ptg-warlord-choices-summary {
+  background: #ffffff;
+  border-color: #999999;
+}
+.ptg-warlord-print-ready .ptg-warlord-choice-row { color: #000000; }
+
 /* Printing — isolate whichever content currently carries
    .ab-roster-print-target (either the Image-mode page view or the Replica
    print-preview) and force portrait, one physical page per scanned page. */
@@ -1076,6 +1097,13 @@ input, select {
     width: 100% !important;
     height: auto !important;
     max-width: 100%;
+  }
+  /* Warlord Warscroll print preview only: the weapon tables' per-row remove
+     button and "+ Add Weapon" button are editing chrome, not warscroll
+     content — pointless (and a little silly-looking) on a printed page. */
+  .ptg-warlord-print-ready .ptg-oob-row-remove,
+  .ptg-warlord-print-ready .ptg-oob-add-btn {
+    display: none;
   }
 }
 
@@ -3638,6 +3666,48 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   border-color: var(--gold);
   box-shadow: 0 0 0 2px var(--gold);
   background: rgba(200,168,64,0.12);
+}
+/* Other/Battle Mount Upgrades cards that carry an Anti-X unit-type picker —
+   wraps the toggle button + picker row as siblings (not nested buttons) so
+   both keep native <button> click/keyboard behavior. */
+.ptg-apotheosis-option-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.ptg-anti-x-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0 0.25rem;
+}
+.ptg-anti-x-picker-btn {
+  padding: 0.25rem 0.6rem;
+  border: 1px solid rgba(200,168,64,0.3);
+  border-radius: 999px;
+  background: rgba(200,168,64,0.05);
+  color: var(--parchment, #d8cca8);
+  font-family: 'Cinzel', serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.ptg-anti-x-picker-btn:hover {
+  border-color: var(--gold);
+}
+.ptg-anti-x-picker-btn-selected {
+  border-color: var(--gold);
+  background: rgba(200,168,64,0.18);
+  color: var(--gold);
+}
+
+/* ── "Pick your Warlord Path" step: Core / Faction sections ── */
+.ptg-path-section-divider {
+  border: none;
+  border-top: 1px solid rgba(200,168,64,0.3);
+  margin: 1.25rem 0 1rem;
 }
 /* Companion (and similar) options that grant 2+ separate abilities — each
    rendered as its own full phase-colored AbilityCard, indented under the
