@@ -3401,12 +3401,14 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
    resized down to tablet width still gets the normal 980px modal, just
    with its dual-view content stacked instead of side-by-side (see below). */
 @media (min-width: 1400px) {
-  .ptg-wizard.ptg-wizard-dual-mode { width: min(1400px, 96vw); }
+  .ptg-wizard.ptg-wizard-dual-mode { width: min(1800px, 96vw); }
 }
 /* Right column defaults to stacking BELOW the left column (mobile-first —
    never actually seen below 1400px since the toggle is hidden there, but
    keeps a resized-down session usable instead of collapsing to nothing).
-   Becomes a real side-by-side grid only once there's desktop-width room. */
+   Becomes a real 50/50 side-by-side grid only once there's desktop-width
+   room — true 1fr/1fr, not a fixed right-column width, so both halves
+   split whatever the modal's own (up to 1800px) width is. */
 .ptg-wizard-dual {
   display: flex;
   flex-direction: column;
@@ -3415,7 +3417,8 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 @media (min-width: 1400px) {
   .ptg-wizard-dual {
     display: grid;
-    grid-template-columns: 1fr 400px;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
     align-items: start;
   }
 }
@@ -3426,10 +3429,9 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   gap: 0.75rem;
   min-width: 0;
 }
-/* 4 thumbnails at their normal 110px width don't fit the 400px right
-   column in one row (single view's tray only ever sits in the full-width
-   980px+ modal) — wrap instead of overflowing. */
-.ptg-wizard-dual-right .ptg-doc-tray { margin: 0; flex-wrap: wrap; }
+/* At 50/50 width the 4 thumbnails' normal 110px size comfortably fits one
+   row — never wrap, always side by side as asked. */
+.ptg-wizard-dual-right .ptg-doc-tray { margin: 0; flex-wrap: nowrap; justify-content: flex-start; }
 .ptg-wizard-dual-preview {
   border: 1px solid rgba(200,168,64,0.25);
   border-radius: 3px;

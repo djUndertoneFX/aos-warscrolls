@@ -1827,7 +1827,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
 
   const warlordSteps = apotheosisSteps.length ? apotheosisSteps.map(s => s.step_title) : null;
 
-  const renderDocEditor = () => {
+  const renderDocEditor = ({ showBackButton = true } = {}) => {
           const doc = DOCS.find(d => d.key === activeDoc);
           if (activeDoc === 'warlord' && warlordPrintPreview) {
             return (
@@ -1848,7 +1848,9 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
           return (
             <>
               <div className="ptg-doc-editor-header">
-                <button className="ptg-wizard-nav-btn" onClick={() => { setWarlordPrintPreview(false); setActiveDoc(null); }}>‹ Back to War Room</button>
+                {showBackButton
+                  ? <button className="ptg-wizard-nav-btn" onClick={() => { setWarlordPrintPreview(false); setActiveDoc(null); }}>‹ Back to War Room</button>
+                  : <span />}
                 <div className="ptg-doc-editor-title">{doc.title}</div>
                 <PresentToggle mode={presentMode} onChange={setPresentMode} />
               </div>
@@ -2395,13 +2397,12 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
           Path to Glory!{campaignLabel && <span className="ptg-wizard-banner-campaign"> — {campaignLabel}</span>}
         </div>
 
-        <div className="ptg-wizard-header">
-          <div className="ptg-wizard-title">{isEditingExisting ? 'Present the Troops!' : 'Recruit Your Forces'}</div>
-        </div>
-
         {wizardViewMode === 'dual' ? (
           <div className="ptg-wizard-dual">
             <div className="ptg-wizard-dual-left">
+              <div className="ptg-wizard-header">
+                <div className="ptg-wizard-title">{isEditingExisting ? 'Present the Troops!' : 'Recruit Your Forces'}</div>
+              </div>
               {renderStepFlow()}
             </div>
             <div className="ptg-wizard-dual-right">
@@ -2411,7 +2412,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                 ))}
               </div>
               <div className="ptg-wizard-dual-preview">
-                {activeDoc ? renderDocEditor() : (
+                {activeDoc ? renderDocEditor({ showBackButton: false }) : (
                   <div className="ptg-wizard-body-placeholder">Select a document above to view it here.</div>
                 )}
               </div>
@@ -2419,6 +2420,10 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
           </div>
         ) : (
           <>
+            <div className="ptg-wizard-header">
+              <div className="ptg-wizard-title">{isEditingExisting ? 'Present the Troops!' : 'Recruit Your Forces'}</div>
+            </div>
+
             <div className="ptg-doc-tray">
               {DOCS.map(doc => (
                 <DocThumb key={doc.key} doc={doc} active={activeDoc === doc.key} onClick={key => { setWarlordPrintPreview(false); setActiveDoc(key); }} />
