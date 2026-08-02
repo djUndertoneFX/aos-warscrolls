@@ -284,6 +284,7 @@ function OverlayField({ box, spec, children }) {
     left: box.left + (spec.left / 100) * box.width,
     top: box.top + (spec.top / 100) * box.height,
     width: spec.width != null ? (spec.width / 100) * box.width : undefined,
+    height: spec.height != null ? (spec.height / 100) * box.height : undefined,
     fontSize: (spec.fontSize ?? 0.016) * box.width,
     textAlign: spec.align || 'left',
     transform: spec.centerX ? 'translateX(-50%)' : undefined,
@@ -331,6 +332,16 @@ function buildWarlordOverlayFields(d) {
     fields.push({ spec: centerField(80.5, top, 5.5, 0.016), value: w.rnd });
     fields.push({ spec: centerField(87, top, 6, 0.016), value: w.dmg });
   });
+
+  // Abilities — the scanned template's own big blank area below the weapon
+  // tables (melee weapons' last row ends ~51%, pixel-measured) and above
+  // the Keywords footer bar (~86%, pixel-measured — the OTHER kwText field
+  // below is calibrated at top:95 which visually undershoots the bar, but
+  // that's pre-existing and untouched here). `height` clips overflow at the
+  // Keywords bar rather than running text on top of it once a real hero
+  // has accumulated more abilities than fit. Group headers (COMPANION/
+  // ORIGIN/FLAW/etc.) come pre-formatted in warlordAbilitiesText.
+  fields.push({ spec: { left: 9, top: 52.5, width: 84, height: 32, fontSize: 0.0125 }, value: d.warlordAbilitiesText });
 
   const kwText = [d.warlordKeywordsLine1, d.warlordKeywordsLine2].filter(Boolean).join('\n');
   fields.push({ spec: { left: 24, top: 95, width: 68, fontSize: 0.015 }, value: kwText });
@@ -1553,6 +1564,115 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     return lines;
   }, [apotheosisSteps, companionChoice, originFlawChoice, mountChoice, battleMountUpgradesChoice, otherUpgradesChoice]);
 
+  // Extracts a structured ability from an Other/Battle Mount Upgrade
+  // option's own embedded "[Timing] NAME — Declare: ... Effect: ..." bullet
+  // text (e.g. Idoneth's "Mighty Biovoltaic Blast", "Clamping Bite") —
+  // these are genuine standalone abilities baked into one bullet string
+  // rather than the structured sub_abilities column Companions/Battle
+  // Mounts use. Returns null for upgrades that are pure stat tweaks with no
+  // bullet at all (e.g. "Formidable Bulk"), which is most of them.
+  const parseInlineAbilityBullet = b => {
+    const m = /^\[([^\]]+)\]\s*(.+?)\s*[—-]\s*(.+)$/s.exec(b || '');
+    if (!m) return null;
+    const [, timing, name, rest] = m;
+    const declMatch = /^Declare:\s*(.+?)\s*Effect:\s*(.+)$/s.exec(rest);
+    if (declMatch) return { name: name.trim(), timing: timing.trim(), declare: declMatch[1].trim(), effect: declMatch[2].trim() };
+    const effMatch = /^Effect:\s*(.+)$/s.exec(rest);
+    return { name: name.trim(), timing: timing.trim(), declare: '', effect: (effMatch ? effMatch[1] : rest).trim() };
+  };
+
+  // Every rules-text ability the warlord has actually accumulated through
+  // the wizard, grouped by where it came from — for printing into the
+  // Officiant Warlord Warscroll's big blank Abilities area below the
+  // weapon tables (see buildWarlordOverlayFields). Pure stat tweaks (e.g.
+  // "Add 1 to Health") aren't included since they're already reflected on
+  // the stat wheel/weapon tables directly, not a separate rules text block
+  // a real warscroll would print.
+  const warlordAbilityGroups = React.useMemo(() => {
+    const groups = [];
+    const push = (header, abilities) => { if (abilities.length) groups.push({ header, abilities }); };
+
+    const companionStepData = apotheosisSteps.find(s => /choose a companion/i.test(s.step_title || ''));
+    const originFlawStepData = apotheosisSteps.find(s => /origin.*flaw/i.test(s.step_title || ''));
+    const mountStepData = apotheosisSteps.find(s => /choose a battle mount/i.test(s.step_title || ''));
+    const mountUpgradesStepData = apotheosisSteps.find(s => /pick any battle mount upgrades/i.test(s.step_title || ''));
+    const otherUpgradesStepData = apotheosisSteps.find(s => /pick any other upgrades/i.test(s.step_title || ''));
+
+    const subAbilitiesOf = opt => {
+      if (!opt) return [];
+      const subs = Array.isArray(opt.sub_abilities) ? opt.sub_abilities : JSON.parse(opt.sub_abilities || '[]');
+      return subs.map(s => ({ name: s.name, timing: s.timing, declare: s.declare, effect: s.effect }));
+    };
+
+    if (companionChoice >= 0) push('Companion', subAbilitiesOf(companionStepData?.options?.[companionChoice]));
+
+    if (originFlawStepData) {
+      const byGroup = {};
+      for (const o of originFlawStepData.options) { (byGroup[o.option_group] ??= []).push(o); }
+      const origin = originFlawChoice?.Origins != null ? byGroup.Origins?.[originFlawChoice.Origins] : null;
+      const flaw = originFlawChoice?.Flaws != null ? byGroup.Flaws?.[originFlawChoice.Flaws] : null;
+      if (origin) push('Origin', [{ name: origin.name, timing: origin.timing, declare: origin.declare, effect: origin.effect }]);
+      if (flaw) push('Flaw', [{ name: flaw.name, timing: flaw.timing, declare: flaw.declare, effect: flaw.effect }]);
+    }
+
+    if (mountChoice >= 0) push('Battle Mount', subAbilitiesOf(mountStepData?.options?.[mountChoice]));
+
+    if (mountUpgradesStepData) {
+      const abilities = battleMountUpgradesChoice
+        .map(i => mountUpgradesStepData.options[i])
+        .flatMap(opt => {
+          const bullets = Array.isArray(opt?.bullets) ? opt.bullets : JSON.parse(opt?.bullets || '[]');
+          return bullets.map(parseInlineAbilityBullet).filter(Boolean);
+        });
+      push('Battle Mount Upgrades', abilities);
+    }
+    if (otherUpgradesStepData) {
+      const abilities = otherUpgradesChoice
+        .map(i => otherUpgradesStepData.options[i])
+        .flatMap(opt => {
+          const bullets = Array.isArray(opt?.bullets) ? opt.bullets : JSON.parse(opt?.bullets || '[]');
+          return bullets.map(parseInlineAbilityBullet).filter(Boolean);
+        });
+      push('Other Upgrades', abilities);
+    }
+
+    const enhancements = [];
+    if (heroicTraitChoice != null && factionRules.heroic_traits?.[heroicTraitChoice]) {
+      const t = factionRules.heroic_traits[heroicTraitChoice];
+      enhancements.push({ name: t.name, timing: t.timing, declare: t.declare, effect: t.effect });
+    }
+    if (artefactChoice != null && factionRules.artefacts?.[artefactChoice]) {
+      const a = factionRules.artefacts[artefactChoice];
+      enhancements.push({ name: a.name, timing: a.timing, declare: a.declare, effect: a.effect });
+    }
+    push('Enhancements', enhancements);
+
+    const selectedPathObj = PATHS.find(p => p.key === warlordPath) || (FACTION_PATHS[selectedFaction] ?? []).find(p => p.key === warlordPath);
+    if (selectedPathObj?.ranks) {
+      const pathAbilities = selectedPathObj.ranks
+        .map(r => (warlordPathRankChoices[r.rank] != null ? { ...r.options[warlordPathRankChoices[r.rank]], name: `${r.rank}: ${r.options[warlordPathRankChoices[r.rank]].name}` } : null))
+        .filter(Boolean);
+      push(selectedPathObj.name, pathAbilities);
+    }
+
+    return groups;
+  }, [apotheosisSteps, companionChoice, originFlawChoice, mountChoice, battleMountUpgradesChoice, otherUpgradesChoice, heroicTraitChoice, artefactChoice, factionRules, warlordPath, warlordPathRankChoices, selectedFaction]);
+
+  // Flattened to plain text for the Officiant overlay (see OverlayField —
+  // it's a plain positioned <div>, not a card layout, so no AbilityCard
+  // styling here — same "Name — Timing: Effect" shape the weapon Abilities
+  // column already uses). One field for the whole Abilities area rather
+  // than one per ability, since OverlayField specs are fixed positions,
+  // not a reflowing layout — long lists may run past the available space
+  // (same tradeoff as everywhere else in this doc-overlay system).
+  const warlordAbilitiesText = warlordAbilityGroups.map(g => {
+    const lines = g.abilities.map(a => {
+      const bits = [a.timing, a.declare ? `Declare: ${a.declare}` : null, a.effect ? `Effect: ${a.effect}` : null].filter(Boolean).join('. ');
+      return `${a.name}${bits ? ' — ' + bits : ''}`;
+    });
+    return [g.header.toUpperCase(), ...lines].join('\n');
+  }).join('\n\n');
+
   // "Anti-X (+1 Rend)"/"Charge (+1 Damage)" Other/Battle Mount Upgrade
   // options grant their bonus to a specific weapon (or weapon group) named
   // right in the option's own effect text — "Your hero's Warblade has...",
@@ -1871,7 +1991,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   // DocPage/buildOverlayFields.
   const officiantData = {
     warlordName, warlordMove, warlordHealth, warlordSave, warlordControl,
-    rangedWeapons, meleeWeapons, warlordKeywordsLine1, warlordKeywordsLine2,
+    rangedWeapons, meleeWeapons, warlordKeywordsLine1, warlordKeywordsLine2, warlordAbilitiesText,
     armyName, realmOfOrigin, customRealmName,
     realmLabel: REALMS.find(r => r.key === realmOfOrigin)?.name || '',
     gloryPoints, battleFormation,
