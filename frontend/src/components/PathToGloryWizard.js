@@ -231,21 +231,6 @@ function OverlayField({ box, spec, children }) {
   return <div className="ptg-doc-overlay-field" style={style}>{children}</div>;
 }
 
-// Solid-color patch drawn behind a field's own OverlayField — see maskRect
-// above for why this exists. Same % coordinate space as OverlayField.
-function OverlayMask({ box, spec }) {
-  if (!box.width || !spec) return null;
-  const style = {
-    position: 'absolute',
-    left: box.left + (spec.left / 100) * box.width,
-    top: box.top + (spec.top / 100) * box.height,
-    width: (spec.width / 100) * box.width,
-    height: (spec.height / 100) * box.height,
-    background: spec.color,
-  };
-  return <div className="ptg-doc-overlay-mask" style={style} />;
-}
-
 // Field position tables below are first-pass estimates read off the scanned
 // templates (frontend/public/ptg/*.jpg, all 1524x1985) — close, not
 // pixel-calibrated. Expect to nudge individual `left`/`top`/`width` values
@@ -254,29 +239,13 @@ function centerField(left, top, width, fontSize) {
   return { left, top, width, align: 'center', centerX: true, fontSize };
 }
 
-// Position/size (as a % of the doc image, same coordinate space as
-// centerField) + fill color of a plain rect drawn UNDERNEATH a field's own
-// text — used to blank out the scanned template's own printed grey example
-// text (the stat wheel's "Mv"/"H"/"Sv"/"C" abbreviations, "YOUR WARSCROLL
-// TITLE") once the player's real value takes its place. DocPage only draws
-// a field (and therefore its mask) once `value` is truthy, so the example
-// text stays visible as a hint until then. Colors sampled directly off the
-// scanned template (frontend/public/ptg/warlord-warscroll.jpg) at a clean
-// patch of each region — disc interior is pure white, the name pane is a
-// slightly darker parchment tone.
-function maskRect(left, top, width, height, color) {
-  return { left, top, width, height, color };
-}
-const DISC_WHITE = 'rgb(255,255,255)';
-const PARCHMENT_TAN = 'rgb(233,233,225)';
-
 function buildWarlordOverlayFields(d) {
   const fields = [];
-  fields.push({ spec: centerField(15.2, 10.0, 10, 0.026), value: d.warlordMove, mask: maskRect(13.45, 9.9, 3.5, 2.7, DISC_WHITE) });
-  fields.push({ spec: centerField(12.3, 13, 8, 0.026), value: d.warlordHealth, mask: maskRect(11.3, 12.9, 2.0, 1.5, DISC_WHITE) });
-  fields.push({ spec: centerField(19.5, 13, 8, 0.026), value: d.warlordSave, mask: maskRect(16.9, 12.9, 2.4, 1.5, DISC_WHITE) });
-  fields.push({ spec: centerField(15.2, 15.0, 10, 0.026), value: d.warlordControl, mask: maskRect(14.3, 15.4, 1.8, 1.5, DISC_WHITE) });
-  fields.push({ spec: centerField(56, 12.5, 55, 0.056), value: d.warlordName, mask: maskRect(37, 13.3, 37, 3.2, PARCHMENT_TAN) });
+  fields.push({ spec: centerField(15.2, 10.0, 10, 0.026), value: d.warlordMove });
+  fields.push({ spec: centerField(12.3, 13, 8, 0.026), value: d.warlordHealth });
+  fields.push({ spec: centerField(19.5, 13, 8, 0.026), value: d.warlordSave });
+  fields.push({ spec: centerField(15.2, 15.0, 10, 0.026), value: d.warlordControl });
+  fields.push({ spec: centerField(56, 12.5, 55, 0.056), value: d.warlordName });
 
   const rangedRowTops = [24.6, 28.6, 32.6];
   (d.rangedWeapons || []).slice(0, 3).forEach((w, i) => {
@@ -438,10 +407,7 @@ function DocPage({ img, alt, docKey, pageIndex, data }) {
       <ProgressiveImg src={img.src} micro={img.micro} avgColor={img.avgColor} alt={alt} className="ptg-doc-full-img" />
       <div className="ptg-doc-overlay">
         {fields.map((f, i) => (
-          <React.Fragment key={i}>
-            {f.mask && <OverlayMask box={box} spec={f.mask} />}
-            <OverlayField box={box} spec={f.spec}>{f.value}</OverlayField>
-          </React.Fragment>
+          <OverlayField key={i} box={box} spec={f.spec}>{f.value}</OverlayField>
         ))}
       </div>
     </div>
