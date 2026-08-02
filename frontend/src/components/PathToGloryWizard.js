@@ -272,10 +272,10 @@ const PARCHMENT_TAN = 'rgb(233,233,225)';
 
 function buildWarlordOverlayFields(d) {
   const fields = [];
-  fields.push({ spec: centerField(15.2, 11.3, 10, 0.026), value: d.warlordMove, mask: maskRect(13.45, 9.9, 3.5, 2.7, DISC_WHITE) });
+  fields.push({ spec: centerField(15.2, 10.0, 10, 0.026), value: d.warlordMove, mask: maskRect(13.45, 9.9, 3.5, 2.7, DISC_WHITE) });
   fields.push({ spec: centerField(12.3, 13, 8, 0.026), value: d.warlordHealth, mask: maskRect(11.3, 12.9, 2.0, 1.5, DISC_WHITE) });
   fields.push({ spec: centerField(19.5, 13, 8, 0.026), value: d.warlordSave, mask: maskRect(16.9, 12.9, 2.4, 1.5, DISC_WHITE) });
-  fields.push({ spec: centerField(15.2, 17.2, 10, 0.026), value: d.warlordControl, mask: maskRect(14.3, 15.4, 1.8, 1.5, DISC_WHITE) });
+  fields.push({ spec: centerField(15.2, 15.0, 10, 0.026), value: d.warlordControl, mask: maskRect(14.3, 15.4, 1.8, 1.5, DISC_WHITE) });
   fields.push({ spec: centerField(56, 12.5, 55, 0.056), value: d.warlordName, mask: maskRect(37, 13.3, 37, 3.2, PARCHMENT_TAN) });
 
   const rangedRowTops = [24.6, 28.6, 32.6];
