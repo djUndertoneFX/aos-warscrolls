@@ -3399,16 +3399,32 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
    .ab-roster-modal-wide pattern already used for Army Roster) — only above
    the same breakpoint the toggle itself requires, so a dual-mode session
    resized down to tablet width still gets the normal 980px modal, just
-   with its dual-view content stacked instead of side-by-side (see below). */
+   with its dual-view content stacked instead of side-by-side (see below).
+   Above that breakpoint, .ptg-wizard itself becomes a column flexbox so the
+   banner can be pinned (flex: 0 0 auto, never scrolls) while the dual-pane
+   row below it (flex: 1 1 auto, min-height: 0 is what actually lets a flex
+   child be SMALLER than its content instead of forcing the parent to grow)
+   owns the remaining height and hands scrolling off to each column
+   independently rather than the whole modal scrolling as one unit. Below
+   the breakpoint .ptg-wizard keeps its original single-scroll behavior
+   (dual mode there is the rare resized-down fallback, not worth the same
+   treatment). */
 @media (min-width: 1400px) {
-  .ptg-wizard.ptg-wizard-dual-mode { width: min(1800px, 96vw); }
+  .ptg-wizard.ptg-wizard-dual-mode {
+    width: min(1800px, 96vw);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .ptg-wizard.ptg-wizard-dual-mode > .ptg-wizard-banner { flex: 0 0 auto; }
+  .ptg-wizard.ptg-wizard-dual-mode > .ptg-wizard-dual { flex: 1 1 auto; min-height: 0; overflow: hidden; }
 }
 /* Right column defaults to stacking BELOW the left column (mobile-first —
    never actually seen below 1400px since the toggle is hidden there, but
    keeps a resized-down session usable instead of collapsing to nothing).
-   Becomes a real 50/50 side-by-side grid only once there's desktop-width
-   room — true 1fr/1fr, not a fixed right-column width, so both halves
-   split whatever the modal's own (up to 1800px) width is. */
+   Becomes a real 60/40 side-by-side grid only once there's desktop-width
+   room (left gets the extra room — step content/forms need it more than
+   the right column's thumbnails + preview do). */
 .ptg-wizard-dual {
   display: flex;
   flex-direction: column;
@@ -3417,9 +3433,18 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 @media (min-width: 1400px) {
   .ptg-wizard-dual {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 3fr 2fr;
     gap: 2rem;
-    align-items: start;
+    align-items: stretch;
+    height: 100%;
+  }
+  /* Each column scrolls on its own — align-items: stretch above makes both
+     columns fill .ptg-wizard-dual's full height so this overflow actually
+     has a fixed box to clip against instead of just growing taller. */
+  .ptg-wizard-dual-left,
+  .ptg-wizard-dual-right {
+    height: 100%;
+    overflow-y: auto;
   }
 }
 .ptg-wizard-dual-left { min-width: 0; }
@@ -3429,15 +3454,16 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   gap: 0.75rem;
   min-width: 0;
 }
-/* At 50/50 width the 4 thumbnails' normal 110px size comfortably fits one
-   row — never wrap, always side by side as asked. */
-.ptg-wizard-dual-right .ptg-doc-tray { margin: 0; flex-wrap: nowrap; justify-content: flex-start; }
+/* Centered, spaced out, never wrapping — see .ptg-doc-thumb overrides below
+   for the matching wider/bigger-titled thumbnails this needs to keep their
+   headers on one line. */
+.ptg-wizard-dual-right .ptg-doc-tray { margin: 0; flex-wrap: nowrap; justify-content: center; gap: 1.1rem; }
+.ptg-wizard-dual-right .ptg-doc-thumb { width: 150px; }
+.ptg-wizard-dual-right .ptg-doc-thumb-header { font-size: 0.68rem; white-space: nowrap; }
 .ptg-wizard-dual-preview {
   border: 1px solid rgba(200,168,64,0.25);
   border-radius: 3px;
   padding: 0.9rem;
-  max-height: 78vh;
-  overflow-y: auto;
 }
 
 .ptg-wizard-banner {
@@ -4075,6 +4101,14 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   width: 100%;
   height: 100%;
 }
+/* Full-size "blown up" doc views (Officiant single-pane view, dual-view's
+   preview panel) skip the blur-up placeholder entirely — plain standard
+   site background instead of the per-image average-color tint + blurred
+   micro-image while the real scan loads. Thumbnails keep the blur-up
+   treatment as-is (not what was asked to change). !important is needed
+   since ProgressiveImg sets its average-color fill as an inline style. */
+.ptg-doc-full-img.ptg-progressive-img { background-color: var(--bg-deep) !important; }
+.ptg-doc-full-img .ptg-progressive-img-micro { display: none; }
 
 /* Officiant view: each doc page + its live-data text overlay, positioned
    against the image's actual visible rect (see useContainImageBox) rather

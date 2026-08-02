@@ -90,13 +90,73 @@ const PATHS = [
 ];
 
 // Battletome-specific Warlord Paths, additional to the 4 core ones above —
-// keyed by faction_slug, same {key, name, restricted, desc} shape as PATHS.
-// Nothing sourced yet for any faction (no battletome PtG section publishing
-// these has been photographed/scraped, unlike Origins/Flaws/Battle Mounts
-// which come straight off Wahapedia) — left empty on purpose rather than
-// fabricated. "Pick your Warlord Path" shows a "not yet sourced" placeholder
-// under the Faction heading until entries land here.
-const FACTION_PATHS = {};
+// keyed by faction_slug, {key, name, restricted, desc, ranks} shape (ranks
+// is the extra piece the 4 core PATHS above don't have yet: an array of
+// {rank, options: [{name, timing, effect}, {name, timing, effect}]} for
+// Aspiring/Elite/Mighty/Legendary, each a straight 1-of-2 pick). No
+// battletome PtG section publishes this on Wahapedia (it's a separate
+// in-book "Path to Glory" section, not the scraped Anvil of Apotheosis) —
+// this one entry is transcribed directly from the user's own photographs
+// of the Idoneth Deepkin battletome, pgs 90-91. Everything else stays
+// empty/unsourced until photographed the same way.
+const FACTION_PATHS = {
+  'idoneth-deepkin': [
+    {
+      key: 'perpetual-deep',
+      name: 'Path of the Perpetual Deep',
+      restricted: 'Idoneth Deepkin Hero only',
+      desc: null,
+      ranks: [
+        { rank: 'Aspiring', options: [
+          { name: 'Blade of the Cythai', timing: 'Passive', lore_text: 'This warrior has been chosen to wield a rare heirloom blade of the Cythai – a weapon sharp enough to cut a god.', effect: "Add 1 to hit rolls for this unit's combat attacks." },
+          { name: 'Blessing of Mathlann', timing: 'Passive', lore_text: 'This warrior bears the mark of the long-dead god, a sure sign of their fortune and favour.', effect: 'This unit has Ward (6+).' },
+        ] },
+        { rank: 'Elite', options: [
+          { name: 'Void Strike', timing: 'Once Per Battle, Any Combat Phase', lore_text: 'With each swing of their blade, this hero unleashes an icy blast through the ethersea that freezes their foe’s blood in their veins.', effect: "This unit's melee weapons have Crit (Mortal) for the rest of the turn." },
+          { name: 'Soul Stealer', timing: 'End of Any Turn', lore_text: 'This warrior is said to siphon the spirits of fallen foes to sustain them in battle.', effect: 'If this unit is in combat, Heal (D3) this unit.' },
+        ] },
+        { rank: 'Mighty', options: [
+          { name: 'Rapid Attacker', timing: 'Passive', lore_text: 'This mighty warrior ruthlessly hunts down the foes of the Idoneth and is often the first to draw the blood of the enemy.', effect: 'Add 1 to the number of dice rolled when making charge rolls for this unit, to a maximum of 3.' },
+          { name: 'Guardian of the Phalanx', timing: 'Once Per Battle, Any Combat Phase', lore_text: 'Those under the command of this hero have learnt to heed their orders meticulously and fight in well-disciplined cohesion.', effect: "For the rest of the turn, add 1 to save rolls for this unit and friendly Namarti units while they are within this unit's combat range." },
+        ] },
+        { rank: 'Legendary', options: [
+          { name: 'Paragon of Battle', timing: 'Any Combat Phase', lore_text: 'This hero has honed their martial prowess across countless battles.', effect: "Pick 1 of this unit's melee weapons. Add D3 to the Attacks characteristic of that weapon for the rest of the turn." },
+          { name: 'Ride the Maelstrom', timing: 'Once Per Battle, Your Hero Phase', lore_text: 'At the bidding of this legendary hero, an ethersea vortex is conjured around them and transports them across the battlefield in the blink of an eye.', effect: 'If this unit is not in combat, remove it from the battlefield and set it up again more than 9" from all enemy units.' },
+        ] },
+      ],
+    },
+  ],
+};
+
+// "Path of the Enclave" (non-Hero Idoneth Deepkin unit only, same
+// battletome pgs 90-91) is the unit-side counterpart to Path of the
+// Perpetual Deep above — but there's no wizard step for assigning Paths to
+// rank-and-file units as they earn renown post-battle (this 9-step wizard
+// only covers initial warlord/army creation), so it has nowhere to render
+// yet. Data transcribed here so it isn't lost/re-asked-for; wire it up
+// wherever unit renown tracking eventually lives.
+const IDONETH_PATH_OF_THE_ENCLAVE = {
+  name: 'Path of the Enclave',
+  restricted: 'non-Hero Idoneth Deepkin unit only',
+  ranks: [
+    { rank: 'Aspiring', options: [
+      { name: 'Reaping Strikes', timing: 'Once Per Battle, Any Combat Phase', lore_text: 'These warriors are veteran soul-raiders who have mastered the swift, clean kill.', effect: "For the rest of the turn, add 1 to wound rolls for this unit's combat attacks that target enemy Infantry units." },
+      { name: 'Swift Sea-Raiders', timing: 'Passive', lore_text: 'Few can outmatch the pace of the Idoneth.', effect: "Add 1\" to this unit's Move characteristic." },
+    ] },
+    { rank: 'Elite', options: [
+      { name: 'Deep Stalkers', timing: 'Passive', lore_text: 'Coiling tendrils of deep-sea shadow cling to these warriors, masking them from the enemy.', effect: 'If this unit is a non-reinforced, non-Monster unit, it is not visible to enemy units more than 12" from it. If this unit is a reinforced unit or a Monster, subtract 1 from hit rolls for attacks that target this unit made by units more than 12" from it.' },
+      { name: 'The First Wave', timing: 'Deployment Phase', lore_text: 'These elite warriors have earned their name by striking at the very forefront of the Idoneth Phalanxes.', effect: "This unit can immediately use the 'Normal Move' ability as if it were your movement phase." },
+    ] },
+    { rank: 'Mighty', options: [
+      { name: 'Fury of the Sea', timing: 'Passive', lore_text: 'Akin to the surging sea, these warriors race towards the enemy.', effect: 'Add 2 to charge rolls for this unit.' },
+      { name: 'Fury of the Storm', timing: 'Passive', lore_text: "Channelling the ocean's rage, these warriors strike with shattering force.", effect: "This unit's melee weapons have Crit (2 Hits)." },
+    ] },
+    { rank: 'Legendary', options: [
+      { name: 'The Crashing Wave', timing: 'Passive', lore_text: 'These warriors smash into their foes like a violent flood, giving them no time to react.', effect: 'This unit has Strike-First.' },
+      { name: 'Guarded Stance', timing: 'Passive', lore_text: 'Blows are deflected with skilled parries while these veterans time their perfect strike.', effect: 'This unit has Ward (5+) against damage points inflicted by combat attacks if it has not used a Fight ability in the same phase.' },
+    ] },
+  ],
+};
 
 // Explicit [row, col] placement (1-indexed) for the faction grid, computed
 // rather than hardcoded so it self-adjusts when a faction count changes
@@ -612,7 +672,6 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   // Read once per mount — resumes wherever the user left off last time they
   // opened this wizard (localStorage persists it across close/reopen).
   const saved = (() => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; } })();
-  const [isEditingExisting] = useState(() => Object.keys(saved).length > 0);
 
   const [step, setStep] = useState(() => saved.step ?? 0);
   const [activeDoc, setActiveDoc] = useState(() => saved.activeDoc ?? null); // null | 'warlord' | 'roster' | 'oob' | 'army'
@@ -1061,6 +1120,30 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   const [warlordEnhancements, setWarlordEnhancements] = useState(() => saved.warlordEnhancements ?? '');
   const [warlordPath, setWarlordPath] = useState(() => saved.warlordPath ?? null);
   const [warlordPathAbility, setWarlordPathAbility] = useState(() => saved.warlordPathAbility ?? '');
+  // Rank-ability picks for whichever Path is currently chosen (only
+  // faction Paths carry real rank data so far — see FACTION_PATHS above).
+  // { [rankName]: chosenOptionIndex }. Reset whenever the Path itself
+  // changes (a different Path's ranks are a different set of choices, not
+  // meant to carry over) and mirrored into warlordPathAbility's free-text
+  // field as a readable summary, same field the Order of Battle doc's
+  // Warlord row already shows.
+  const [warlordPathRankChoices, setWarlordPathRankChoices] = useState(() => saved.warlordPathRankChoices ?? {});
+  const pickWarlordPath = key => {
+    setWarlordPath(key);
+    setWarlordPathRankChoices({});
+    setWarlordPathAbility('');
+  };
+  const pickPathRankOption = (pathRanks, rank, optIdx) => {
+    setWarlordPathRankChoices(prev => {
+      const next = { ...prev, [rank]: optIdx };
+      const summary = pathRanks
+        .map(r => (next[r.rank] != null ? r.options[next[r.rank]]?.name : null))
+        .filter(Boolean)
+        .join(', ');
+      setWarlordPathAbility(summary);
+      return next;
+    });
+  };
   const [oobUnits, addOobUnit, updateOobUnit, removeOobUnit, setOobUnits] = useRowList(saved.oobUnits ?? []);
   const oobTotalPoints = oobUnits.reduce((sum, u) => sum + (parseInt(u.points, 10) || 0), 0);
 
@@ -1219,7 +1302,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
       armyName, heraldryImage, realmOfOrigin, customRealmName, faction, battleFormation, gloryPoints, gloryRounds,
       currentQuest, questPoints, questNotes, questsCompleted, background, notableEvents,
       spellLore, prayerLore, manifestationLore,
-      warlordWarscroll, warlordRank, warlordRenown, warlordEnhancements, warlordPath, warlordPathAbility, oobUnits,
+      warlordWarscroll, warlordRank, warlordRenown, warlordEnhancements, warlordPath, warlordPathAbility, warlordPathRankChoices, oobUnits,
       commander, armyRosterName, pointsLimit, armyRosterFaction, armyRosterFormation, regiments, auxUnits, armyNotes,
       startingUnits, heroicTraitChoice, heroicTraitAssignee, artefactChoice, artefactAssignee,
     };
@@ -1231,7 +1314,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     armyName, heraldryImage, realmOfOrigin, customRealmName, faction, battleFormation, gloryPoints, gloryRounds,
     currentQuest, questPoints, questNotes, questsCompleted, background, notableEvents,
     spellLore, prayerLore, manifestationLore,
-    warlordWarscroll, warlordRank, warlordRenown, warlordEnhancements, warlordPath, warlordPathAbility, oobUnits,
+    warlordWarscroll, warlordRank, warlordRenown, warlordEnhancements, warlordPath, warlordPathAbility, warlordPathRankChoices, oobUnits,
     commander, armyRosterName, pointsLimit, armyRosterFaction, armyRosterFormation, regiments, auxUnits, armyNotes,
     startingUnits, heroicTraitChoice, heroicTraitAssignee, artefactChoice, artefactAssignee,
   ]);
@@ -2207,7 +2290,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                         key={p.key}
                         type="button"
                         className={`ptg-apotheosis-option-btn${warlordPath === p.key ? ' ptg-apotheosis-option-selected' : ''}`}
-                        onClick={() => setWarlordPath(p.key)}
+                        onClick={() => pickWarlordPath(p.key)}
                       >
                         <div className="gw-ability-card">
                           <div className="gw-ability-body">
@@ -2232,7 +2315,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                           key={p.key}
                           type="button"
                           className={`ptg-apotheosis-option-btn${warlordPath === p.key ? ' ptg-apotheosis-option-selected' : ''}`}
-                          onClick={() => setWarlordPath(p.key)}
+                          onClick={() => pickWarlordPath(p.key)}
                         >
                           <div className="gw-ability-card">
                             <div className="gw-ability-body">
@@ -2251,6 +2334,35 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                       No faction-specific Warlord Paths sourced for {factions.find(f => f.faction_slug === selectedFaction)?.faction || 'this faction'} yet.
                     </div>
                   )}
+
+                  {(() => {
+                    const selectedPathObj = PATHS.find(p => p.key === warlordPath)
+                      || (FACTION_PATHS[selectedFaction] ?? []).find(p => p.key === warlordPath);
+                    if (!selectedPathObj?.ranks) return null;
+                    return (
+                      <>
+                        <div className="ptg-path-section-divider" />
+                        <div className="ptg-apotheosis-group-title">{selectedPathObj.name} — Rank Abilities</div>
+                        {selectedPathObj.ranks.map((r, ri) => (
+                          <div key={ri} className="ptg-apotheosis-group">
+                            <div className="ptg-apotheosis-group-title">{r.rank}</div>
+                            <div className="ptg-apotheosis-options-grid">
+                              {r.options.map((opt, oi) => (
+                                <button
+                                  key={oi}
+                                  type="button"
+                                  className={`ptg-apotheosis-option-btn${warlordPathRankChoices[r.rank] === oi ? ' ptg-apotheosis-option-selected' : ''}`}
+                                  onClick={() => pickPathRankOption(selectedPathObj.ranks, r.rank, oi)}
+                                >
+                                  <AbilityCard ab={{ ...opt, bullets: [] }} keywords={[]} />
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </>
+                    );
+                  })()}
                 </div>
               ) : step === 4 ? (
                 <div className="ptg-units-step">
@@ -2373,7 +2485,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   return (
     <>
       <div className="gw-overlay" />
-      <div className={`ptg-wizard${wizardViewMode === 'dual' ? ' ptg-wizard-dual-mode' : ''}`} ref={modalRef} role="dialog" aria-modal="true" aria-label={isEditingExisting ? 'Present the Troops!' : 'Recruit Your Forces'}>
+      <div className={`ptg-wizard${wizardViewMode === 'dual' ? ' ptg-wizard-dual-mode' : ''}`} ref={modalRef} role="dialog" aria-modal="true" aria-label={'Recruit Your Forces!'}>
         <div className="gw-view-toggle ptg-wizard-view-toggle">
           <button
             type="button"
@@ -2401,7 +2513,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
           <div className="ptg-wizard-dual">
             <div className="ptg-wizard-dual-left">
               <div className="ptg-wizard-header">
-                <div className="ptg-wizard-title">{isEditingExisting ? 'Present the Troops!' : 'Recruit Your Forces'}</div>
+                <div className="ptg-wizard-title">{'Recruit Your Forces!'}</div>
               </div>
               {renderStepFlow()}
             </div>
@@ -2421,7 +2533,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
         ) : (
           <>
             <div className="ptg-wizard-header">
-              <div className="ptg-wizard-title">{isEditingExisting ? 'Present the Troops!' : 'Recruit Your Forces'}</div>
+              <div className="ptg-wizard-title">{'Recruit Your Forces!'}</div>
             </div>
 
             <div className="ptg-doc-tray">
