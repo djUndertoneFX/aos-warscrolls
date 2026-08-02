@@ -3367,6 +3367,44 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 .img-lightbox-arrow-right { right: 16px; }
 
 /* ── Path to Glory: Recruit Your Forces wizard ── */
+/* Click-to-zoom lightbox for a blown-up doc image (single view or dual
+   view's preview panel) — a further popup above .ptg-wizard itself
+   (z-index 1201) that sizes the doc to use as much of BOTH viewport
+   dimensions as possible at once, unlike the inline preview (which fills
+   width only and lets height overflow into a scrollbar). max-width is
+   whichever is smaller: 94vw, or the width a single page would need to
+   exactly fill 94vh at the doc's own aspect ratio — so a normal single-
+   page doc needs no scrolling at all; the one 2-page doc (Army Roster)
+   still fits horizontally the same way, just scrolls vertically for the
+   2nd page (align-items: flex-start avoids flexbox's "can't scroll to an
+   overflowing item's own top" trap that align-items: center would hit). */
+.ptg-doc-image-view-zoomable { cursor: zoom-in; }
+.ptg-doc-lightbox-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  background: rgba(0,0,0,0.88);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 3vh 3vw;
+  overflow-y: auto;
+}
+.ptg-doc-lightbox-frame {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  max-width: min(94vw, calc(94vh * 1524 / 1985));
+  cursor: default;
+}
+.ptg-doc-lightbox-close {
+  position: fixed;
+  top: 16px;
+  right: 20px;
+  z-index: 1301;
+}
+
 .ptg-wizard {
   position: fixed;
   top: 4vh;
@@ -3422,9 +3460,8 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 /* Right column defaults to stacking BELOW the left column (mobile-first —
    never actually seen below 1400px since the toggle is hidden there, but
    keeps a resized-down session usable instead of collapsing to nothing).
-   Becomes a real 60/40 side-by-side grid only once there's desktop-width
-   room (left gets the extra room — step content/forms need it more than
-   the right column's thumbnails + preview do). */
+   Becomes a real 50/50 side-by-side grid only once there's desktop-width
+   room. */
 .ptg-wizard-dual {
   display: flex;
   flex-direction: column;
@@ -3433,7 +3470,7 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 @media (min-width: 1400px) {
   .ptg-wizard-dual {
     display: grid;
-    grid-template-columns: 3fr 2fr;
+    grid-template-columns: 1fr 1fr;
     gap: 2rem;
     align-items: stretch;
     height: 100%;
@@ -4066,27 +4103,25 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
    reading as "the image is just cut off" with no visible way to see more.
    Default now is a real bounding FRAME (a definite height, not just a cap)
    that each image scales down to fit inside via object-fit:contain below —
-   no scrolling needed for the common single-page case. A doc with more
-   than one page (only the 2-page Army Roster) still scrolls between pages,
-   each pane already amount to a full occupied frame, but the scrollbar
-   itself starts at the top by default because nothing sets scrollTop —
-   this container just does not need to scroll for the single-page dominant case. */
+   Fills its container's full width — no more shrinking to fit a fixed
+   height, which was making the text unreadably small in narrower contexts
+   (the dual-view preview column especially). Height now follows from the
+   width via .ptg-doc-page-wrap's aspect-ratio, and this element itself has
+   no height cap or scrollbar of its own — whatever doesn't fit vertically
+   is handled by whichever ancestor already owns scrolling in that context
+   (the whole modal in single view, .ptg-wizard-dual-right in dual view),
+   not a nested scrollbox here. A doc with more than one page (only the
+   2-page Army Roster) just stacks both pages taller, same idea. */
 .ptg-doc-image-view {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 1rem;
-  height: 62vh;
-  overflow-y: auto;
 }
 .ptg-doc-full-img {
   display: block;
   width: 100%;
   height: 100%;
-  /* the base rule's blur-up placeholder is transform:scale(1.12) — on this
-     override's definite box (instead of sized-to-its-own-content, the
-     normal case elsewhere) that scale would otherwise paint past this
-     frame's own edges by ~6% each side. */
   overflow: hidden;
   border: 1px solid rgba(200,168,64,0.3);
   border-radius: 3px;
@@ -4111,13 +4146,14 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 .ptg-doc-full-img .ptg-progressive-img-micro { display: none; }
 
 /* Officiant view: each doc page + its live-data text overlay, positioned
-   against the image's actual visible rect (see useContainImageBox) rather
-   than this wrapper's own box, since the image itself is pillar/letterboxed
-   inside .ptg-doc-full-img. */
+   against the image's actual visible rect (see useContainImageBox). Height
+   comes from the width via aspect-ratio (set inline, matches PTG_DOC_ASPECT
+   in PathToGloryWizard.js) rather than a fixed vh value — the image now
+   always touches both left/right edges of its container at its full,
+   correctly-proportioned height, whatever that ends up being. */
 .ptg-doc-page-wrap {
   position: relative;
   width: 100%;
-  height: 62vh;
   flex: 0 0 auto;
 }
 .ptg-doc-overlay {

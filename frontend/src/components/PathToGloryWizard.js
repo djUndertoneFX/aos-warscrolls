@@ -247,6 +247,14 @@ function ProgressiveImg({ src, micro, avgColor, alt, className }) {
 // not the outer box — recalculated on resize since the bars' width changes
 // with viewport/modal width.
 const PTG_DOC_ASPECT = 1524 / 1985;
+// Always fills the container's full WIDTH (touching both horizontal edges)
+// and lets height follow from PTG_DOC_ASPECT — .ptg-doc-page-wrap sets the
+// matching CSS `aspect-ratio` so the container's own clientHeight already
+// comes out to cw/PTG_DOC_ASPECT with no JS needed to enforce it. No more
+// letterbox/pillarbox branching: the box IS the container, so there's
+// nothing left over to center. Whatever doesn't fit vertically is handled
+// by an ancestor scrolling, not by shrinking the image — see the "reads
+// too small" fix this replaced.
 function useContainImageBox(containerRef) {
   const [box, setBox] = useState({ left: 0, top: 0, width: 0, height: 0 });
   useEffect(() => {
@@ -255,14 +263,7 @@ function useContainImageBox(containerRef) {
     const compute = () => {
       const cw = el.clientWidth, ch = el.clientHeight;
       if (!cw || !ch) return;
-      const containerAspect = cw / ch;
-      let w, h, left, top;
-      if (containerAspect > PTG_DOC_ASPECT) {
-        h = ch; w = ch * PTG_DOC_ASPECT; left = (cw - w) / 2; top = 0;
-      } else {
-        w = cw; h = cw / PTG_DOC_ASPECT; left = 0; top = (ch - h) / 2;
-      }
-      setBox({ left, top, width: w, height: h });
+      setBox({ left: 0, top: 0, width: cw, height: ch });
     };
     compute();
     const ro = new ResizeObserver(compute);
@@ -335,16 +336,19 @@ function buildWarlordOverlayFields(d) {
 
   // Abilities — the scanned template's own big blank area below the weapon
   // tables (melee weapons' last row ends ~51%, pixel-measured) and above
-  // the Keywords footer bar (~86%, pixel-measured — the OTHER kwText field
-  // below is calibrated at top:95 which visually undershoots the bar, but
-  // that's pre-existing and untouched here). `height` clips overflow at the
-  // Keywords bar rather than running text on top of it once a real hero
-  // has accumulated more abilities than fit. Group headers (COMPANION/
-  // ORIGIN/FLAW/etc.) come pre-formatted in warlordAbilitiesText.
-  fields.push({ spec: { left: 9, top: 52.5, width: 84, height: 32, fontSize: 0.0125 }, value: d.warlordAbilitiesText });
+  // the Keywords footer bar (85.84%-89.42%, pixel-measured via a black-bar
+  // pixel scan). `height` clips overflow at the Keywords bar rather than
+  // running text on top of it once a real hero has accumulated more
+  // abilities than fit. Group headers (COMPANION/ORIGIN/FLAW/etc.) come
+  // pre-formatted in warlordAbilitiesText.
+  fields.push({ spec: { left: 9, top: 52.5, width: 84, height: 31, fontSize: 0.0125 }, value: d.warlordAbilitiesText });
 
+  // top:86.3 sits the first of 2 keyword lines right on the bar's own first
+  // ruled line (was top:95 — well past the bar entirely, rendering below
+  // it near the page's bottom margin; confirmed via PIL text simulation
+  // against the real scan, see [[feedback_overlay_calibration_technique]]).
   const kwText = [d.warlordKeywordsLine1, d.warlordKeywordsLine2].filter(Boolean).join('\n');
-  fields.push({ spec: { left: 24, top: 95, width: 68, fontSize: 0.015 }, value: kwText });
+  fields.push({ spec: { left: 24, top: 86.3, width: 68, fontSize: 0.015 }, value: kwText });
   return fields;
 }
 
@@ -474,7 +478,7 @@ function DocPage({ img, alt, docKey, pageIndex, data }) {
   const box = useContainImageBox(containerRef);
   const fields = buildOverlayFields(docKey, pageIndex, data).filter(f => f.value);
   return (
-    <div className="ptg-doc-page-wrap" ref={containerRef}>
+    <div className="ptg-doc-page-wrap" ref={containerRef} style={{ aspectRatio: PTG_DOC_ASPECT }}>
       <ProgressiveImg src={img.src} micro={img.micro} avgColor={img.avgColor} alt={alt} className="ptg-doc-full-img" />
       <div className="ptg-doc-overlay">
         {fields.map((f, i) => (
@@ -697,6 +701,12 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   // vertically instead of disappearing, and the toggle button itself is
   // hidden by CSS so iPad/phone users never see an option that wouldn't fit.
   const [wizardViewMode, setWizardViewMode] = useState(() => saved.wizardViewMode ?? 'single');
+  // Clicking a blown-up doc image (single view or dual view's preview
+  // panel) opens this — a further popup that maximizes both viewport
+  // dimensions (not just width like the inline preview) so there's little
+  // to no scrolling at all, not persisted (purely a transient "zoomed in"
+  // view of whichever doc is currently active).
+  const [docLightboxOpen, setDocLightboxOpen] = useState(false);
   const modalRef = useRef(null);
   // Warlord Warscroll print preview — same "gold print ready" light-theme
   // step as Army Builder's Army Roster print button (ArmyBuilderPage.js),
@@ -1284,7 +1294,9 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   useEffect(() => {
     const h = e => {
       if (e.key === 'Escape') {
-        if (warlordPrintPreview) setWarlordPrintPreview(false); else onClose();
+        if (docLightboxOpen) setDocLightboxOpen(false);
+        else if (warlordPrintPreview) setWarlordPrintPreview(false);
+        else onClose();
         return;
       }
       if (activeDoc) return; // arrow keys only navigate wizard steps, not while editing a document
@@ -1293,7 +1305,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
-  }, [onClose, activeDoc, warlordPrintPreview]);
+  }, [onClose, activeDoc, warlordPrintPreview, docLightboxOpen]);
 
   useEffect(() => {
     const h = e => {
@@ -2006,12 +2018,36 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   };
 
   const renderImageView = doc => (
-    <div className={`ptg-doc-image-view${doc.key === 'warlord' ? ' ab-roster-print-target' : ''}`}>
+    <div
+      className={`ptg-doc-image-view ptg-doc-image-view-zoomable${doc.key === 'warlord' ? ' ab-roster-print-target' : ''}`}
+      onClick={() => setDocLightboxOpen(true)}
+      title="Click to zoom"
+    >
       {doc.images.map((img, i) => (
         <DocPage key={img.src} img={img} alt={doc.title} docKey={doc.key} pageIndex={i} data={officiantData} />
       ))}
     </div>
   );
+
+  // Same doc, same DocPage/overlay pipeline, just sized to fill as much of
+  // the actual browser viewport as possible (both dimensions, not just
+  // width) — see .ptg-doc-lightbox-frame in styles.css. onClick={} with
+  // stopPropagation on the frame itself keeps a click INSIDE the image from
+  // bubbling to the backdrop's close handler.
+  const renderDocLightbox = () => {
+    const doc = DOCS.find(d => d.key === activeDoc);
+    if (!doc) return null;
+    return (
+      <div className="ptg-doc-lightbox-backdrop" onClick={() => setDocLightboxOpen(false)}>
+        <button className="gw-close ptg-doc-lightbox-close" onClick={() => setDocLightboxOpen(false)} title="Close (Esc)">✕</button>
+        <div className="ptg-doc-lightbox-frame" onClick={e => e.stopPropagation()}>
+          {doc.images.map((img, i) => (
+            <DocPage key={img.src} img={img} alt={doc.title} docKey={doc.key} pageIndex={i} data={officiantData} />
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   const handleWarlordPrintClick = () => {
     if (presentMode === 'replica') setWarlordPrintPreview(true);
@@ -2666,6 +2702,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
           </>
         )}
       </div>
+      {docLightboxOpen && renderDocLightbox()}
     </>
   );
 }
