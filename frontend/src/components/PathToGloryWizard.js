@@ -76,17 +76,77 @@ const CAMPAIGN_POINTS_LIMITS = {
 // ~18 of 24 factions currently publish this (AoS 4e battletome-dependent);
 // the rest fall back to the plain single-panel Warlord Warscroll form.
 
-// The 4 Warlord Paths (core rules pgs 256-261) — Mage/Devout are restricted
-// to Wizard/Priest warlords respectively.
+// The 4 Warlord Paths (core rules pgs 236-261) — Mage/Devout are restricted
+// to Wizard/Priest warlords respectively. Warrior/Leader's full 4-rank
+// ability data (pgs 256-257) is transcribed directly from the user's own
+// photographs; Mage/Devout (pgs 258-261) haven't been photographed yet, so
+// those two stay flavor-text-only until they are — same "no ranks means no
+// rank-picker section" fallback as FACTION_PATHS entries without data.
 const PATHS = [
   { key: 'warrior', name: 'Path of the Warrior', restricted: null,
-    desc: 'Warlords who walk this Path pride their martial prowess and strength above all else.' },
+    desc: 'Warlords who walk this Path pride their martial prowess and strength above all else.',
+    ranks: [
+      { rank: 'Aspiring', options: [
+        { name: 'Berserker', timing: 'Passive', lore_text: 'This battle-hungry warrior is ever eager to get to grips with the foe.', effect: 'You can re-roll charge rolls for this Hero.' },
+        { name: 'Well of Strength', timing: 'Once Per Battle, Any Combat Phase', lore_text: 'When faced with seemingly insurmountable odds, this warrior draws on hidden strength to rise to the challenge.', effect: 'Heal (D6) this Hero.' },
+      ] },
+      { rank: 'Elite', options: [
+        { name: 'Martial Expertise', timing: 'Passive', lore_text: 'This warrior has honed their skills with their favoured weapon.', effect: "Add 1 to hit rolls for this Hero's combat attacks." },
+        { name: 'Powerful Presence', timing: 'End of Any Turn', lore_text: 'So imposing is this warrior that enemies quail before them.', declare: 'Pick this Hero to use this ability if it is contesting an objective that you do not control.', effect: "Add D3 to this Hero's control score this turn." },
+      ] },
+      { rank: 'Mighty', options: [
+        { name: 'Master-crafted Armour', timing: 'Passive', lore_text: 'This warrior now bears armour forged by the greatest smiths.', effect: 'Add 1 to save rolls for this Hero.' },
+        { name: 'Master-crafted Weapons', timing: 'Passive', lore_text: "The craftsmanship of this warrior's weapons is peerless.", effect: "Add 1 to the Rend characteristic of this Hero's melee weapons." },
+      ] },
+      { rank: 'Legendary', options: [
+        { name: 'Warrior Without Equal', timing: 'Passive', lore_text: 'This warrior is an unstoppable force upon the battlefield.', effect: 'This Hero has Ward (4+).' },
+        { name: 'Unparalleled Duellist', timing: 'Passive', lore_text: 'In a blur of motion, this warrior strikes the foe before they can even raise a weapon in defence.', effect: 'This Hero has Strike-first.' },
+      ] },
+    ] },
   { key: 'leader', name: 'Path of the Leader', restricted: null,
-    desc: 'The tactical acumen of this warlord is their greatest asset. Even in the heat of battle, they can spot weaknesses in the enemy line and exploit them without mercy.' },
+    desc: 'The tactical acumen of this warlord is their greatest asset. Even in the heat of battle, they can spot weaknesses in the enemy line and exploit them without mercy.',
+    ranks: [
+      { rank: 'Aspiring', options: [
+        { name: 'Tactical Acumen', timing: 'Once Per Battle, Enemy Movement Phase', lore_text: 'This warrior has a deep understanding of the flow of battle and the habits of not only their own fighters but also those of the foe.', declare: 'Pick a friendly unit wholly within 12" of this unit to be the target.', effect: "The target can use the 'Redeploy' command this phase and you do not need to spend any command points for it to do so." },
+        { name: 'Conserved Strength', timing: 'End of Any Turn', lore_text: 'This champion manages their strength just as shrewdly as they command their warriors.', effect: 'Heal (1) this Hero.' },
+      ] },
+      { rank: 'Elite', options: [
+        { name: 'Masterful Commander', timing: 'Start of the Battle Round', lore_text: 'With a keen mind, this champion surveys the battlefield and devises a plan of action.', effect: 'Roll a dice. On a 4+, you gain 1 command point.' },
+        { name: 'Rousing Orator', timing: 'Passive', lore_text: 'The stirring rhetoric of this champion inspires the warriors they command.', effect: 'Add 1 to rally rolls for friendly units while they are wholly within 12" of this Hero.' },
+      ] },
+      { rank: 'Mighty', options: [
+        { name: 'Defender of the Realm', timing: 'Passive', lore_text: 'This warrior defends their domain with great valour and might.', effect: 'This Hero has Strike-first while they are wholly within friendly territory.' },
+        { name: 'Hardy Constitution', timing: 'Passive', lore_text: 'Only the most grievous of wounds can lay this warrior low.', effect: 'Add 2 to the Health characteristic of this Hero.' },
+      ] },
+      { rank: 'Legendary', options: [
+        { name: 'Destined for Greatness', timing: 'Passive', lore_text: 'It is said the gods look favourably upon this one.', effect: 'This Hero has Ward (4+).' },
+        { name: 'Inspiring Leader', timing: 'Passive', lore_text: 'So renowned is this legendary warrior that they inspire all under their command to give everything they have in battle.', effect: 'Add 3 to the control scores of other friendly units while they are contesting the same objective as this Hero.' },
+      ] },
+    ] },
   { key: 'mage', name: 'Path of the Mage', restricted: 'Wizard only',
     desc: 'To walk this Path, your warlord must already have some proficiency in the arcane arts. By the end, they will be able to shape the very realms.' },
   { key: 'devout', name: 'Path of the Devout', restricted: 'Priest only',
     desc: 'With an unshakable faith to guide them, this warlord has been chosen by their patron deity for a greater purpose (or so they claim!).' },
+];
+
+// The 6 core-rulebook Quests (pg 241), for "Pick your First Quest" — full
+// text transcribed from the user's own photographs. lore_text is each
+// quest's flavor sentence; effect covers the tracking condition, the
+// completion threshold, and the reward all as one paragraph (matches how
+// the book itself prints each quest as a single card, not split fields).
+const QUESTS = [
+  { name: 'Search for the Artefact', lore_text: 'You send your scouts far and wide in search of a powerful relic.',
+    effect: 'At the end of each of your turns, you can pick a friendly Hero that is not within friendly territory, is not in combat and is within 1" of a terrain feature. If you do so, roll a dice. On a 4+, that Hero finds a clue and you gain 1 quest point. Once you have gained 3 or more quest points, you can complete this quest. When you do so, you can give 1 artefact of power to an eligible Hero on your Order of Battle.' },
+  { name: 'Master Magical Lore', lore_text: 'A wizard in your army seeks to master a mighty spell to aid you in battle.',
+    effect: "Each time you make a casting roll of 8+ for a Wizard, you gain 1 quest point. Once you have gained 3 or more quest points, you can complete this quest. When you do so, you can pick 1 spell from a spell lore available to your army's faction and add it to your own spell lore." },
+  { name: 'Learn Ancient Scriptures', lore_text: 'You discover archaic texts relating to your deity that date back to the Age of Myth. Deciphering them will allow you to better enact their will in the Mortal Realms.',
+    effect: "Each time a friendly Priest is given 4 or more ritual points, you gain 1 quest point. Once you have gained 5 or more quest points, you can complete this quest. When you do so, you can pick 1 prayer from a prayer lore available to your army's faction and add it to your own prayer lore." },
+  { name: 'Harness Manifestation', lore_text: 'Your mystics seek to tame the power of a wild manifestation, but they are yet to control it fully.',
+    effect: "When you embark on this quest, pick 1 spell or prayer from a manifestation lore available to your army's faction and add it to your own manifestation lore marked as 'Wild'. Each time that spell or prayer is used, roll a dice. On a 1-3, inflict an amount of mortal damage equal to the roll on the unit using the ability. On a 4+, you gain a number of quest points equal to the roll. Once you have gained 10 or more quest points, you can complete this quest. When you do so, the spell or prayer is no longer marked as 'Wild'." },
+  { name: 'Seek Glory in Battle', lore_text: 'A band of warriors in your army seek to prove themselves in the fires of battle.',
+    effect: 'When you embark on this quest, pick a unit on your Order of Battle to be the Glory Seekers. You can complete this quest the next time you win a major or minor victory and the Glory Seekers took part in the battle and were not destroyed. When you do so, the Glory Seekers earn D3+3 additional renown points.' },
+  { name: 'Rise of a Champion', lore_text: 'An aspiring warrior under your command seeks to prove their mettle in the fires of battle.',
+    effect: 'When you embark on this quest, pick 1 Hero on your Order of Battle that does not yet have a heroic trait to be your Rising Champion. You can complete this quest if an enemy Hero or Monster was slain by your Rising Champion. When you do so, you can give 1 heroic trait to your Rising Champion.' },
 ];
 
 // Battletome-specific Warlord Paths, additional to the 4 core ones above —
@@ -1309,12 +1369,18 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
 
   useEffect(() => {
     const h = e => {
+      // The doc lightbox renders as its own backdrop OUTSIDE modalRef (by
+      // design, so it can cover the full viewport) — without this guard,
+      // clicking its backdrop to close IT was also read as an outside
+      // click on the whole wizard, closing the entire "Recruit Your
+      // Forces" flow instead of just the zoomed popup.
+      if (docLightboxOpen) return;
       if (modalRef.current?.contains(e.target)) return;
       onClose();
     };
     document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
-  }, [onClose]);
+  }, [onClose, docLightboxOpen]);
 
   // Persist the whole wizard on every change, so closing and reopening resumes here.
   useEffect(() => {
@@ -2595,9 +2661,22 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                 </div>
               ) : step === 7 ? (
                 <div className="ptg-quest-step">
-                  <div className="ptg-wizard-body-placeholder">
-                    No quest list has been sourced yet — the core rulebook's Quest Log content isn't in the Anvil of Apotheosis data, and hasn't been photographed separately. "Search for the Artefact" is the one quest name on record as a commonly-cited safe default, with no mechanical text behind it. Type your quest below for now; feed me the source pages (core rules, Path to Glory Quest Log section) and this becomes real selectable cards.
+                  <div className="ptg-apotheosis-group-title">Quest</div>
+                  <div className="ptg-apotheosis-options-grid">
+                    {QUESTS.map((q, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        className={`ptg-apotheosis-option-btn${currentQuest === q.name ? ' ptg-apotheosis-option-selected' : ''}`}
+                        onClick={() => setCurrentQuest(q.name)}
+                      >
+                        <AbilityCard ab={{ ...q, bullets: [] }} keywords={[]} />
+                      </button>
+                    ))}
                   </div>
+
+                  <div className="ptg-path-section-divider" />
+
                   <div className="ptg-quest-log-grid">
                     <div className="ptg-field"><label>Current Quest</label><input type="text" value={currentQuest} onChange={e => setCurrentQuest(e.target.value)} placeholder="e.g. Search for the Artefact" /></div>
                     <div className="ptg-field"><label>Quest Points</label><input type="text" value={questPoints} onChange={e => setQuestPoints(e.target.value)} /></div>
