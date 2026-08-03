@@ -234,6 +234,11 @@ function initDb() {
   // than one flat effect paragraph — captured as their own ability-card-shaped
   // JSON array so the frontend can render each with the normal phase-colored banner.
   try { db.exec('ALTER TABLE faction_apotheosis_options ADD COLUMN sub_abilities TEXT DEFAULT NULL'); } catch {}
+  // phase_key: same ambiguous-timing phase-color detection every other
+  // ability table already gets (see backend/phaseKey.js) — Companion/Origin/
+  // Flaw/Battle Mount/Upgrade options mostly scrape with timing=null or a
+  // bare "Passive", so without this they all render one flat generic color.
+  try { db.exec('ALTER TABLE faction_apotheosis_options ADD COLUMN phase_key TEXT DEFAULT NULL'); } catch {}
   // Lets the same saved-list mechanism hold either the player's own lists or
   // an opponent's lists they're tracking for reference — 'own' (default) or
   // 'enemy'. Army Builder's List/Enemy List dropdowns each show one pool;

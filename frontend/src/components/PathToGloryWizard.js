@@ -1772,7 +1772,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     const subAbilitiesOf = opt => {
       if (!opt) return [];
       const subs = Array.isArray(opt.sub_abilities) ? opt.sub_abilities : JSON.parse(opt.sub_abilities || '[]');
-      return subs.map(s => ({ name: s.name, timing: s.timing, declare: s.declare, effect: s.effect }));
+      return subs.map(s => ({ name: s.name, timing: s.timing, declare: s.declare, effect: s.effect, phase_key: s.phase_key }));
     };
 
     if (companionChoice >= 0) push('Companion', subAbilitiesOf(companionStepData?.options?.[companionChoice]));
@@ -1782,8 +1782,8 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
       for (const o of originFlawStepData.options) { (byGroup[o.option_group] ??= []).push(o); }
       const origin = originFlawChoice?.Origins != null ? byGroup.Origins?.[originFlawChoice.Origins] : null;
       const flaw = originFlawChoice?.Flaws != null ? byGroup.Flaws?.[originFlawChoice.Flaws] : null;
-      if (origin) push('Origin', [{ name: origin.name, timing: origin.timing, declare: origin.declare, effect: origin.effect }]);
-      if (flaw) push('Flaw', [{ name: flaw.name, timing: flaw.timing, declare: flaw.declare, effect: flaw.effect }]);
+      if (origin) push('Origin', [{ name: origin.name, timing: origin.timing, declare: origin.declare, effect: origin.effect, phase_key: origin.phase_key }]);
+      if (flaw) push('Flaw', [{ name: flaw.name, timing: flaw.timing, declare: flaw.declare, effect: flaw.effect, phase_key: flaw.phase_key }]);
     }
 
     if (mountChoice >= 0) push('Battle Mount', subAbilitiesOf(mountStepData?.options?.[mountChoice]));
@@ -1800,7 +1800,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
       const embedded = bullets.map(parseInlineAbilityBullet).filter(Boolean);
       if (embedded.length) return embedded;
       if (!opt) return [];
-      return [{ name: opt.name, timing: opt.timing || 'Passive', declare: opt.declare, effect: opt.effect }];
+      return [{ name: opt.name, timing: opt.timing || 'Passive', declare: opt.declare, effect: opt.effect, phase_key: opt.phase_key }];
     };
     if (mountUpgradesStepData) {
       push('Battle Mount Upgrades', battleMountUpgradesChoice.flatMap(i => upgradeAbilities(mountUpgradesStepData.options[i])));
@@ -1812,11 +1812,11 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     const enhancements = [];
     if (heroicTraitChoice != null && factionRules.heroic_traits?.[heroicTraitChoice]) {
       const t = factionRules.heroic_traits[heroicTraitChoice];
-      enhancements.push({ name: t.name, timing: t.timing, declare: t.declare, effect: t.effect });
+      enhancements.push({ name: t.name, timing: t.timing, declare: t.declare, effect: t.effect, phase_key: t.phase_key });
     }
     if (artefactChoice != null && factionRules.artefacts?.[artefactChoice]) {
       const a = factionRules.artefacts[artefactChoice];
-      enhancements.push({ name: a.name, timing: a.timing, declare: a.declare, effect: a.effect });
+      enhancements.push({ name: a.name, timing: a.timing, declare: a.declare, effect: a.effect, phase_key: a.phase_key });
     }
     push('Enhancements', enhancements);
 

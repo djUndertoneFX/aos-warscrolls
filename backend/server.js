@@ -931,7 +931,7 @@ app.get('/api/apotheosis/:slug', requireAuth, (req, res) => {
       'SELECT step_number, step_title, intro_text, starting_weapon, starting_keywords FROM faction_apotheosis_steps WHERE faction_slug = ? ORDER BY step_number'
     ).all(slug);
     const options = db.prepare(
-      'SELECT step_number, option_group, name, cost, timing, declare, effect, bullets, keywords, lore_text, sort_order, sub_abilities FROM faction_apotheosis_options WHERE faction_slug = ? ORDER BY step_number, sort_order'
+      'SELECT step_number, option_group, name, cost, timing, declare, effect, bullets, keywords, lore_text, sort_order, sub_abilities, phase_key FROM faction_apotheosis_options WHERE faction_slug = ? ORDER BY step_number, sort_order'
     ).all(slug);
     res.json({
       steps: steps.map(s => ({

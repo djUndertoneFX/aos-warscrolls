@@ -4182,7 +4182,15 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   font-family: 'EB Garamond', Georgia, 'Times New Roman', serif;
   line-height: 1.25;
 }
+.ptg-doc-overlay-ability-group {
+  /* 2-column card grid so more abilities fit in the scanned template's fixed
+     blank area — the group header spans both columns above them. */
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.3em 0.5em;
+}
 .ptg-doc-overlay-ability-group-hdr {
+  grid-column: 1 / -1;
   font-family: 'Cinzel', serif;
   font-weight: 700;
   text-transform: uppercase;
@@ -4196,7 +4204,6 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   border: 1px solid;
   border-radius: 2px;
   background: rgba(255,255,255,0.4);
-  margin-bottom: 0.3em;
   overflow: hidden;
 }
 .ptg-doc-overlay-ability-hdr {

@@ -8,6 +8,16 @@ const fetch = require('node-fetch');
 const cheerio = require('cheerio');
 const { getDb, initDb } = require('./db');
 const { FACTIONS, BASE_URL, normalizeText, parseAbilityBlock } = require('./scrapeRules');
+const { isAmbiguousTiming, resolvePhaseKeyString } = require('./phaseKey');
+
+// Resolves a phase_key for one option/sub-ability the same way scraper.js/
+// scrapeRules.js already do for every other ability table — null when the
+// timing already names its own phase unambiguously, or when nothing in the
+// effect text ties it to a specific phase (renders as plain generic Passive/
+// Reaction/etc, same as today, no regression).
+function resolveApotheosisPhaseKey(ability) {
+  return isAmbiguousTiming(ability.timing) ? resolvePhaseKeyString(ability) : null;
+}
 
 function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
@@ -184,6 +194,7 @@ function parseCardOptions($, block, group) {
             ...parsed,
             bullets: JSON.parse(parsed.bullets || '[]'),
             keywords: parsed.keywords ? parsed.keywords.split(',').map(k => k.trim()).filter(Boolean) : [],
+            phase_key: resolveApotheosisPhaseKey(parsed),
           });
         }
         ($wrap.length ? $wrap : $frag(abBodyEl)).remove();
@@ -200,7 +211,11 @@ function parseCardOptions($, block, group) {
         finalEffect = normalizeText(leadMatch[2]);
       }
       if (!name) continue;
-      options.push({ option_group: group, name, cost, timing: null, declare: null, effect: finalEffect, bullets, keywords: [], lore_text: null, sub_abilities: subAbilities });
+      options.push({
+        option_group: group, name, cost, timing: null, declare: null, effect: finalEffect, bullets,
+        keywords: [], lore_text: null, sub_abilities: subAbilities,
+        phase_key: resolveApotheosisPhaseKey({ timing: null, declare: null, effect: finalEffect, bullets }),
+      });
     }
   }
   return options;
@@ -237,7 +252,17 @@ function parseUpgradeTable($, table) {
       const abLine = `${ab.timing ? '[' + ab.timing + '] ' : ''}${ab.name}${ab.declare ? ' — Declare: ' + ab.declare : ''}${ab.effect ? ' Effect: ' + ab.effect : ''}`;
       allBullets.push(abLine.trim());
     }
-    options.push({ option_group: null, name, cost, timing: null, declare: null, effect, bullets: allBullets, keywords: [], lore_text: null });
+    options.push({
+      option_group: null, name, cost, timing: null, declare: null, effect, bullets: allBullets,
+      keywords: [], lore_text: null,
+      // Only from the option's own effect text — the embedded abilityBlocks
+      // (e.g. Mighty Biovoltaic Blast) already carry their own real timing
+      // and get re-parsed into a full ability object client-side from the
+      // abLine bullet string above; there's no clean way to also thread a
+      // phase_key through that string round-trip, so those fall back to
+      // their own (usually unambiguous) timing same as before.
+      phase_key: resolveApotheosisPhaseKey({ timing: null, declare: null, effect, bullets: allBullets }),
+    });
   }
   return options;
 }
@@ -260,6 +285,7 @@ function parseAbilityCardOptions($, block, group) {
       option_group: group,
       name: parsed.name,
       cost,
+      phase_key: resolveApotheosisPhaseKey(parsed),
       timing: normalizeText($headerClone.text()) || null,
       declare: parsed.declare || null,
       effect: parsed.effect || null,
@@ -435,9 +461,9 @@ async function scrapeAllApotheosis(targetSlug = null) {
   `);
   const insertOption = db.prepare(`
     INSERT INTO faction_apotheosis_options
-      (faction_slug, faction_name, step_number, option_group, name, cost, timing, declare, effect, bullets, keywords, lore_text, sort_order, sub_abilities)
+      (faction_slug, faction_name, step_number, option_group, name, cost, timing, declare, effect, bullets, keywords, lore_text, sort_order, sub_abilities, phase_key)
     VALUES
-      (@faction_slug, @faction_name, @step_number, @option_group, @name, @cost, @timing, @declare, @effect, @bullets, @keywords, @lore_text, @sort_order, @sub_abilities)
+      (@faction_slug, @faction_name, @step_number, @option_group, @name, @cost, @timing, @declare, @effect, @bullets, @keywords, @lore_text, @sort_order, @sub_abilities, @phase_key)
   `);
 
   let totalSteps = 0, totalOptions = 0, factionsWithData = 0;
@@ -469,6 +495,7 @@ async function scrapeAllApotheosis(targetSlug = null) {
         keywords: JSON.stringify(o.keywords || []),
         lore_text: o.lore_text || null,
         sub_abilities: o.sub_abilities?.length ? JSON.stringify(o.sub_abilities) : null,
+        phase_key: o.phase_key || null,
       });
     })();
     console.log(`  ${steps.length} steps, ${options.length} options`);
