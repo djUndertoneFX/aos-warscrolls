@@ -1071,6 +1071,46 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     setWarlordKeywordsLine1([...baseKwLine1, ...addedKeywords].join(', '));
   };
 
+  // Parses a "Name — [Rng X",] Atk N, Hit N+, Wnd N+, Rnd N, Dmg N" bullet
+  // into a full weapon row — same spirit as applyArchetypeChoice's own
+  // weapon regex above, but for a brand NEW weapon (Companions, Battle
+  // Mounts add one to the table) rather than overriding stats on an
+  // existing one, so it also captures the optional Rng segment ranged
+  // weapons carry (melee weapon bullets omit it entirely).
+  const parseNewWeaponBullet = b => {
+    const m = /^(.+?),?\s*[—-]\s*(?:Rng\s+([^,]+),\s*)?Atk\s+([^,]+),\s*Hit\s+([^,]+),\s*Wnd\s+([^,]+),\s*Rnd\s+([^,]+),\s*Dmg\s+(.+)$/i.exec(b || '');
+    if (!m) return null;
+    const [, name, rng, atk, hit, wnd, rnd, dmg] = m;
+    return { name: name.trim(), rng: rng?.trim() || '', atk: atk.trim(), hit: hit.trim(), wnd: wnd.trim(), rnd: rnd.trim(), dmg: dmg.trim() };
+  };
+
+  // A Companion/Battle Mount pick can add a whole new weapon to the
+  // warlord's table (e.g. Idoneth's "Shoal of Zephyrfish" Companion — a
+  // genuine ranged weapon, Rng 10"/Atk 8/Hit 4+/Wnd 5+/Rnd 1/Dmg 1), not
+  // just abilities/stat changes. Added to rangedWeapons when the bullet
+  // carries a Rng segment, meleeWeapons otherwise. Re-picking a different
+  // option (or skipping) removes whichever weapon(s) the PREVIOUS pick
+  // added, by name, before adding the new one's — so switching never
+  // leaves a stale duplicate behind.
+  const applyOptionWeapons = (prevOpt, newOpt) => {
+    const weaponsOf = opt => {
+      if (!opt) return [];
+      const bullets = Array.isArray(opt.bullets) ? opt.bullets : JSON.parse(opt.bullets || '[]');
+      return bullets.map(parseNewWeaponBullet).filter(Boolean);
+    };
+    const prevWeapons = weaponsOf(prevOpt);
+    const newWeapons = weaponsOf(newOpt);
+    if (prevWeapons.length) {
+      const prevNames = new Set(prevWeapons.map(w => w.name.toLowerCase()));
+      const strip = rows => rows.filter(r => !prevNames.has(r.name?.trim().toLowerCase()));
+      setMeleeWeapons(strip);
+      setRangedWeapons(strip);
+    }
+    for (const w of newWeapons) {
+      if (w.rng) addRanged(w); else addMelee(w);
+    }
+  };
+
   // Fires only on a genuine change of Step 1's faction pick (not on every
   // render, and not on re-clicking the same faction — the ref comparison
   // below is what distinguishes those). Snapshots the warlord fields we're
@@ -1987,6 +2027,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                     type="button"
                     className={`ptg-apotheosis-option-btn ptg-apotheosis-skip-btn${companionChoice === -1 ? ' ptg-apotheosis-option-selected' : ''}`}
                     onClick={() => {
+                      applyOptionWeapons(stepData.options[companionChoice], null);
                       setCompanionChoice(-1);
                       setWarlordSubStep(s => Math.min(warlordSteps.length - 1, s + 1));
                     }}
@@ -1999,6 +2040,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                     type="button"
                     className={`ptg-apotheosis-option-btn ptg-apotheosis-skip-btn${mountChoice === -1 ? ' ptg-apotheosis-option-selected' : ''}`}
                     onClick={() => {
+                      applyOptionWeapons(stepData.options[mountChoice], null);
                       setMountChoice(-1);
                       setWarlordSubStep(s => Math.min(warlordSteps.length - 1, s + 1));
                     }}
@@ -2084,8 +2126,10 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                           const step2 = apotheosisSteps.find(s => /fill out the starting warscroll/i.test(s.step_title));
                           applyArchetypeChoice(step2, stepData, oi);
                         } else if (isMountStep) {
+                          applyOptionWeapons(stepData.options[mountChoice], stepData.options[oi]);
                           setMountChoice(oi);
                         } else {
+                          applyOptionWeapons(stepData.options[companionChoice], stepData.options[oi]);
                           setCompanionChoice(oi);
                         }
                         setWarlordSubStep(s => Math.min(warlordSteps.length - 1, s + 1));
