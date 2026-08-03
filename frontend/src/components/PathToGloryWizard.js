@@ -87,20 +87,20 @@ const PATHS = [
     desc: 'Warlords who walk this Path pride their martial prowess and strength above all else.',
     ranks: [
       { rank: 'Aspiring', options: [
-        { name: 'Berserker', timing: 'Passive', lore_text: 'This battle-hungry warrior is ever eager to get to grips with the foe.', effect: 'You can re-roll charge rolls for this Hero.' },
+        { name: 'Berserker', timing: 'Passive', phase_key: 'charge', lore_text: 'This battle-hungry warrior is ever eager to get to grips with the foe.', effect: 'You can re-roll charge rolls for this Hero.' },
         { name: 'Well of Strength', timing: 'Once Per Battle, Any Combat Phase', lore_text: 'When faced with seemingly insurmountable odds, this warrior draws on hidden strength to rise to the challenge.', effect: 'Heal (D6) this Hero.' },
       ] },
       { rank: 'Elite', options: [
-        { name: 'Martial Expertise', timing: 'Passive', lore_text: 'This warrior has honed their skills with their favoured weapon.', effect: "Add 1 to hit rolls for this Hero's combat attacks." },
+        { name: 'Martial Expertise', timing: 'Passive', phase_key: 'combat', lore_text: 'This warrior has honed their skills with their favoured weapon.', effect: "Add 1 to hit rolls for this Hero's combat attacks." },
         { name: 'Powerful Presence', timing: 'End of Any Turn', lore_text: 'So imposing is this warrior that enemies quail before them.', declare: 'Pick this Hero to use this ability if it is contesting an objective that you do not control.', effect: "Add D3 to this Hero's control score this turn." },
       ] },
       { rank: 'Mighty', options: [
-        { name: 'Master-crafted Armour', timing: 'Passive', lore_text: 'This warrior now bears armour forged by the greatest smiths.', effect: 'Add 1 to save rolls for this Hero.' },
-        { name: 'Master-crafted Weapons', timing: 'Passive', lore_text: "The craftsmanship of this warrior's weapons is peerless.", effect: "Add 1 to the Rend characteristic of this Hero's melee weapons." },
+        { name: 'Master-crafted Armour', timing: 'Passive', phase_key: 'combat', lore_text: 'This warrior now bears armour forged by the greatest smiths.', effect: 'Add 1 to save rolls for this Hero.' },
+        { name: 'Master-crafted Weapons', timing: 'Passive', phase_key: 'combat', lore_text: "The craftsmanship of this warrior's weapons is peerless.", effect: "Add 1 to the Rend characteristic of this Hero's melee weapons." },
       ] },
       { rank: 'Legendary', options: [
-        { name: 'Warrior Without Equal', timing: 'Passive', lore_text: 'This warrior is an unstoppable force upon the battlefield.', effect: 'This Hero has Ward (4+).' },
-        { name: 'Unparalleled Duellist', timing: 'Passive', lore_text: 'In a blur of motion, this warrior strikes the foe before they can even raise a weapon in defence.', effect: 'This Hero has Strike-first.' },
+        { name: 'Warrior Without Equal', timing: 'Passive', phase_key: 'combat', lore_text: 'This warrior is an unstoppable force upon the battlefield.', effect: 'This Hero has Ward (4+).' },
+        { name: 'Unparalleled Duellist', timing: 'Passive', phase_key: 'combat', lore_text: 'In a blur of motion, this warrior strikes the foe before they can even raise a weapon in defence.', effect: 'This Hero has Strike-first.' },
       ] },
     ] },
   { key: 'leader', name: 'Path of the Leader', restricted: null,
@@ -115,11 +115,11 @@ const PATHS = [
         { name: 'Rousing Orator', timing: 'Passive', lore_text: 'The stirring rhetoric of this champion inspires the warriors they command.', effect: 'Add 1 to rally rolls for friendly units while they are wholly within 12" of this Hero.' },
       ] },
       { rank: 'Mighty', options: [
-        { name: 'Defender of the Realm', timing: 'Passive', lore_text: 'This warrior defends their domain with great valour and might.', effect: 'This Hero has Strike-first while they are wholly within friendly territory.' },
-        { name: 'Hardy Constitution', timing: 'Passive', lore_text: 'Only the most grievous of wounds can lay this warrior low.', effect: 'Add 2 to the Health characteristic of this Hero.' },
+        { name: 'Defender of the Realm', timing: 'Passive', phase_key: 'combat', lore_text: 'This warrior defends their domain with great valour and might.', effect: 'This Hero has Strike-first while they are wholly within friendly territory.' },
+        { name: 'Hardy Constitution', timing: 'Passive', phase_key: 'combat', lore_text: 'Only the most grievous of wounds can lay this warrior low.', effect: 'Add 2 to the Health characteristic of this Hero.' },
       ] },
       { rank: 'Legendary', options: [
-        { name: 'Destined for Greatness', timing: 'Passive', lore_text: 'It is said the gods look favourably upon this one.', effect: 'This Hero has Ward (4+).' },
+        { name: 'Destined for Greatness', timing: 'Passive', phase_key: 'combat', lore_text: 'It is said the gods look favourably upon this one.', effect: 'This Hero has Ward (4+).' },
         { name: 'Inspiring Leader', timing: 'Passive', lore_text: 'So renowned is this legendary warrior that they inspire all under their command to give everything they have in battle.', effect: 'Add 3 to the control scores of other friendly units while they are contesting the same objective as this Hero.' },
       ] },
     ] },
@@ -168,15 +168,15 @@ const FACTION_PATHS = {
       desc: null,
       ranks: [
         { rank: 'Aspiring', options: [
-          { name: 'Blade of the Cythai', timing: 'Passive', lore_text: 'This warrior has been chosen to wield a rare heirloom blade of the Cythai – a weapon sharp enough to cut a god.', effect: "Add 1 to hit rolls for this unit's combat attacks." },
-          { name: 'Blessing of Mathlann', timing: 'Passive', lore_text: 'This warrior bears the mark of the long-dead god, a sure sign of their fortune and favour.', effect: 'This unit has Ward (6+).' },
+          { name: 'Blade of the Cythai', timing: 'Passive', phase_key: 'combat', lore_text: 'This warrior has been chosen to wield a rare heirloom blade of the Cythai – a weapon sharp enough to cut a god.', effect: "Add 1 to hit rolls for this unit's combat attacks." },
+          { name: 'Blessing of Mathlann', timing: 'Passive', phase_key: 'combat', lore_text: 'This warrior bears the mark of the long-dead god, a sure sign of their fortune and favour.', effect: 'This unit has Ward (6+).' },
         ] },
         { rank: 'Elite', options: [
           { name: 'Void Strike', timing: 'Once Per Battle, Any Combat Phase', lore_text: 'With each swing of their blade, this hero unleashes an icy blast through the ethersea that freezes their foe’s blood in their veins.', effect: "This unit's melee weapons have Crit (Mortal) for the rest of the turn." },
           { name: 'Soul Stealer', timing: 'End of Any Turn', lore_text: 'This warrior is said to siphon the spirits of fallen foes to sustain them in battle.', effect: 'If this unit is in combat, Heal (D3) this unit.' },
         ] },
         { rank: 'Mighty', options: [
-          { name: 'Rapid Attacker', timing: 'Passive', lore_text: 'This mighty warrior ruthlessly hunts down the foes of the Idoneth and is often the first to draw the blood of the enemy.', effect: 'Add 1 to the number of dice rolled when making charge rolls for this unit, to a maximum of 3.' },
+          { name: 'Rapid Attacker', timing: 'Passive', phase_key: 'charge', lore_text: 'This mighty warrior ruthlessly hunts down the foes of the Idoneth and is often the first to draw the blood of the enemy.', effect: 'Add 1 to the number of dice rolled when making charge rolls for this unit, to a maximum of 3.' },
           { name: 'Guardian of the Phalanx', timing: 'Once Per Battle, Any Combat Phase', lore_text: 'Those under the command of this hero have learnt to heed their orders meticulously and fight in well-disciplined cohesion.', effect: "For the rest of the turn, add 1 to save rolls for this unit and friendly Namarti units while they are within this unit's combat range." },
         ] },
         { rank: 'Legendary', options: [

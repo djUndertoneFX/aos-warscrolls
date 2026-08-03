@@ -98,7 +98,7 @@ const PHASE_PRESETS = [
   { keys: ['shooting'],                                         style: { hdrBg: '#0c2a60', hdrTxt: '#b8d8ff', border: '#2060c8' } },
   { keys: ['charge'],                                           style: { hdrBg: '#6a2c00', hdrTxt: '#ffd898', border: '#c86010' } },
   { keys: ['any combat', 'combat'],                             style: { hdrBg: '#6a0808', hdrTxt: '#ffd8d8', border: '#c02020' } },
-  { keys: ['once per battle round', 'start of battle round'],   style: { hdrBg: '#0a3040', hdrTxt: '#88d8f0', border: '#1878b0' } },
+  { keys: ['once per battle round', 'start of battle round', 'start of the battle round'],   style: { hdrBg: '#0a3040', hdrTxt: '#88d8f0', border: '#1878b0' } },
   { keys: ['once per turn'],                                    style: { hdrBg: '#082838', hdrTxt: '#70b8d0', border: '#106880' } },
   { keys: ['once per battle'],                                  style: { hdrBg: '#500848', hdrTxt: '#f0b8e8', border: '#a01888' } },
   { keys: ['deployment'],                                       style: { hdrBg: '#280858', hdrTxt: '#c8b8f8', border: '#6040c0' } },

@@ -87,8 +87,15 @@ const PHASE_KEYWORD_GROUPS = [
                // Per explicit user instruction: a bare hit/wound/rend/save-roll modifier
                // with no other phase qualifier defaults to combat-phase-only, since that's
                // the dominant context for these and the book colours them that way.
-               /\bhit rolls?\b/, /\bwound rolls?\b/, /rend characteristic/, /\bsave rolls?\b/],
-    genericStatRollSources: ['\\bhit rolls?\\b', '\\bwound rolls?\\b', 'rend characteristic', '\\bsave rolls?\\b'],
+               /\bhit rolls?\b/, /\bwound rolls?\b/, /rend characteristic/, /\bsave rolls?\b/,
+               // Same convention extended to Ward/Strike-first/Health-boost passives
+               // (confirmed against Path to Glory Warlord Path rank abilities, core
+               // rulebook pg 256-257) — these are damage-mitigation/combat-stat
+               // modifiers with no phase qualifier of their own, same category as
+               // the bare hit/wound/rend/save rolls above.
+               /ward\s*\(\d+\+\)/, /strike-first/, /health characteristic/],
+    genericStatRollSources: ['\\bhit rolls?\\b', '\\bwound rolls?\\b', 'rend characteristic', '\\bsave rolls?\\b',
+                              'ward\\s*\\(\\d+\\+\\)', 'strike-first', 'health characteristic'],
   },
   { key: 'end of turn', patterns: [/end of (the |any )?turn/, /end of (the )?battle round/] },
   { key: 'deployment', patterns: [/\bdeploy/, /set up.*battlefield edge/, /\breserves?\b/] },
