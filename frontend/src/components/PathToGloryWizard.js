@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import axios from 'axios';
 import { AbilityCard, getPhaseStyle } from './WarscrollGW';
 
@@ -337,7 +338,27 @@ function useContainImageBox(containerRef) {
     compute();
     const ro = new ResizeObserver(compute);
     ro.observe(el);
-    return () => ro.disconnect();
+    // Printing the Warlord Warscroll (window.print(), see
+    // handleWarlordPrintClick) resizes this container via @media print CSS
+    // (.ab-roster-print-target goes position:absolute + width:100%, which
+    // resolves against the page instead of the modal once .ptg-wizard is
+    // forced position:static for print) — a real layout change, but
+    // ResizeObserver's callback lands in a normal React update, which isn't
+    // guaranteed to flush to the DOM before the browser takes its print
+    // snapshot. Every overlay field's position is a raw pixel value baked
+    // from this hook's box.width/height at the moment it last rendered, so
+    // a stale (on-screen-sized) box under a now-print-sized image is exactly
+    // the "text drifts off its mark, worse toward the bottom of the page"
+    // misalignment reported after printing. 'beforeprint' is guaranteed to
+    // fire before that snapshot; flushSync forces the resulting re-render to
+    // actually land in the DOM before the handler returns, instead of
+    // racing the print engine.
+    const onBeforePrint = () => flushSync(compute);
+    window.addEventListener('beforeprint', onBeforePrint);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('beforeprint', onBeforePrint);
+    };
   }, [containerRef]);
   return box;
 }
@@ -545,9 +566,14 @@ function buildWarlordOverlayFields(d) {
   // than an arbitrary number) instead of butting the weapon table directly,
   // per direct user report that it read as cramped. Full template's melee
   // table ends ~51%, further down, so it gets a much taller abilities area.
+  // width:82 (not 84) so the box's right edge lands at 91% — pixel-measured
+  // as the RANGED/MELEE WEAPONS header bars' own right edge on both
+  // templates (left edge measured at 8.98%, matching this box's left:9
+  // already) — the ability cards' right edge now lines up with the weapon
+  // tables' right edge above them instead of overshooting it.
   const abilitiesSpec = minimal
-    ? { left: 9, top: 41.5, width: 84, height: 41.5, fontSize: 0.019 }
-    : { left: 9, top: 52.5, width: 84, height: 31, fontSize: 0.019 };
+    ? { left: 9, top: 41.5, width: 82, height: 41.5, fontSize: 0.019 }
+    : { left: 9, top: 52.5, width: 82, height: 31, fontSize: 0.019 };
   fields.push({ spec: abilitiesSpec, value: d.warlordAbilityGroups, type: 'abilities' });
 
   // top:86.3 sits the first of 2 keyword lines right on the bar's own first
