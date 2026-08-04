@@ -248,6 +248,7 @@ function computeFactionGridPositions(factionsByAlliance) {
 // instead of showing a blank box while the 15KB-600KB JPEG is in flight.
 const DOC_MICRO = {
   warlord: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABIMDRANCxIQDhAUExIVGywdGxgYGzYnKSAsQDlEQz85Pj1HUGZXR0thTT0+WXlaYWltcnNyRVV9hnxvhWZwcm7/2wBDARMUFBsXGzQdHTRuST5Jbm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm7/wAARCAAfABgDASIAAhEBAxEB/8QAGAAAAwEBAAAAAAAAAAAAAAAAAAMEBQL/xAAmEAABBAAEBgMBAAAAAAAAAAABAAIDEQQSIUEFEzEzUXEUgZEi/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAH/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwDfgeyP+OY1pB3GyobiACanZ+KeDNqBJlHjqmAyX3a+lAwYjmTsYJWOzHpSFw2/kR2/Nr4Qg64aLa7XfZUhtXr9LC4Xi5xIXiVohrt8vW/a1BiXEZszfxA6aw9ntCnfOXvYXOFNN0AUIP/Z',
+  warlordMinimal: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABALDA4MChAODQ4SERATGCgaGBYWGDEjJR0oOjM9PDkzODdASFxOQERXRTc4UG1RV19iZ2hnPk1xeXBkeFxlZ2P/2wBDARESEhgVGC8aGi9jQjhCY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2P/wAARCAAfABgDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwDqZJkW5kjMqqVbGCOgpwnjIK/aI8em2kMDS3UxEkg+boHYDp6CgWr5/wBdL/39b/GkBSvkilXCSqzdgKKuPa7ZULSMw9C7H+dFAixbZ+0z5/vf0qUbuQaz1+0x38kyXKGBv+WRi5B/3s/0qfz367l/I0DFvWMaB+mOaKoardt9mYErkDsDRQI//9k=',
   roster:  'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABIMDRANCxIQDhAUExIVGywdGxgYGzYnKSAsQDlEQz85Pj1HUGZXR0thTT0+WXlaYWltcnNyRVV9hnxvhWZwcm7/2wBDARMUFBsXGzQdHTRuST5Jbm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm7/wAARCAAfABgDASIAAhEBAxEB/8QAGgAAAgIDAAAAAAAAAAAAAAAAAAQDBQECBv/EACkQAAIBAwMCBAcAAAAAAAAAAAECAwAREgQhMTJBBQZhwRNCUXGS0eH/xAAVAQEBAAAAAAAAAAAAAAAAAAAAAf/EABURAQEAAAAAAAAAAAAAAAAAAAAB/9oADAMBAAIRAxEAPwDoNEItOGQK5yYtc2PNMiZw23T9hel4Y9g1gSRyRf3qRxj8i/h/aglkYah4gBIhVw1wRY87H0oqCFmMqC1hfstqKBHwppJkkZXOGZFsiOPanUjlzzza4PGZ/VUvl7XINI5YkAuSNvqSauo9XGy8nf0qVW2p+IYw2QUBh0k3orE2piaIgXO47UUR/9k=',
   oob:     'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABIMDRANCxIQDhAUExIVGywdGxgYGzYnKSAsQDlEQz85Pj1HUGZXR0thTT0+WXlaYWltcnNyRVV9hnxvhWZwcm7/2wBDARMUFBsXGzQdHTRuST5Jbm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm7/wAARCAAfABgDASIAAhEBAxEB/8QAGQAAAgMBAAAAAAAAAAAAAAAAAAECAwQG/8QAJBAAAQMDBAEFAAAAAAAAAAAAAQACEQMSIQQTMUFxBVGRofD/xAAVAQEBAAAAAAAAAAAAAAAAAAAAAf/EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/AOt3KbHPbaZB5hVuq3YJNvvaFXaG6qpUE3HGTP1wpbjpm75GFBk11M1HRAjGe58IWp7i6rTaTieIQgQw9/lIfpUTUaHOcZhxlLeaOygNQ+wtMxCFk9R1dMUXQXTGEIj/2Q==',
   army1:   'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABIMDRANCxIQDhAUExIVGywdGxgYGzYnKSAsQDlEQz85Pj1HUGZXR0thTT0+WXlaYWltcnNyRVV9hnxvhWZwcm7/2wBDARMUFBsXGzQdHTRuST5Jbm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm7/wAARCAAfABgDASIAAhEBAxEB/8QAGAAAAwEBAAAAAAAAAAAAAAAAAAMEBQH/xAAnEAACAQEHAgcAAAAAAAAAAAABAgADBBESEyEiMQVRFCMyQWGBkf/EABUBAQEAAAAAAAAAAAAAAAAAAAAB/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8A37Jl2VWVVxYnLbn7x/imW43rr8iJsdZCzUssFl9yZTiJIGXT/JAM5tLUtuABw16vzzpCdJAqIBTUa8gwgQ2E+a4FNRzvA5lQXf6vqZnTLSCCzE4dds0FqobmAMBrX5qEd+0ItqqM6kX3CED/2Q==',
@@ -259,6 +260,7 @@ const DOC_MICRO = {
 // so there's never a blank box even before that ~400-byte data URI resolves.
 const DOC_AVG_COLOR = {
   warlord: '#d3d5ce',
+  warlordMinimal: '#d6d8d1',
   roster:  '#cdcdc4',
   oob:     '#d1d3cc',
   army1:   '#d1d2cc',
@@ -270,7 +272,14 @@ const DOC_AVG_COLOR = {
 // provided) — used both for the tray thumbnail and the "Image" presentation.
 // `micro`/`thumbMicro` are the blur-up placeholders above.
 const DOCS = [
-  { key: 'warlord', title: 'Warlord Warscroll', images: [{ src: '/ptg/warlord-warscroll.jpg', micro: DOC_MICRO.warlord, avgColor: DOC_AVG_COLOR.warlord }], thumb: '/ptg/warlord-warscroll-thumb.jpg', thumbMicro: DOC_MICRO.warlord, avgColor: DOC_AVG_COLOR.warlord },
+  // Two Warlord Warscroll scans: `images` (minimal, only 2 weapon rows per
+  // table, default) and `imagesFull` (the original 3 ranged/4 melee row
+  // scan, used only when a hero actually has more weapons than the minimal
+  // template has room for) — see buildWarlordOverlayFields/warlordDocVariant.
+  { key: 'warlord', title: 'Warlord Warscroll',
+    images: [{ src: '/ptg/warlord-warscroll-minimal.jpg', micro: DOC_MICRO.warlordMinimal, avgColor: DOC_AVG_COLOR.warlordMinimal }],
+    imagesFull: [{ src: '/ptg/warlord-warscroll.jpg', micro: DOC_MICRO.warlord, avgColor: DOC_AVG_COLOR.warlord }],
+    thumb: '/ptg/warlord-warscroll-thumb.jpg', thumbMicro: DOC_MICRO.warlord, avgColor: DOC_AVG_COLOR.warlord },
   { key: 'roster',  title: 'Path to Glory Roster', images: [{ src: '/ptg/ptg-roster.jpg', micro: DOC_MICRO.roster, avgColor: DOC_AVG_COLOR.roster }], thumb: '/ptg/ptg-roster-thumb.jpg', thumbMicro: DOC_MICRO.roster, avgColor: DOC_AVG_COLOR.roster },
   { key: 'oob',     title: 'Order of Battle', images: [{ src: '/ptg/order-of-battle.jpg', micro: DOC_MICRO.oob, avgColor: DOC_AVG_COLOR.oob }], thumb: '/ptg/order-of-battle-thumb.jpg', thumbMicro: DOC_MICRO.oob, avgColor: DOC_AVG_COLOR.oob },
   { key: 'army',    title: 'Army Roster', images: [{ src: '/ptg/army-roster-1.jpg', micro: DOC_MICRO.army1, avgColor: DOC_AVG_COLOR.army1 }, { src: '/ptg/army-roster-2.jpg', micro: DOC_MICRO.army2, avgColor: DOC_AVG_COLOR.army2 }], thumb: '/ptg/army-roster-1-thumb.jpg', thumbMicro: DOC_MICRO.army1, avgColor: DOC_AVG_COLOR.army1 },
@@ -476,7 +485,17 @@ function centerField(left, top, width, fontSize) {
   return { left, top, width, align: 'center', centerX: true, fontSize };
 }
 
+// Two scanned templates share the same wheel/name/keywords layout (pixel-
+// confirmed: weapon-table column x-positions and the Keywords bar both land
+// within a fraction of a percent of each other between the two scans) but
+// differ in printed weapon-row count: the default "minimal" template only
+// has room for 2 ranged + 2 melee rows, freeing up far more of the page for
+// the Abilities area below; the "full" template (the original asset) has
+// room for 3 ranged + 4 melee. Callers pick the variant per-hero (see
+// warlordDocVariant in PathToGloryWizard's officiantData) — minimal unless
+// the hero actually has more than 2 of either weapon type.
 function buildWarlordOverlayFields(d) {
+  const minimal = d.warlordDocVariant === 'minimal';
   const fields = [];
   fields.push({ spec: centerField(15.2, 10.0, 10, 0.026), value: d.warlordMove });
   fields.push({ spec: centerField(12.3, 12.8, 8, 0.026), value: d.warlordHealth });
@@ -484,8 +503,10 @@ function buildWarlordOverlayFields(d) {
   fields.push({ spec: centerField(15.2, 15.0, 10, 0.026), value: d.warlordControl });
   fields.push({ spec: centerField(56, 12.5, 55, 0.056), value: d.warlordName });
 
-  const rangedRowTops = [24.6, 28.6, 32.6];
-  (d.rangedWeapons || []).slice(0, 3).forEach((w, i) => {
+  // Minimal template's 2 rows are pixel-measured (row band luminance scan):
+  // header ends ~23.9%, row 1 spans 23.93%-27.51%, row 2 27.51%-31.10%.
+  const rangedRowTops = minimal ? [24.6, 28.2] : [24.6, 28.6, 32.6];
+  (d.rangedWeapons || []).slice(0, rangedRowTops.length).forEach((w, i) => {
     const top = rangedRowTops[i];
     const nameVal = [w.name, w.abilities].filter(Boolean).join('\n');
     fields.push({ spec: { left: 10, top, width: 44, fontSize: 0.016 }, value: nameVal });
@@ -497,8 +518,10 @@ function buildWarlordOverlayFields(d) {
     fields.push({ spec: centerField(86, top, 6, 0.016), value: w.dmg });
   });
 
-  const meleeRowTops = [36.8, 40.8, 44.8, 48.8];
-  (d.meleeWeapons || []).slice(0, 4).forEach((w, i) => {
+  // Minimal melee: header ends ~32.5%, row 1 spans 32.52%-36.15%, row 2
+  // 36.15%-39.73% (same pixel-scan method as ranged above).
+  const meleeRowTops = minimal ? [33.2, 36.8] : [36.8, 40.8, 44.8, 48.8];
+  (d.meleeWeapons || []).slice(0, meleeRowTops.length).forEach((w, i) => {
     const top = meleeRowTops[i];
     const nameVal = [w.name, w.abilities].filter(Boolean).join('\n');
     fields.push({ spec: { left: 10, top, width: 51, fontSize: 0.016 }, value: nameVal });
@@ -510,14 +533,17 @@ function buildWarlordOverlayFields(d) {
   });
 
   // Abilities — the scanned template's own big blank area below the weapon
-  // tables (melee weapons' last row ends ~51%, pixel-measured) and above
-  // the Keywords footer bar (85.84%-89.42%, pixel-measured via a black-bar
-  // pixel scan). `height` clips overflow (scrolls in the Officiant view,
-  // which is a real DOM element unlike print) rather than running text on
-  // top of the Keywords bar once a hero has accumulated more abilities
-  // than fit at a glance. Rendered as real phase-banner ability cards, not
-  // plain text — see OverlayAbilitiesBlock/type:'abilities' in DocPage.
-  fields.push({ spec: { left: 9, top: 52.5, width: 84, height: 31, fontSize: 0.019 }, value: d.warlordAbilityGroups, type: 'abilities' });
+  // tables and above the Keywords footer bar (85.84%-89.42%, pixel-measured
+  // via a black-bar pixel scan, identical on both templates). `height`
+  // clips overflow (see OverlayAbilitiesBlock's own shrink-to-fit pass)
+  // rather than running text on top of the Keywords bar. Rendered as real
+  // phase-banner ability cards, not plain text — see OverlayAbilitiesBlock/
+  // type:'abilities' in DocPage. Minimal's melee table ends ~39.7% (vs the
+  // full template's ~51%), so it gets a much taller abilities area.
+  const abilitiesSpec = minimal
+    ? { left: 9, top: 40.0, width: 84, height: 43, fontSize: 0.019 }
+    : { left: 9, top: 52.5, width: 84, height: 31, fontSize: 0.019 };
+  fields.push({ spec: abilitiesSpec, value: d.warlordAbilityGroups, type: 'abilities' });
 
   // top:86.3 sits the first of 2 keyword lines right on the bar's own first
   // ruled line (was top:95 — well past the bar entirely, rendering below
@@ -2215,12 +2241,18 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     );
   };
 
+  // Minimal Warlord Warscroll template only has room for 2 ranged + 2 melee
+  // weapon rows — fall back to the original (full, 3 ranged/4 melee) scan
+  // only once a hero actually outgrows it. See buildWarlordOverlayFields.
+  const warlordDocVariant = (rangedWeapons.length > 2 || meleeWeapons.length > 2) ? 'full' : 'minimal';
+
   // Everything the Officiant (image) view's overlays can draw from, bundled
   // once per render rather than threading ~30 individual props down through
   // DocPage/buildOverlayFields.
   const officiantData = {
     warlordName, warlordMove, warlordHealth, warlordSave, warlordControl,
     rangedWeapons, meleeWeapons, warlordKeywordsLine1, warlordKeywordsLine2, warlordAbilityGroups,
+    warlordDocVariant,
     armyName, realmOfOrigin, customRealmName,
     realmLabel: REALMS.find(r => r.key === realmOfOrigin)?.name || '',
     gloryPoints, battleFormation,
@@ -2234,17 +2266,20 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     regiments, auxUnits, armyNotes, regimentsTotal, auxTotal, armyUnitsTotal,
   };
 
-  const renderImageView = doc => (
-    <div
-      className={`ptg-doc-image-view ptg-doc-image-view-zoomable${doc.key === 'warlord' ? ' ab-roster-print-target' : ''}`}
-      onClick={() => setDocLightboxOpen(true)}
-      title="Click to zoom"
-    >
-      {doc.images.map((img, i) => (
-        <DocPage key={img.src} img={img} alt={doc.title} docKey={doc.key} pageIndex={i} data={officiantData} />
-      ))}
-    </div>
-  );
+  const renderImageView = doc => {
+    const images = (doc.key === 'warlord' && warlordDocVariant === 'full') ? doc.imagesFull : doc.images;
+    return (
+      <div
+        className={`ptg-doc-image-view ptg-doc-image-view-zoomable${doc.key === 'warlord' ? ' ab-roster-print-target' : ''}`}
+        onClick={() => setDocLightboxOpen(true)}
+        title="Click to zoom"
+      >
+        {images.map((img, i) => (
+          <DocPage key={img.src} img={img} alt={doc.title} docKey={doc.key} pageIndex={i} data={officiantData} />
+        ))}
+      </div>
+    );
+  };
 
   // Same doc, same DocPage/overlay pipeline, just sized to fill as much of
   // the actual browser viewport as possible (both dimensions, not just
@@ -2254,11 +2289,12 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   const renderDocLightbox = () => {
     const doc = DOCS.find(d => d.key === activeDoc);
     if (!doc) return null;
+    const images = (doc.key === 'warlord' && warlordDocVariant === 'full') ? doc.imagesFull : doc.images;
     return (
       <div className="ptg-doc-lightbox-backdrop" onClick={() => setDocLightboxOpen(false)}>
         <button className="gw-close ptg-doc-lightbox-close" onClick={() => setDocLightboxOpen(false)} title="Close (Esc)">✕</button>
         <div className="ptg-doc-lightbox-frame" onClick={e => e.stopPropagation()}>
-          {doc.images.map((img, i) => (
+          {images.map((img, i) => (
             <DocPage key={img.src} img={img} alt={doc.title} docKey={doc.key} pageIndex={i} data={officiantData} />
           ))}
         </div>
