@@ -538,10 +538,15 @@ function buildWarlordOverlayFields(d) {
   // clips overflow (see OverlayAbilitiesBlock's own shrink-to-fit pass)
   // rather than running text on top of the Keywords bar. Rendered as real
   // phase-banner ability cards, not plain text — see OverlayAbilitiesBlock/
-  // type:'abilities' in DocPage. Minimal's melee table ends ~39.7% (vs the
-  // full template's ~51%), so it gets a much taller abilities area.
+  // type:'abilities' in DocPage. Minimal's melee table's last (grey) row
+  // visually ends ~39.73% (pixel-measured) — top is pushed down ~1.8% past
+  // that (one line of the abilities area's own text height at its 0.019
+  // fontSize/1.25 line-height, so the gap reads as "one row of text" rather
+  // than an arbitrary number) instead of butting the weapon table directly,
+  // per direct user report that it read as cramped. Full template's melee
+  // table ends ~51%, further down, so it gets a much taller abilities area.
   const abilitiesSpec = minimal
-    ? { left: 9, top: 40.0, width: 84, height: 43, fontSize: 0.019 }
+    ? { left: 9, top: 41.5, width: 84, height: 41.5, fontSize: 0.019 }
     : { left: 9, top: 52.5, width: 84, height: 31, fontSize: 0.019 };
   fields.push({ spec: abilitiesSpec, value: d.warlordAbilityGroups, type: 'abilities' });
 

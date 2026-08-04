@@ -3739,14 +3739,19 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   border-radius: 2px;
 }
 .ptg-apotheosis-option-btn .gw-ability-card {
-  transition: box-shadow 0.15s, border-color 0.15s;
+  transition: outline-color 0.15s, border-color 0.15s;
 }
 .ptg-apotheosis-option-btn:hover .gw-ability-card {
   border-color: var(--gold);
 }
+/* An outlined ring (not a touching box-shadow) so the "this is selected"
+   indicator reads as its own thing, separate from the card's own phase-
+   colored border (AbilityCard's inline borderColor, which always wins over
+   any border-color set here) — outline-offset opens a real gap between the
+   two instead of the ring sitting flush against the border. */
 .ptg-apotheosis-option-selected .gw-ability-card {
-  border-color: var(--gold);
-  box-shadow: 0 0 0 2px var(--gold);
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
 }
 /* Skip Companion has no AbilityCard to wrap (there's nothing to display —
    it's an explicit "choose none of these"), so unlike its sibling option
@@ -3782,7 +3787,8 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
 }
 .ptg-apotheosis-skip-btn.ptg-apotheosis-option-selected {
   border-color: var(--gold);
-  box-shadow: 0 0 0 2px var(--gold);
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
   background: rgba(200,168,64,0.12);
 }
 /* Other/Battle Mount Upgrades cards that carry an Anti-X unit-type picker —
@@ -4197,7 +4203,12 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   letter-spacing: 0.04em;
   font-size: 0.62em;
   color: #6b4e1a;
-  margin: 0.5em 0 0.3em;
+  /* A source header should read as belonging to the card(s) under it, not
+     the previous group's card above it — small bottom margin, bigger top
+     margin. The grid's own row-gap (0.3em, see .ptg-doc-overlay-ability-
+     group above) already adds space below the header before its card row,
+     so the bottom margin here only needs to be small, not zero. */
+  margin: 0.9em 0 0.15em;
 }
 .ptg-doc-overlay-ability-group:first-child .ptg-doc-overlay-ability-group-hdr { margin-top: 0; }
 /* Two singleton-source groups (e.g. Origin + Flaw) packed into one row —

@@ -158,6 +158,17 @@ export function getPhaseStyle(ab) {
   // use it as-is, don't fold it into the dynamic split-builder below.
   if (keys.length === 1 && keys[0].startsWith('ovr-')) return styleForString(keys[0]);
 
+  // Exactly one discovered phase — this is the common case (a bare stat
+  // tweak like "Add 1 to hit rolls" with timing "Passive"), not a genuinely
+  // multi-phase ability. Splitting it 50/50 with the generic base type
+  // (Passive/Reaction/etc, which carries no phase meaning of its own) reads
+  // as a muddy half-brown blend at ability-card header height, not as
+  // "colored for its phase" — use the discovered phase's own color solid,
+  // same as if the timing text had just named that phase directly. The
+  // split-gradient treatment is reserved for 2+ discovered phases below,
+  // where showing multiple bands is the actual point.
+  if (keys.length === 1) return styleForString(keys[0]);
+
   const baseStyle = styleForString(timing);
   const discoveredStyles = keys
     .slice()
