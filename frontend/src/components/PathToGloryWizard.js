@@ -497,10 +497,10 @@ function centerField(left, top, width, fontSize) {
 function buildWarlordOverlayFields(d) {
   const minimal = d.warlordDocVariant === 'minimal';
   const fields = [];
-  fields.push({ spec: centerField(15.2, 10.0, 10, 0.026), value: d.warlordMove });
-  fields.push({ spec: centerField(12.3, 12.8, 8, 0.026), value: d.warlordHealth });
-  fields.push({ spec: centerField(19.2, 12.8, 8, 0.026), value: d.warlordSave });
-  fields.push({ spec: centerField(15.2, 15.0, 10, 0.026), value: d.warlordControl });
+  fields.push({ spec: centerField(15.5, 10.0, 10, 0.026), value: d.warlordMove });
+  fields.push({ spec: centerField(12.3, 12.6, 8, 0.026), value: d.warlordHealth });
+  fields.push({ spec: centerField(18.9, 12.6, 8, 0.026), value: d.warlordSave });
+  fields.push({ spec: centerField(15.5, 15.0, 10, 0.026), value: d.warlordControl });
   fields.push({ spec: centerField(56, 12.5, 55, 0.056), value: d.warlordName });
 
   // Minimal template's 2 rows are pixel-measured (row band luminance scan):
