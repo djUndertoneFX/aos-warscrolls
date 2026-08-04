@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import axios from 'axios';
 import { AbilityCard, getPhaseStyle } from './WarscrollGW';
 
@@ -353,6 +353,49 @@ function OverlayField({ box, spec, children }) {
   return <div className="ptg-doc-overlay-field" style={style}>{children}</div>;
 }
 
+// Merges consecutive groups that each carry exactly 1 ability (e.g. Origin's
+// single pick, Flaw's single pick) into one paired row with a small source
+// label per column, instead of each getting its own full-width header
+// followed by a solo card with a wasted second column. Groups with 2+
+// abilities (or a singleton with no singleton neighbor) render unchanged.
+function packAbilityGroups(groups) {
+  const out = [];
+  let i = 0;
+  while (i < groups.length) {
+    const g = groups[i];
+    const next = groups[i + 1];
+    if (g.abilities.length === 1 && next?.abilities.length === 1) {
+      out.push({ paired: true, columns: [
+        { source: g.header, ability: g.abilities[0] },
+        { source: next.header, ability: next.abilities[0] },
+      ] });
+      i += 2;
+    } else {
+      out.push(g);
+      i += 1;
+    }
+  }
+  return out;
+}
+
+function OverlayAbilityMiniCard({ a }) {
+  const ps = getPhaseStyle(a);
+  return (
+    <div className="ptg-doc-overlay-ability" style={{ borderColor: ps.border }}>
+      {a.timing && (
+        <div className="ptg-doc-overlay-ability-hdr" style={{ background: ps.hdrBg, color: ps.hdrTxt }}>
+          {a.timing.toUpperCase()}
+        </div>
+      )}
+      <div className="ptg-doc-overlay-ability-body">
+        <div className="ptg-doc-overlay-ability-name">{a.name}</div>
+        {a.declare && <div><strong>Declare: </strong>{a.declare}</div>}
+        {a.effect && <div><strong>Effect: </strong>{a.effect}</div>}
+      </div>
+    </div>
+  );
+}
+
 // The Officiant Warlord Warscroll's Abilities area — same position/size
 // math as OverlayField (spec is left/top/width/height/fontSize, all % of
 // the doc image), but renders real phase-banner ability cards grouped
@@ -364,8 +407,36 @@ function OverlayField({ box, spec, children }) {
 // from spec.fontSize * box.width, same fraction-of-image-width convention
 // as every other overlay field), so the cards scale exactly like the
 // weapon tables and stat wheel do.
+//
+// The area has a fixed height (spec.height, the scanned template's own
+// blank space) and no scrollbar — a scrolling area over a printed page
+// reads as broken, and this component's own scroll never worked right
+// nested inside the doc's absolutely-positioned overlay anyway. Instead,
+// trailing groups that don't fully fit are dropped entirely (never
+// rendered clipped mid-card) via a measure-and-shrink pass below.
 function OverlayAbilitiesBlock({ box, spec, groups }) {
-  if (!box.width || !groups?.length) return null;
+  const packed = React.useMemo(() => packAbilityGroups(groups || []), [groups]);
+  const packedKey = packed.map(g => g.paired
+    ? `p:${g.columns[0].ability.name}+${g.columns[1].ability.name}`
+    : `${g.header}:${g.abilities.map(a => a.name).join(',')}`).join('|');
+
+  const containerRef = useRef(null);
+  const [fitCount, setFitCount] = useState(packed.length);
+
+  useEffect(() => { setFitCount(packed.length); }, [packedKey]);
+
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (!el || fitCount <= 0) return;
+    // overflow:hidden clips visually but scrollHeight still reports the
+    // true unclipped content height, and clientHeight the visible box —
+    // shrink one group at a time until everything shown actually fits.
+    if (el.scrollHeight > el.clientHeight + 1) {
+      setFitCount(c => Math.max(0, c - 1));
+    }
+  }, [fitCount, packedKey, box.width, box.height]);
+
+  if (!box.width || !packed.length) return null;
   const style = {
     position: 'absolute',
     left: box.left + (spec.left / 100) * box.width,
@@ -373,30 +444,24 @@ function OverlayAbilitiesBlock({ box, spec, groups }) {
     width: (spec.width / 100) * box.width,
     height: spec.height != null ? (spec.height / 100) * box.height : undefined,
     fontSize: (spec.fontSize ?? 0.019) * box.width,
-    overflowY: 'auto',
+    overflow: 'hidden',
   };
+  const visible = packed.slice(0, fitCount);
   return (
-    <div className="ptg-doc-overlay-abilities" style={style}>
-      {groups.map((g, gi) => (
+    <div ref={containerRef} className="ptg-doc-overlay-abilities" style={style}>
+      {visible.map((g, gi) => g.paired ? (
+        <div key={gi} className="ptg-doc-overlay-ability-group ptg-doc-overlay-ability-group-paired">
+          {g.columns.map((c, ci) => (
+            <div key={ci} className="ptg-doc-overlay-ability-paircol">
+              <div className="ptg-doc-overlay-ability-group-hdr">{c.source}</div>
+              <OverlayAbilityMiniCard a={c.ability} />
+            </div>
+          ))}
+        </div>
+      ) : (
         <div key={gi} className="ptg-doc-overlay-ability-group">
           <div className="ptg-doc-overlay-ability-group-hdr">{g.header}</div>
-          {g.abilities.map((a, ai) => {
-            const ps = getPhaseStyle(a);
-            return (
-              <div key={ai} className="ptg-doc-overlay-ability" style={{ borderColor: ps.border }}>
-                {a.timing && (
-                  <div className="ptg-doc-overlay-ability-hdr" style={{ background: ps.hdrBg, color: ps.hdrTxt }}>
-                    {a.timing.toUpperCase()}
-                  </div>
-                )}
-                <div className="ptg-doc-overlay-ability-body">
-                  <div className="ptg-doc-overlay-ability-name">{a.name}</div>
-                  {a.declare && <div><strong>Declare: </strong>{a.declare}</div>}
-                  {a.effect && <div><strong>Effect: </strong>{a.effect}</div>}
-                </div>
-              </div>
-            );
-          })}
+          {g.abilities.map((a, ai) => <OverlayAbilityMiniCard key={ai} a={a} />)}
         </div>
       ))}
     </div>
@@ -414,8 +479,8 @@ function centerField(left, top, width, fontSize) {
 function buildWarlordOverlayFields(d) {
   const fields = [];
   fields.push({ spec: centerField(15.2, 10.0, 10, 0.026), value: d.warlordMove });
-  fields.push({ spec: centerField(12.3, 13, 8, 0.026), value: d.warlordHealth });
-  fields.push({ spec: centerField(19.5, 13, 8, 0.026), value: d.warlordSave });
+  fields.push({ spec: centerField(12.3, 12.8, 8, 0.026), value: d.warlordHealth });
+  fields.push({ spec: centerField(19.2, 12.8, 8, 0.026), value: d.warlordSave });
   fields.push({ spec: centerField(15.2, 15.0, 10, 0.026), value: d.warlordControl });
   fields.push({ spec: centerField(56, 12.5, 55, 0.056), value: d.warlordName });
 
@@ -458,8 +523,10 @@ function buildWarlordOverlayFields(d) {
   // ruled line (was top:95 — well past the bar entirely, rendering below
   // it near the page's bottom margin; confirmed via PIL text simulation
   // against the real scan, see [[feedback_overlay_calibration_technique]]).
-  const kwText = [d.warlordKeywordsLine1, d.warlordKeywordsLine2].filter(Boolean).join('\n');
-  fields.push({ spec: { left: 24, top: 86.3, width: 68, fontSize: 0.015 }, value: kwText });
+  // Rendered as two independent fields (rather than one \n-joined block)
+  // so each ruled line's vertical position can be nudged on its own.
+  fields.push({ spec: { left: 24, top: 86.1, width: 68, fontSize: 0.015 }, value: d.warlordKeywordsLine1 });
+  fields.push({ spec: { left: 24, top: 87.9, width: 68, fontSize: 0.015 }, value: d.warlordKeywordsLine2 });
   return fields;
 }
 

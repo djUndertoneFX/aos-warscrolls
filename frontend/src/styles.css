@@ -4200,6 +4200,15 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   margin: 0.5em 0 0.3em;
 }
 .ptg-doc-overlay-ability-group:first-child .ptg-doc-overlay-ability-group-hdr { margin-top: 0; }
+/* Two singleton-source groups (e.g. Origin + Flaw) packed into one row —
+   each column gets its own small source label instead of one header
+   spanning both (see packAbilityGroups). Nested here rather than a direct
+   grid child, so the shared .ptg-doc-overlay-ability-group-hdr's
+   grid-column:1/-1 is a no-op and each label only sits above its own card. */
+.ptg-doc-overlay-ability-paircol {
+  display: flex;
+  flex-direction: column;
+}
 .ptg-doc-overlay-ability {
   border: 1px solid;
   border-radius: 2px;

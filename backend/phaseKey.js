@@ -93,12 +93,32 @@ const PHASE_KEYWORD_GROUPS = [
                // rulebook pg 256-257) — these are damage-mitigation/combat-stat
                // modifiers with no phase qualifier of their own, same category as
                // the bare hit/wound/rend/save rolls above.
-               /ward\s*\(\d+\+\)/, /strike-first/, /health characteristic/],
+               /ward\s*\(\d+\+\)/, /strike-first/, /health characteristic/,
+               // Path to Glory "Anvil of Apotheosis" upgrade options (Battle
+               // Mount/Other Upgrades, Origins/Flaws) print as bare weapon/stat
+               // tweaks with no timing at all ("Add 2 to the Attacks
+               // characteristic of your hero's Warblade", "Your hero's
+               // Thalassic Weapon has Anti-X (+1 Rend)/Charge (+1 Damage)",
+               // "Your hero's Save characteristic is 3+") — same bare-stat-
+               // modifier convention as the hit/wound/rend/save rolls above.
+               // Confirmed against Idoneth Deepkin's own Anvil of Apotheosis
+               // page (Focused Hunter/Shining Blade/Ornate Armour/Prodigy of
+               // the Asydrazor all reference melee-only weapons/gear there),
+               // same known ranged-weapon-name-reference limitation already
+               // accepted for the hit/wound/rend/save rolls case above.
+               /attacks? characteristic/, /hit characteristic/, /wound characteristic/, /save characteristic/,
+               /\banti-x\b/, /charge\s*\(\+/],
     genericStatRollSources: ['\\bhit rolls?\\b', '\\bwound rolls?\\b', 'rend characteristic', '\\bsave rolls?\\b',
-                              'ward\\s*\\(\\d+\\+\\)', 'strike-first', 'health characteristic'],
+                              'ward\\s*\\(\\d+\\+\\)', 'strike-first', 'health characteristic',
+                              'attacks? characteristic', 'hit characteristic', 'wound characteristic', 'save characteristic',
+                              '\\banti-x\\b', 'charge\\s*\\(\\+'],
   },
   { key: 'end of turn', patterns: [/end of (the |any )?turn/, /end of (the )?battle round/] },
-  { key: 'deployment', patterns: [/\bdeploy/, /set up.*battlefield edge/, /\breserves?\b/] },
+  // "cannot be set up within X\" of..." (Anvil of Apotheosis Flaws like
+  // Idoneth's ISOLATIONIST) is a deployment-positioning restriction with no
+  // phase-naming timing of its own — same bare-stat-modifier convention as
+  // the combat group above, just for the deployment phase instead.
+  { key: 'deployment', patterns: [/\bdeploy/, /set up.*battlefield edge/, /\breserves?\b/, /cannot be set up/] },
 ];
 
 function detectPhaseKeysFromText(text) {
