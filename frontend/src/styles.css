@@ -4176,6 +4176,42 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   overflow: hidden;
 }
 
+/* Officiant (image) mode's editable fields — same position/size/type as a
+   read-only .ptg-doc-overlay-field, but a real <input>/<textarea> so stat
+   values, name, weapons etc. can be typed directly onto the scan instead of
+   forcing a trip to the Non Corporeal form. Blends into the parchment until
+   interacted with (no border/background of its own) so it doesn't look like
+   a web form dropped on top of a printed sheet; the dashed outline on
+   hover/focus is the only hint it's live. pointer-events is re-enabled here
+   since the whole .ptg-doc-overlay layer above turns it off (the read-only
+   fields don't need clicks, and this box shouldn't eat clicks meant for the
+   "click to zoom" wrapper outside an editable field). */
+.ptg-doc-overlay-input {
+  position: absolute;
+  pointer-events: auto;
+  color: #262019;
+  font-family: 'EB Garamond', Georgia, 'Times New Roman', serif;
+  line-height: 1.2;
+  background: transparent;
+  border: none;
+  border-radius: 2px;
+  padding: 0;
+  margin: 0;
+  resize: none;
+  outline: none;
+}
+.ptg-doc-overlay-input:hover {
+  box-shadow: 0 0 0 1px rgba(107, 78, 26, 0.4);
+}
+.ptg-doc-overlay-input:focus {
+  background: rgba(255, 251, 235, 0.75);
+  box-shadow: 0 0 0 1px #6b4e1a;
+}
+textarea.ptg-doc-overlay-input {
+  overflow: hidden;
+  white-space: pre-wrap;
+}
+
 /* Officiant Warlord Warscroll Abilities area — real phase-banner cards,
    not plain text (see OverlayAbilitiesBlock). Every size here is `em`
    (relative to the block's own inline font-size, which IS set in px from

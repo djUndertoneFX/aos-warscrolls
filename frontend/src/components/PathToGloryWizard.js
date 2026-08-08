@@ -7,6 +7,22 @@ function parseFormationBullets(raw) {
   try { return JSON.parse(raw || '[]'); } catch { return []; }
 }
 
+// Same section classifier WarscrollsPage.js/ArmyBuilderPage.js each keep
+// their own copy of, duplicated here so the Starting Units step's list can
+// group into the identical Heroes/Infantry/Cavalry/... sections instead of
+// one flat alphabetical list.
+function unitTypeLabel(row) {
+  if (row.is_hero)          return 'Heroes';
+  if (row.is_infantry)      return 'Infantry';
+  if (row.is_cavalry)       return 'Cavalry';
+  if (row.is_beast)         return 'Beasts';
+  if (row.is_monster)       return 'Monsters';
+  if (row.is_war_machine)   return 'War Machines';
+  if (row.is_terrain)       return 'Faction Terrain';
+  if (row.is_manifestation) return 'Manifestations';
+  return 'Other';
+}
+
 // "WAR MACHINE" -> "War Machine", for the Anti-X unit-type picker buttons —
 // the applied ability text itself stays fully uppercase (matches every real
 // scraped "Anti-X (+1 Rend)" weapon ability already in the database).
@@ -368,9 +384,8 @@ function useContainImageBox(containerRef) {
 // artwork regardless of viewport size or pillarbox/letterbox bars.
 // fontSize is expressed as a fraction of the image's rendered width for the
 // same reason (a fixed rem value wouldn't scale with the image).
-function OverlayField({ box, spec, children }) {
-  if (!box.width) return null;
-  const style = {
+function overlayFieldStyle(box, spec) {
+  return {
     position: 'absolute',
     left: box.left + (spec.left / 100) * box.width,
     top: box.top + (spec.top / 100) * box.height,
@@ -380,7 +395,36 @@ function OverlayField({ box, spec, children }) {
     textAlign: spec.align || 'left',
     transform: spec.centerX ? 'translateX(-50%)' : undefined,
   };
-  return <div className="ptg-doc-overlay-field" style={style}>{children}</div>;
+}
+
+function OverlayField({ box, spec, children }) {
+  if (!box.width) return null;
+  return <div className="ptg-doc-overlay-field" style={overlayFieldStyle(box, spec)}>{children}</div>;
+}
+
+// The Officiant (image) view's editable counterpart to OverlayField — same
+// position/size math, but a real form control wired to the same state
+// setters renderWarlordForm's Non Corporeal inputs use, so a value typed
+// here and a value typed there are the exact same piece of state. `multiline`
+// picks textarea vs input: only the weapon Name+Abilities cell needs it
+// (those are two separately-stored fields joined by '\n' for display, see
+// buildWarlordOverlayFields), split back apart on change at the first
+// newline. Click stopPropagation keeps interacting with the field from
+// bubbling to the page wrapper's "click anywhere to zoom" handler.
+function OverlayEditableField({ box, spec, value, onChange, multiline, placeholder }) {
+  if (!box.width) return null;
+  const style = overlayFieldStyle(box, spec);
+  const common = {
+    className: 'ptg-doc-overlay-input',
+    style,
+    value: value ?? '',
+    placeholder,
+    onClick: e => e.stopPropagation(),
+    onChange: e => onChange(e.target.value),
+  };
+  return multiline
+    ? <textarea {...common} rows={2} />
+    : <input {...common} type="text" />;
 }
 
 // Merges consecutive groups that each carry exactly 1 ability (e.g. Origin's
@@ -515,14 +559,24 @@ function centerField(left, top, width, fontSize) {
 // room for 3 ranged + 4 melee. Callers pick the variant per-hero (see
 // warlordDocVariant in PathToGloryWizard's officiantData) — minimal unless
 // the hero actually has more than 2 of either weapon type.
+// Splits a weapon's combined "name\nabilities" cell (see nameVal below) back
+// into its two underlying fields on edit — line 1 is always the name, any
+// remaining lines (a user could legitimately hit Enter more than once) are
+// rejoined as the abilities text, matching how they're re-joined for display.
+function splitWeaponNameCell(raw, update, id) {
+  const idx = raw.indexOf('\n');
+  if (idx === -1) { update(id, 'name', raw); update(id, 'abilities', ''); }
+  else { update(id, 'name', raw.slice(0, idx)); update(id, 'abilities', raw.slice(idx + 1)); }
+}
+
 function buildWarlordOverlayFields(d) {
   const minimal = d.warlordDocVariant === 'minimal';
   const fields = [];
-  fields.push({ spec: centerField(15.5, 10.0, 10, 0.026), value: d.warlordMove });
-  fields.push({ spec: centerField(12.3, 12.6, 8, 0.026), value: d.warlordHealth });
-  fields.push({ spec: centerField(18.9, 12.6, 8, 0.026), value: d.warlordSave });
-  fields.push({ spec: centerField(15.5, 15.0, 10, 0.026), value: d.warlordControl });
-  fields.push({ spec: centerField(56, 12.5, 55, 0.056), value: d.warlordName });
+  fields.push({ spec: centerField(15.5, 10.0, 10, 0.026), value: d.warlordMove, editable: d.setWarlordMove });
+  fields.push({ spec: centerField(12.3, 12.6, 8, 0.026), value: d.warlordHealth, editable: d.setWarlordHealth });
+  fields.push({ spec: centerField(18.9, 12.6, 8, 0.026), value: d.warlordSave, editable: d.setWarlordSave });
+  fields.push({ spec: centerField(15.5, 15.0, 10, 0.026), value: d.warlordControl, editable: d.setWarlordControl });
+  fields.push({ spec: centerField(56, 12.5, 55, 0.056), value: d.warlordName, editable: d.setWarlordName });
 
   // Minimal template's 2 rows are pixel-measured (row band luminance scan):
   // header ends ~23.9%, row 1 spans 23.93%-27.51%, row 2 27.51%-31.10%.
@@ -530,13 +584,15 @@ function buildWarlordOverlayFields(d) {
   (d.rangedWeapons || []).slice(0, rangedRowTops.length).forEach((w, i) => {
     const top = rangedRowTops[i];
     const nameVal = [w.name, w.abilities].filter(Boolean).join('\n');
-    fields.push({ spec: { left: 10, top, width: 44, fontSize: 0.016 }, value: nameVal });
-    fields.push({ spec: centerField(55.5, top, 5.5, 0.016), value: w.rng });
-    fields.push({ spec: centerField(61.5, top, 5.5, 0.016), value: w.atk });
-    fields.push({ spec: centerField(67.5, top, 5.5, 0.016), value: w.hit });
-    fields.push({ spec: centerField(73.5, top, 5.5, 0.016), value: w.wnd });
-    fields.push({ spec: centerField(79.5, top, 5.5, 0.016), value: w.rnd });
-    fields.push({ spec: centerField(86, top, 6, 0.016), value: w.dmg });
+    const upd = d.updateRanged;
+    fields.push({ spec: { left: 10, top, width: 44, fontSize: 0.016 }, value: nameVal, multiline: true,
+      editable: upd && (val => splitWeaponNameCell(val, upd, w.id)) });
+    fields.push({ spec: centerField(55.5, top, 5.5, 0.016), value: w.rng, editable: upd && (val => upd(w.id, 'rng', val)) });
+    fields.push({ spec: centerField(61.5, top, 5.5, 0.016), value: w.atk, editable: upd && (val => upd(w.id, 'atk', val)) });
+    fields.push({ spec: centerField(67.5, top, 5.5, 0.016), value: w.hit, editable: upd && (val => upd(w.id, 'hit', val)) });
+    fields.push({ spec: centerField(73.5, top, 5.5, 0.016), value: w.wnd, editable: upd && (val => upd(w.id, 'wnd', val)) });
+    fields.push({ spec: centerField(79.5, top, 5.5, 0.016), value: w.rnd, editable: upd && (val => upd(w.id, 'rnd', val)) });
+    fields.push({ spec: centerField(86, top, 6, 0.016), value: w.dmg, editable: upd && (val => upd(w.id, 'dmg', val)) });
   });
 
   // Minimal melee: header ends ~32.5%, row 1 spans 32.52%-36.15%, row 2
@@ -545,12 +601,14 @@ function buildWarlordOverlayFields(d) {
   (d.meleeWeapons || []).slice(0, meleeRowTops.length).forEach((w, i) => {
     const top = meleeRowTops[i];
     const nameVal = [w.name, w.abilities].filter(Boolean).join('\n');
-    fields.push({ spec: { left: 10, top, width: 51, fontSize: 0.016 }, value: nameVal });
-    fields.push({ spec: centerField(62.5, top, 5.5, 0.016), value: w.atk });
-    fields.push({ spec: centerField(68.5, top, 5.5, 0.016), value: w.hit });
-    fields.push({ spec: centerField(74.5, top, 5.5, 0.016), value: w.wnd });
-    fields.push({ spec: centerField(80.5, top, 5.5, 0.016), value: w.rnd });
-    fields.push({ spec: centerField(87, top, 6, 0.016), value: w.dmg });
+    const upd = d.updateMelee;
+    fields.push({ spec: { left: 10, top, width: 51, fontSize: 0.016 }, value: nameVal, multiline: true,
+      editable: upd && (val => splitWeaponNameCell(val, upd, w.id)) });
+    fields.push({ spec: centerField(62.5, top, 5.5, 0.016), value: w.atk, editable: upd && (val => upd(w.id, 'atk', val)) });
+    fields.push({ spec: centerField(68.5, top, 5.5, 0.016), value: w.hit, editable: upd && (val => upd(w.id, 'hit', val)) });
+    fields.push({ spec: centerField(74.5, top, 5.5, 0.016), value: w.wnd, editable: upd && (val => upd(w.id, 'wnd', val)) });
+    fields.push({ spec: centerField(80.5, top, 5.5, 0.016), value: w.rnd, editable: upd && (val => upd(w.id, 'rnd', val)) });
+    fields.push({ spec: centerField(87, top, 6, 0.016), value: w.dmg, editable: upd && (val => upd(w.id, 'dmg', val)) });
   });
 
   // Abilities — the scanned template's own big blank area below the weapon
@@ -582,8 +640,8 @@ function buildWarlordOverlayFields(d) {
   // against the real scan, see [[feedback_overlay_calibration_technique]]).
   // Rendered as two independent fields (rather than one \n-joined block)
   // so each ruled line's vertical position can be nudged on its own.
-  fields.push({ spec: { left: 24, top: 86.1, width: 68, fontSize: 0.015 }, value: d.warlordKeywordsLine1 });
-  fields.push({ spec: { left: 24, top: 87.9, width: 68, fontSize: 0.015 }, value: d.warlordKeywordsLine2 });
+  fields.push({ spec: { left: 24, top: 86.1, width: 68, fontSize: 0.015 }, value: d.warlordKeywordsLine1, editable: d.setWarlordKeywordsLine1 });
+  fields.push({ spec: { left: 24, top: 87.9, width: 68, fontSize: 0.015 }, value: d.warlordKeywordsLine2, editable: d.setWarlordKeywordsLine2 });
   return fields;
 }
 
@@ -711,13 +769,18 @@ function buildOverlayFields(docKey, pageIndex, d) {
 function DocPage({ img, alt, docKey, pageIndex, data }) {
   const containerRef = useRef(null);
   const box = useContainImageBox(containerRef);
-  const fields = buildOverlayFields(docKey, pageIndex, data).filter(f => f.value);
+  // Editable fields stay even when empty (there'd otherwise be nothing to
+  // click into to type a first value); read-only fields with nothing to
+  // show are dropped as before.
+  const fields = buildOverlayFields(docKey, pageIndex, data).filter(f => f.value || f.editable);
   return (
     <div className="ptg-doc-page-wrap" ref={containerRef} style={{ aspectRatio: PTG_DOC_ASPECT }}>
       <ProgressiveImg src={img.src} micro={img.micro} avgColor={img.avgColor} alt={alt} className="ptg-doc-full-img" />
       <div className="ptg-doc-overlay">
         {fields.map((f, i) => (
-          f.type === 'abilities'
+          f.editable
+            ? <OverlayEditableField key={i} box={box} spec={f.spec} value={f.value} onChange={f.editable} multiline={f.multiline} />
+            : f.type === 'abilities'
             ? <OverlayAbilitiesBlock key={i} box={box} spec={f.spec} groups={f.value} />
             : <OverlayField key={i} box={box} spec={f.spec}>{f.value}</OverlayField>
         ))}
@@ -924,6 +987,11 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   // Read once per mount — resumes wherever the user left off last time they
   // opened this wizard (localStorage persists it across close/reopen).
   const saved = (() => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; } })();
+  // WarscrollsPage.js's own Hide toggles ('aos-filters') — read once as the
+  // Starting Units step's default so it opens already matching whatever the
+  // player left Hide: Scourge/Regiments of Renown/Legends set to on the main
+  // table, per-page override afterward same as every other page.
+  const sharedFilterDefaults = (() => { try { return JSON.parse(localStorage.getItem('aos-filters')) || {}; } catch { return {}; } })();
 
   const [step, setStep] = useState(() => saved.step ?? 0);
   const [activeDoc, setActiveDoc] = useState(() => saved.activeDoc ?? null); // null | 'warlord' | 'roster' | 'oob' | 'army'
@@ -938,6 +1006,20 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   // vertically instead of disappearing, and the toggle button itself is
   // hidden by CSS so iPad/phone users never see an option that wouldn't fit.
   const [wizardViewMode, setWizardViewMode] = useState(() => saved.wizardViewMode ?? 'single');
+  // Dual view's right-hand column follows whichever step the left-hand flow
+  // is on, so the relevant doc is already in view instead of making the
+  // user hunt for it in the tray above. Only fires on a `step`/view-mode
+  // change (not on every render) so a manual pick from the doc tray while
+  // sitting on one step (e.g. peeking at the Army Roster mid-Quest) isn't
+  // immediately stomped. Steps 0-1 (Campaign/Faction) have no obvious
+  // matching doc, so they're left out of the map and whatever's already
+  // active stays put.
+  useEffect(() => {
+    if (wizardViewMode !== 'dual') return;
+    const STEP_DOC = { 2: 'warlord', 3: 'warlord', 4: 'oob', 5: 'roster', 6: 'roster', 7: 'roster', 8: 'army' };
+    const doc = STEP_DOC[step];
+    if (doc) { setWarlordPrintPreview(false); setActiveDoc(doc); }
+  }, [step, wizardViewMode]); // eslint-disable-line
   // Clicking a blown-up doc image (single view or dual view's preview
   // panel) opens this — a further popup that maximizes both viewport
   // dimensions (not just width like the inline preview) so there's little
@@ -1115,14 +1197,24 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   // "unit" this step's Train/Reinforce picker is for).
   const [factionUnits, setFactionUnits] = useState([]);
   const [factionUnitsLoading, setFactionUnitsLoading] = useState(false);
+  // Same 3 Hide toggles as WarscrollsPage/ArmyBuilderPage (Other Factions
+  // doesn't apply — this list is already scoped to one faction).
+  const [unitsHideLegends, setUnitsHideLegends] = useState(() => saved.unitsHideLegends ?? sharedFilterDefaults.hideLegends ?? true);
+  const [unitsHideScourge, setUnitsHideScourge] = useState(() => saved.unitsHideScourge ?? sharedFilterDefaults.hideScourgeOfGhyran ?? false);
+  const [unitsHideRoR, setUnitsHideRoR] = useState(() => saved.unitsHideRoR ?? sharedFilterDefaults.hideRoR ?? false);
   useEffect(() => {
     if (!effectiveFactionSlug) { setFactionUnits([]); return; }
     setFactionUnitsLoading(true);
-    axios.get('/api/warscrolls', { params: { faction: effectiveFactionSlug, pageSize: 9999 } })
+    axios.get('/api/warscrolls', { params: {
+      faction: effectiveFactionSlug, pageSize: 9999,
+      ...(unitsHideLegends ? { isLegends: '0' } : {}),
+      ...(unitsHideScourge ? { hideScourgeOfGhyran: '1' } : {}),
+      ...(unitsHideRoR     ? { hideRoR: '1' } : {}),
+    } })
       .then(res => setFactionUnits((res.data.data ?? []).filter(r => !r.is_terrain && !r.is_manifestation)))
       .catch(() => setFactionUnits([]))
       .finally(() => setFactionUnitsLoading(false));
-  }, [effectiveFactionSlug]);
+  }, [effectiveFactionSlug, unitsHideLegends, unitsHideScourge, unitsHideRoR]);
 
   // { [warscrollId]: { train, reinforce } } — Train/Reinforce counts for
   // the starting roster, same shape/semantics as Army Builder's own
@@ -1611,6 +1703,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
       warlordWarscroll, warlordRank, warlordRenown, warlordEnhancements, warlordPath, warlordPathAbility, warlordPathRankChoices, oobUnits,
       commander, armyRosterName, pointsLimit, armyRosterFaction, armyRosterFormation, regiments, auxUnits, armyNotes,
       startingUnits, heroicTraitChoice, heroicTraitAssignee, artefactChoice, artefactAssignee,
+      unitsHideLegends, unitsHideScourge, unitsHideRoR,
     };
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot)); } catch {}
   }, [
@@ -2036,18 +2129,98 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     return list.length ? list : ANTI_X_FALLBACK_KEYWORDS;
   };
 
-  // Applies (or removes) an Anti-X/Charge Other/Battle Mount Upgrade
-  // option's actual weapon effect the instant it's toggled. Every other
-  // upgrade on these two steps stays purely informational (matches how
-  // Duellist/Ornate Armour/etc. already behave — this wizard doesn't try to
-  // enforce every stat change onto the table), but these two effects repeat
-  // near-identically across enough factions to be worth wiring up for real.
+  // "Your hero's Save characteristic is X+." flat-replacement effects (e.g.
+  // Ornate Armour) — applied straight onto warlordSave the instant the
+  // option is toggled, same as if the player had crossed out the old value
+  // and written the new one by hand. previousBaseRef remembers what was
+  // there before so deselecting restores it rather than leaving the
+  // override's value stuck. Not a continuously-recomputed override (see
+  // OverlayEditableField/Task the Save field is directly editable from,
+  // added alongside this) — once applied, the field is just a normal typed
+  // value again, indistinguishable from a manual edit, which is what keeps
+  // this simple instead of needing a parallel "effective vs base" concept.
+  const saveOverrideRef = useRef(null); // { previousBase } while an override from THIS effect is active
+  const parseSaveOverride = effectText => /Save characteristic is (\d\+)/i.exec(effectText || '')?.[1] || null;
+  const applySaveOverride = (opt, adding) => {
+    const overrideVal = parseSaveOverride(opt.effect);
+    if (!overrideVal) return;
+    if (adding) {
+      if (!saveOverrideRef.current) saveOverrideRef.current = { previousBase: warlordSave };
+      setWarlordSave(overrideVal);
+    } else if (saveOverrideRef.current) {
+      setWarlordSave(saveOverrideRef.current.previousBase);
+      saveOverrideRef.current = null;
+    }
+  };
+
+  // "...add a number equal to the number of ranks this unit has earned on
+  // its Path to the Attacks characteristic of its <Weapon Name>." (e.g.
+  // Prodigy of the Asydrazor) — scales off the hero's own Rank field
+  // (Aspiring=1, Elite=2, Mighty=3, Legendary=4, matching the option's own
+  // worked example of Legendary -> +4). rankScalingRef remembers how much
+  // was last added per option so it can both undo cleanly on deselect and
+  // true up the delta if Rank changes while still selected, without ever
+  // needing to know the weapon's own base Attacks value.
+  const rankScalingRef = useRef({}); // optId -> { weaponName, appliedBonus }
+  // Not end-anchored — the phrase sits mid-sentence, followed by a "For
+  // example, ..." clause spelling out the worked example, not end of string.
+  const parseRankScalingAttackWeapon = effectText =>
+    /ranks this unit has earned on its Path to the Attacks characteristic of its ([A-Za-z' ]+?)\./i.exec(effectText || '')?.[1]?.trim() || null;
+  const RANK_NUMBER = { aspiring: 1, elite: 2, mighty: 3, legendary: 4 };
+  const rankScalingBonus = () => RANK_NUMBER[(warlordRank || '').trim().toLowerCase()] ?? 1;
+  const bumpWeaponAttacks = (weaponName, amount) => {
+    if (!weaponName || !amount) return;
+    const target = weaponName.toLowerCase();
+    const bump = rows => rows.map(r => {
+      if ((r.name || '').trim().toLowerCase() !== target) return r;
+      const cur = parseInt(r.atk, 10);
+      return Number.isFinite(cur) ? { ...r, atk: String(cur + amount) } : r;
+    });
+    setMeleeWeapons(bump);
+    setRangedWeapons(bump);
+  };
+  const applyRankScalingAttack = (opt, adding) => {
+    const weaponName = parseRankScalingAttackWeapon(opt.effect);
+    if (!weaponName) return;
+    if (adding) {
+      const bonus = rankScalingBonus();
+      bumpWeaponAttacks(weaponName, bonus);
+      rankScalingRef.current[opt.id] = { weaponName, appliedBonus: bonus };
+    } else {
+      const prev = rankScalingRef.current[opt.id];
+      if (prev) { bumpWeaponAttacks(prev.weaponName, -prev.appliedBonus); delete rankScalingRef.current[opt.id]; }
+    }
+  };
+  // Keeps a rank-scaling bonus in sync if Rank changes while its granting
+  // option is still selected (e.g. Aspiring -> Elite bumps Thalassic
+  // Weapon's Attacks by 1 more, no need to reselect the option).
+  useEffect(() => {
+    const bonus = rankScalingBonus();
+    Object.values(rankScalingRef.current).forEach(entry => {
+      if (entry.appliedBonus !== bonus) {
+        bumpWeaponAttacks(entry.weaponName, bonus - entry.appliedBonus);
+        entry.appliedBonus = bonus;
+      }
+    });
+  }, [warlordRank]); // eslint-disable-line
+
+  // Applies (or removes) a picked option's actual mechanical effect the
+  // instant it's toggled/switched — Anti-X and Charge (+1 Damage) tag a
+  // weapon's Abilities text, Save-override and rank-scaling Attacks
+  // (above) edit the stat/weapon fields directly. Every other option on
+  // these steps stays purely informational text (this wizard doesn't try
+  // to parse every possible stat change), but these four repeat often
+  // enough, or were specifically asked for, to be worth wiring up for real.
   const applyUpgradeWeaponEffect = (opt, adding) => {
     if (isChargeDamageOption(opt)) {
       setWeaponAbilityTag(parseWeaponTargetPhrase(opt.effect), 'charge (+1 damage)', 'Charge (+1 Damage)', adding);
     } else if (isAntiXOption(opt)) {
       const keyword = antiXChoiceByOption[opt.id] || parseAntiXKeywords(opt.effect)[0];
       setWeaponAbilityTag(parseWeaponTargetPhrase(opt.effect), 'anti-', `Anti-${keyword} (+1 Rend)`, adding);
+    } else if (parseSaveOverride(opt.effect)) {
+      applySaveOverride(opt, adding);
+    } else if (parseRankScalingAttackWeapon(opt.effect)) {
+      applyRankScalingAttack(opt, adding);
     }
   };
 
@@ -2211,7 +2384,18 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                         type="button"
                         className={`ptg-apotheosis-option-btn${selected ? ' ptg-apotheosis-option-selected' : ''}`}
                         onClick={() => {
+                          const prevIdx = originFlawChoice?.[g.group];
                           setOriginFlawChoice(prev => ({ ...prev, [g.group]: prev?.[g.group] === oi ? null : oi }));
+                          // Origins/Flaws are a single-select radio within their group, not
+                          // a toggle list like Other/Mount Upgrades — switching to a
+                          // different option (e.g. Prodigy of the Asydrazor) needs the old
+                          // pick's mechanical effect undone before the new one applies.
+                          if (selected) {
+                            applyUpgradeWeaponEffect(opt, false);
+                          } else {
+                            if (prevIdx != null && g.items[prevIdx]) applyUpgradeWeaponEffect(g.items[prevIdx], false);
+                            applyUpgradeWeaponEffect(opt, true);
+                          }
                         }}
                       >
                         {card}
@@ -2284,6 +2468,12 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
     warlordName, warlordMove, warlordHealth, warlordSave, warlordControl,
     rangedWeapons, meleeWeapons, warlordKeywordsLine1, warlordKeywordsLine2, warlordAbilityGroups,
     warlordDocVariant,
+    // Same setters/updaters renderWarlordForm's Non Corporeal inputs use —
+    // lets the Officiant (image) view's overlay fields edit the identical
+    // state directly on the scan (see OverlayEditableField/
+    // buildWarlordOverlayFields), instead of that being replica-form-only.
+    setWarlordName, setWarlordMove, setWarlordHealth, setWarlordSave, setWarlordControl,
+    setWarlordKeywordsLine1, setWarlordKeywordsLine2, updateRanged, updateMelee,
     armyName, realmOfOrigin, customRealmName,
     realmLabel: REALMS.find(r => r.key === realmOfOrigin)?.name || '',
     gloryPoints, battleFormation,
@@ -2815,6 +3005,24 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                       <span className="ab-points-label"> pts</span>
                     </span>
                   </div>
+                  {/* Same 3 applicable Hide toggles as Warscrolls/Army Builder (Other
+                      Factions doesn't apply — this list is already one faction only),
+                      defaulting to whatever those pages currently have set. */}
+                  <div className="cb-group cb-group-right ptg-units-hide-row">
+                    <div className="cb-group-header">Hide:</div>
+                    <label className="cb-item">
+                      <input type="checkbox" checked={unitsHideScourge} onChange={e => setUnitsHideScourge(e.target.checked)} />
+                      <span>Scourge</span>
+                    </label>
+                    <label className="cb-item">
+                      <input type="checkbox" checked={unitsHideRoR} onChange={e => setUnitsHideRoR(e.target.checked)} />
+                      <span>Regiments of Renown</span>
+                    </label>
+                    <label className="cb-item">
+                      <input type="checkbox" checked={unitsHideLegends} onChange={e => setUnitsHideLegends(e.target.checked)} />
+                      <span>Legends</span>
+                    </label>
+                  </div>
                   {factionUnitsLoading ? (
                     <div className="ptg-wizard-body-placeholder">Loading…</div>
                   ) : factionUnits.length === 0 ? (
@@ -2831,32 +3039,45 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                         </tr>
                       </thead>
                       <tbody>
-                        {[...factionUnits].sort((a, b) => a.name.localeCompare(b.name)).map(u => {
+                        {/* factionUnits already comes back faction/type/name-ordered
+                            (see /api/warscrolls' typeOrder, same query every other
+                            page uses) — no client re-sort, so a section header per
+                            unitTypeLabel change lines up with real, contiguous groups
+                            instead of firing every row. */}
+                        {factionUnits.map((u, i) => {
                           const sel = startingUnits[u.id] ?? { train: 0, reinforce: 0 };
+                          const typeChanged = i === 0 || unitTypeLabel(factionUnits[i - 1]) !== unitTypeLabel(u);
                           return (
-                            <tr key={u.id}>
-                              <td className="col-count">
-                                <div className="ab-count-stepper">
-                                  <button type="button" className="ab-count-btn" onClick={() => bumpStartingUnitCount(u.id, 'train', -1)}>−</button>
-                                  <span className="ab-count-value">{sel.train || 0}</span>
-                                  <button type="button" className="ab-count-btn" onClick={() => bumpStartingUnitCount(u.id, 'train', 1)}>+</button>
-                                </div>
-                              </td>
-                              <td className="col-count">
-                                {u.is_hero ? (
-                                  <span className="ab-count-na" title="Heroes can't be reinforced">—</span>
-                                ) : (
+                            <React.Fragment key={u.id}>
+                              {typeChanged && (
+                                <tr className="separator-type">
+                                  <td colSpan={5}>{unitTypeLabel(u)}</td>
+                                </tr>
+                              )}
+                              <tr>
+                                <td className="col-count">
                                   <div className="ab-count-stepper">
-                                    <button type="button" className="ab-count-btn" onClick={() => bumpStartingUnitCount(u.id, 'reinforce', -1)}>−</button>
-                                    <span className="ab-count-value">{sel.reinforce || 0}</span>
-                                    <button type="button" className="ab-count-btn" onClick={() => bumpStartingUnitCount(u.id, 'reinforce', 1)}>+</button>
+                                    <button type="button" className="ab-count-btn" onClick={() => bumpStartingUnitCount(u.id, 'train', -1)}>−</button>
+                                    <span className="ab-count-value">{sel.train || 0}</span>
+                                    <button type="button" className="ab-count-btn" onClick={() => bumpStartingUnitCount(u.id, 'train', 1)}>+</button>
                                   </div>
-                                )}
-                              </td>
-                              <td className="ptg-units-name">{u.name}</td>
-                              <td className="ptg-units-pts">{u.points || '—'}</td>
-                              <td className="ptg-units-keywords">{(u.keywords || '').split(',').slice(0, 6).join(', ')}</td>
-                            </tr>
+                                </td>
+                                <td className="col-count">
+                                  {u.is_hero ? (
+                                    <span className="ab-count-na" title="Heroes can't be reinforced">—</span>
+                                  ) : (
+                                    <div className="ab-count-stepper">
+                                      <button type="button" className="ab-count-btn" onClick={() => bumpStartingUnitCount(u.id, 'reinforce', -1)}>−</button>
+                                      <span className="ab-count-value">{sel.reinforce || 0}</span>
+                                      <button type="button" className="ab-count-btn" onClick={() => bumpStartingUnitCount(u.id, 'reinforce', 1)}>+</button>
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="ptg-units-name">{u.name}</td>
+                                <td className="ptg-units-pts">{u.points || '—'}</td>
+                                <td className="ptg-units-keywords">{(u.keywords || '').split(',').slice(0, 6).join(', ')}</td>
+                              </tr>
+                            </React.Fragment>
                           );
                         })}
                       </tbody>
