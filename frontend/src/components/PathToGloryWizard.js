@@ -659,56 +659,85 @@ function buildWarlordOverlayFields(d) {
   return fields;
 }
 
+// Same treatment as buildOobOverlayFields: positions below are read off the
+// actual scan (ptg-roster.jpg, 1524x1985) rather than the original rough
+// guesses. The top section (Heraldry row through Notable Events) is a
+// direct visual read of each box's edges; the Arcane Tome's 6 lore rows are
+// luminance-scanned (alternating shaded/unshaded row bands in the Spell
+// Lore column, x 20-35%) since the original 4.15%-per-row spacing drifted
+// further off the real ~4.71%-per-row spacing with every row down the list
+// — by row 6 that 0.56%-per-row error compounds to over 2.5% (~50px),
+// visibly landing a lore entry between two printed rows instead of in one.
 function buildRosterOverlayFields(d) {
   const fields = [];
-  fields.push({ spec: { left: 27, top: 19, width: 20, fontSize: 0.022 }, value: d.armyName });
-  fields.push({ spec: { left: 52, top: 19, width: 20, fontSize: 0.022 }, value: d.realmOfOrigin === 'custom' ? d.customRealmName : d.realmLabel });
-  fields.push({ spec: centerField(76, 18, 16, 0.032), value: d.gloryPoints });
-  fields.push({ spec: { left: 27, top: 27.5, width: 20, fontSize: 0.022 }, value: d.factionLabel });
-  fields.push({ spec: { left: 52, top: 27.5, width: 20, fontSize: 0.022 }, value: d.battleFormation });
+  fields.push({ spec: centerFieldXY(37, 21.16, 20, 0.022), value: d.armyName });
+  fields.push({ spec: centerFieldXY(62, 21.16, 20, 0.022), value: d.realmOfOrigin === 'custom' ? d.customRealmName : d.realmLabel });
+  fields.push({ spec: centerFieldXY(84, 25.60, 16, 0.032), value: d.gloryPoints });
+  fields.push({ spec: centerFieldXY(37, 29.97, 20, 0.022), value: d.factionLabel });
+  fields.push({ spec: centerFieldXY(62, 29.97, 20, 0.022), value: d.battleFormation });
 
-  fields.push({ spec: { left: 9, top: 41, width: 33, fontSize: 0.018 }, value: d.currentQuest });
-  fields.push({ spec: { left: 44, top: 41, width: 20, fontSize: 0.018 }, value: d.questPoints });
-  fields.push({ spec: { left: 9, top: 46.5, width: 33, fontSize: 0.018 }, value: d.questNotes });
-  fields.push({ spec: { left: 44, top: 46.5, width: 20, fontSize: 0.018 }, value: d.questsCompleted });
+  fields.push({ spec: centerFieldXY(19, 41.61, 23, 0.018), value: d.currentQuest });
+  fields.push({ spec: centerFieldXY(40, 41.61, 17, 0.018), value: d.questPoints });
+  fields.push({ spec: centerFieldXY(19, 46.90, 23, 0.018), value: d.questNotes });
+  fields.push({ spec: centerFieldXY(40, 46.90, 17, 0.018), value: d.questsCompleted });
 
-  fields.push({ spec: { left: 53, top: 38, width: 42, fontSize: 0.015 }, value: d.background });
-  fields.push({ spec: { left: 53, top: 46, width: 42, fontSize: 0.015 }, value: d.notableEvents });
+  fields.push({ spec: centerFieldXY(72, 40.10, 42, 0.015), value: d.background });
+  fields.push({ spec: centerFieldXY(72, 47.66, 42, 0.015), value: d.notableEvents });
 
   const loreCols = [
-    { rows: d.spellLore, left: 9 },
-    { rows: d.prayerLore, left: 40 },
-    { rows: d.manifestationLore, left: 70 },
+    { rows: d.spellLore, left: 28 },
+    { rows: d.prayerLore, left: 54 },
+    { rows: d.manifestationLore, left: 80 },
   ];
+  const loreRowTops = [70.38, 75.06, 79.80, 84.46, 89.17, 93.88];
   for (const col of loreCols) {
     (col.rows || []).slice(0, 6).forEach((v, i) => {
-      fields.push({ spec: { left: col.left, top: 72.5 + i * 4.15, width: 27, fontSize: 0.015 }, value: v });
+      fields.push({ spec: centerFieldXY(col.left, loreRowTops[i], 26, 0.015), value: v });
     });
   }
   return fields;
 }
 
+// Row centers below are derived from a luminance scan of the actual scanned
+// template (order-of-battle.jpg, 1524x1985) finding each field's label
+// underline, then adding a fixed offset down into that field's own blank
+// box (+23px/1985 for a Name/Warscroll/Rank/Renown-shaped row, +35px/1985
+// for the taller Enhancements/Path Abilities/Reinforced?-shaped row below
+// it) — the two offsets were cross-checked against a direct visual read of
+// the box edges and agreed to a couple px, so it's the box's real vertical
+// center, not the label line the previous top values were sitting text on
+// top of. Every field also now centers on both axes (centerFieldXY) per
+// direct request — these are handwriting-style boxes, not left-justified
+// prose fields like Background/Notes elsewhere.
+function centerFieldXY(left, top, width, fontSize) {
+  return { left, top, width, align: 'center', centerX: true, centerY: true, fontSize };
+}
 function buildOobOverlayFields(d) {
   const fields = [];
-  fields.push({ spec: { left: 8, top: 17.8, width: 26, fontSize: 0.02 }, value: d.warlordName });
-  fields.push({ spec: { left: 37, top: 17.8, width: 24, fontSize: 0.02 }, value: d.warlordWarscroll });
-  fields.push({ spec: { left: 64, top: 17.8, width: 14, fontSize: 0.02 }, value: d.warlordRank });
-  fields.push({ spec: centerField(80, 17.8, 12, 0.02), value: d.warlordRenown });
-  fields.push({ spec: { left: 8, top: 22.5, width: 26, fontSize: 0.018 }, value: d.warlordEnhancements });
-  fields.push({ spec: { left: 37, top: 22.5, width: 24, fontSize: 0.018 }, value: d.warlordPathLabel });
-  fields.push({ spec: { left: 64, top: 22.5, width: 29, fontSize: 0.018 }, value: d.warlordPathAbility });
+  fields.push({ spec: centerFieldXY(21, 19.04, 26, 0.02), value: d.warlordName });
+  fields.push({ spec: centerFieldXY(49, 19.04, 24, 0.02), value: d.warlordWarscroll });
+  fields.push({ spec: centerFieldXY(71, 19.04, 14, 0.02), value: d.warlordRank });
+  fields.push({ spec: centerFieldXY(86, 19.04, 12, 0.02), value: d.warlordRenown });
+  fields.push({ spec: centerFieldXY(21, 25.19, 26, 0.018), value: d.warlordEnhancements });
+  fields.push({ spec: centerFieldXY(49, 25.19, 24, 0.018), value: d.warlordPathLabel });
+  fields.push({ spec: centerFieldXY(84, 25.19, 29, 0.018), value: d.warlordPathAbility });
 
-  const unitBlockTops = [33.2, 46.2, 59.3, 72.3, 85.3];
+  // Row1 (Unit Name/Warscroll/Rank/Renown) centers per unit block; each
+  // block's row2 (Enhancements/Path Abilities/Reinforced?) sits a further
+  // +5.94% down — both numbers read off the same underline scan above,
+  // and the 5 blocks' internal spacing was confirmed pixel-identical
+  // (every block is exactly 250px/12.6% tall on the scan).
+  const unitRow1Tops = [35.62, 48.21, 60.81, 73.40, 86.00];
   (d.oobUnits || []).slice(0, 5).forEach((u, i) => {
-    const row1 = unitBlockTops[i];
-    const row2 = row1 + 5;
-    fields.push({ spec: { left: 8, top: row1, width: 26, fontSize: 0.018 }, value: u.name });
-    fields.push({ spec: { left: 37, top: row1, width: 24, fontSize: 0.018 }, value: u.warscroll });
-    fields.push({ spec: { left: 64, top: row1, width: 14, fontSize: 0.018 }, value: u.rank });
-    fields.push({ spec: centerField(80, row1, 12, 0.018), value: u.renown });
-    fields.push({ spec: { left: 8, top: row2, width: 26, fontSize: 0.016 }, value: u.enhancements });
-    fields.push({ spec: { left: 37, top: row2, width: 38, fontSize: 0.016 }, value: u.pathAbility });
-    fields.push({ spec: centerField(80, row2, 12, 0.016), value: u.reinforced });
+    const row1 = unitRow1Tops[i];
+    const row2 = row1 + 5.94;
+    fields.push({ spec: centerFieldXY(21, row1, 26, 0.018), value: u.name });
+    fields.push({ spec: centerFieldXY(49, row1, 24, 0.018), value: u.warscroll });
+    fields.push({ spec: centerFieldXY(71, row1, 14, 0.018), value: u.rank });
+    fields.push({ spec: centerFieldXY(86, row1, 12, 0.018), value: u.renown });
+    fields.push({ spec: centerFieldXY(21, row2, 26, 0.016), value: u.enhancements });
+    fields.push({ spec: centerFieldXY(56, row2, 38, 0.016), value: u.pathAbility });
+    fields.push({ spec: centerFieldXY(86, row2, 12, 0.016), value: u.reinforced });
   });
   return fields;
 }

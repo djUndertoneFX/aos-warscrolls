@@ -3839,11 +3839,15 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
   margin-bottom: 0.75rem;
   font-family: 'Cinzel', serif;
   font-size: 0.85rem;
   color: var(--parchment, #d8cca8);
 }
+.ptg-units-step-header .ab-points-block { flex: 0 0 auto; white-space: nowrap; }
+.ptg-units-hide-row { flex-wrap: wrap; padding-right: 0.5rem; }
 .ptg-units-table {
   width: 100%;
   border-collapse: collapse;
