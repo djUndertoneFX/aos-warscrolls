@@ -3482,6 +3482,21 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   .ptg-wizard-dual-right {
     height: 100%;
     overflow-y: auto;
+    /* Reserves the scrollbar's own width as a gutter instead of letting it
+       overlap content flush against the column's right edge (was covering
+       the points total / step-nav buttons whenever a column was actually
+       tall enough to scroll). Falls back to a fixed padding on browsers
+       without scrollbar-gutter support (pre-2023 Firefox/Safari) — slightly
+       over-reserves there since there's no way to detect scrollbar width in
+       CSS alone, but that's a much smaller cost than the overlap it fixes. */
+    scrollbar-gutter: stable;
+    padding-right: 14px;
+  }
+  @supports (scrollbar-gutter: stable) {
+    .ptg-wizard-dual-left,
+    .ptg-wizard-dual-right {
+      padding-right: 0;
+    }
   }
 }
 .ptg-wizard-dual-left { min-width: 0; }

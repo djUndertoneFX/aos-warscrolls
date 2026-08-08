@@ -23,11 +23,32 @@ function unitTypeLabel(row) {
   return 'Other';
 }
 
+// "namarti reavers" -> "Namarti Reavers" — unlike titleCaseKeyword below,
+// this actually uppercases whatever the first letter already is rather than
+// preserving it, since warscroll names are stored all-lowercase (see
+// WarscrollsPage's own table) rather than titleCaseKeyword's all-uppercase
+// assumption.
+function titleCaseWords(s) {
+  return (s || '').replace(/\S+/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+}
+
 // "WAR MACHINE" -> "War Machine", for the Anti-X unit-type picker buttons —
 // the applied ability text itself stays fully uppercase (matches every real
 // scraped "Anti-X (+1 Rend)" weapon ability already in the database).
 function titleCaseKeyword(s) {
   return s.replace(/\S+/g, w => w.charAt(0) + w.slice(1).toLowerCase());
+}
+
+// Core rules pg 253: a unit only earns its first rank once it has 5+ renown
+// points — 0-4 has no rank at all, printed blank on the Order of Battle,
+// not "Aspiring" by default.
+function rankForRenown(renown) {
+  const n = parseInt(renown, 10);
+  if (!Number.isFinite(n) || n < 5) return '';
+  if (n < 15) return 'Aspiring';
+  if (n < 30) return 'Elite';
+  if (n < 45) return 'Mighty';
+  return 'Legendary';
 }
 
 // The 8 Mortal Realms. Descriptions below are general, widely-known setting
@@ -712,32 +733,43 @@ function buildRosterOverlayFields(d) {
 function centerFieldXY(left, top, width, fontSize) {
   return { left, top, width, align: 'center', centerX: true, centerY: true, fontSize };
 }
+// X-centers below are from a second luminance scan (horizontal this time,
+// through each row's box interior) — the row1 Renown column and row2's
+// Path Abilities/Reinforced? columns had drifted furthest from their real
+// box centers (up to ~2.4%/36px), which is exactly the "Reinforced text
+// isn't centered in its field" symptom: the text WAS centered on its own
+// coordinate, just not on the box's true center.
 function buildOobOverlayFields(d) {
   const fields = [];
-  fields.push({ spec: centerFieldXY(21, 19.04, 26, 0.02), value: d.warlordName });
-  fields.push({ spec: centerFieldXY(49, 19.04, 24, 0.02), value: d.warlordWarscroll });
-  fields.push({ spec: centerFieldXY(71, 19.04, 14, 0.02), value: d.warlordRank });
-  fields.push({ spec: centerFieldXY(86, 19.04, 12, 0.02), value: d.warlordRenown });
-  fields.push({ spec: centerFieldXY(21, 25.19, 26, 0.018), value: d.warlordEnhancements });
-  fields.push({ spec: centerFieldXY(49, 25.19, 24, 0.018), value: d.warlordPathLabel });
-  fields.push({ spec: centerFieldXY(84, 25.19, 29, 0.018), value: d.warlordPathAbility });
+  // Row1 nudged +1.1% down from the box's measured geometric center per
+  // direct feedback ("should be a bit lower") — a deliberate offset from
+  // true-center, not a remeasurement.
+  const warlordRow1 = 20.14;
+  fields.push({ spec: centerFieldXY(21.75, warlordRow1, 26, 0.02), value: d.warlordName });
+  fields.push({ spec: centerFieldXY(49.18, warlordRow1, 22, 0.02), value: d.warlordWarscroll });
+  fields.push({ spec: centerFieldXY(71.85, warlordRow1, 18, 0.02), value: d.warlordRank });
+  fields.push({ spec: centerFieldXY(87.83, warlordRow1, 9, 0.02), value: d.warlordRenown });
+  fields.push({ spec: centerFieldXY(21.75, 25.19, 26, 0.018), value: d.warlordEnhancements });
+  fields.push({ spec: centerFieldXY(59.7, 25.19, 43, 0.018), value: d.warlordPathLabel });
+  fields.push({ spec: centerFieldXY(88.4, 25.19, 10, 0.018), value: d.warlordPathAbility });
 
-  // Row1 (Unit Name/Warscroll/Rank/Renown) centers per unit block; each
-  // block's row2 (Enhancements/Path Abilities/Reinforced?) sits a further
-  // +5.94% down — both numbers read off the same underline scan above,
-  // and the 5 blocks' internal spacing was confirmed pixel-identical
-  // (every block is exactly 250px/12.6% tall on the scan).
-  const unitRow1Tops = [35.62, 48.21, 60.81, 73.40, 86.00];
+  // Row1 (Unit Name/Warscroll/Rank/Renown) centers per unit block, each
+  // +1.1% lower than the box's measured center (same deliberate nudge as
+  // the Warlord row above). Row2 (Enhancements/Path Abilities/Reinforced?)
+  // sits at the box-measured center unchanged — only row1 was flagged as
+  // needing to move.
+  const unitRow1Tops = [36.72, 49.31, 61.91, 74.50, 87.10];
+  const unitRow2Tops = [41.56, 54.15, 66.75, 79.34, 91.94];
   (d.oobUnits || []).slice(0, 5).forEach((u, i) => {
     const row1 = unitRow1Tops[i];
-    const row2 = row1 + 5.94;
-    fields.push({ spec: centerFieldXY(21, row1, 26, 0.018), value: u.name });
-    fields.push({ spec: centerFieldXY(49, row1, 24, 0.018), value: u.warscroll });
-    fields.push({ spec: centerFieldXY(71, row1, 14, 0.018), value: u.rank });
-    fields.push({ spec: centerFieldXY(86, row1, 12, 0.018), value: u.renown });
-    fields.push({ spec: centerFieldXY(21, row2, 26, 0.016), value: u.enhancements });
-    fields.push({ spec: centerFieldXY(56, row2, 38, 0.016), value: u.pathAbility });
-    fields.push({ spec: centerFieldXY(86, row2, 12, 0.016), value: u.reinforced });
+    const row2 = unitRow2Tops[i];
+    fields.push({ spec: centerFieldXY(21.75, row1, 26, 0.018), value: u.name });
+    fields.push({ spec: centerFieldXY(49.18, row1, 22, 0.018), value: u.warscroll });
+    fields.push({ spec: centerFieldXY(71.85, row1, 18, 0.018), value: u.rank });
+    fields.push({ spec: centerFieldXY(87.83, row1, 9, 0.018), value: u.renown });
+    fields.push({ spec: centerFieldXY(21.75, row2, 26, 0.016), value: u.enhancements });
+    fields.push({ spec: centerFieldXY(59.7, row2, 43, 0.016), value: u.pathAbility });
+    fields.push({ spec: centerFieldXY(88.4, row2, 10, 0.016), value: u.reinforced });
   });
   return fields;
 }
@@ -1601,10 +1633,11 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
           const unit = factionUnits.find(u => String(u.id) === String(unitId));
           if (!unit) continue;
           const toAdd = train - existing.length;
+          const displayName = titleCaseWords(unit.name);
           const added = Array.from({ length: toAdd }, (_, i) => ({
             id: `su-${unitId}-${Date.now()}-${i}-${Math.random().toString(36).slice(2)}`,
             sourceUnitId: unitId,
-            name: unit.name, warscroll: unit.name, rank: 'Aspiring', renown: '0',
+            name: displayName, warscroll: displayName, rank: rankForRenown('0'), renown: '0',
             points: unit.points, enhancements: '', pathAbility: '', reinforced: '',
           }));
           next = [...next, ...added];
@@ -2768,8 +2801,8 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                           <div className="ptg-oob-row-grid-4">
                             <div className="ptg-field"><label>Name</label><input value={warlordName} onChange={e => setWarlordName(e.target.value)} /></div>
                             <div className="ptg-field"><label>Warscroll</label><input value={warlordWarscroll} onChange={e => setWarlordWarscroll(e.target.value)} /></div>
-                            <div className="ptg-field"><label>Rank</label><input value={warlordRank} onChange={e => setWarlordRank(e.target.value)} /></div>
-                            <div className="ptg-field"><label>Renown</label><input value={warlordRenown} onChange={e => setWarlordRenown(e.target.value)} /></div>
+                            <div className="ptg-field"><label>Rank</label><input value={warlordRank} readOnly title="Derived from Renown — earned at 5+ points" /></div>
+                            <div className="ptg-field"><label>Renown</label><input value={warlordRenown} onChange={e => { const v = e.target.value; setWarlordRenown(v); setWarlordRank(rankForRenown(v)); }} /></div>
                           </div>
                           <div className="ptg-oob-row-grid-3">
                             <div className="ptg-field"><label>Enhancements</label><input value={warlordEnhancements} onChange={e => setWarlordEnhancements(e.target.value)} /></div>
@@ -2791,11 +2824,11 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                             <div className="ptg-oob-row-grid-4">
                               <div className="ptg-field"><label>Unit Name</label><input value={u.name || ''} onChange={e => updateOobUnit(u.id, 'name', e.target.value)} /></div>
                               <div className="ptg-field"><label>Warscroll</label><input value={u.warscroll || ''} onChange={e => updateOobUnit(u.id, 'warscroll', e.target.value)} /></div>
-                              <div className="ptg-field"><label>Rank</label><input value={u.rank || ''} onChange={e => updateOobUnit(u.id, 'rank', e.target.value)} /></div>
+                              <div className="ptg-field"><label>Rank</label><input value={u.rank || ''} readOnly title="Derived from Renown — earned at 5+ points" /></div>
                               <div className="ptg-field">
                                 <label>Renown</label>
                                 <div className="ptg-oob-renown-row">
-                                  <input value={u.renown || ''} onChange={e => updateOobUnit(u.id, 'renown', e.target.value)} />
+                                  <input value={u.renown || ''} onChange={e => { const v = e.target.value; updateOobUnit(u.id, 'renown', v); updateOobUnit(u.id, 'rank', rankForRenown(v)); }} />
                                   <button className="ptg-oob-row-remove" onClick={() => removeOobUnit(u.id)} title="Remove unit">✕</button>
                                 </div>
                               </div>
