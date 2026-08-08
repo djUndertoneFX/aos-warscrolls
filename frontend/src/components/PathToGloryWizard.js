@@ -385,15 +385,29 @@ function useContainImageBox(containerRef) {
 // fontSize is expressed as a fraction of the image's rendered width for the
 // same reason (a fixed rem value wouldn't scale with the image).
 function overlayFieldStyle(box, spec) {
+  const heightPx = spec.height != null ? (spec.height / 100) * box.height : undefined;
+  const transforms = [];
+  if (spec.centerX) transforms.push('translateX(-50%)');
+  // centerY treats `top` as the field's vertical CENTER (mirrors centerX's
+  // treatment of `left`) instead of its top edge — translateY(-50%) shifts
+  // by half of the element's OWN rendered height, so it self-adjusts to
+  // whatever `height` resolves to rather than needing a second number.
+  if (spec.centerY) transforms.push('translateY(-50%)');
   return {
     position: 'absolute',
     left: box.left + (spec.left / 100) * box.width,
     top: box.top + (spec.top / 100) * box.height,
     width: spec.width != null ? (spec.width / 100) * box.width : undefined,
-    height: spec.height != null ? (spec.height / 100) * box.height : undefined,
+    height: heightPx,
     fontSize: (spec.fontSize ?? 0.016) * box.width,
     textAlign: spec.align || 'left',
-    transform: spec.centerX ? 'translateX(-50%)' : undefined,
+    // Single-line vertical centering trick — only when centerY is explicitly
+    // asked for, so this never fights the weapon-row textarea's multi-line
+    // Name+Abilities cell (which sets an explicit height for a different
+    // reason and would get its lines squashed onto one by a matched
+    // line-height).
+    lineHeight: (heightPx != null && spec.centerY) ? `${heightPx}px` : undefined,
+    transform: transforms.length ? transforms.join(' ') : undefined,
   };
 }
 
@@ -1536,6 +1550,57 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   };
   const [oobUnits, addOobUnit, updateOobUnit, removeOobUnit, setOobUnits] = useRowList(saved.oobUnits ?? []);
   const oobTotalPoints = oobUnits.reduce((sum, u) => sum + (parseInt(u.points, 10) || 0), 0);
+
+  // Keeps the Order of Battle's Units list in sync with the Starting Units
+  // step's Train/Reinforce counts — nothing wired the two together before,
+  // so ticking a unit up there silently went nowhere. Each row this creates
+  // carries a hidden sourceUnitId tag so the reconciliation below only ever
+  // touches rows IT owns; anything added by hand via "+ Add Unit" (no tag)
+  // is left alone. Lowering a count trims from the END of that unit's rows,
+  // keeping the earliest-created ones — those are the copies most likely to
+  // have already had Rank/Renown/Enhancements hand-edited, so they survive
+  // in preference to a same-named row added a moment ago.
+  useEffect(() => {
+    setOobUnits(prev => {
+      const stillPicked = new Set(Object.keys(startingUnits).filter(id => (startingUnits[id]?.train || 0) > 0));
+      let next = prev.filter(r => !r.sourceUnitId || stillPicked.has(r.sourceUnitId));
+      for (const [unitId, sel] of Object.entries(startingUnits)) {
+        const train = sel.train || 0;
+        const existing = next.filter(r => r.sourceUnitId === unitId);
+        if (existing.length === train) continue;
+        if (existing.length < train) {
+          const unit = factionUnits.find(u => String(u.id) === String(unitId));
+          if (!unit) continue;
+          const toAdd = train - existing.length;
+          const added = Array.from({ length: toAdd }, (_, i) => ({
+            id: `su-${unitId}-${Date.now()}-${i}-${Math.random().toString(36).slice(2)}`,
+            sourceUnitId: unitId,
+            name: unit.name, warscroll: unit.name, rank: 'Aspiring', renown: '0',
+            points: unit.points, enhancements: '', pathAbility: '', reinforced: '',
+          }));
+          next = [...next, ...added];
+        } else {
+          const keepIds = new Set(existing.slice(0, train).map(r => r.id));
+          next = next.filter(r => r.sourceUnitId !== unitId || keepIds.has(r.id));
+        }
+      }
+      // Reinforced marker follows the same "earliest rows first" rule as
+      // the trim above, re-derived fresh each pass rather than stored, so
+      // dialing Reinforce up/down moves the marker without touching which
+      // rows exist.
+      const countsByUnit = {};
+      return next.map(r => {
+        if (!r.sourceUnitId) return r;
+        const sel = startingUnits[r.sourceUnitId];
+        if (!sel) return r;
+        const idx = countsByUnit[r.sourceUnitId] ?? 0;
+        countsByUnit[r.sourceUnitId] = idx + 1;
+        const shouldBeReinforced = idx < (sel.reinforce || 0);
+        const reinforced = shouldBeReinforced ? 'Reinforced' : (r.reinforced === 'Reinforced' ? '' : r.reinforced);
+        return reinforced === r.reinforced ? r : { ...r, reinforced };
+      });
+    });
+  }, [startingUnits, factionUnits]); // eslint-disable-line
 
   // Step 6 "Add your Enhancements" — pick 1 from each enhancement table
   // (Heroic Traits, Artefacts of Power) and assign it to an eligible Hero.

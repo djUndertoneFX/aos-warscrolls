@@ -3449,7 +3449,7 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
    treatment). */
 @media (min-width: 1400px) {
   .ptg-wizard.ptg-wizard-dual-mode {
-    width: min(1800px, 96vw);
+    width: min(2300px, 97vw);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -3848,7 +3848,24 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   width: 100%;
   border-collapse: collapse;
   font-size: 0.82rem;
+  /* Fixed layout + explicit widths below, instead of leaving the browser's
+     auto layout to guess — that was giving Units/Reinf. (just a −/0/+
+     stepper) far more room than their content needs while Keywords (the
+     one column whose content actually varies a lot) got squeezed down to
+     3-4 wrapped lines per row. */
+  table-layout: fixed;
 }
+.ptg-units-table th:nth-child(1), .ptg-units-table td:nth-child(1),
+.ptg-units-table th:nth-child(2), .ptg-units-table td:nth-child(2) {
+  width: 3.6rem;
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+}
+.ptg-units-table th:nth-child(3), .ptg-units-table td:nth-child(3) { width: 19%; }
+.ptg-units-table th:nth-child(4), .ptg-units-table td:nth-child(4) { width: 3.2rem; }
+/* Keywords (5th column) intentionally left unset — table-layout:fixed hands
+   it whatever's left over after the 4 fixed-width columns above, which is
+   most of the table now that Units/Reinf. are pinned narrow. */
 .ptg-units-table th {
   font-family: 'Cinzel', serif;
   font-size: 0.65rem;
@@ -3865,9 +3882,9 @@ tr.unit-row.active-detail { background: rgba(201,168,76,0.13); outline: 1px soli
   color: var(--parchment, #d8cca8);
   vertical-align: middle;
 }
-.ptg-units-name { font-weight: 600; }
+.ptg-units-name { font-weight: 600; overflow-wrap: break-word; }
 .ptg-units-pts { text-align: center; }
-.ptg-units-keywords { color: var(--text-dim, #8a8578); font-size: 0.75rem; }
+.ptg-units-keywords { color: var(--text-dim, #8a8578); font-size: 0.75rem; line-height: 1.3; }
 
 /* ── "Add your Enhancements" step ── */
 .ptg-enhancement-assignee { max-width: 260px; margin-bottom: 0.75rem; }
