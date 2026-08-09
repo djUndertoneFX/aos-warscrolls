@@ -1622,17 +1622,26 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   // have already had Rank/Renown/Enhancements hand-edited, so they survive
   // in preference to a same-named row added a moment ago.
   useEffect(() => {
+    // Train and Reinforce are independent, additive counts — same semantics
+    // as Army Builder's own roster state (see startingUnitsTotal above:
+    // train*pts + reinforce*pts*2), not "how many of my trained units are
+    // also reinforced". A unit with train=0/reinforce=1 is one reinforced
+    // unit and nothing else, so the target row count is the SUM of both,
+    // not train alone — ticking Reinforce with no Train previously added
+    // zero rows here, which is exactly why reinforced-only picks never
+    // showed up on the Order of Battle.
+    const totalFor = sel => (sel?.train || 0) + (sel?.reinforce || 0);
     setOobUnits(prev => {
-      const stillPicked = new Set(Object.keys(startingUnits).filter(id => (startingUnits[id]?.train || 0) > 0));
+      const stillPicked = new Set(Object.keys(startingUnits).filter(id => totalFor(startingUnits[id]) > 0));
       let next = prev.filter(r => !r.sourceUnitId || stillPicked.has(r.sourceUnitId));
       for (const [unitId, sel] of Object.entries(startingUnits)) {
-        const train = sel.train || 0;
+        const target = totalFor(sel);
         const existing = next.filter(r => r.sourceUnitId === unitId);
-        if (existing.length === train) continue;
-        if (existing.length < train) {
+        if (existing.length === target) continue;
+        if (existing.length < target) {
           const unit = factionUnits.find(u => String(u.id) === String(unitId));
           if (!unit) continue;
-          const toAdd = train - existing.length;
+          const toAdd = target - existing.length;
           const displayName = titleCaseWords(unit.name);
           const added = Array.from({ length: toAdd }, (_, i) => ({
             id: `su-${unitId}-${Date.now()}-${i}-${Math.random().toString(36).slice(2)}`,
@@ -1642,24 +1651,28 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
           }));
           next = [...next, ...added];
         } else {
-          const keepIds = new Set(existing.slice(0, train).map(r => r.id));
+          const keepIds = new Set(existing.slice(0, target).map(r => r.id));
           next = next.filter(r => r.sourceUnitId !== unitId || keepIds.has(r.id));
         }
       }
-      // Reinforced marker follows the same "earliest rows first" rule as
-      // the trim above, re-derived fresh each pass rather than stored, so
-      // dialing Reinforce up/down moves the marker without touching which
-      // rows exist.
+      // Reinforced marker + doubled points go on the LAST `reinforce` rows
+      // of each unit (Train rows fill the slots first) — re-derived fresh
+      // every pass rather than stored, so dialing Train/Reinforce up or
+      // down just moves the split point instead of needing to track which
+      // specific row is "the" reinforced one.
       const countsByUnit = {};
       return next.map(r => {
         if (!r.sourceUnitId) return r;
         const sel = startingUnits[r.sourceUnitId];
-        if (!sel) return r;
+        const unit = factionUnits.find(u => String(u.id) === String(r.sourceUnitId));
+        if (!sel || !unit) return r;
         const idx = countsByUnit[r.sourceUnitId] ?? 0;
         countsByUnit[r.sourceUnitId] = idx + 1;
-        const shouldBeReinforced = idx < (sel.reinforce || 0);
-        const reinforced = shouldBeReinforced ? 'Reinforced' : (r.reinforced === 'Reinforced' ? '' : r.reinforced);
-        return reinforced === r.reinforced ? r : { ...r, reinforced };
+        const shouldBeReinforced = idx >= (sel.train || 0);
+        const basePts = parseInt(unit.points, 10) || 0;
+        const reinforced = shouldBeReinforced ? 'Reinforced' : '';
+        const points = String(shouldBeReinforced ? basePts * 2 : basePts);
+        return (reinforced === r.reinforced && points === r.points) ? r : { ...r, reinforced, points };
       });
     });
   }, [startingUnits, factionUnits]); // eslint-disable-line
