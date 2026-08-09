@@ -1646,7 +1646,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
           const added = Array.from({ length: toAdd }, (_, i) => ({
             id: `su-${unitId}-${Date.now()}-${i}-${Math.random().toString(36).slice(2)}`,
             sourceUnitId: unitId,
-            name: displayName, warscroll: displayName, rank: rankForRenown('0'), renown: '0',
+            name: displayName, warscroll: displayName.toUpperCase(), rank: rankForRenown('0'), renown: '0',
             points: unit.points, enhancements: '', pathAbility: '', reinforced: '',
           }));
           next = [...next, ...added];
@@ -2813,7 +2813,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                           <div className="ptg-oob-warlord-title">Warlord</div>
                           <div className="ptg-oob-row-grid-4">
                             <div className="ptg-field"><label>Name</label><input value={warlordName} onChange={e => setWarlordName(e.target.value)} /></div>
-                            <div className="ptg-field"><label>Warscroll</label><input value={warlordWarscroll} onChange={e => setWarlordWarscroll(e.target.value)} /></div>
+                            <div className="ptg-field"><label>Warscroll</label><input value={warlordWarscroll} onChange={e => setWarlordWarscroll(e.target.value.toUpperCase())} /></div>
                             <div className="ptg-field"><label>Rank</label><input value={warlordRank} readOnly title="Derived from Renown — earned at 5+ points" /></div>
                             <div className="ptg-field"><label>Renown</label><input value={warlordRenown} onChange={e => { const v = e.target.value; setWarlordRenown(v); setWarlordRank(rankForRenown(v)); }} /></div>
                           </div>
@@ -2836,7 +2836,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                           <div className="ptg-oob-unit-block" key={u.id}>
                             <div className="ptg-oob-row-grid-4">
                               <div className="ptg-field"><label>Unit Name</label><input value={u.name || ''} onChange={e => updateOobUnit(u.id, 'name', e.target.value)} /></div>
-                              <div className="ptg-field"><label>Warscroll</label><input value={u.warscroll || ''} onChange={e => updateOobUnit(u.id, 'warscroll', e.target.value)} /></div>
+                              <div className="ptg-field"><label>Warscroll</label><input value={u.warscroll || ''} onChange={e => updateOobUnit(u.id, 'warscroll', e.target.value.toUpperCase())} /></div>
                               <div className="ptg-field"><label>Rank</label><input value={u.rank || ''} readOnly title="Derived from Renown — earned at 5+ points" /></div>
                               <div className="ptg-field">
                                 <label>Renown</label>
