@@ -77,9 +77,13 @@ async function commitAndPush() {
       .map((l) => l.trim())
       .join(', ');
 
-    const message = `Auto-update via Claude: ${summary}`.slice(0, 200).replace(/"/g, '\\"');
-    await run(`git commit -m "${message}"`);
-    log(`Committed: ${message}`);
+    const subject = `Auto-update via Claude: ${summary}`.slice(0, 200).replace(/"/g, '\\"');
+    const footer = [
+      'Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>',
+      'Claude-Session: https://claude.ai/code/session_01AR9uU5GBHN7k76w5mgweFa',
+    ].join('\n');
+    await run(`git commit -m "${subject}" -m "${footer}"`);
+    log(`Committed: ${subject}`);
 
     await run('git push');
     log('Pushed to origin. Railway will auto-build and deploy shortly.');
