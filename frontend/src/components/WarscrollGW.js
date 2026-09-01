@@ -1051,23 +1051,157 @@ function useFormationSelection(factionSlug) {
   return { selected, filterSelected, toggle, toggleFilter };
 }
 
+// Spearhead's own Battle Traits / Regiment Abilities & Enhancements slide.
+// Split-pane equivalent of the inline spearhead-slide rendering inside the
+// single-pane modal (WarscrollGW's own activePage.factionSlug === '__sp__'
+// branch) — kept as its own component (with its own selection/filter state)
+// so the split pane can show a spearhead's rules instead of the full
+// battle-tome faction slides (Battle Formations, Heroic Traits, Artefacts of
+// Power, Spell/Prayer Lore, Manifestation Lore) that don't apply here.
+function SpearheadSlideBody({ spName, slideKey, slide, grandAlliance, faction }) {
+  const [selectedAbs, setSelectedAbs] = useState(new Set());
+  const [filterSelected, setFilterSelected] = useState(false);
+
+  useEffect(() => {
+    try { setSelectedAbs(new Set(JSON.parse(localStorage.getItem(`sp-selected-${spName}-${slideKey}`) || '[]'))); }
+    catch { setSelectedAbs(new Set()); }
+    setFilterSelected(localStorage.getItem(`sp-filter-${spName}-${slideKey}`) === '1');
+  }, [spName, slideKey]);
+
+  const toggleSelected = (name) => {
+    setSelectedAbs(prev => {
+      const next = new Set(prev);
+      next.has(name) ? next.delete(name) : next.add(name);
+      localStorage.setItem(`sp-selected-${spName}-${slideKey}`, JSON.stringify([...next]));
+      return next;
+    });
+  };
+  const toggleFilter = () => {
+    setFilterSelected(prev => {
+      const next = !prev;
+      localStorage.setItem(`sp-filter-${spName}-${slideKey}`, next ? '1' : '0');
+      return next;
+    });
+  };
+
+  const title = slideKey === 'sp_traits' ? 'Battle Traits' : 'Regiment Abilities & Enhancements';
+
+  const splitAbilityText = (ab) => {
+    let { text, declare, effect, ...rest } = ab;
+    if (text && !effect) {
+      const effMatch = text.match(/^(.*?)\bEffect:\s*/s);
+      if (effMatch) {
+        const before = effMatch[1].trim();
+        const declMatch = before.match(/^Declare:\s*([\s\S]*)/);
+        if (declMatch) { declare = declMatch[1].trim() || undefined; effect = text.slice(effMatch[0].length).trim(); }
+        else { declare = undefined; const afterEffect = text.slice(effMatch[0].length).trim(); effect = before ? `${before} ${afterEffect}` : afterEffect; }
+      } else { effect = text; }
+    }
+    return { ...rest, declare, effect, bullets: parseBullets(ab.bullets) };
+  };
+
+  const renderSelectableCard = (ab, i) => {
+    const isSelected = selectedAbs.has(ab.name);
+    if (filterSelected && !isSelected) return null;
+    return (
+      <div key={i} className="gw-ab-selectable">
+        <button
+          className={`gw-ab-checkbox${isSelected ? ' gw-ab-checkbox-on' : ''}`}
+          onClick={() => toggleSelected(ab.name)}
+          title={isSelected ? 'Deselect' : 'Select (mark as in use)'}
+        >{isSelected ? '☑' : '☐'}</button>
+        <AbilityCard ab={splitAbilityText(ab)} keywords={[]} />
+      </div>
+    );
+  };
+
+  const header = (
+    <div className="gw-spearhead-slide-header">
+      <div className="gw-header-type" style={{color:'#c8a0f0'}}>{grandAlliance?.toUpperCase()}{grandAlliance && faction ? ' · ' : ''}{faction?.toUpperCase()}</div>
+      <div className="gw-spearhead-slide-name">{spName}</div>
+      <div className="gw-spearhead-slide-title">{title.toUpperCase()}</div>
+    </div>
+  );
+
+  if (slideKey === 'sp_regiment') {
+    const ra = slide?.regimentAbilities ?? [];
+    const en = slide?.enhancements ?? [];
+    const hasSelected = selectedAbs.size > 0;
+    return (
+      <div className="gw-faction-slide gw-spearhead-slide">
+        {header}
+        <div className="gw-faction-slide-body">
+          <div className="gw-sp-filter-bar">
+            <button
+              className={`gw-sp-filter-btn${filterSelected ? ' active' : ''}`}
+              onClick={toggleFilter}
+              disabled={!hasSelected}
+              title="Show only selected abilities"
+            >{filterSelected ? 'Show All' : 'Show Selected'}</button>
+          </div>
+          {ra.length > 0 && (
+            <>
+              <div className="gw-sp-section-hdr">Regiment Abilities</div>
+              <div className="gw-abilities-grid gw-sp-grid-2col">{ra.map((ab, i) => renderSelectableCard(ab, i))}</div>
+            </>
+          )}
+          {en.length > 0 && (
+            <>
+              <div className="gw-sp-section-sep" />
+              <div className="gw-sp-section-hdr">Enhancements</div>
+              <div className="gw-abilities-grid gw-sp-grid-2col">{en.map((ab, i) => renderSelectableCard(ab, `e${i}`))}</div>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // sp_traits — no checkboxes or filter, all traits always visible
+  const data = slide?.data ?? [];
+  return (
+    <div className="gw-faction-slide gw-spearhead-slide">
+      {header}
+      <div className="gw-faction-slide-body">
+        {data.length === 0
+          ? <p style={{color:'var(--text-dim)',fontStyle:'italic',padding:'1rem'}}>No data available.</p>
+          : <div className="gw-abilities-grid">
+              {data.map((ab, i) => <AbilityCard key={i} ab={splitAbilityText(ab)} keywords={[]} />)}
+            </div>
+        }
+      </div>
+    </div>
+  );
+}
+
 // One side of the split-pane view: gold unit dots + purple faction-info dots
 // (Battle Traits/Formations/etc.), a scrollable body, and a pinned keywords
 // footer — the same nav-dot language and page types as the single-pane view,
 // scoped to just this side's own unit list.
-const SplitPane = React.forwardRef(function SplitPane({ label, labelClass, list, activeIdx, setActiveIdx, factions, paneRef, isFocused, onFocus, getSlidesForSlug }, apiRef) {
+const SplitPane = React.forwardRef(function SplitPane({ label, labelClass, list, activeIdx, setActiveIdx, factions, paneRef, isFocused, onFocus, getSlidesForSlug, isSpMode, getSpSlides }, apiRef) {
   const [activeSlide, setActiveSlide] = useState(null); // { factionSlug, groupStartIdx, slideKey } | null
 
+  // In spearhead mode, group by spearhead name instead of faction slug (each
+  // pane is already scoped to one side, so this is normally a single group)
+  // and reuse the `faction_slug` field on the group to hold that key — every
+  // other reference to `group.faction_slug` below just treats it as an
+  // opaque lookup key, so nothing else needs to branch on isSpMode.
   const factionGroups = React.useMemo(() => {
     const groups = [];
     for (let i = 0; i < list.length; i++) {
       const u = list[i];
+      const groupKey = isSpMode ? (u._spName ?? (u.spearhead || '').split('|')[0].trim()) : u.faction_slug;
       const last = groups[groups.length - 1];
-      if (last && last.faction_slug === u.faction_slug) last.endIdx = i;
-      else groups.push({ faction_slug: u.faction_slug, faction: u.faction, grand_alliance: u.grand_alliance, startIdx: i, endIdx: i });
+      if (last && last.faction_slug === groupKey) last.endIdx = i;
+      else groups.push({ faction_slug: groupKey, faction: u.faction, grand_alliance: u.grand_alliance, startIdx: i, endIdx: i });
     }
     return groups;
-  }, [list]);
+  }, [list, isSpMode]);
+
+  // Slides for a group's key — spearhead rules (Battle Traits / Regiment
+  // Abilities & Enhancements) in spearhead mode, full battle-tome faction
+  // rules otherwise.
+  const slidesFor = useCallback((key) => isSpMode ? getSpSlides(key) : getSlidesForSlug(key), [isSpMode, getSpSlides, getSlidesForSlug]);
 
   const formationState = useFormationSelection(activeSlide?.slideKey === 'formations' ? activeSlide.factionSlug : null);
 
@@ -1076,7 +1210,7 @@ const SplitPane = React.forwardRef(function SplitPane({ label, labelClass, list,
   // handleNext — exposed to the parent (for arrow-key routing) via ref.
   const paneHandlePrev = useCallback(() => {
     if (activeSlide) {
-      const slides = getSlidesForSlug(activeSlide.factionSlug);
+      const slides = slidesFor(activeSlide.factionSlug);
       const idx = slides.findIndex(s => s.key === activeSlide.slideKey);
       if (idx > 0) {
         setActiveSlide(prev => ({ ...prev, slideKey: slides[idx - 1].key }));
@@ -1088,18 +1222,18 @@ const SplitPane = React.forwardRef(function SplitPane({ label, labelClass, list,
     }
     const group = factionGroups.find(g => activeIdx >= g.startIdx && activeIdx <= g.endIdx);
     if (group && activeIdx === group.startIdx) {
-      const slides = getSlidesForSlug(group.faction_slug);
+      const slides = slidesFor(group.faction_slug);
       if (slides.length > 0) {
         setActiveSlide({ factionSlug: group.faction_slug, groupStartIdx: group.startIdx, slideKey: slides[slides.length - 1].key });
         return;
       }
     }
     setActiveIdx(i => Math.max(0, i - 1));
-  }, [activeSlide, activeIdx, factionGroups, getSlidesForSlug, setActiveIdx]);
+  }, [activeSlide, activeIdx, factionGroups, slidesFor, setActiveIdx]);
 
   const paneHandleNext = useCallback(() => {
     if (activeSlide) {
-      const slides = getSlidesForSlug(activeSlide.factionSlug);
+      const slides = slidesFor(activeSlide.factionSlug);
       const idx = slides.findIndex(s => s.key === activeSlide.slideKey);
       if (idx < slides.length - 1) {
         setActiveSlide(prev => ({ ...prev, slideKey: slides[idx + 1].key }));
@@ -1115,14 +1249,14 @@ const SplitPane = React.forwardRef(function SplitPane({ label, labelClass, list,
     const group = factionGroups[groupIdx];
     const nextGroup = factionGroups[groupIdx + 1];
     if (group && nextGroup && activeIdx === group.endIdx) {
-      const slides = getSlidesForSlug(nextGroup.faction_slug);
+      const slides = slidesFor(nextGroup.faction_slug);
       if (slides.length > 0) {
         setActiveSlide({ factionSlug: nextGroup.faction_slug, groupStartIdx: nextGroup.startIdx, slideKey: slides[0].key });
         return;
       }
     }
     setActiveIdx(i => Math.min(list.length - 1, i + 1));
-  }, [activeSlide, activeIdx, factionGroups, getSlidesForSlug, list.length, setActiveIdx]);
+  }, [activeSlide, activeIdx, factionGroups, slidesFor, list.length, setActiveIdx]);
 
   React.useImperativeHandle(apiRef, () => ({ prev: paneHandlePrev, next: paneHandleNext }), [paneHandlePrev, paneHandleNext]);
 
@@ -1136,7 +1270,7 @@ const SplitPane = React.forwardRef(function SplitPane({ label, labelClass, list,
 
   const unit = list[activeIdx];
   const activeGroup = activeSlide ? factionGroups.find(g => g.startIdx === activeSlide.groupStartIdx) : null;
-  const activeSlideDef = activeSlide ? getSlidesForSlug(activeSlide.factionSlug).find(s => s.key === activeSlide.slideKey) : null;
+  const activeSlideDef = activeSlide ? slidesFor(activeSlide.factionSlug).find(s => s.key === activeSlide.slideKey) : null;
 
   return (
     <div className={`gw-split-pane${isFocused ? ' gw-split-pane-focused' : ''}`} ref={paneRef} onMouseEnter={onFocus} onMouseDown={onFocus}>
@@ -1156,14 +1290,16 @@ const SplitPane = React.forwardRef(function SplitPane({ label, labelClass, list,
             style={{ transform: `translateX(${translate}px)`, transition: hasOverflow ? 'transform 0.25s ease' : 'none' }}
           >
             {factionGroups.map((group, gi) => {
-              const slides = getSlidesForSlug(group.faction_slug);
+              const slides = slidesFor(group.faction_slug);
               return (
                 <React.Fragment key={group.faction_slug + '-' + gi}>
-                  {gi > 0 && <span className="gw-nav-faction-sep" title={group.faction} />}
+                  {gi > 0 && <span className="gw-nav-faction-sep" title={isSpMode ? group.faction_slug : group.faction} />}
                   {slides.map(s => (
                     <span key={s.key}
-                      className={`gw-nav-dot-faction${activeSlide?.groupStartIdx === group.startIdx && activeSlide?.slideKey === s.key ? ' gw-nav-dot-faction-active' : ''}`}
-                      title={`${group.faction} — ${SPLIT_SLIDE_LABELS[s.key] ?? s.key}`}
+                      className={`${isSpMode ? 'gw-nav-dot-sp' : 'gw-nav-dot-faction'}${activeSlide?.groupStartIdx === group.startIdx && activeSlide?.slideKey === s.key ? (isSpMode ? ' gw-nav-dot-sp-active' : ' gw-nav-dot-faction-active') : ''}`}
+                      title={isSpMode
+                        ? `${group.faction_slug} — ${s.key === 'sp_traits' ? 'Battle Traits' : 'Regiment Abilities & Enhancements'}`
+                        : `${group.faction} — ${SPLIT_SLIDE_LABELS[s.key] ?? s.key}`}
                       onClick={() => jumpSlide(group.faction_slug, group.startIdx, s.key)}
                     />
                   ))}
@@ -1192,7 +1328,15 @@ const SplitPane = React.forwardRef(function SplitPane({ label, labelClass, list,
       <div className="gw-split-pane-body">
         {activeSlide && activeSlideDef ? (
           <div className="gw-split-pane-scroll">
-            {activeSlide.slideKey === 'formations' ? (
+            {isSpMode ? (
+              <SpearheadSlideBody
+                spName={activeSlide.factionSlug}
+                slideKey={activeSlide.slideKey}
+                slide={activeSlideDef}
+                grandAlliance={activeGroup?.grand_alliance ?? ''}
+                faction={activeGroup?.faction ?? ''}
+              />
+            ) : activeSlide.slideKey === 'formations' ? (
               <FactionFormationsSlide
                 faction={activeGroup?.faction ?? activeSlide.factionSlug}
                 grandAlliance={activeGroup?.grand_alliance ?? ''}
@@ -1372,8 +1516,13 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
   }, [navList, spearheadData]);
 
   // Same fetch, but for the split-pane friendly/enemy lists — independent of
-  // sortBy/isSpMode, since split panes always want their own purple dots.
+  // sortBy, since split panes always want their own purple dots. Skipped in
+  // spearhead mode: there the split panes show each side's spearhead rules
+  // (Battle Traits / Regiment Abilities & Enhancements) via getSpSlides
+  // instead of these full battle-tome faction rules, so fetching them here
+  // would just be wasted requests.
   useEffect(() => {
+    if (isSpMode) return;
     const slugs = [...new Set([...(friendlyNavList || []), ...(enemyNavList || [])].map(u => u.faction_slug).filter(Boolean))];
     slugs.forEach(slug => {
       if (rulesCache.current.has(slug) || globalRulesLoading.has(slug)) return;
@@ -1389,7 +1538,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
         })
         .finally(() => { globalRulesLoading.delete(slug); });
     });
-  }, [friendlyNavList, enemyNavList]);
+  }, [friendlyNavList, enemyNavList, isSpMode]);
 
   useEffect(() => {
     const outer = dotsRef.current;
@@ -2031,6 +2180,8 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
               isFocused={focusedPane === 'left'}
               onFocus={() => setFocusedPane('left')}
               getSlidesForSlug={getSlidesForSlugAlways}
+              isSpMode={isSpMode}
+              getSpSlides={getSpSlides}
             />
             <SplitPane
               ref={rightPaneApiRef}
@@ -2044,6 +2195,8 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
               isFocused={focusedPane === 'right'}
               onFocus={() => setFocusedPane('right')}
               getSlidesForSlug={getSlidesForSlugAlways}
+              isSpMode={isSpMode}
+              getSpSlides={getSpSlides}
             />
           </div>
         )}

@@ -2812,8 +2812,8 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                         <div className="ptg-oob-warlord-block">
                           <div className="ptg-oob-warlord-title">Warlord</div>
                           <div className="ptg-oob-row-grid-4">
-                            <div className="ptg-field"><label>Name</label><input value={warlordName} onChange={e => setWarlordName(e.target.value)} /></div>
-                            <div className="ptg-field"><label>Warscroll</label><input value={warlordWarscroll} onChange={e => setWarlordWarscroll(e.target.value.toUpperCase())} /></div>
+                            <div className="ptg-field"><label>Name</label><input value={warlordName ? warlordName.toUpperCase() : ''} onChange={e => setWarlordName(e.target.value.toUpperCase())} /></div>
+                            <div className="ptg-field"><label>Warscroll</label><input value={warlordWarscroll ? warlordWarscroll.toUpperCase() : ''} onChange={e => setWarlordWarscroll(e.target.value.toUpperCase())} /></div>
                             <div className="ptg-field"><label>Rank</label><input value={warlordRank} readOnly title="Derived from Renown — earned at 5+ points" /></div>
                             <div className="ptg-field"><label>Renown</label><input value={warlordRenown} onChange={e => { const v = e.target.value; setWarlordRenown(v); setWarlordRank(rankForRenown(v)); }} /></div>
                           </div>
@@ -2835,8 +2835,8 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                         {oobUnits.map(u => (
                           <div className="ptg-oob-unit-block" key={u.id}>
                             <div className="ptg-oob-row-grid-4">
-                              <div className="ptg-field"><label>Unit Name</label><input value={u.name || ''} onChange={e => updateOobUnit(u.id, 'name', e.target.value)} /></div>
-                              <div className="ptg-field"><label>Warscroll</label><input value={u.warscroll || ''} onChange={e => updateOobUnit(u.id, 'warscroll', e.target.value.toUpperCase())} /></div>
+                              <div className="ptg-field"><label>Unit Name</label><input value={u.name ? u.name.toUpperCase() : ''} onChange={e => updateOobUnit(u.id, 'name', e.target.value.toUpperCase())} /></div>
+                              <div className="ptg-field"><label>Warscroll</label><input value={u.warscroll ? u.warscroll.toUpperCase() : ''} onChange={e => updateOobUnit(u.id, 'warscroll', e.target.value.toUpperCase())} /></div>
                               <div className="ptg-field"><label>Rank</label><input value={u.rank || ''} readOnly title="Derived from Renown — earned at 5+ points" /></div>
                               <div className="ptg-field">
                                 <label>Renown</label>
@@ -3213,7 +3213,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
                                     </div>
                                   )}
                                 </td>
-                                <td className="ptg-units-name">{u.name}</td>
+                                <td className="ptg-units-name">{(u.name || '').toUpperCase()}</td>
                                 <td className="ptg-units-pts">{u.points || '—'}</td>
                                 <td className="ptg-units-keywords">{(u.keywords || '').split(',').slice(0, 6).join(', ')}</td>
                               </tr>
