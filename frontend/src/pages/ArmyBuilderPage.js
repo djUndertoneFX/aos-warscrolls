@@ -2035,12 +2035,12 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
 
         <div className="ab-header-cell ab-header-stages">
           <div className="ab-stage-tabs">
-            {STAGES.map(s => (
+            {STAGES.map((s, i) => (
               <button
                 key={s.key}
                 className={`ab-stage-tab${activeStage === s.key ? ' active' : ''}`}
                 onClick={() => setActiveStage(s.key)}
-              >{s.label}</button>
+              ><span className="ab-stage-num">{i + 1}</span>{s.label}</button>
             ))}
           </div>
         </div>

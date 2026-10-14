@@ -783,6 +783,16 @@ input, select {
   border-color: var(--border-gold);
   background: rgba(201,168,76,0.1);
 }
+/* Army Builder steps: two rows (4 + 3) with step numbers, so the List and
+   Army Roster cells beside them never clip the buttons. */
+.ab-page .ab-stage-tabs, .ab-stage-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, auto);
+  justify-content: center;
+  gap: 0.3rem 0.3rem;
+}
+.ab-stage-tab { font-size: 0.64rem; padding: 0.22rem 0.45rem; text-align: left; }
+.ab-stage-num { color: var(--gold); font-weight: 700; margin-right: 0.35em; }
 
 /* iPad landscape (and any viewport this cramped) — the fixed-width List
    field would otherwise force itself past its own grid column into the
