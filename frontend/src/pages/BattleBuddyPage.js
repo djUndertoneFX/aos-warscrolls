@@ -1096,8 +1096,10 @@ function ArmyWarscrollsSide({ side, units, onOpen }) {
   );
 }
 
-function ArmyWarscrolls({ friendly, enemy, viewMode, singleSide }) {
-  const [open, setOpen] = useState(null); // { side, id }
+// `open` (which warscroll is showing in detail, or null for the army badges)
+// lives in BattleBuddyPage so it survives switching to Phases and back.
+function ArmyWarscrolls({ friendly, enemy, viewMode, singleSide, open, setOpen }) {
+  // open = { side, id } | null
   const lists = { friendly: friendly.units, enemy: enemy.units };
   const sides = viewMode === 'dual' ? ['friendly', 'enemy'] : [singleSide];
   const list = open ? lists[open.side] : [];
@@ -1128,7 +1130,7 @@ function ArmyWarscrolls({ friendly, enemy, viewMode, singleSide }) {
   );
 }
 
-function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey, commandAbilities, viewMode, setViewMode, contentMode, setContentMode }) {
+function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey, commandAbilities, viewMode, setViewMode, contentMode, setContentMode, wsOpen, setWsOpen }) {
   const [singleSide, setSingleSide] = useState('friendly');
   // Ghyran defaults to hidden — matches the previous unconditional behavior
   // (Scourge of Ghyran-named content was always dropped before this checkbox
@@ -1240,7 +1242,7 @@ function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey, c
       {contentMode === 'warscrolls' ? (
         <div className="bb-fight-vertical">
           <div className="bb-fight-main">
-            <ArmyWarscrolls friendly={friendly} enemy={enemy} viewMode={viewMode} singleSide={singleSide} />
+            <ArmyWarscrolls friendly={friendly} enemy={enemy} viewMode={viewMode} singleSide={singleSide} open={wsOpen} setOpen={setWsOpen} />
           </div>
         </div>
       ) : (
@@ -1286,6 +1288,10 @@ export default function BattleBuddyPage() {
     setContentModeState(m);
     try { localStorage.setItem('bb-content-mode', m); } catch {}
   }, []);
+
+  // Warscrolls view: the unit open in detail ({ side, id }) or null = army badges.
+  // Kept here so Tab / Phases / Warscrolls switching comes back to the same state.
+  const [wsOpen, setWsOpen] = useState(null);
 
   // Tab swaps between Phases and Warscrolls (and opens the Fight step), unless
   // you're typing in a field. Shift+Tab does the same.
@@ -1397,7 +1403,7 @@ export default function BattleBuddyPage() {
           <SourcePane side="enemy" state={enemy} setState={setEnemy} factionRules={factionRules} />
         </div>
       ) : (
-        <FightStage friendly={friendly} enemy={enemy} factionRulesFor={factionRules.get} phaseKey={phaseKey} setPhaseKey={setPhaseKey} commandAbilities={commandAbilities} viewMode={viewMode} setViewMode={setViewMode} contentMode={contentMode} setContentMode={setContentMode} />
+        <FightStage friendly={friendly} enemy={enemy} factionRulesFor={factionRules.get} phaseKey={phaseKey} setPhaseKey={setPhaseKey} commandAbilities={commandAbilities} viewMode={viewMode} setViewMode={setViewMode} contentMode={contentMode} setContentMode={setContentMode} wsOpen={wsOpen} setWsOpen={setWsOpen} />
       )}
     </div>
   );
