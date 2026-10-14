@@ -135,6 +135,21 @@ input, select {
   scrollbar-width: thin;
 }
 .navbar-nav::-webkit-scrollbar { height: 4px; }
+/* Page links: centred when they fit; when they don't, they start right after
+   the title (so Warscrolls, the first link, is always fully visible) and the
+   overflow happens at the right end, where Simulacrum stays pinned and covers
+   Comparitator instead. (justify-content:center on an overflowing scroller
+   pushes the first items off the left edge, under the title.) */
+.navbar-brand { flex-shrink: 0; margin-right: 1rem; }
+.navbar-nav { justify-content: flex-start; }
+.navbar-nav > .nav-link:first-child { margin-left: auto; }
+.navbar-nav > .nav-link:last-child {
+  margin-right: auto;
+  position: sticky; right: 0; z-index: 1;
+  background: var(--bg-panel);
+  box-shadow: -10px 0 10px -4px var(--bg-panel);
+}
+.navbar-nav > .nav-link-active:last-child { background: linear-gradient(rgba(201,168,76,0.13), rgba(201,168,76,0.13)), var(--bg-panel); }
 .navbar-nav::-webkit-scrollbar-thumb { background: var(--border-gold); border-radius: 2px; }
 
 .nav-link {
