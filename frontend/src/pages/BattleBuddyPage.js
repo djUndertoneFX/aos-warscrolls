@@ -1158,10 +1158,15 @@ function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey, c
   // either end — active in both Single and Dual View (unlike PageUp/Down
   // above, which only means something in Single View).
   const advancePhase = useCallback((dir) => {
+    // Stepping (▼ button, Up/Down keys, "next phase") cycles Hero → … → End of Turn
+    // and back to Hero, skipping Deployment; Deployment is still one click away
+    // on the ribbon, and stepping from it goes on to Hero.
     setPhaseKey(k => {
-      const idx = BATTLE_PHASES.findIndex(p => p.key === k);
-      const nextIdx = (idx + dir + BATTLE_PHASES.length) % BATTLE_PHASES.length;
-      return BATTLE_PHASES[nextIdx].key;
+      const cycle = BATTLE_PHASES.filter(p => p.key !== 'deployment');
+      if (k === 'deployment') return dir > 0 ? cycle[0].key : cycle[cycle.length - 1].key;
+      const idx = cycle.findIndex(p => p.key === k);
+      const nextIdx = (idx + dir + cycle.length) % cycle.length;
+      return cycle[nextIdx].key;
     });
   }, [setPhaseKey]);
   useEffect(() => {
@@ -1281,6 +1286,26 @@ export default function BattleBuddyPage() {
     setContentModeState(m);
     try { localStorage.setItem('bb-content-mode', m); } catch {}
   }, []);
+
+  // Tab swaps between Phases and Warscrolls (and opens the Fight step), unless
+  // you're typing in a field. Shift+Tab does the same.
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key !== 'Tab' || e.ctrlKey || e.altKey || e.metaKey) return;
+      const el = document.activeElement;
+      const tag = el?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el?.isContentEditable) return;
+      e.preventDefault();
+      setContentModeState(m => {
+        const next = m === 'phases' ? 'warscrolls' : 'phases';
+        try { localStorage.setItem('bb-content-mode', next); } catch {}
+        return next;
+      });
+      setStage('fight');
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
   const matchupSig = `${friendly.units.map(u => u.id).sort((a, b) => a - b).join(',')}||${enemy.units.map(u => u.id).sort((a, b) => a - b).join(',')}`;
   const matchupSigRef = useRef(null);
   useEffect(() => {
@@ -1359,7 +1384,7 @@ export default function BattleBuddyPage() {
           </div>
         </div>
         {/* Main, centred: what the Fight step shows. Picking one also opens the Fight step. */}
-        <div className="bb-mode-main">
+        <div className="bb-mode-main" title="Tab swaps between Phases and Warscrolls">
           <button className={`bb-step-btn${stage === 'fight' && contentMode === 'phases' ? ' active' : ''}`} onClick={() => { setContentMode('phases'); setStage('fight'); }} title="Abilities by battle phase">Phases</button>
           <button className={`bb-step-btn${stage === 'fight' && contentMode === 'warscrolls' ? ' active' : ''}`} onClick={() => { setContentMode('warscrolls'); setStage('fight'); }} title="The selected army's warscrolls">Warscrolls</button>
         </div>
