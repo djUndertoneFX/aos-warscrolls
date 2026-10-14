@@ -5953,6 +5953,21 @@ textarea.ptg-doc-overlay-input {
 .bb-fight-vertical { display: flex; flex-direction: row; gap: 1.2rem; flex: 1; min-height: 0; }
 .bb-fight-phase-sidebar { flex: 0 0 170px; align-self: stretch; overflow-y: auto; border-right: 1px solid rgba(200,168,64,0.25); padding-right: 1rem; }
 .bb-fight-main { flex: 1; min-width: 0; overflow-y: auto; }
+/* Always-visible scroll bar on the Fight step content, with a thumb sized to how
+   much is on screen vs. in total, so you can see at a glance how far it scrolls.
+   The ::-webkit-scrollbar styling also keeps it from auto-hiding on Macs
+   (Chrome/Safari/Edge); Firefox gets scrollbar-color instead. */
+.bb-fight-main { overflow-y: scroll; padding-right: 8px; }
+.bb-fight-main::-webkit-scrollbar { width: 12px; }
+.bb-fight-main::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 6px; }
+.bb-fight-main::-webkit-scrollbar-thumb {
+  background: #c8a840; border-radius: 6px; min-height: 40px;
+  border: 2px solid transparent; background-clip: padding-box;
+}
+.bb-fight-main::-webkit-scrollbar-thumb:hover { background: #e0c060; background-clip: padding-box; }
+@supports not selector(::-webkit-scrollbar) {
+  .bb-fight-main { scrollbar-width: auto; scrollbar-color: #c8a840 rgba(255,255,255,0.05); }
+}
 
 .bb-fight-dual { display: flex; flex: 1; min-height: 0; }
 .bb-fight-pane { flex: 1 1 50%; min-width: 0; padding: 0 1rem; }
