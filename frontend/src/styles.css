@@ -5041,17 +5041,20 @@ textarea.ptg-doc-overlay-input {
 }
 .gw-formation-group-header-row .gw-ab-checkbox { padding: 0; font-size: 1rem; }
 .gw-formation-group-header {
-  font-size: 0.62rem;
-  letter-spacing: 0.28em;
-  color: #c8a840;
+  /* Formation names (e.g. "Akhelian Beastmasters") read at least as large and
+     prominent as the ability names under them (.gw-ability-name is 0.9rem). */
+  font-size: 1.1rem;
+  letter-spacing: 0.1em;
+  color: #d9b84a;
   text-transform: uppercase;
-  font-family: Arial, sans-serif;
+  font-family: 'Palatino Linotype', Palatino, Georgia, serif;
   font-weight: 700;
+  line-height: 1.2;
 }
 /* Additional (non-core) formation source, e.g. "(Scourge of Ghyran)" —
    smaller and fainter than the group name it follows. */
 .gw-formation-source-note {
-  font-size: 0.85em;
+  font-size: 0.7em;
   font-weight: 400;
   letter-spacing: normal;
   text-transform: none;
