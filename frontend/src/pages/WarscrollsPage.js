@@ -237,6 +237,17 @@ export default function WarscrollsPage({ headerCollapsed }) {
   const [showEnemy, setShowEnemy]       = useState(saved.showEnemy    ?? false);
   const [sortBy, setSortBy]             = useState(saved.sortBy       ?? 'faction');
   const [sortDir, setSortDir]           = useState(saved.sortDir      ?? 'asc');
+  // Default ("faction") ordering can put one group first: null = plain A–Z,
+  // 'friendly' / 'enemy' = that side's faction(s) first (F / E header),
+  // 'alliance' = grouped by Grand Alliance starting at allianceFirst (Alliance header).
+  const [sortPriority, setSortPriority] = useState(saved.sortPriority ?? null);
+  const [allianceFirst, setAllianceFirst] = useState(saved.allianceFirst ?? 'Order');
+  // "+ Add unit" mode: temporarily lists only the units NOT yet marked for that side
+  // (within that side's Faction dropdown, if one is picked), so more units can be
+  // ticked without unchecking the Friendly/Enemy filters. Units ticked while in the
+  // mode stay listed until it ends, so a mis-click can be undone.
+  const [addMode, setAddMode] = useState(null); // null | 'friendly' | 'enemy'
+  const [addedIds, setAddedIds] = useState(() => new Set());
 
   // Persist filters to localStorage whenever they change
   useEffect(() => {
@@ -244,8 +255,9 @@ export default function WarscrollsPage({ headerCollapsed }) {
       search, faction, enemyFaction, alliance,
       isHero, isMonster, isInfantry, isCavalry, isBeast, isWarMachine, isTerrain, isManifestation,
       hideLegends, hideOtherFactions, hideScourgeOfGhyran, hideRoR, showFriendly, showEnemy, sortBy, sortDir,
+      sortPriority, allianceFirst,
     }));
-  }, [search, faction, enemyFaction, alliance, isHero, isMonster, isInfantry, isCavalry,
+  }, [sortPriority, allianceFirst, search, faction, enemyFaction, alliance, isHero, isMonster, isInfantry, isCavalry,
       isBeast, isWarMachine, isTerrain, isManifestation, hideLegends, hideOtherFactions, hideScourgeOfGhyran, hideRoR, showFriendly, showEnemy, sortBy, sortDir]);
 
   // Per-faction filtered counts when hideOtherFactions is active
@@ -409,6 +421,11 @@ export default function WarscrollsPage({ headerCollapsed }) {
       let qEnemyFaction = enemyFaction;
       if (friendlyByFaction && !enemyByFaction && !showEnemy) qEnemyFaction = '';
       if (enemyByFaction    && !friendlyByFaction && !showFriendly) qFaction = '';
+      // Add-unit mode: only that side's faction (if picked), no mark filters.
+      if (addMode) {
+        qFaction      = addMode === 'friendly' ? faction : enemyFaction;
+        qEnemyFaction = '';
+      }
 
       const params = {
         search,
@@ -430,8 +447,8 @@ export default function WarscrollsPage({ headerCollapsed }) {
         ...(hideScourgeOfGhyran  ? { hideScourgeOfGhyran: '1' }  : {}),
         ...(hideRoR              ? { hideRoR: '1' }               : {}),
         // Only send mark-based filters to backend when marks actually exist
-        ...(showFriendly && hasFriendlyMarks ? { showFriendly: '1' } : {}),
-        ...(showEnemy    && hasEnemyMarks    ? { showEnemy: '1' }    : {}),
+        ...(!addMode && showFriendly && hasFriendlyMarks ? { showFriendly: '1' } : {}),
+        ...(!addMode && showEnemy    && hasEnemyMarks    ? { showEnemy: '1' }    : {}),
       };
       const res = await axios.get('/api/warscrolls', { params });
       setData(res.data);
@@ -444,7 +461,19 @@ export default function WarscrollsPage({ headerCollapsed }) {
     } finally {
       setLoading(false);
     }
-  }, [search, faction, enemyFaction, alliance, sortBy, sortDir, page, isHero, isMonster, isInfantry, isCavalry, isBeast, isWarMachine, isTerrain, isManifestation, hideLegends, hideOtherFactions, hideScourgeOfGhyran, hideRoR, showFriendly, showEnemy, hasFriendlyMarks, hasEnemyMarks]);
+  }, [search, faction, enemyFaction, alliance, sortBy, sortDir, page, isHero, isMonster, isInfantry, isCavalry, isBeast, isWarMachine, isTerrain, isManifestation, hideLegends, hideOtherFactions, hideScourgeOfGhyran, hideRoR, showFriendly, showEnemy, hasFriendlyMarks, hasEnemyMarks, addMode]);
+
+  // Leave add-unit mode if that side's filter gets unticked.
+  useEffect(() => {
+    if ((addMode === 'friendly' && !showFriendly) || (addMode === 'enemy' && !showEnemy)) {
+      setAddMode(null); setAddedIds(new Set());
+    }
+  }, [addMode, showFriendly, showEnemy]);
+  const toggleAddMode = (side) => {
+    setAddedIds(new Set());
+    setAddMode(m => (m === side ? null : side));
+    setPage(1);
+  };
 
   // Load user's friendly/enemy flags once on mount
   useEffect(() => {
@@ -454,6 +483,55 @@ export default function WarscrollsPage({ headerCollapsed }) {
       setUserUnits(map);
     }).catch(() => {});
   }, []);
+
+  // ── The rows actually shown: server order, then (client side) the add-unit
+  // filter, ADO sorts (computed values), and the "who goes first" priority. ──
+  const rows = React.useMemo(() => {
+    let list = (data?.data ?? []).slice();
+    if (addMode) {
+      const flag = addMode === 'friendly' ? 'is_friendly' : 'is_enemy';
+      list = list.filter(r => !userUnits[r.id]?.[flag] || addedIds.has(r.id));
+    }
+    if (['ado_ranged','ado_melee','ado_pct'].includes(sortBy)) {
+      // Units with no value ('—' in the cell) always sort last, in either direction.
+      const sv = includeSaveWardInADO ? (presumedSave ?? 5) : 7;
+      const wd = includeSaveWardInADO ? (presumedWard ?? null) : null;
+      const getVal = row => {
+        const ws = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
+        const rw = resolveWeaponLoadout(ws, row.options_text, row.unit_size, sv, wd, roundingMode) ?? ws;
+        const aR = sumADO(rw.filter(w => w.type === 'ranged'), row.unit_size, sv, wd, roundingMode);
+        const aM = sumADO(rw.filter(w => w.type === 'melee'),  row.unit_size, sv, wd, roundingMode);
+        if (sortBy === 'ado_ranged') return aR;
+        if (sortBy === 'ado_melee')  return aM;
+        return (aR !== null || aM !== null) && row.points ? ((aR ?? 0) + (aM ?? 0)) / row.points : null;
+      };
+      const vals = new Map(list.map(r => [r.id, getVal(r)]));
+      list.sort((a, b) => {
+        const vA = vals.get(a.id), vB = vals.get(b.id);
+        if (vA === null && vB === null) return 0;
+        if (vA === null) return 1;
+        if (vB === null) return -1;
+        return sortDir === 'asc' ? vA - vB : vB - vA;
+      });
+    } else if (sortBy === 'faction' && sortPriority) {
+      let rank;
+      if (sortPriority === 'alliance') {
+        const order = ['Order', 'Chaos', 'Death', 'Destruction'];
+        const start = Math.max(0, order.indexOf(allianceFirst));
+        const rotated = [...order.slice(start), ...order.slice(0, start)];
+        rank = r => { const i = rotated.indexOf(r.grand_alliance); return i < 0 ? rotated.length : i; };
+      } else {
+        const friendlySlugs = new Set([faction, ...friendlyFlaggedFull.map(u => u.faction_slug)].filter(Boolean));
+        const enemySlugs    = new Set([enemyFaction, ...enemyFlaggedFull.map(u => u.faction_slug)].filter(Boolean));
+        const [first, second] = sortPriority === 'friendly' ? [friendlySlugs, enemySlugs] : [enemySlugs, friendlySlugs];
+        rank = r => first.has(r.faction_slug) ? 0 : second.has(r.faction_slug) ? 1 : 2;
+      }
+      // Stable: keeps the server's faction / unit-type / name order inside each group.
+      list = list.map((r, i) => [rank(r), i, r]).sort((a, b) => a[0] - b[0] || a[1] - b[1]).map(x => x[2]);
+    }
+    return list;
+  }, [data, addMode, userUnits, addedIds, sortBy, sortDir, sortPriority, allianceFirst, faction, enemyFaction,
+      friendlyFlaggedFull, enemyFlaggedFull, includeSaveWardInADO, presumedSave, presumedWard, roundingMode]);
 
   // Bulk-check which units in the current result set have a resolvable image,
   // so the image lightbox can skip units with no image (and duplicate images
@@ -471,7 +549,6 @@ export default function WarscrollsPage({ headerCollapsed }) {
   // units like Kragnos — deduped by image identity, not raw name-string equality,
   // since faction entries can have slightly different name text but the same image).
   const lightboxPlayableIds = React.useMemo(() => {
-    const rows = data?.data ?? [];
     const seenSlugs = new Set();
     const ids = new Set();
     for (const r of rows) {
@@ -482,18 +559,21 @@ export default function WarscrollsPage({ headerCollapsed }) {
       ids.add(r.id);
     }
     return ids;
-  }, [data, imgExistIds]);
+  }, [rows, imgExistIds]);
 
   const toggleFlag = useCallback(async (warscrollId, flag) => {
     const current = userUnits[warscrollId] || { is_friendly: 0, is_enemy: 0 };
     const updated = { ...current, [flag]: current[flag] ? 0 : 1 };
+    if (addMode && flag === (addMode === 'friendly' ? 'is_friendly' : 'is_enemy')) {
+      setAddedIds(prev => { const n = new Set(prev); n.add(warscrollId); return n; });
+    }
     setUserUnits(prev => ({ ...prev, [warscrollId]: updated }));
     try {
       await axios.post(`/api/user-units/${warscrollId}`, updated);
     } catch {
       setUserUnits(prev => ({ ...prev, [warscrollId]: current }));
     }
-  }, [userUnits]);
+  }, [userUnits, addMode]);
 
   // Right-click on the Friendly/Enemy filter checkbox: clear all marks in that column
   const clearFlagColumn = useCallback(async (flag) => {
@@ -577,16 +657,49 @@ export default function WarscrollsPage({ headerCollapsed }) {
     wrapper.scrollTop += currentOffset - targetOffset;
   }, [detailUnit]);
 
+  // Back to the default ordering (faction A–Z), optionally putting a group first.
+  const resetSort = (priority = null) => {
+    setSortBy('faction');
+    setSortDir('asc');
+    setSortPriority(priority);
+    setPage(1);
+  };
+  const ALLIANCE_ORDER = ['Order', 'Chaos', 'Death', 'Destruction'];
+  // Alliance header: default ordering grouped by Grand Alliance. Clicking again
+  // (while already in that mode) rotates which alliance comes first.
+  const handleAllianceHeader = (e) => {
+    if (e && (e.ctrlKey || e.metaKey)) { resetSort(); return; }
+    if (sortBy === 'faction' && sortPriority === 'alliance') {
+      setAllianceFirst(a => ALLIANCE_ORDER[(ALLIANCE_ORDER.indexOf(a) + 1) % ALLIANCE_ORDER.length]);
+    }
+    resetSort('alliance');
+  };
+  // Press-and-hold (half a second) on any sortable header also clears the sort.
+  const holdRef = useRef({ timer: null, fired: false });
+  const holdProps = {
+    onPointerDown: e => {
+      if (e.button !== 0 || e.target.classList.contains('col-resize-handle')) return;
+      clearTimeout(holdRef.current.timer);
+      holdRef.current.fired = false;
+      holdRef.current.timer = setTimeout(() => { holdRef.current.fired = true; resetSort(); }, 500);
+    },
+    onPointerUp:    () => clearTimeout(holdRef.current.timer),
+    onPointerLeave: () => clearTimeout(holdRef.current.timer),
+  };
+  const holdFired = () => { const f = holdRef.current.fired; holdRef.current.fired = false; return f; };
+
   const handleSort = (col, e, reset = false) => {
-    if (reset || (e && e.ctrlKey)) {
-      setSortBy('faction');
-      setSortDir('asc');
+    if (holdFired()) return;
+    if (reset || (e && (e.ctrlKey || e.metaKey))) {
+      resetSort();
+      return;
     } else if (sortBy === col) {
       setSortDir(d => d === 'asc' ? 'desc' : 'asc');
     } else {
       setSortBy(col);
       setSortDir(['ado_ranged','ado_melee','ado_pct','control','move','unit_size','points','health'].includes(col) ? 'desc' : 'asc');
     }
+    setSortPriority(null);
     setPage(1);
   };
 
@@ -701,14 +814,35 @@ export default function WarscrollsPage({ headerCollapsed }) {
         </div>
         {data && (
           <div className="unit-count">
-            {data.total.toLocaleString()} units found
+            {rows.length.toLocaleString()} units found
           </div>
         )}
         <VoiceControlWidget />
       </div>
 
       {/* ── Filters ── */}
-      <div className="filters">
+      <div className="filters ws-filters">
+        <div className="filter-group fe-group">
+          <div className="filter-label">Show marked</div>
+          <div className="fe-row">
+            <label className="cb-item fe-slot" onContextMenu={e => { e.preventDefault(); clearFlagColumn('is_friendly'); }} title="Left-click to filter · Right-click to clear all Friendly marks">
+              <input type="checkbox" id="cb-friendly" checked={showFriendly} onChange={e => { setShowFriendly(e.target.checked); setPage(1); }} />
+              <span style={{color:'var(--friendly-color)'}}>Friendly</span>
+            </label>
+            <button
+              className={`btn-both-toggle fe-swap${showFriendly !== showEnemy ? ' active' : ''}`}
+              title="Toggle both Friendly and Enemy"
+              onClick={() => {
+                setShowFriendly(showEnemy); setShowEnemy(showFriendly); setPage(1);
+              }}
+            >⇔</button>
+            <label className="cb-item fe-slot" onContextMenu={e => { e.preventDefault(); clearFlagColumn('is_enemy'); }} title="Left-click to filter · Right-click to clear all Enemy marks">
+              <input type="checkbox" id="cb-enemy" checked={showEnemy} onChange={e => { setShowEnemy(e.target.checked); setPage(1); }} />
+              <span style={{color:'var(--enemy-color)'}}>Enemy</span>
+            </label>
+          </div>
+        </div>
+
         <div className="filter-group">
           <div className="filter-label">Search</div>
           <input
@@ -754,22 +888,23 @@ export default function WarscrollsPage({ headerCollapsed }) {
         </div>
 
         <div className="filter-checkboxes">
-          <div className="cb-group cb-group-left">
-            <label className="cb-item" onContextMenu={e => { e.preventDefault(); clearFlagColumn('is_friendly'); }} title="Left-click to filter · Right-click to clear all Friendly marks">
-              <input type="checkbox" id="cb-friendly" checked={showFriendly} onChange={e => { setShowFriendly(e.target.checked); setPage(1); }} />
-              <span style={{color:'var(--friendly-color)'}}>Friendly</span>
-            </label>
-            <button
-              className={`btn-both-toggle${showFriendly !== showEnemy ? ' active' : ''}`}
-              title="Toggle both Friendly and Enemy"
-              onClick={() => {
-                setShowFriendly(showEnemy); setShowEnemy(showFriendly); setPage(1);
-              }}
-            >⇔</button>
-            <label className="cb-item" onContextMenu={e => { e.preventDefault(); clearFlagColumn('is_enemy'); }} title="Left-click to filter · Right-click to clear all Enemy marks">
-              <input type="checkbox" id="cb-enemy" checked={showEnemy} onChange={e => { setShowEnemy(e.target.checked); setPage(1); }} />
-              <span style={{color:'var(--enemy-color)'}}>Enemy</span>
-            </label>
+          {/* Row 2, under the Friendly / Enemy checkboxes above: "+ Add unit" for each ticked side. */}
+          <div className="cb-group cb-group-left fe-add-row">
+            <span className="fe-slot">
+              {showFriendly && (
+                <button type="button" className={`fe-add-btn friendly${addMode === 'friendly' ? ' active' : ''}`}
+                  title={addMode === 'friendly' ? 'Back to the Friendly filter' : 'Show only units not yet marked Friendly, to tick more'}
+                  onClick={() => toggleAddMode('friendly')}>{addMode === 'friendly' ? '✓ Done' : '+ Add unit'}</button>
+              )}
+            </span>
+            <span className="fe-swap-space" />
+            <span className="fe-slot">
+              {showEnemy && (
+                <button type="button" className={`fe-add-btn enemy${addMode === 'enemy' ? ' active' : ''}`}
+                  title={addMode === 'enemy' ? 'Back to the Enemy filter' : 'Show only units not yet marked Enemy, to tick more'}
+                  onClick={() => toggleAddMode('enemy')}>{addMode === 'enemy' ? '✓ Done' : '+ Add unit'}</button>
+              )}
+            </span>
           </div>
           <div className="cb-group cb-group-center">
             <div className="cb-group-header">Filter:</div>
@@ -820,56 +955,41 @@ export default function WarscrollsPage({ headerCollapsed }) {
           <span className="loading-rune">⚙</span>
           Consulting the Grand Conclave…
         </div>
-      ) : data && data.data.length === 0 ? (
+      ) : data && rows.length === 0 ? (
         <div className="empty-state">
-          No warscrolls found. Try adjusting your filters, or run <code>npm run scrape</code> to populate the database.
+          {addMode ? 'Every unit here is already marked — pick another faction or press Done.' : <>No warscrolls found. Try adjusting your filters, or run <code>npm run scrape</code> to populate the database.</>}
         </div>
       ) : (
         <>
           <div className="table-wrapper" ref={tableWrapperRef}>
             <table data-sort={sortBy}>
-              {/* ADO-R, ADO-M, ADO% sorts are client-side since they're computed values.
-                  Units with no value ('—' in the cell, null here) always sort last, in either direction. */}
-              {['ado_ranged','ado_melee','ado_pct'].includes(sortBy) && data?.data && (() => {
-                data.data.sort((a, b) => {
-                  const getVal = row => {
-                    const ws = (() => { try { return JSON.parse(row.weapons || '[]'); } catch { return []; } })();
-                    const sv = includeSaveWardInADO ? (presumedSave ?? 5) : 7; const wd = includeSaveWardInADO ? (presumedWard ?? null) : null;
-                    const rw = resolveWeaponLoadout(ws, row.options_text, row.unit_size, sv, wd, roundingMode) ?? ws;
-                    const aR = sumADO(rw.filter(w => w.type === 'ranged'), row.unit_size, sv, wd, roundingMode);
-                    const aM = sumADO(rw.filter(w => w.type === 'melee'),  row.unit_size, sv, wd, roundingMode);
-                    if (sortBy === 'ado_ranged') return aR;
-                    if (sortBy === 'ado_melee')  return aM;
-                    return (aR !== null || aM !== null) && row.points ? ((aR ?? 0) + (aM ?? 0)) / row.points : null;
-                  };
-                  const vA = getVal(a), vB = getVal(b);
-                  if (vA === null && vB === null) return 0;
-                  if (vA === null) return 1;
-                  if (vB === null) return -1;
-                  return sortDir === 'asc' ? vA - vB : vB - vA;
-                });
-                return null;
-              })()}
               <thead>
                 <tr>
-                  <th style={{...thStyle('rownum'), textAlign:'right'}} title="Row number"><span className="th-abbr" style={{color:'var(--text-dim)'}}>#</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'rownum')} /></th>
-                  <th style={{...thStyle('friendly'), color:'var(--friendly-color)'}} title="Friendly"><span className="th-abbr" style={{color:'var(--friendly-color)'}}>F</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'friendly')} /></th>
-                  <th style={{...thStyle('enemy'), color:'var(--enemy-color)'}} title="Enemy"><span className="th-abbr" style={{color:'var(--enemy-color)'}}>E</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'enemy')} /></th>
+                  <th style={{...thStyle('rownum'), textAlign:'right'}} className={`sortable${sortBy === 'faction' && !sortPriority && sortDir === 'asc' ? ' sort-active' : ''}`} title="Back to the default order" onClick={() => resetSort()}><span className="th-abbr" style={{color:'var(--text-dim)'}}>#</span><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'rownum'); }} /></th>
+                  <th style={{...thStyle('friendly'), color:'var(--friendly-color)'}} className={`sortable${sortBy === 'faction' && sortPriority === 'friendly' ? ' sort-active' : ''}`} title="Friendly · click: default order with the friendly faction first" onClick={() => resetSort('friendly')}><span className="th-abbr" style={{color:'var(--friendly-color)'}}>F</span><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'friendly'); }} /></th>
+                  <th style={{...thStyle('enemy'), color:'var(--enemy-color)'}} className={`sortable${sortBy === 'faction' && sortPriority === 'enemy' ? ' sort-active' : ''}`} title="Enemy · click: default order with the enemy faction first" onClick={() => resetSort('enemy')}><span className="th-abbr" style={{color:'var(--enemy-color)'}}>E</span><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'enemy'); }} /></th>
                   <th style={thStyle('expand')}><span className="col-resize-handle" onMouseDown={e => startResize(e,'expand')} /></th>
                   {SORTABLE_COLS.map(col => {
                     const keyMap = { name:'name', faction:'faction', grand_alliance:'alliance', move:'move', health:'health', control:'control', save:'save', ward:'ward', points:'points', unit_size:'models' };
                     const wKey = keyMap[col.key] || col.key;
+                    const isAlliance = col.key === 'grand_alliance';
+                    const active = isAlliance ? (sortBy === 'faction' && sortPriority === 'alliance') : sortBy === col.key;
                     return (
                       <React.Fragment key={col.key}>
                         <th
                           style={thStyle(wKey)}
-                          className={`sortable${col.statGroup === 'start' ? ' stat-group stat-group-start' : col.statGroup === 'end' ? ' stat-group stat-group-end' : col.statGroup ? ' stat-group' : ''}${col.key === 'ward' ? ' col-ward' : ''} ${sortBy === col.key ? 'sort-active' : ''}`}
-                          title={col.abbr ? col.label : undefined}
-                          onClick={e => handleSort(col.key, e)}
-                          onContextMenu={e => { e.preventDefault(); handleSort(col.key, e, true); }}
+                          className={`sortable${col.statGroup === 'start' ? ' stat-group stat-group-start' : col.statGroup === 'end' ? ' stat-group stat-group-end' : col.statGroup ? ' stat-group' : ''}${col.key === 'ward' ? ' col-ward' : ''} ${active ? 'sort-active' : ''}`}
+                          title={isAlliance
+                            ? `Default order grouped by Grand Alliance${active ? ` (${allianceFirst} first) · click again: next alliance first` : ''}`
+                            : `${col.abbr ? col.label + ' · ' : ''}Click to sort, again to reverse · Ctrl-click, right-click or press and hold: default order`}
+                          {...holdProps}
+                          onClick={e => { if (holdFired()) return; isAlliance ? handleAllianceHeader(e) : handleSort(col.key, e); }}
+                          onContextMenu={e => { e.preventDefault(); resetSort(); }}
                         >
                           {col.abbr ? <span className="th-abbr">{col.abbr}</span> : col.label}
-                          <SortIcon col={col.key} sortBy={sortBy} sortDir={sortDir} />
+                          {isAlliance
+                            ? <span className="sort-icon">{active ? `▸${allianceFirst.slice(0, 3)}` : '↕'}</span>
+                            : <SortIcon col={col.key} sortBy={sortBy} sortDir={sortDir} />}
                           <span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e, wKey); }} />
                         </th>
                         {col.key === 'name' && (
@@ -886,14 +1006,14 @@ export default function WarscrollsPage({ headerCollapsed }) {
                     const adoMBox = mkBox(makeAdoTooltip(includeSaveWardInADO, presumedSave ?? 5, presumedWard ?? null, 'melee'));
                     const adoKBox = mkBox(makeAdoKTooltip(includeSaveWardInADO, presumedSave ?? 5, presumedWard ?? null));
                     return (<>
-                  <th style={{...thStyle('ado_ranged'), textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_ranged', e)} onContextMenu={e => { e.preventDefault(); handleSort('ado_ranged', e, true); }}><span className="ado-tip">{adoRBox}ADO-R</span><SortIcon col="ado_ranged" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_ranged'); }} /></th>
-                  <th style={{...thStyle('ado_melee'),  textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_melee', e)} onContextMenu={e => { e.preventDefault(); handleSort('ado_melee', e, true); }}><span className="ado-tip">{adoMBox}ADO-M</span><SortIcon col="ado_melee" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_melee'); }} /></th>
-                  <th style={{...thStyle('ado_pct'),    textAlign:'center'}} className="col-ado-hdr sortable" onClick={e => handleSort('ado_pct', e)} onContextMenu={e => { e.preventDefault(); handleSort('ado_pct', e, true); }}><span className="ado-tip">{adoKBox}ADO/e</span><SortIcon col="ado_pct" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_pct'); }} /></th>
+                  <th style={{...thStyle('ado_ranged'), textAlign:'center'}} className={`col-ado-hdr sortable${sortBy === 'ado_ranged' ? ' sort-active' : ''}`} {...holdProps} onClick={e => handleSort('ado_ranged', e)} onContextMenu={e => { e.preventDefault(); resetSort(); }}><span className="ado-tip">{adoRBox}ADO-R</span><SortIcon col="ado_ranged" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_ranged'); }} /></th>
+                  <th style={{...thStyle('ado_melee'),  textAlign:'center'}} className={`col-ado-hdr sortable${sortBy === 'ado_melee' ? ' sort-active' : ''}`} {...holdProps} onClick={e => handleSort('ado_melee', e)} onContextMenu={e => { e.preventDefault(); resetSort(); }}><span className="ado-tip">{adoMBox}ADO-M</span><SortIcon col="ado_melee" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_melee'); }} /></th>
+                  <th style={{...thStyle('ado_pct'),    textAlign:'center'}} className={`col-ado-hdr sortable${sortBy === 'ado_pct' ? ' sort-active' : ''}`} {...holdProps} onClick={e => handleSort('ado_pct', e)} onContextMenu={e => { e.preventDefault(); resetSort(); }}><span className="ado-tip">{adoKBox}ADO/e</span><SortIcon col="ado_pct" sortBy={sortBy} sortDir={sortDir} /><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e,'ado_pct'); }} /></th>
                   </>); })()}
                 </tr>
               </thead>
               <tbody>
-                {data?.data.map((row, idx) => {
+                {rows.map((row, idx) => {
                   const rowNum = (page - 1) * PAGE_SIZE + idx + 1;
                   const isExpanded = expandedIds.has(row.id);
                   const isFullExpanded = fullExpandedIds.has(row.id);
@@ -911,7 +1031,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
                   const adoPct    = (adoRanged !== null || adoMelee !== null) && row.points
                     ? Math.round(adoTotal / row.points * 1000)
                     : null;
-                  const prev = data.data[idx - 1];
+                  const prev = rows[idx - 1];
                   const factionChanged = !prev || prev.faction !== row.faction;
                   const typeChanged    = !prev || prev.faction !== row.faction || unitTypeLabel(prev) !== unitTypeLabel(row);
                   const colSpan = 20;
@@ -1093,7 +1213,6 @@ export default function WarscrollsPage({ headerCollapsed }) {
     </div>
 
     {lightboxUnit && (() => {
-      const rows = data?.data ?? [];
       const idx = rows.findIndex(u => u.id === lightboxUnit.id);
       const findPlayable = dir => {
         for (let i = idx + dir; i >= 0 && i < rows.length; i += dir) {
@@ -1116,7 +1235,6 @@ export default function WarscrollsPage({ headerCollapsed }) {
     })()}
 
     {detailUnit && (() => {
-      const rows = data?.data ?? [];
       const idx = rows.findIndex(u => u.id === detailUnit.id);
       return (
       <WarscrollGW

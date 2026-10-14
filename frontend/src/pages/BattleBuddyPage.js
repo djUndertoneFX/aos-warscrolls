@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { AbilityCard } from '../components/WarscrollGW';
+import WarscrollGW, { AbilityCard } from '../components/WarscrollGW';
 import VoiceControlWidget from '../components/VoiceControlWidget';
 import { useVoiceCommands } from '../VoiceControlContext';
 
@@ -1061,7 +1061,74 @@ function PhaseRibbon({ phaseKey, setPhaseKey, onPick }) {
   );
 }
 
-function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey, commandAbilities, viewMode, setViewMode }) {
+// ── Warscrolls view: the selected army's units as cards; clicking one opens the
+// full warscroll (prev/next steps through that side's army, and the split
+// Friendly | Enemy view is available when both sides have units). ─────────────
+function ArmyWarscrollsSide({ side, units, onOpen }) {
+  return (
+    <div className="bb-ws-side">
+      <div className="bb-fight-pane-title">{side === 'friendly' ? 'Friendly' : 'Enemy'}</div>
+      {units.length === 0 ? (
+        <div className="bb-pane-empty">No units selected for this side yet (Step 1).</div>
+      ) : (
+        <div className="bb-ws-grid">
+          {units.map(u => (
+            <button type="button" key={u.id} className={`bb-ws-card ${side}`} onClick={() => onOpen(side, u)}>
+              <span className="bb-ws-thumb">
+                <img src={`${axios.defaults.baseURL || ''}/api/unit-image/${u.id}`} alt="" loading="lazy" onError={e => { e.target.style.visibility = 'hidden'; }} />
+              </span>
+              <span className="bb-ws-info">
+                <span className="bb-ws-name">{u.name}</span>
+                <span className="bb-ws-stats">
+                  <span title="Move">Mv {u.move || '—'}</span>
+                  <span title="Health">HP {u.health || '—'}</span>
+                  <span title="Save">Sv {u.save || '—'}</span>
+                  <span title="Control">Ctrl {u.control || '—'}</span>
+                  {u.ward ? <span title="Ward">Wd {u.ward}</span> : null}
+                </span>
+                <span className="bb-ws-pts">{u.points ? `${u.points} pts` : ''}{u.unit_size ? ` · ${u.unit_size} model${String(u.unit_size) === '1' ? '' : 's'}` : ''}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ArmyWarscrolls({ friendly, enemy, viewMode, singleSide }) {
+  const [open, setOpen] = useState(null); // { side, id }
+  const lists = { friendly: friendly.units, enemy: enemy.units };
+  const sides = viewMode === 'dual' ? ['friendly', 'enemy'] : [singleSide];
+  const list = open ? lists[open.side] : [];
+  const idx = open ? list.findIndex(u => u.id === open.id) : -1;
+  const unit = idx >= 0 ? list[idx] : null;
+  const both = friendly.units.length > 0 && enemy.units.length > 0;
+  return (
+    <div className={`bb-ws-view${viewMode === 'dual' ? ' dual' : ''}`}>
+      {sides.map(sd => (
+        <ArmyWarscrollsSide key={sd} side={sd} units={lists[sd]} onOpen={(s2, u) => setOpen({ side: s2, id: u.id })} />
+      ))}
+      {unit && (
+        <WarscrollGW
+          unit={unit}
+          navIndex={idx}
+          navList={list}
+          sortBy="faction"
+          friendlyNavList={both ? friendly.units : undefined}
+          enemyNavList={both ? enemy.units : undefined}
+          onJumpToUnit={u => setOpen({ side: enemy.units.some(x => x.id === u.id) && !friendly.units.some(x => x.id === u.id) ? 'enemy' : open.side, id: u.id })}
+          onClose={() => setOpen(null)}
+          onPrev={() => { if (idx > 0) setOpen({ side: open.side, id: list[idx - 1].id }); }}
+          onNext={() => { if (idx < list.length - 1) setOpen({ side: open.side, id: list[idx + 1].id }); }}
+          onJump={i => list[i] && setOpen({ side: open.side, id: list[i].id })}
+        />
+      )}
+    </div>
+  );
+}
+
+function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey, commandAbilities, viewMode, setViewMode, contentMode, setContentMode }) {
   const [singleSide, setSingleSide] = useState('friendly');
   // Ghyran defaults to hidden — matches the previous unconditional behavior
   // (Scourge of Ghyran-named content was always dropped before this checkbox
@@ -1120,7 +1187,9 @@ function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey, c
     'switch to enemy': () => setSingleSide('enemy'),
     'dual view': () => setViewMode('dual'),
     'single view': () => setViewMode('single'),
-  }, [advancePhase, setSingleSide, setViewMode]);
+    'show warscrolls': () => setContentMode('warscrolls'),
+    'show phases': () => setContentMode('phases'),
+  }, [advancePhase, setSingleSide, setViewMode, setContentMode]);
 
   const abilityContent = viewMode === 'dual' ? (
     <div className="bb-fight-dual">
@@ -1136,6 +1205,10 @@ function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey, c
   return (
     <div className="bb-fight-wrap">
       <div className="bb-fight-controls">
+        <div className="bb-fight-view-toggle bb-fight-mode-toggle">
+          <button className={contentMode === 'phases' ? 'active' : ''} onClick={() => setContentMode('phases')} title="Abilities by battle phase">Phases</button>
+          <button className={contentMode === 'warscrolls' ? 'active' : ''} onClick={() => setContentMode('warscrolls')} title="The selected army's warscrolls">Warscrolls</button>
+        </div>
         <div className="bb-fight-view-toggle">
           <button className={viewMode === 'single' ? 'active' : ''} onClick={() => setViewMode('single')}>Single View</button>
           <button className={viewMode === 'dual' ? 'active' : ''} onClick={() => setViewMode('dual')}>Dual View</button>
@@ -1163,6 +1236,13 @@ function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey, c
         </div>
       )}
 
+      {contentMode === 'warscrolls' ? (
+        <div className="bb-fight-vertical">
+          <div className="bb-fight-main">
+            <ArmyWarscrolls friendly={friendly} enemy={enemy} viewMode={viewMode} singleSide={singleSide} />
+          </div>
+        </div>
+      ) : (
       <div className="bb-fight-vertical">
         <div className="bb-fight-phase-sidebar">
           <PhaseRibbon phaseKey={phaseKey} setPhaseKey={setPhaseKey} />
@@ -1175,6 +1255,7 @@ function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey, c
         </div>
         <div className="bb-fight-main">{abilityContent}</div>
       </div>
+      )}
     </div>
   );
 }
@@ -1195,6 +1276,15 @@ export default function BattleBuddyPage() {
   // phaseKey) so it round-trips through the same server-side snapshot
   // instead of resetting to Single View on every refresh/new session.
   const [viewMode, setViewMode] = useState('single');
+  // Fight step content: 'phases' (abilities by phase) or 'warscrolls' (the army's
+  // warscrolls). Remembered per browser.
+  const [contentMode, setContentModeState] = useState(() => {
+    try { return localStorage.getItem('bb-content-mode') === 'warscrolls' ? 'warscrolls' : 'phases'; } catch { return 'phases'; }
+  });
+  const setContentMode = useCallback((m) => {
+    setContentModeState(m);
+    try { localStorage.setItem('bb-content-mode', m); } catch {}
+  }, []);
   const matchupSig = `${friendly.units.map(u => u.id).sort((a, b) => a - b).join(',')}||${enemy.units.map(u => u.id).sort((a, b) => a - b).join(',')}`;
   const matchupSigRef = useRef(null);
   useEffect(() => {
@@ -1279,7 +1369,7 @@ export default function BattleBuddyPage() {
           <SourcePane side="enemy" state={enemy} setState={setEnemy} factionRules={factionRules} />
         </div>
       ) : (
-        <FightStage friendly={friendly} enemy={enemy} factionRulesFor={factionRules.get} phaseKey={phaseKey} setPhaseKey={setPhaseKey} commandAbilities={commandAbilities} viewMode={viewMode} setViewMode={setViewMode} />
+        <FightStage friendly={friendly} enemy={enemy} factionRulesFor={factionRules.get} phaseKey={phaseKey} setPhaseKey={setPhaseKey} commandAbilities={commandAbilities} viewMode={viewMode} setViewMode={setViewMode} contentMode={contentMode} setContentMode={setContentMode} />
       )}
     </div>
   );

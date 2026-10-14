@@ -2065,10 +2065,10 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
           />
         </div>
 
-        <div className="ab-points-block">
+        <div className="ab-points-block ab-points-stacked">
           <div className="ab-points-label">Points</div>
+          <div className={`ab-points-current${totalPoints > pointsLimit ? ' ab-points-over' : ''}`}>{totalPoints.toLocaleString()}</div>
           <div className="ab-points-value">
-            <span className={`ab-points-current${totalPoints > pointsLimit ? ' ab-points-over' : ''}`}>{totalPoints.toLocaleString()}</span>
             <span className="ab-points-sep">/</span>
             <input
               type="number" min="0" className="ab-points-limit-input"

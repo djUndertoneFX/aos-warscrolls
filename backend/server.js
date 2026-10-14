@@ -534,10 +534,10 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
   if (isManifestation   === '1')  { conditions.push('w.is_manifestation = 1'); }
   if (isManifestation   === '-1') { conditions.push('w.is_manifestation = 0'); }
   if (isLegends           === '0') { conditions.push('w.is_legends = 0'); }
-  // "Scourge of X" names a seasonal variant — Ghyran was the previous season,
-  // Aqshy is current (see TITLE_PREFIXES above), so this only excludes the
-  // outdated Ghyran ones, not Aqshy's still-current content.
-  if (hideScourgeOfGhyran === '1') { conditions.push("w.name NOT LIKE 'Scourge of Ghyran %'"); }
+  // "Scourge of X" names a seasonal variant (Scourge of Ghyran, Scourge of Aqshy, …).
+  // dj (2026-10-14): the Hide: Scourge checkbox hides every season's Scourge units,
+  // not only Ghyran's — the query param keeps its old name for saved filters.
+  if (hideScourgeOfGhyran === '1') { conditions.push("w.name NOT LIKE 'Scourge of %'"); }
   if (req.query.hideRoR   === '1') { conditions.push("(w.keywords IS NOT NULL AND w.keywords != '')"); }
   if (req.query.spearheadOnly === '1') { conditions.push('w.spearhead IS NOT NULL'); }
 
