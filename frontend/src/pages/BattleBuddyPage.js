@@ -1205,10 +1205,6 @@ function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey, c
   return (
     <div className="bb-fight-wrap">
       <div className="bb-fight-controls">
-        <div className="bb-fight-view-toggle bb-fight-mode-toggle">
-          <button className={contentMode === 'phases' ? 'active' : ''} onClick={() => setContentMode('phases')} title="Abilities by battle phase">Phases</button>
-          <button className={contentMode === 'warscrolls' ? 'active' : ''} onClick={() => setContentMode('warscrolls')} title="The selected army's warscrolls">Warscrolls</button>
-        </div>
         <div className="bb-fight-view-toggle">
           <button className={viewMode === 'single' ? 'active' : ''} onClick={() => setViewMode('single')}>Single View</button>
           <button className={viewMode === 'dual' ? 'active' : ''} onClick={() => setViewMode('dual')}>Dual View</button>
@@ -1359,6 +1355,11 @@ export default function BattleBuddyPage() {
           <span className="bb-steps-label">Steps:</span>
           <button className={`bb-step-btn${stage === 'select' ? ' active' : ''}`} onClick={() => setStage('select')}><strong>1:</strong> Select Units</button>
           <button className={`bb-step-btn${stage === 'fight' ? ' active' : ''}`} onClick={() => setStage('fight')}><strong>2:</strong> Fight!</button>
+          {/* Fight step content: abilities by phase, or the army's warscrolls. Picking one also opens the Fight step. */}
+          <div className="bb-fight-view-toggle bb-fight-mode-toggle">
+            <button className={stage === 'fight' && contentMode === 'phases' ? 'active' : ''} onClick={() => { setContentMode('phases'); setStage('fight'); }} title="Abilities by battle phase">Phases</button>
+            <button className={stage === 'fight' && contentMode === 'warscrolls' ? 'active' : ''} onClick={() => { setContentMode('warscrolls'); setStage('fight'); }} title="The selected army's warscrolls">Warscrolls</button>
+          </div>
         </div>
         <div className="bb-header-voice"><VoiceControlWidget /></div>
       </div>

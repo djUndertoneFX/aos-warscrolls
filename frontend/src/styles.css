@@ -2044,11 +2044,12 @@ th.ab-count-th { padding-left: 0.35rem; padding-right: 0.35rem; text-align: cent
 /* Warscrolls page: Friendly ⇔ Enemy moved up into the first filter row; the second
    row's left group holds "+ Add unit" buttons lined up under them (same slot widths). */
 .ws-filters { grid-template-columns: auto 1fr 200px 180px 180px; }
+.ws-filters .fe-group { align-self: end; }
 .fe-row, .fe-add-row { display: flex; align-items: center; gap: 0; flex-wrap: nowrap; }
-.fe-row { height: 34px; }
+.fe-row { height: 26px; }
 .fe-slot { width: 88px; display: flex; justify-content: center; }
 .fe-swap, .fe-swap-space { width: 30px; flex: 0 0 30px; justify-content: center; }
-.cb-group.fe-add-row { gap: 0; margin-right: 1rem; min-height: 24px; flex-wrap: nowrap; }
+.fe-add-row { min-height: 26px; margin-top: 2px; } /* always reserved so ticking a side doesn't shift the row */
 .fe-add-btn {
   font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; cursor: pointer; white-space: nowrap;
   background: var(--bg-card); border: 1px solid var(--border); color: var(--text-dim);
@@ -6068,7 +6069,7 @@ textarea.ptg-doc-overlay-input {
 }
 
 /* ── Battle Buddy: Warscrolls view (Phases | Warscrolls toggle on the Fight step) ── */
-.bb-fight-mode-toggle { margin-right: auto; }
+.bb-fight-mode-toggle { margin-left: 0.6rem; }
 .bb-ws-view { display: grid; grid-template-columns: 1fr; gap: 1.2rem; }
 .bb-ws-view.dual { grid-template-columns: 1fr 1fr; }
 .bb-ws-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.6rem; }

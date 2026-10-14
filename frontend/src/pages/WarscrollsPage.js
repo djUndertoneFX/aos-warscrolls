@@ -841,6 +841,24 @@ export default function WarscrollsPage({ headerCollapsed }) {
               <span style={{color:'var(--enemy-color)'}}>Enemy</span>
             </label>
           </div>
+          {/* "+ Add unit" sits right under whichever side is ticked, in the same block. */}
+          <div className="fe-add-row">
+              <span className="fe-slot">
+                {showFriendly && (
+                  <button type="button" className={`fe-add-btn friendly${addMode === 'friendly' ? ' active' : ''}`}
+                    title={addMode === 'friendly' ? 'Back to the Friendly filter' : 'Show only units not yet marked Friendly, to tick more'}
+                    onClick={() => toggleAddMode('friendly')}>{addMode === 'friendly' ? '✓ Done' : '+ Add unit'}</button>
+                )}
+              </span>
+              <span className="fe-swap-space" />
+              <span className="fe-slot">
+                {showEnemy && (
+                  <button type="button" className={`fe-add-btn enemy${addMode === 'enemy' ? ' active' : ''}`}
+                    title={addMode === 'enemy' ? 'Back to the Enemy filter' : 'Show only units not yet marked Enemy, to tick more'}
+                    onClick={() => toggleAddMode('enemy')}>{addMode === 'enemy' ? '✓ Done' : '+ Add unit'}</button>
+                )}
+              </span>
+            </div>
         </div>
 
         <div className="filter-group">
@@ -888,24 +906,6 @@ export default function WarscrollsPage({ headerCollapsed }) {
         </div>
 
         <div className="filter-checkboxes">
-          {/* Row 2, under the Friendly / Enemy checkboxes above: "+ Add unit" for each ticked side. */}
-          <div className="cb-group cb-group-left fe-add-row">
-            <span className="fe-slot">
-              {showFriendly && (
-                <button type="button" className={`fe-add-btn friendly${addMode === 'friendly' ? ' active' : ''}`}
-                  title={addMode === 'friendly' ? 'Back to the Friendly filter' : 'Show only units not yet marked Friendly, to tick more'}
-                  onClick={() => toggleAddMode('friendly')}>{addMode === 'friendly' ? '✓ Done' : '+ Add unit'}</button>
-              )}
-            </span>
-            <span className="fe-swap-space" />
-            <span className="fe-slot">
-              {showEnemy && (
-                <button type="button" className={`fe-add-btn enemy${addMode === 'enemy' ? ' active' : ''}`}
-                  title={addMode === 'enemy' ? 'Back to the Enemy filter' : 'Show only units not yet marked Enemy, to tick more'}
-                  onClick={() => toggleAddMode('enemy')}>{addMode === 'enemy' ? '✓ Done' : '+ Add unit'}</button>
-              )}
-            </span>
-          </div>
           <div className="cb-group cb-group-center">
             <div className="cb-group-header">Filter:</div>
             <TriCheckbox value={isHero}          onChange={v => { setIsHero(v);          setPage(1); }} label="Heroes"         />
