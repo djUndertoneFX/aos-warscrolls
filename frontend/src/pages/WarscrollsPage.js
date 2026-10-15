@@ -34,8 +34,9 @@ function TriCheckbox({ value, onChange, label }) {
   return (
     <span
       className={`cb-item tri-checkbox${isExclude ? ' cb-exclude' : ''}`}
-      onClick={() => onChange(nextTriState(value, false))}
+      onClick={e => onChange(nextTriState(value, e.ctrlKey || e.metaKey))}
       onContextMenu={e => { e.preventDefault(); onChange(nextTriState(value, true)); }}
+      title="Click to filter · Ctrl-click or right-click to exclude"
     >
       <span className={`tri-check${isInclude ? ' tri-include' : isExclude ? ' tri-exclude' : ''}`}>
         {isInclude ? '✓' : isExclude ? '✕' : ''}
@@ -64,7 +65,7 @@ function AllianceBadge({ alliance, onClick, onContextMenu }) {
       className={`alliance-badge alliance-${alliance}${onClick ? ' filter-clickable' : ''}`}
       onClick={onClick}
       onContextMenu={onContextMenu}
-      title={onClick ? 'Left-click to filter · Right-click to exclude' : undefined}
+      title={onClick ? 'Click to filter · Ctrl-click or right-click to exclude' : undefined}
     >{alliance}</span>
   );
 }
@@ -112,8 +113,8 @@ function TypeTags({ row, onFilter }) {
           <span
             key={t}
             className={`type-tag${onFilter && filterKey ? ' filter-clickable' : ''}`}
-            title={onFilter && filterKey ? 'Left-click to filter · Right-click to exclude' : undefined}
-            onClick={onFilter && filterKey ? e => { e.stopPropagation(); onFilter(filterKey, false); } : undefined}
+            title={onFilter && filterKey ? 'Click to filter · Ctrl-click or right-click to exclude' : undefined}
+            onClick={onFilter && filterKey ? e => { e.stopPropagation(); onFilter(filterKey, e.ctrlKey || e.metaKey); } : undefined}
             onContextMenu={onFilter && filterKey ? e => { e.stopPropagation(); e.preventDefault(); onFilter(filterKey, true); } : undefined}
           >{t}</span>
         );
@@ -1092,7 +1093,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
                           {row.grand_alliance && (
                             <AllianceBadge
                               alliance={row.grand_alliance}
-                              onClick={e => { e.stopPropagation(); handleFilterFromRow('alliance', row.grand_alliance, false); }}
+                              onClick={e => { e.stopPropagation(); handleFilterFromRow('alliance', row.grand_alliance, e.ctrlKey || e.metaKey); }}
                               onContextMenu={e => { e.stopPropagation(); e.preventDefault(); handleFilterFromRow('alliance', row.grand_alliance, true); }}
                             />
                           )}
@@ -1112,8 +1113,8 @@ export default function WarscrollsPage({ headerCollapsed }) {
                             <span
                               key={kw}
                               className="kw-chip filter-clickable"
-                              title="Left-click to filter · Right-click to exclude"
-                              onClick={e => { e.stopPropagation(); const tk = KEYWORD_TYPE_MAP[kw.trim().toUpperCase()]; tk ? handleFilterFromRow(tk, null, false) : handleFilterFromRow('search', kw.trim(), false); }}
+                              title="Click to filter · Ctrl-click or right-click to exclude"
+                              onClick={e => { e.stopPropagation(); const ex = e.ctrlKey || e.metaKey; const tk = KEYWORD_TYPE_MAP[kw.trim().toUpperCase()]; tk ? handleFilterFromRow(tk, null, ex) : handleFilterFromRow('search', kw.trim(), ex); }}
                               onContextMenu={e => { e.stopPropagation(); e.preventDefault(); const tk = KEYWORD_TYPE_MAP[kw.trim().toUpperCase()]; tk ? handleFilterFromRow(tk, null, true) : handleFilterFromRow('search', kw.trim(), true); }}
                             >{kw.trim()}{i < arr.length - 1 ? ', ' : ''}</span>
                           )) : '—'}
