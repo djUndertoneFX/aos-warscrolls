@@ -1392,6 +1392,13 @@ th.ab-count-th { padding-left: 0.35rem; padding-right: 0.35rem; text-align: cent
   margin-bottom: 0.6rem;
   border-bottom: 1px solid rgba(200,168,64,0.2);
 }
+.ab-stage-subhead { position: relative; }
+/* Army-wide "Hide Scourge" toggle, shown on every non-unit step. */
+.ab-stage-scourge {
+  position: absolute; right: 0; top: 0.2rem;
+  font-family: inherit; text-transform: none; letter-spacing: 0;
+  font-size: 0.8rem; color: #b8a878;
+}
 @media (max-width: 900px) {
   .ab-split-view { flex-direction: column; }
   .ab-split-divider { display: none; }

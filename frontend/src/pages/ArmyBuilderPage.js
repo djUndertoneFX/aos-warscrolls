@@ -337,8 +337,8 @@ function SortIcon({ col, sortBy, sortDir }) {
 }
 
 const STAGES = [
-  { key: 'formation',           label: 'Battle Formation' },
   { key: 'units',                label: 'Select Units' },
+  { key: 'formation',           label: 'Battle Formation' },   // after Select Units: it needs the faction picked there (dj 2026-10-25)
   { key: 'heroic_traits',         label: 'Heroic Traits',        section: 'heroic_traits' },
   { key: 'artefacts',             label: 'Artefacts of Power',   section: 'artefacts' },
   { key: 'spell_lore',            label: 'Spell Lore',           section: 'spell_lore' },
@@ -370,13 +370,13 @@ function FormationOption({ g, battleFormation, setBattleFormation }) {
   );
 }
 
-function BattleFormationStage({ factionName, rules, battleFormation, setBattleFormation, hasFaction }) {
+function BattleFormationStage({ factionName, rules, battleFormation, setBattleFormation, hasFaction, hideScourge }) {
   const [filterSelected, setFilterSelected] = useState(false);
   if (!hasFaction) return <div className="ab-stage-empty">Pick a Faction on the Select Units stage first.</div>;
   if (!rules) return <div className="ab-stage-empty">Loading…</div>;
   const groups = [];
   const byName = {};
-  for (const item of rules.formations ?? []) {
+  for (const item of dropScourge(rules.formations ?? [], hideScourge)) {
     const gName = item.formation_name || 'General';
     if (!byName[gName]) { byName[gName] = { name: gName, sourceNote: item.source_note || null, items: [] }; groups.push(byName[gName]); }
     byName[gName].items.push(item);
@@ -446,6 +446,11 @@ const CORE_ARTEFACTS = {
 
 // core preserves the exact order given in coreNamesInOrder (already the
 // book's visual placement order); additional preserves the API's own order.
+// Supplement content (Scourge of Ghyran, Scourge of Aqshy, …) is tagged by
+// source_note. The army-wide "Hide: Scourge" toggle drops it from every step.
+const isScourge = item => /^scourge of/i.test(item?.source_note || '');
+const dropScourge = (items, hide) => (hide && items ? items.filter(i => !isScourge(i)) : items);
+
 function splitCoreAdditional(options, coreNamesInOrder) {
   if (!coreNamesInOrder || coreNamesInOrder.length === 0) return { core: [], additional: options };
   const byName = new Map(options.map(o => [o.name, o]));
@@ -515,7 +520,7 @@ function SelectableAbilityCard({ ab, isSelected, onToggle }) {
   );
 }
 
-function HeroAssignmentStage({ label, sectionKey, selectedHeroes, rulesCache, heroAssignments, setHeroAssignments, primaryFaction, primaryRules, selectedOptions, setSelectedOptions }) {
+function HeroAssignmentStage({ label, sectionKey, selectedHeroes, rulesCache, heroAssignments, setHeroAssignments, primaryFaction, primaryRules, selectedOptions, setSelectedOptions, hideScourge }) {
   const [filterSelected, setFilterSelected] = useState(false);
   // Which hero row a dragged card is currently over, for the drop-target
   // highlight — cleared on drop, drag-leave, or drag-end (in case the drag
@@ -547,7 +552,7 @@ function HeroAssignmentStage({ label, sectionKey, selectedHeroes, rulesCache, he
   // below. Shown once at the top regardless of how many heroes are selected;
   // the per-hero rows further down keep their own dropdowns scoped to each
   // hero's own faction (relevant for allied heroes from another faction).
-  const primaryOptions = primaryRules ? applyPhaseKeyOverrides(primaryRules[sectionKey] ?? [], sectionKey, primaryFaction) : [];
+  const primaryOptions = primaryRules ? dropScourge(applyPhaseKeyOverrides(primaryRules[sectionKey] ?? [], sectionKey, primaryFaction), hideScourge) : [];
 
   // "Filter to Selection" (mirrors the same button on the Warscrolls Battle
   // Formation page) narrows the overview grid down to just the checked
@@ -605,7 +610,7 @@ function HeroAssignmentStage({ label, sectionKey, selectedHeroes, rulesCache, he
   }
   const rows = selectedHeroes.map(hero => {
     const rules = rulesCache[hero.faction_slug];
-    const options = rules ? applyPhaseKeyOverrides(rules[sectionKey] ?? [], sectionKey, hero.faction_slug) : null;
+    const options = rules ? dropScourge(applyPhaseKeyOverrides(rules[sectionKey] ?? [], sectionKey, hero.faction_slug), hideScourge) : null;
     const { core, additional } = options ? splitCoreAdditional(options, coreConfig?.[hero.faction_slug]) : { core: [], additional: [] };
     return { hero, rules, options, core, additional };
   });
@@ -679,10 +684,10 @@ function HeroAssignmentStage({ label, sectionKey, selectedHeroes, rulesCache, he
 // specific unit (any eligible WIZARD/PRIEST can cast whichever spell/prayer
 // you choose in-game, manifestations are summoned by the army generally) —
 // just browse the full list for the army's faction ────────────────────────
-function LoreCardsStage({ label, sectionKey, primaryFaction, primaryRules }) {
+function LoreCardsStage({ label, sectionKey, primaryFaction, primaryRules, hideScourge }) {
   if (!primaryFaction) return <div className="ab-stage-empty">Pick a Faction on the Select Units stage first.</div>;
   if (!primaryRules) return <div className="ab-stage-empty">Loading…</div>;
-  const options = primaryRules[sectionKey] ?? [];
+  const options = dropScourge(primaryRules[sectionKey] ?? [], hideScourge);
   if (options.length === 0) return <div className="ab-stage-empty">No {label} found for this faction.</div>;
 
   // Spell Lore / Prayer Lore each have exactly one Signature Spell/Prayer —
@@ -1450,16 +1455,18 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
   const [hideOtherFactions, setHideOtherFactions]     = useState(saved.hideOtherFactions   ?? false);
   const [hideScourgeOfGhyran, setHideScourgeOfGhyran] = useState(saved.hideScourgeOfGhyran ?? false);
   const [hideRoR, setHideRoR]                         = useState(saved.hideRoR             ?? false);
+  // "Friendly": show only the units already in this list (dj 2026-10-25).
+  const [friendlyOnly, setFriendlyOnly]               = useState(saved.friendlyOnly        ?? false);
   const [sortBy, setSortBy]   = useState(saved.sortBy  ?? 'faction');
   const [sortDir, setSortDir] = useState(saved.sortDir ?? 'asc');
 
   useEffect(() => {
     localStorage.setItem(FILTER_KEY, JSON.stringify({
       search, alliance, isHero, isMonster, isInfantry, isCavalry, isBeast, isWarMachine, isTerrain, isManifestation,
-      hideLegends, hideOtherFactions, hideScourgeOfGhyran, hideRoR, sortBy, sortDir,
+      hideLegends, hideOtherFactions, hideScourgeOfGhyran, hideRoR, friendlyOnly, sortBy, sortDir,
     }));
   }, [search, alliance, isHero, isMonster, isInfantry, isCavalry, isBeast, isWarMachine, isTerrain, isManifestation,
-      hideLegends, hideOtherFactions, hideScourgeOfGhyran, hideRoR, sortBy, sortDir]);
+      hideLegends, hideOtherFactions, hideScourgeOfGhyran, hideRoR, friendlyOnly, sortBy, sortDir]);
 
   const [expandedIds, setExpandedIds] = useState(new Set());
   const [fullExpandedIds, setFullExpandedIds] = useState(new Set());
@@ -1840,9 +1847,10 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
     return sorted;
   };
 
-  const allRows = data?.data ?? [];
+  const allRows = friendlyOnly ? (data?.data ?? []).filter(r => roster[r.id]) : (data?.data ?? []);
   const ownRows   = faction ? sortRows(allRows.filter(r => r.faction_slug === faction)) : sortRows(allRows);
-  const otherRows = (faction && !hideOtherFactions) ? sortRows(allRows.filter(r => r.faction_slug !== faction)) : [];
+  // Friendly still lists selected allies even with Other Factions hidden.
+  const otherRows = (faction && (!hideOtherFactions || friendlyOnly)) ? sortRows(allRows.filter(r => r.faction_slug !== faction)) : [];
   const navList = [...ownRows, ...otherRows];
 
   const [navbarExtrasEl, setNavbarExtrasEl] = useState(null);
@@ -2106,6 +2114,10 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
           <div className="filter-checkboxes">
             <div className="cb-group cb-group-center">
               <div className="cb-group-header">Filter:</div>
+              <label className="cb-item" title="Show only the units you've selected in this list">
+                <input type="checkbox" checked={friendlyOnly} onChange={e => setFriendlyOnly(e.target.checked)} />
+                <span>Friendly</span>
+              </label>
               <TriCheckbox value={isHero}          onChange={setIsHero}          label="Heroes"         />
               <TriCheckbox value={isInfantry}      onChange={setIsInfantry}      label="Infantry"       />
               <TriCheckbox value={isCavalry}       onChange={setIsCavalry}       label="Cavalry"        />
@@ -2244,7 +2256,13 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
       {activeStage !== 'units' && (
         <div className="ab-split-view" ref={splitViewRef}>
           <div className="ab-split-left">
-            <div className="ab-stage-subhead">{STAGES.find(s => s.key === activeStage)?.label}</div>
+            <div className="ab-stage-subhead">
+              <span>{STAGES.find(s => s.key === activeStage)?.label}</span>
+              <label className="cb-item ab-stage-scourge" title="Hide Scourge of Ghyran / Aqshy supplement content on every step">
+                <input type="checkbox" checked={hideScourgeOfGhyran} onChange={e => setHideScourgeOfGhyran(e.target.checked)} />
+                <span>Hide Scourge</span>
+              </label>
+            </div>
             {activeStage === 'formation' && (
               <div className="ab-stage-body">
                 <BattleFormationStage
@@ -2253,6 +2271,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
                   rules={faction ? rulesCache.current[faction] : null}
                   battleFormation={battleFormation}
                   setBattleFormation={setBattleFormation}
+                  hideScourge={hideScourgeOfGhyran}
                 />
               </div>
             )}
@@ -2265,6 +2284,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
                     sectionKey={s.section}
                     primaryFaction={faction}
                     primaryRules={faction ? rulesCache.current[faction] : null}
+                    hideScourge={hideScourgeOfGhyran}
                   />
                 ) : (
                   <HeroAssignmentStage
@@ -2278,6 +2298,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
                     primaryRules={faction ? rulesCache.current[faction] : null}
                     selectedOptions={selectedOptions}
                     setSelectedOptions={setSelectedOptions}
+                    hideScourge={hideScourgeOfGhyran}
                   />
                 )}
               </div>
