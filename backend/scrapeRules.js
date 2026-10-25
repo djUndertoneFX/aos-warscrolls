@@ -124,7 +124,7 @@ function parseAbilityBlock($, block, skipNestGuard = false) {
   // Spell/prayer/manifestation-lore abilities carry a casting value (the 2D6
   // target number) in a small badge in the header's corner — not part of the
   // declare/effect text at all, so it needs its own selector.
-  const castingValue = normalizeText($(block).find('.abSpellPointsN').first().text()) || null;
+  const castingValue = normalizeText($(block).find('.abSpellPointsN, .abPrayerPointsN').first().text()) || null;
 
   return {
     name,

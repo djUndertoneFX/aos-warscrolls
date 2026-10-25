@@ -240,6 +240,18 @@ async function scrapeFaction(faction) {
       const loreRaw = beforeDeclare.replace(new RegExp(firstBold.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[:\\s]*', 'i'), '').trim();
       const loreText = loreRaw.replace(/\s+/g, ' ').trim();
 
+      // Spell/prayer abilities carry a casting/chanting value (the target
+      // number) in a badge in the header corner — not in the declare/effect
+      // text — same .abSpellPointsN/.abPrayerPointsN selectors scrapeRules.js
+      // uses for lores. Wahapedia occasionally puts a spell's value in the
+      // command-point badge instead (e.g. Braggit's Bottle-Snatchaz' Sneaky
+      // Distraction), so fall back to that only when the text has a casting/
+      // chanting roll.
+      let castingValue = $(block).find('.abSpellPointsN, .abPrayerPointsN').first().text().replace(/\s+/g, ' ').trim() || null;
+      if (!castingValue && /(casting|chanting) roll of/i.test(bodyText)) {
+        castingValue = $(block).find('.abCommandPointsN').first().text().replace(/\s+/g, ' ').trim() || null;
+      }
+
       abilities.push({
         name:      firstBold,
         timing,
@@ -247,6 +259,7 @@ async function scrapeFaction(faction) {
         declare:   declareMatch ? declareMatch[1].replace(/\s+/g, ' ').trim() : '',
         effect:    effectIntro,
         bullets,
+        ...(castingValue ? { casting_value: castingValue } : {}),
       });
     });
 

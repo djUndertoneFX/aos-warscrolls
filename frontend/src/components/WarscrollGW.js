@@ -392,11 +392,21 @@ export function AbilityCard({ ab, keywords }) {
   // displayed timing text below.
   const ps      = getPhaseStyle(ab);
   const bullets = Array.isArray(ab.bullets) ? ab.bullets : [];
+  // Casting/chanting value badge (top-right corner). Scraped spells, prayers
+  // and unit abilities carry it as casting_value; hand-entered Spearhead
+  // enhancements don't, but their effect text opens with the target
+  // ("Effect: On a 7+, ..."), so derive it from that.
+  let castingValue = ab.casting_value;
+  if (!castingValue && /\b(casting|chanting) roll\b/i.test(ab.declare || '')) {
+    const m = (ab.effect || '').match(/^\s*On a (\d+)\+/i);
+    if (m) castingValue = m[1];
+  }
+  const isPrayer = /\bchanting roll\b/i.test(ab.declare || '');
 
   return (
     <div className="gw-ability-card" style={{ borderColor: ps.border }}>
-      {ab.casting_value && (
-        <div className="gw-ability-casting-value" title="Casting value">{ab.casting_value}</div>
+      {castingValue && (
+        <div className="gw-ability-casting-value" title={isPrayer ? 'Chanting value' : 'Casting value'}>{castingValue}</div>
       )}
       {ab.timing && (
         <div className="gw-ability-hdr" style={{ background: ps.hdrBg }}>
