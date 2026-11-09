@@ -1,46 +1,7 @@
-Rescrape merge — 2026-10-06 13:51:32
-New units: 2
-  + [Stormcast Eternals] krong the club (140 pts)
-  + [Stormcast Eternals] urrgars maulerguts (600 pts)
+Rescrape merge — 2026-11-09 13:53:56
+New units: 0
 Removed units: 0
-Changed units: 37
-  ~ [Stormcast Eternals] gardus steel soul: abilities
-  ~ [Stormcast Eternals] knightarcanum: points, abilities (points 120 -> 110)
-  ~ [Stormcast Eternals] knightazyros: points (points 110 -> 100)
-  ~ [Stormcast Eternals] knightquestor: points, abilities (points 110 -> 100)
-  ~ [Stormcast Eternals] lorai child of the abyss: abilities
-  ~ [Stormcast Eternals] tornus the redeemed: points (points 150 -> 140)
-  ~ [Stormcast Eternals] drakesworn templar: abilities
-  ~ [Stormcast Eternals] ionus cryptborn warden of lost souls: abilities
-  ~ [Stormcast Eternals] karazai the scarred: abilities
-  ~ [Stormcast Eternals] knightdraconis: points (points 230 -> 200)
-  ~ [Stormcast Eternals] krondys son of dracothion: abilities
-  ~ [Stormcast Eternals] lordcelestant on stardrake: abilities
-  ~ [Stormcast Eternals] scourge of aqshy iridan the witness: points (points 360 -> 320)
-  ~ [Stormcast Eternals] scourge of ghyran iridan the witness: is_legends
-  ~ [Stormcast Eternals] gryphhounds: points (points 90 -> 80)
-  ~ [Stormcast Eternals] stormstrike palladors: abilities
-  ~ [Stormcast Eternals] vanguardpalladors with shock handaxes: points (points 250 -> 240)
-  ~ [Stormcast Eternals] scourge of aqshy stormstrike palladors: points (points 220 -> 210)
-  ~ [Stormcast Eternals] evocators on celestial dracolines: abilities
-  ~ [Stormcast Eternals] neaves companions: abilities
-  ~ [Stormcast Eternals] praetors: abilities
-  ~ [Stormcast Eternals] questor soulsworn: abilities
-  ~ [Stormcast Eternals] vanguardhunters: points (points 120 -> 110)
-  ~ [Stormcast Eternals] judicators with boltstorm crossbows: abilities
-  ~ [Stormcast Eternals] protectors: abilities
-  ~ [Stormcast Eternals] stormdrake guard: points (points 310 -> 290)
-  ~ [Stormcast Eternals] stormdrake guard 1 model: points (points 160 -> 150)
-  ~ [Stormcast Eternals] dais arcanum: abilities
-  ~ [Stormcast Eternals] bundo whalebiter: points, abilities, flavor_text (points 450 -> 360)
-  ~ [Stormcast Eternals] cogfort raiders: points (points 450 -> 410)
-  ~ [Stormcast Eternals] drekkis privateers: points, abilities (points 500 -> 460)
-  ~ [Stormcast Eternals] elthwins thorns: points (points 220 -> 200)
-  ~ [Stormcast Eternals] heroes of the jade abbey: abilities
-  ~ [Stormcast Eternals] rogue engine: points (points 470 -> 450)
-  ~ [Stormcast Eternals] saviours of cinderfall: points (points 290 -> 270)
-  ~ [Stormcast Eternals] ven densts hounds: abilities
-  ~ [Stormcast Eternals] snerks troggferhire: points, abilities (points 220 -> 200)
+Changed units: 0
 faction_battle_traits: +0 -0 ~0
 faction_battle_formations: +0 -0 ~0
 faction_extra_rules: +0 -0 ~0
