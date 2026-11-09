@@ -1,5 +1,23 @@
-Rescrape merge — 2026-11-09 13:53:56
-New units: 0
+Rescrape merge — 2026-11-09 14:27:17
+New units: 18
+  + [Endless Spells] aethervoid pendulum
+  + [Endless Spells] chronomantic cogs
+  + [Endless Spells] quicksilver swords
+  + [Endless Spells] horrorghast
+  + [Endless Spells] lauchon the soulseeker
+  + [Endless Spells] soulscream bridge
+  + [Endless Spells] shards of valagharr
+  + [Endless Spells] krondspine incarnate of ghur
+  + [Endless Spells] malevolent maelstrom
+  + [Endless Spells] purple sun of shyish
+  + [Endless Spells] soulsnare shackles
+  + [Endless Spells] suffocating gravetide
+  + [Endless Spells] the burning head
+  + [Endless Spells] emerald lifeswarm
+  + [Endless Spells] ravenaks gnashing jaws
+  + [Endless Spells] geminids of uhlgysh
+  + [Endless Spells] prismatic palisade
+  + [Endless Spells] umbral spellportal
 Removed units: 0
 Changed units: 0
 faction_battle_traits: +0 -0 ~0
