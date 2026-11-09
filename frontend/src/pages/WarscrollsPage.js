@@ -206,7 +206,7 @@ function makeAdoKTooltip(includeSaveWard, save, ward) {
 }
 
 export default function WarscrollsPage({ headerCollapsed }) {
-  const { presumedSave, presumedWard, roundingMode, includeSaveWardInADO } = useSettings();
+  const { presumedSave, presumedWard, roundingMode, includeSaveWardInADO, showBaseSize, searchRespectsFilters } = useSettings();
   const { logout } = useAuth();
   const [data, setData]           = useState(null);
   const [factions, setFactions]   = useState([]);
@@ -428,7 +428,14 @@ export default function WarscrollsPage({ headerCollapsed }) {
         qEnemyFaction = '';
       }
 
-      const params = {
+      // Search Respects Filters (setting, default off): with it off, a search looks through every unit and
+      // only the sort and the search text are sent; the filters come back into play once Search is cleared.
+      const searchAll = !!search.trim() && !searchRespectsFilters;
+      const params = searchAll ? {
+        search,
+        sortBy: ['ado_ranged','ado_melee','ado_pct'].includes(sortBy) ? 'faction' : sortBy, sortDir, page,
+        pageSize: PAGE_SIZE,
+      } : {
         search,
         faction: qFaction,
         enemyFaction: qEnemyFaction,
@@ -462,7 +469,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
     } finally {
       setLoading(false);
     }
-  }, [search, faction, enemyFaction, alliance, sortBy, sortDir, page, isHero, isMonster, isInfantry, isCavalry, isBeast, isWarMachine, isTerrain, isManifestation, hideLegends, hideOtherFactions, hideScourgeOfGhyran, hideRoR, showFriendly, showEnemy, hasFriendlyMarks, hasEnemyMarks, addMode]);
+  }, [search, faction, enemyFaction, alliance, sortBy, sortDir, page, isHero, isMonster, isInfantry, isCavalry, isBeast, isWarMachine, isTerrain, isManifestation, hideLegends, hideOtherFactions, hideScourgeOfGhyran, hideRoR, showFriendly, showEnemy, hasFriendlyMarks, hasEnemyMarks, addMode, searchRespectsFilters]);
 
   // Leave add-unit mode if that side's filter gets unticked.
   useEffect(() => {
@@ -741,7 +748,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
   // ── Column resizing ──────────────────────────────────────────────────────
   const DEFAULT_COL_WIDTHS = {
     rownum: 22, friendly: 24, enemy: 24, expand: 22, thumb: 44,
-    name: 190, faction: 110, alliance: 66, models: 42,
+    name: 190, faction: 110, alliance: 66, models: 42, base: 78,
     move: 42, health: 42, control: 42, save: 42, ward: 38, points: 48,
     types: 68, keywords: 130,
     ado_ranged: 54, ado_melee: 54, ado_pct: 56,
@@ -871,6 +878,9 @@ export default function WarscrollsPage({ headerCollapsed }) {
             value={searchInput}
             onChange={e => setSearchInput(e.target.value)}
           />
+          {searchInput.trim() && !searchRespectsFilters && (
+            <div className="filter-hint" title="Settings → Search Respects Filters makes Search look only within the filters">Searching all units, filters ignored</div>
+          )}
         </div>
 
         <div className="filter-group">
@@ -996,6 +1006,9 @@ export default function WarscrollsPage({ headerCollapsed }) {
                         {col.key === 'name' && (
                           <th style={thStyle('thumb')}><span className="col-resize-handle" onMouseDown={e => startResize(e,'thumb')} /></th>
                         )}
+                        {col.key === 'unit_size' && showBaseSize && (
+                          <th style={thStyle('base')} title="Base size (Settings → Base Size)"><span className="th-abbr">Base</span><span className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); startResize(e, 'base'); }} /></th>
+                        )}
                       </React.Fragment>
                     );
                   })}
@@ -1035,7 +1048,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
                   const prev = rows[idx - 1];
                   const factionChanged = !prev || prev.faction !== row.faction;
                   const typeChanged    = !prev || prev.faction !== row.faction || unitTypeLabel(prev) !== unitTypeLabel(row);
-                  const colSpan = 20;
+                  const colSpan = showBaseSize ? 21 : 20;
                   return (
                     <React.Fragment key={row.id}>
                       {factionChanged && sortBy === 'faction' && (
@@ -1100,6 +1113,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
                         </td>
                         <td className="col-stat">{row.points || '—'}</td>
                         <td className="col-stat">{row.unit_size || '—'}</td>
+                        {showBaseSize && <td className="col-stat col-base">{row.base_size || '—'}</td>}
                         <td className="col-stat stat-group stat-group-start">{row.move || '—'}</td>
                         <td className="col-stat stat-group">{row.health || '—'}</td>
                         <td className="col-stat stat-group">{row.control || '—'}</td>
@@ -1125,7 +1139,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
                       </tr>
                       {(isExpanded || isFullExpanded) && (
                         <tr className="weapons-expand-row">
-                          <td colSpan={16}>
+                          <td colSpan={showBaseSize ? 17 : 16}>
                             <div className="weapons-expand-inner" onClick={e => e.stopPropagation()}>
                               {weapons.length === 0 && <span style={{color:'var(--text-dim)', fontStyle:'italic'}}>No weapon data available.</span>}
                               {ranged.length > 0 && (

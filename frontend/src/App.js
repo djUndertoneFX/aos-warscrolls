@@ -34,7 +34,7 @@ function SettingsPanel({ onClose, wrapRef }) {
   const {
     showFlavorText, presumedSave, presumedWard, roundingMode, includeSaveWardInADO,
     showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore,
-    linkPageSelections, useSpearheadAbilities,
+    linkPageSelections, useSpearheadAbilities, showBaseSize, searchRespectsFilters,
     setSetting,
   } = useSettings();
   const { user } = useAuth();
@@ -72,6 +72,16 @@ function SettingsPanel({ onClose, wrapRef }) {
         <input type="checkbox" checked={linkPageSelections}
           onChange={e => setSetting('linkPageSelections', e.target.checked)} />
         <span>Link Page Selections</span>
+      </label>
+      <label className="settings-cb-row" title="Adds a Base column (model base size) to the Warscrolls list">
+        <input type="checkbox" checked={showBaseSize}
+          onChange={e => setSetting('showBaseSize', e.target.checked)} />
+        <span>Base Size</span>
+      </label>
+      <label className="settings-cb-row" title="Off: Search looks through every unit, ignoring the filters. On: Search only looks within the active filters.">
+        <input type="checkbox" checked={searchRespectsFilters}
+          onChange={e => setSetting('searchRespectsFilters', e.target.checked)} />
+        <span>Search Respects Filters</span>
       </label>
       <div className="settings-panel-title settings-panel-title--sub">Faction Info</div>
       {[

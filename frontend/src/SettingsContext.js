@@ -23,6 +23,10 @@ export function SettingsProvider({ children }) {
   const [showManifestationLore, setShowManifestationLore] = useState(() => loadSetting('aos-fi-manifestation-lore', false));
   const [linkPageSelections,    setLinkPageSelections]    = useState(() => loadSetting('aos-setting-link-pages', false));
   const [useSpearheadAbilities, setUseSpearheadAbilities] = useState(() => loadSetting('aos-setting-sp-abilities', true));
+  // dj 2026-11-09: both default off. Base Size adds a Base column to the Warscrolls list. With Search Respects
+  // Filters off, typing in Search looks through every unit; on, it searches only within the active filters.
+  const [showBaseSize,          setShowBaseSize]          = useState(() => loadSetting('aos-setting-base-size', false));
+  const [searchRespectsFilters, setSearchRespectsFilters] = useState(() => loadSetting('aos-setting-search-filters', false));
 
   const setSetting = (key, value) => {
     const persist = (k, v) => localStorage.setItem(k, JSON.stringify(v));
@@ -41,6 +45,8 @@ export function SettingsProvider({ children }) {
       case 'showManifestationLore': setShowManifestationLore(value); persist('aos-fi-manifestation-lore', value);     break;
       case 'linkPageSelections':    setLinkPageSelections(value);    persist('aos-setting-link-pages', value);         break;
       case 'useSpearheadAbilities': setUseSpearheadAbilities(value); persist('aos-setting-sp-abilities', value);       break;
+      case 'showBaseSize':          setShowBaseSize(value);          persist('aos-setting-base-size', value);          break;
+      case 'searchRespectsFilters': setSearchRespectsFilters(value); persist('aos-setting-search-filters', value);     break;
       default: break;
     }
   };
@@ -49,7 +55,7 @@ export function SettingsProvider({ children }) {
     <SettingsContext.Provider value={{
       showFlavorText, calculateDynamicADO, presumedSave, presumedWard, roundingMode, includeSaveWardInADO,
       showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore,
-      linkPageSelections, useSpearheadAbilities,
+      linkPageSelections, useSpearheadAbilities, showBaseSize, searchRespectsFilters,
       setSetting,
     }}>
       {children}

@@ -6149,3 +6149,7 @@ textarea.ptg-doc-overlay-input {
 .bb-ws-stats { display: flex; flex-wrap: wrap; gap: 0.15rem 0.6rem; font-size: 0.76rem; color: var(--text-dim); }
 .bb-ws-pts { font-size: 0.74rem; color: var(--gold); }
 @media (max-width: 900px) { .bb-ws-view.dual { grid-template-columns: 1fr; } }
+
+/* dj 2026-11-09: Base column (Settings → Base Size) and the search-scope note under Search */
+.col-base { white-space: nowrap; font-size: 0.85em; }
+.filter-hint { margin-top: 3px; font-size: 0.72rem; color: var(--text-dim); font-style: italic; white-space: nowrap; }
