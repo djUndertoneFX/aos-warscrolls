@@ -44,6 +44,9 @@ const FACTIONS = [
   { slug: 'kruleboyz',            name: 'Kruleboyz',             alliance: 'Destruction' },
   { slug: 'ogor-mawtribes',       name: 'Ogor Mawtribes',        alliance: 'Destruction' },
   { slug: 'sons-of-behemat',      name: 'Sons of Behemat',       alliance: 'Destruction' },
+  // Universal manifestations (dj 2026-11-09: Krondspine Incarnate of Ghur was missing). Wahapedia keeps them on
+  // their own 'Endless Spells' faction page; they belong to no Grand Alliance.
+  { slug: 'endless-spells',       name: 'Endless Spells',        alliance: 'Universal' },
 ];
 
 // The community data source mixes Cyrillic and Greek homoglyphs into English text.

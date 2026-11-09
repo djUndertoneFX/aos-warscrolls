@@ -2770,6 +2770,7 @@ td.col-keywords {
 .alliance-Chaos    { background: rgba(139,26,26,0.25); color: #e08080; border: 1px solid rgba(139,26,26,0.4); }
 .alliance-Death    { background: rgba(74,26,107,0.25); color: #b080d0; border: 1px solid rgba(74,26,107,0.4); }
 .alliance-Destruction { background: rgba(42,107,26,0.25); color: #80c070; border: 1px solid rgba(42,107,26,0.4); }
+.alliance-Universal { background: rgba(140,140,150,0.18); color: #c8c8d0; border: 1px solid rgba(160,160,170,0.4); }
 
 /* Unit type icons */
 .type-tags { display: flex; gap: 4px; flex-wrap: wrap; }
