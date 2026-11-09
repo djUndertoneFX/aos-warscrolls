@@ -46,7 +46,8 @@ const FACTIONS = [
   { slug: 'sons-of-behemat',      name: 'Sons of Behemat',       alliance: 'Destruction' },
   // Universal manifestations (dj 2026-11-09: Krondspine Incarnate of Ghur was missing). Wahapedia keeps them on
   // their own 'Endless Spells' faction page; they belong to no Grand Alliance.
-  { slug: 'endless-spells',       name: 'Endless Spells',        alliance: 'Universal' },
+  // No warscrolls.html there (404): the datasheets are on the page's index, hence page: ''.
+  { slug: 'endless-spells',       name: 'Endless Spells',        alliance: 'Universal', page: '' },
 ];
 
 // The community data source mixes Cyrillic and Greek homoglyphs into English text.
@@ -89,7 +90,7 @@ function sleep(ms) {
 }
 
 async function scrapeFaction(faction) {
-  const url = `${BASE_URL}/${faction.slug}/warscrolls.html`;
+  const url = `${BASE_URL}/${faction.slug}/${faction.page ?? 'warscrolls.html'}`;
   console.log(`  Fetching: ${url}`);
 
   let html;
@@ -196,11 +197,13 @@ async function scrapeFaction(faction) {
     // Parse abilities from .BreakInsideAvoid blocks
     const abilities = [];
     const seenAbilityNames = new Set();
-    $(el).find('.BreakInsideAvoid').each((_, block) => {
-      // Skip if this block is nested inside another .BreakInsideAvoid (avoids double-parse)
-      if ($(block).parents('.BreakInsideAvoid').length > 0) return;
-      const abBody = $(block).find('.abBody').first();
-      if (!abBody.length) return;
+    // One pass per ability body. Each ability sits in its own .BreakInsideAvoid (header table + .abBody), but
+    // Wahapedia sometimes nests the next ability's block inside the previous one's (e.g. Krondspine Incarnate of
+    // Ghur), and reading only the first .abBody of each top-level block dropped those (dj 2026-11-09).
+    $(el).find('.abBody').each((_, abEl) => {
+      const abBody = $(abEl);
+      const block = abBody.closest('.BreakInsideAvoid').get(0);
+      if (!block) return;
       const timing = $(block).find('.abHeader').first().clone().find('img').remove().end().text().trim();
       const firstBold = abBody.find('b').first().text().replace(/:/g, '').trim();
       if (!firstBold || firstBold === 'Effect' || firstBold === 'KEYWORDS') return;
