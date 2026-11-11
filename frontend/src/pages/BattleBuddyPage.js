@@ -1143,18 +1143,32 @@ function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey, c
   // one-handed way to check both sides without reaching for the mouse.
   // Only active in single view (dual already shows both at once); doesn't
   // fire while typing in a field elsewhere on the page.
+  //
+  // dj 2026-11-11: ↑/↓ do the same swap, to match the warscroll popup on the
+  // other pages — but only while the popup is actually open, because this page
+  // also gives ↑/↓ to the phase ribbon below and that keeps them the rest of
+  // the time. ↑ is always Friendly and ↓ always Enemy (PageUp/PageDown toggle),
+  // so holding a key can't bounce you between sides.
   useEffect(() => {
     if (viewMode !== 'single') return;
     const onKeyDown = (e) => {
-      if (e.key !== 'PageUp' && e.key !== 'PageDown') return;
+      const arrow = (e.key === 'ArrowUp' || e.key === 'ArrowDown') && isWarscrollPopupOpen();
+      if (e.key !== 'PageUp' && e.key !== 'PageDown' && !arrow) return;
       const tag = document.activeElement?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.isContentEditable) return;
       e.preventDefault();
-      setSingleSide(s => (s === 'friendly' ? 'enemy' : 'friendly'));
+      if (!arrow) { setSingleSide(s => (s === 'friendly' ? 'enemy' : 'friendly')); return; }
+      const side = e.key === 'ArrowUp' ? 'friendly' : 'enemy';
+      setSingleSide(side);
+      // The popup is what you are actually looking at, so carry it over to the
+      // other side's first unit. Without this the list behind the modal swaps
+      // and the warscroll on top of it doesn't, so the key looks dead.
+      const units = (side === 'friendly' ? friendly : enemy)?.units;
+      if (units?.length) setWsOpen({ side, id: units[0].id });
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [viewMode]);
+  }, [viewMode, friendly, enemy, setWsOpen]);
 
   // Up/Down step through the phase ribbon in book order, wrapping past
   // either end — active in both Single and Dual View (unlike PageUp/Down
