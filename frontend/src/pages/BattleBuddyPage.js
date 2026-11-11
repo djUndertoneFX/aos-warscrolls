@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import WarscrollGW, { AbilityCard } from '../components/WarscrollGW';
+import WarscrollGW, { AbilityCard, isWarscrollPopupOpen } from '../components/WarscrollGW';
 import VoiceControlWidget from '../components/VoiceControlWidget';
 import { useVoiceCommands } from '../VoiceControlContext';
 
@@ -1174,6 +1174,9 @@ function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey, c
   useEffect(() => {
     const onKeyDown = (e) => {
       if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+      // The warscroll popup uses ↑/↓ to step factions, and it is opened from
+      // this page too — while it is up the phase keeps its hands off them.
+      if (isWarscrollPopupOpen()) return;
       const tag = document.activeElement?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.isContentEditable) return;
       e.preventDefault();

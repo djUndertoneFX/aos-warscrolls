@@ -30,6 +30,14 @@ export function prefetchFactionRules(slugs) {
   }
 }
 
+// The warscroll popup binds ←/→ and (dj 2026-11-11) ↑/↓ on `window`, and so do
+// some of the pages that open it — BattleBuddy's Fight step steps the battle
+// phase with ↑/↓. Both listeners sit on `window`, so neither can stop the other
+// by propagation; the page has to stand down instead. Counted rather than a
+// boolean so an unmount can never clear the flag for a popup that is still up.
+let openPopupCount = 0;
+export const isWarscrollPopupOpen = () => openPopupCount > 0;
+
 // ── White-removal canvas image ───────────────────────────────────────────────
 export function TransparentImage({ src, alt, className, onError }) {
   const canvasRef = useRef(null);
@@ -1756,6 +1764,27 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
     onNext?.();
   }, [activePage, navIndex, factionGroups, currentGroupIdx, isSpMode, spearheadNavGroups, getSpSlides, resolveSlidesFor, getSlidesForSlug, onNext, onJump]);
 
+  // dj 2026-11-11: ←/→ walk unit pages one at a time; ↑/↓ jump a whole faction
+  // at a time, landing on that faction's first unit. Works from a purple
+  // faction-info slide too — that slide knows which group it belongs to. In
+  // Spearhead mode the nav groups are spearheads rather than factions, so the
+  // same keys step those: it is the same "whole group at a time" move.
+  // Single-pane only; in split view ←/→ already belong to the focused pane.
+  const handleFactionStep = useCallback((dir) => {
+    const groups = isSpMode ? spearheadNavGroups : factionGroups;
+    if (groups.length < 2) return;
+    const gi = activePage !== null
+      ? (isSpMode
+          ? groups.findIndex(g => g.spearheadName === activePage.spearheadName)
+          : groups.findIndex(g => g.startIdx === activePage.groupStartIdx || g.faction_slug === activePage.factionSlug))
+      : groups.findIndex(g => navIndex >= g.startIdx && navIndex <= g.endIdx);
+    if (gi < 0) return;
+    const target = groups[gi + dir];
+    if (!target) return;                 // already at the first/last faction: stay put
+    setActivePage(null);
+    onJump?.(target.startIdx);
+  }, [isSpMode, spearheadNavGroups, factionGroups, activePage, navIndex, onJump]);
+
   // Split-pane view: independently browse a friendly unit and an enemy unit
   // side by side. Only offered when the parent page can supply both lists
   // (i.e. the user has flagged at least one unit on each side, or a Faction/
@@ -1815,8 +1844,10 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
     setSplitView(false);
   };
 
-  // Keyboard: Escape=close, ←=prev, →=next, PageUp=friendly only, PageDown=enemy only.
-  // In split view, ←/→ apply to whichever pane currently has focus instead.
+  // Keyboard: Escape=close, ←=prev, →=next, ↑/↓=previous/next faction,
+  // PageUp=friendly only, PageDown=enemy only.
+  // In split view, ←/→ apply to whichever pane currently has focus instead, and
+  // ↑/↓ do nothing — there is no single faction on screen to step away from.
   useEffect(() => {
     const h = e => {
       if (e.key === 'Escape')      onClose();
@@ -1830,16 +1861,27 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
         if (showSplit) { (focusedPane === 'left' ? leftPaneApiRef : rightPaneApiRef).current?.next(); }
         else handleNext();
       }
+      if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !showSplit) {
+        e.preventDefault();
+        handleFactionStep(e.key === 'ArrowDown' ? 1 : -1);
+      }
       if (e.key === 'PageUp')     { e.preventDefault(); onShowFriendlyOnly?.(); }
       if (e.key === 'PageDown')   { e.preventDefault(); onShowEnemyOnly?.(); }
     };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
-  }, [onClose, handlePrev, handleNext, onShowFriendlyOnly, onShowEnemyOnly, showSplit, focusedPane]);
+  }, [onClose, handlePrev, handleNext, handleFactionStep, onShowFriendlyOnly, onShowEnemyOnly, showSplit, focusedPane]);
 
   // Touch swipe navigation for single-pane mode; split panes handle their
   // own swipe internally (see SplitPane).
   useSwipeNav(scrollRef, handlePrev, handleNext, !showSplit);
+
+  // See `openPopupCount` at the top of the file: while this modal is up, pages
+  // with their own window-level arrow-key hotkeys yield to it.
+  useEffect(() => {
+    openPopupCount++;
+    return () => { openPopupCount--; };
+  }, []);
 
   // Lock viewport zoom while modal is open; scroll to top on orientation change
   useEffect(() => {
