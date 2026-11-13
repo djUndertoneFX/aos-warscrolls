@@ -6154,3 +6154,46 @@ textarea.ptg-doc-overlay-input {
 /* dj 2026-11-09: Base column (Settings → Base Size) and the search-scope note under Search */
 .col-base { white-space: nowrap; font-size: 0.85em; }
 .filter-hint { margin-top: 3px; font-size: 0.72rem; color: var(--text-dim); font-style: italic; white-space: nowrap; }
+
+/* ── Share links (Army Builder / Path to Glory) ── */
+.share-btn {
+  font-family: 'Cinzel', serif;
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--gold, #c9a84c);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--gold, #c9a84c);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.share-btn:hover { background: rgba(201, 168, 76, 0.15); }
+.ptg-header-levelup { flex-direction: column; gap: 0.35rem; }
+.share-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 1.5rem;
+  transform: translateX(-50%);
+  z-index: 3000;
+  max-width: min(92vw, 560px);
+  padding: 0.7rem 1rem;
+  border: 1px solid var(--gold, #c9a84c);
+  border-radius: 6px;
+  background: #1b1712;
+  color: #f1e6c8;
+  font-size: 0.9rem;
+  text-align: center;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+}
+.share-toast-url {
+  display: block;
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.3rem 0.4rem;
+  font-size: 0.8rem;
+  background: #0f0d0a;
+  color: #f1e6c8;
+  border: 1px solid #5a4a2a;
+  border-radius: 3px;
+}

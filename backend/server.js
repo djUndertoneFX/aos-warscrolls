@@ -1226,6 +1226,90 @@ app.delete('/api/army-builder-lists/:id', requireAuth, (req, res) => {
   }
 });
 
+// ── Shared list links ───────────────────────────────────────────────────────
+// POST /api/share — snapshot the sender's current list and return a token.
+// Body: { kind: 'army'|'ptg', source_key, name, faction_slug, faction_name, data }.
+// The client sends its live state (not a list id), so a share never misses an
+// edit the debounced autosave hasn't flushed yet. Re-sharing the same
+// source_key keeps the same token and refreshes the snapshot.
+app.post('/api/share', requireAuth, (req, res) => {
+  const { kind, source_key, name, faction_slug, faction_name, data } = req.body || {};
+  if (kind !== 'army' && kind !== 'ptg') return res.status(400).json({ error: 'kind must be army or ptg' });
+  if (!data) return res.status(400).json({ error: 'data is required' });
+  const key = String(source_key ?? name ?? 'default').slice(0, 200);
+  const listName = String(name || (kind === 'army' ? 'Army List' : 'Path to Glory Roster')).slice(0, 200);
+  const db = getDb();
+  try {
+    const existing = db.prepare('SELECT token FROM shared_lists WHERE user_id = ? AND kind = ? AND source_key = ?').get(req.user.id, kind, key);
+    let token;
+    if (existing) {
+      token = existing.token;
+      db.prepare(
+        'UPDATE shared_lists SET name = ?, faction_slug = ?, faction_name = ?, data = ?, updated_at = CURRENT_TIMESTAMP WHERE token = ?'
+      ).run(listName, faction_slug || null, faction_name || null, JSON.stringify(data), token);
+    } else {
+      token = crypto.randomBytes(9).toString('base64url');
+      db.prepare(
+        'INSERT INTO shared_lists (token, kind, user_id, source_key, name, faction_slug, faction_name, data) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+      ).run(token, kind, req.user.id, key, listName, faction_slug || null, faction_name || null, JSON.stringify(data));
+    }
+    res.json({ token, kind });
+  } finally {
+    db.close();
+  }
+});
+
+// POST /api/share/:token/open — copy a shared list into the caller's account
+// as an enemy list (Army Builder: list_type 'enemy'; Path to Glory: a saved
+// roster prefixed "Enemy:"). Opening the same link again re-uses the copy
+// made last time, refreshing it if the sender has re-shared since.
+app.post('/api/share/:token/open', requireAuth, (req, res) => {
+  const db = getDb();
+  try {
+    const share = db.prepare('SELECT * FROM shared_lists WHERE token = ?').get(req.params.token);
+    if (!share) return res.status(404).json({ error: 'This shared list link is invalid or has been removed.' });
+    const sender = db.prepare('SELECT username, commander_name FROM users WHERE id = ?').get(share.user_id);
+    const senderName = sender ? (sender.commander_name || sender.username) : 'unknown';
+    const table = share.kind === 'army' ? 'army_builder_lists' : 'ptg_rosters';
+    const copyName = share.kind === 'army'
+      ? `${share.name} (${senderName})`
+      : `Enemy: ${share.name} (${senderName})`;
+
+    const prior = db.prepare('SELECT target_id, imported_at FROM shared_list_imports WHERE token = ? AND user_id = ?').get(share.token, req.user.id);
+    const priorRow = prior && db.prepare(`SELECT id FROM ${table} WHERE id = ? AND user_id = ?`).get(prior.target_id, req.user.id);
+
+    let id;
+    let refreshed = false;
+    if (priorRow) {
+      id = priorRow.id;
+      if (share.updated_at > prior.imported_at) {
+        db.prepare(`UPDATE ${table} SET faction_slug = ?, faction_name = ?, data = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
+          .run(share.faction_slug, share.faction_name, share.data, id);
+        db.prepare('UPDATE shared_list_imports SET imported_at = CURRENT_TIMESTAMP WHERE token = ? AND user_id = ?').run(share.token, req.user.id);
+        refreshed = true;
+      }
+    } else {
+      const info = share.kind === 'army'
+        ? db.prepare("INSERT INTO army_builder_lists (user_id, name, faction_slug, faction_name, data, list_type) VALUES (?, ?, ?, ?, ?, 'enemy')")
+            .run(req.user.id, copyName, share.faction_slug, share.faction_name, share.data)
+        : db.prepare('INSERT INTO ptg_rosters (user_id, name, faction_slug, faction_name, data) VALUES (?, ?, ?, ?, ?)')
+            .run(req.user.id, copyName, share.faction_slug, share.faction_name, share.data);
+      id = Number(info.lastInsertRowid);
+      db.prepare(
+        'INSERT INTO shared_list_imports (token, user_id, target_id) VALUES (?, ?, ?) ON CONFLICT(token, user_id) DO UPDATE SET target_id = excluded.target_id, imported_at = CURRENT_TIMESTAMP'
+      ).run(share.token, req.user.id, id);
+    }
+
+    const row = db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(id);
+    res.json({ kind: share.kind, id, name: row.name, sender: senderName, created: !priorRow, refreshed });
+    if (share.kind === 'army' && (!priorRow || refreshed)) {
+      broadcastListChange(req.user.id, req.headers['x-client-id'], 'list-upsert', { ...row, data: JSON.parse(row.data) });
+    }
+  } finally {
+    db.close();
+  }
+});
+
 // PUT /api/spearhead-image/:name — upload cover art for a spearhead (protected)
 app.put('/api/spearhead-image/:name', (req, res) => {
   if (req.headers['x-upload-secret'] !== process.env.UPLOAD_SECRET) return res.status(403).json({ error: 'Forbidden' });

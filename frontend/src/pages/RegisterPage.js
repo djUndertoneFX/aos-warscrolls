@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
+import { afterLoginPath } from '../shareLink';
 
 export default function RegisterPage() {
   const { register } = useAuth();
@@ -21,7 +22,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       await register(form.username, form.email, form.password);
-      navigate('/warscrolls');
+      navigate(afterLoginPath(), { replace: true });
     } catch (err) {
       setError(err.response?.data?.error || 'Registration failed. Please try again.');
     } finally {

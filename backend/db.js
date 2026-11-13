@@ -281,6 +281,37 @@ function initDb() {
     CREATE INDEX IF NOT EXISTS idx_army_builder_lists_user ON army_builder_lists(user_id);
   `);
 
+  // Shared list links — "Share" on Army Builder / Path to Glory snapshots the
+  // sender's list under a random token; opening /army-builder?share=TOKEN
+  // (or /path-to-glory?share=TOKEN) copies it into the recipient's account as
+  // an enemy list. One token per (sender, kind, source_key) so re-sharing the
+  // same list refreshes the snapshot behind the same link.
+  // shared_list_imports remembers which copy a recipient already made from a
+  // token, so opening the link again re-selects (and refreshes) that copy
+  // instead of piling up duplicates.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS shared_lists (
+      token TEXT PRIMARY KEY,
+      kind TEXT NOT NULL,
+      user_id INTEGER NOT NULL,
+      source_key TEXT NOT NULL,
+      name TEXT NOT NULL,
+      faction_slug TEXT,
+      faction_name TEXT,
+      data TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE (user_id, kind, source_key)
+    );
+    CREATE TABLE IF NOT EXISTS shared_list_imports (
+      token TEXT NOT NULL,
+      user_id INTEGER NOT NULL,
+      target_id INTEGER NOT NULL,
+      imported_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (token, user_id)
+    );
+  `);
+
   // Core Rules "Commands" (Command Point abilities) — scraped once from
   // Wahapedia's core-rules page (not faction-specific, so no faction_slug),
   // grouped by the book's own phase-named sections (Hero/Movement/Shooting/

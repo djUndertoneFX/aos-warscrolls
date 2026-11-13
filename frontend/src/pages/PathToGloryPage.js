@@ -8,6 +8,7 @@ import { useSettings } from '../SettingsContext';
 import { useAuth } from '../AuthContext';
 import { calcWeaponADO, resolveWeaponLoadout } from '../awoCalc';
 import VoiceControlWidget from '../components/VoiceControlWidget';
+import { createAndCopyShareLink, getShareParam, clearShareParam, ShareToast } from '../shareLink';
 
 function sumADO(weapons, unitSize, save, ward, rounding) {
   let total = 0, any = false;
@@ -290,7 +291,81 @@ export default function PathToGloryPage({ headerCollapsed }) {
   };
   const handleDeleteRoster = async (id) => {
     if (!window.confirm('Delete this saved roster? This cannot be undone.')) return;
-    try { await axios.delete(`/api/ptg-rosters/${id}`); fetchPtgRosters(); } catch { /* ignore */ }
+    try {
+      await axios.delete(`/api/ptg-rosters/${id}`);
+      fetchPtgRosters();
+      if (enemyRoster && String(enemyRoster.id) === String(id)) setEnemyRosterPersist(null);
+    } catch { /* ignore */ }
+  };
+
+  // ── Enemy roster + share links ──
+  // The roster last picked from (or shared into) the Enemy Roster slot; its
+  // name becomes that dropdown's label. Remembered per browser.
+  const ENEMY_ROSTER_KEY = 'aos-ptg-enemy-roster';
+  const [enemyRoster, setEnemyRoster] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(ENEMY_ROSTER_KEY)) || null; } catch { return null; }
+  });
+  const setEnemyRosterPersist = (r) => {
+    setEnemyRoster(r);
+    try { r ? localStorage.setItem(ENEMY_ROSTER_KEY, JSON.stringify(r)) : localStorage.removeItem(ENEMY_ROSTER_KEY); } catch {}
+  };
+  const handleLoadEnemyRoster = (id) => {
+    const r = ptgRosters.find(x => String(x.id) === String(id));
+    if (r) setEnemyRosterPersist({ id: r.id, name: r.name });
+    handleLoadRoster(id);
+  };
+  const [shareMsg, setShareMsg] = useState(null);
+
+  // Opening /path-to-glory?share=TOKEN saves the sender's roster into this
+  // account ("Enemy: <name> (<sender>)"), makes it the Enemy Roster, and
+  // offers to open it in the wizard now (which replaces unsaved progress).
+  const shareHandled = useRef(false);
+  useEffect(() => {
+    if (shareHandled.current) return;
+    const token = getShareParam();
+    if (!token) return;
+    shareHandled.current = true;
+    (async () => {
+      try {
+        const { data: res } = await axios.post(`/api/share/${encodeURIComponent(token)}/open`);
+        if (res.kind !== 'ptg') { setShareMsg({ text: 'That link is for an Army Builder list — open it on the Army Builder page.' }); return; }
+        await fetchPtgRosters();
+        setEnemyRosterPersist({ id: res.id, name: res.name });
+        clearShareParam();
+        const verb = res.created ? 'Saved' : res.refreshed ? 'Updated' : 'You already have';
+        const hasProgress = !!localStorage.getItem(RECRUIT_WIZARD_KEY);
+        const openNow = window.confirm(
+          `${verb} ${res.sender}'s roster as your enemy: "${res.name}".\n\n` +
+          (hasProgress
+            ? 'Open it in the wizard now? This replaces the wizard\'s current progress (unsaved changes will be lost). Cancel keeps it in your Enemy Roster list.'
+            : 'Open it in the wizard now?'));
+        if (openNow) handleLoadRoster(res.id);
+        else setShareMsg({ text: `"${res.name}" is in your Enemy Roster list.` });
+      } catch (err) {
+        clearShareParam();
+        setShareMsg({ text: err.response?.data?.error || 'Could not open that shared roster.' });
+      }
+    })();
+  }, []); // eslint-disable-line
+
+  const handleShareRoster = async () => {
+    const raw = localStorage.getItem(RECRUIT_WIZARD_KEY);
+    let data = null; try { data = JSON.parse(raw); } catch {}
+    if (!data) { setShareMsg({ text: 'Nothing to share yet — open Recruit Your Forces first.' }); return; }
+    const name = data.armyName || data.warlordName || 'Path to Glory Roster';
+    const factionSlug = data.faction || data.selectedFaction || null;
+    const factionObj = factions.find(f => f.faction_slug === factionSlug);
+    try {
+      const { url, copied } = await createAndCopyShareLink({
+        kind: 'ptg', source_key: name, name,
+        faction_slug: factionSlug, faction_name: factionObj ? factionObj.faction : null, data,
+      });
+      setShareMsg(copied
+        ? { text: 'Share link copied — send it to your opponent. It opens this roster as their enemy.' }
+        : { text: "Couldn't reach the clipboard — copy this link:", url });
+    } catch (err) {
+      setShareMsg({ text: err.response?.data?.error || 'Sharing failed — try again.' });
+    }
   };
   const handleStartFromScratch = () => {
     if (!window.confirm('Start from scratch? This wipes the wizard\'s current progress (any unsaved changes will be lost).')) return;
@@ -805,9 +880,9 @@ export default function PathToGloryPage({ headerCollapsed }) {
           </div>
           <div className="ptg-stagger-item">
             <RosterDropdown
-              label="Enemy Roster"
+              label={enemyRoster ? enemyRoster.name : 'Enemy Roster'}
               rosters={ptgRosters}
-              onLoad={handleLoadRoster}
+              onLoad={handleLoadEnemyRoster}
               onDuplicate={handleDuplicateRoster}
               onDelete={handleDeleteRoster}
               onStartFromScratch={handleStartFromScratch}
@@ -820,6 +895,8 @@ export default function PathToGloryPage({ headerCollapsed }) {
           <button className="ptg-action-btn ptg-action-btn-secondary" onClick={() => {}}>
             Level Up!
           </button>
+          <button className="share-btn" onClick={handleShareRoster} title="Copy a link to the roster in the wizard. Whoever opens it gets it as their Enemy Roster.">🔗 Share</button>
+          <ShareToast msg={shareMsg} onClose={() => setShareMsg(null)} />
         </div>
 
         {data && (

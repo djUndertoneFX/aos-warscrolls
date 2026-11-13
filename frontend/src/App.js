@@ -13,6 +13,7 @@ import BattleBuddyPage from './pages/BattleBuddyPage';
 import SimulacrumPage from './pages/SimulacrumPage';
 import SpearheadPage from './pages/SpearheadPage';
 import PathToGloryPage from './pages/PathToGloryPage';
+import { rememberAfterLogin, afterLoginPath, clearAfterLoginIf } from './shareLink';
 import './styles.css';
 
 const NAV_PAGES = [
@@ -226,8 +227,16 @@ function ComingSoon({ title }) {
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
+  const here = location.pathname + location.search;
+  useEffect(() => { if (user) clearAfterLoginIf(here); }, [user, here]);
   if (loading) return null;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) {
+    // Only worth remembering when there's something specific to come back
+    // to (a share link) — a plain visit still lands on Warscrolls as before.
+    if (location.search) rememberAfterLogin(here);
+    return <Navigate to="/login" replace />;
+  }
   return children;
 }
 
@@ -249,8 +258,8 @@ function AppRoutes() {
     <div className="app-layout">
       <Navbar headerCollapsed={headerCollapsed} onToggleCollapse={toggleCollapsed} />
       <Routes>
-        <Route path="/login"            element={user ? <Navigate to="/warscrolls" /> : <LoginPage />} />
-        <Route path="/register"         element={user ? <Navigate to="/warscrolls" /> : <RegisterPage />} />
+        <Route path="/login"            element={user ? <Navigate to={afterLoginPath()} replace /> : <LoginPage />} />
+        <Route path="/register"         element={user ? <Navigate to={afterLoginPath()} replace /> : <RegisterPage />} />
         <Route path="/forgot-password"  element={user ? <Navigate to="/warscrolls" /> : <ForgotPasswordPage />} />
         <Route path="/reset-password"   element={<ResetPasswordPage />} />
         <Route path="/warscrolls" element={

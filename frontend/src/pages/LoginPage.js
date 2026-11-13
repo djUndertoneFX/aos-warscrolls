@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
+import { afterLoginPath } from '../shareLink';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -16,7 +17,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(form.login, form.password);
-      navigate('/warscrolls');
+      navigate(afterLoginPath(), { replace: true });
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed. Check your credentials.');
     } finally {

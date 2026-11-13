@@ -6,6 +6,7 @@ import { useSettings } from '../SettingsContext';
 import { useAuth } from '../AuthContext';
 import { calcWeaponADO, resolveWeaponLoadout } from '../awoCalc';
 import VoiceControlWidget from '../components/VoiceControlWidget';
+import { createAndCopyShareLink, getShareParam, clearShareParam, ShareToast } from '../shareLink';
 
 function parseBullets(raw) {
   try { return JSON.parse(raw || '[]'); } catch { return []; }
@@ -1337,6 +1338,58 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
     return () => es.close();
   }, [listsLoading, loadListIntoState]); // eslint-disable-line
 
+  // ── Share links ──
+  // Opening /army-builder?share=TOKEN copies the sender's list into this
+  // account as an Enemy List (or re-selects the copy made last time) and
+  // opens it. Runs once the account's own lists have loaded.
+  const [shareMsg, setShareMsg] = useState(null);
+  const shareHandled = useRef(false);
+  useEffect(() => {
+    if (listsLoading || shareHandled.current) return;
+    const token = getShareParam();
+    if (!token) return;
+    shareHandled.current = true;
+    (async () => {
+      try {
+        const { data: res } = await axios.post(`/api/share/${encodeURIComponent(token)}/open`, null, clientIdHeader());
+        const id = String(res.id);
+        const { data: full } = await axios.get(`/api/army-builder-lists/${id}`);
+        setListsStore(prev => ({
+          activeListId: id,
+          lists: { ...prev.lists, [id]: { name: full.name, faction_slug: full.faction_slug, faction_name: full.faction_name, list_type: full.list_type || 'enemy' } },
+        }));
+        loadListIntoState(full.data);
+        try { localStorage.setItem(LAST_ACTIVE_KEY, id); } catch {}
+        setShareMsg({ text: res.created
+          ? `Loaded ${res.sender}'s list as your enemy: "${full.name}"`
+          : res.refreshed ? `Updated your enemy list "${full.name}" to ${res.sender}'s latest version`
+          : `Opened your enemy list "${full.name}"` });
+      } catch (err) {
+        setShareMsg({ text: err.response?.data?.error || 'Could not open that shared list.' });
+      } finally {
+        clearShareParam();
+      }
+    })();
+  }, [listsLoading]); // eslint-disable-line
+
+  const shareCurrentList = async () => {
+    const id = activeListIdRef.current;
+    const meta = listsStore.lists[id];
+    const factionName = factions.find(f => f.faction_slug === faction)?.faction ?? null;
+    try {
+      const { url, copied } = await createAndCopyShareLink({
+        kind: 'army', source_key: String(id), name: meta?.name || 'Army List',
+        faction_slug: faction || null, faction_name: factionName,
+        data: listToDataBlob({ faction, pointsLimit, roster, rosterOrder, battleFormation, heroAssignments, activeStage, armyRosterDoc, selectedOptions }),
+      });
+      setShareMsg(copied
+        ? { text: 'Share link copied — send it to your opponent. It opens this list as their enemy.' }
+        : { text: "Couldn't reach the clipboard — copy this link:", url });
+    } catch (err) {
+      setShareMsg({ text: err.response?.data?.error || 'Sharing failed — try again.' });
+    }
+  };
+
   const selectList = async (id) => {
     if (!listsStore.lists[id] || id === activeListId) return;
     try {
@@ -2056,6 +2109,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
         <div className="ab-header-cell ab-header-roster">
           <ArmyRosterThumb onClick={() => setRosterDocOpen(true)} />
           <div className="ab-roster-thumb-label">Army Roster</div>
+          <button className="share-btn" onClick={shareCurrentList} title="Copy a link to this list. Whoever opens it gets it as an Enemy List.">🔗 Share</button>
         </div>
 
         <div className="ab-header-cell ab-header-list ab-header-enemy-list">
@@ -2088,6 +2142,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
 
         <VoiceControlWidget />
       </div>
+      <ShareToast msg={shareMsg} onClose={() => setShareMsg(null)} />
 
       {activeStage === 'units' && (
         <>
