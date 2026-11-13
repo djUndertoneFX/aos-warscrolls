@@ -6197,3 +6197,11 @@ textarea.ptg-doc-overlay-input {
   border: 1px solid #5a4a2a;
   border-radius: 3px;
 }
+
+/* ── Path to Glory Enemy Roster ── */
+.ptg-roster-dropdown-enemy .faction-dropdown-trigger { border-color: #8b2e2e; }
+.ptg-roster-dropdown-set .faction-dropdown-trigger { color: #e58a8a; max-width: 220px; }
+.ptg-roster-dropdown-set .faction-dropdown-trigger span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ptg-roster-item-active { background: rgba(139, 46, 46, 0.3); }
+.ptg-wizard.ptg-wizard-enemy { border-color: #8b2e2e; box-shadow: 0 0 0 2px #8b2e2e, 0 10px 40px rgba(0,0,0,0.6); }
+.ptg-wizard-banner-enemy { color: #e58a8a; }

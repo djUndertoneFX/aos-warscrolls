@@ -211,7 +211,7 @@ function makeAdoKTooltip(includeSaveWard, save, ward) {
 // Shared saved-roster pulldown — used for both "My Roster" and "Enemy
 // Roster" since a build isn't intrinsically one or the other, just
 // whichever slot picks it. Same list, same actions, in both places.
-function RosterDropdown({ label, rosters, onLoad, onDuplicate, onDelete, onStartFromScratch, onSaveCurrent }) {
+function RosterDropdown({ label, rosters, onLoad, onDuplicate, onDelete, onStartFromScratch, onSaveCurrent, activeId = null, enemy = false, onClear = null }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -223,7 +223,7 @@ function RosterDropdown({ label, rosters, onLoad, onDuplicate, onDelete, onStart
   }, [open]);
 
   return (
-    <div className="faction-dropdown ptg-roster-dropdown" ref={ref}>
+    <div className={`faction-dropdown ptg-roster-dropdown${enemy ? ' ptg-roster-dropdown-enemy' : ''}${enemy && activeId != null ? ' ptg-roster-dropdown-set' : ''}`} ref={ref}>
       <button className="faction-dropdown-trigger" onClick={() => setOpen(o => !o)}>
         <span>{label}</span>
         <span className="faction-dropdown-arrow">{open ? '▲' : '▼'}</span>
@@ -235,9 +235,9 @@ function RosterDropdown({ label, rosters, onLoad, onDuplicate, onDelete, onStart
           ) : rosters.map(r => (
             <div
               key={r.id}
-              className="faction-dropdown-item ptg-roster-item"
+              className={`faction-dropdown-item ptg-roster-item${activeId != null && String(activeId) === String(r.id) ? ' ptg-roster-item-active' : ''}`}
               onMouseDown={() => { onLoad(r.id); setOpen(false); }}
-              title={`Load "${r.name}"`}
+              title={enemy ? `Make "${r.name}" your enemy and open it` : `Load "${r.name}"`}
             >
               <span className="ptg-roster-item-name">{r.name}{r.faction_name ? ` — ${r.faction_name}` : ''}</span>
               <span className="ptg-roster-item-icons">
@@ -254,8 +254,9 @@ function RosterDropdown({ label, rosters, onLoad, onDuplicate, onDelete, onStart
               </span>
             </div>
           ))}
-          <div className="faction-dropdown-item ptg-roster-action" onMouseDown={() => { setOpen(false); onSaveCurrent(); }}>+ Save Current Roster</div>
-          <div className="faction-dropdown-item ptg-roster-action ptg-roster-action-reset" onMouseDown={() => { setOpen(false); onStartFromScratch(); }}>Start from Scratch</div>
+          <div className="faction-dropdown-item ptg-roster-action" onMouseDown={() => { setOpen(false); onSaveCurrent(); }}>{enemy ? '+ Save Enemy as a Copy' : '+ Save Current Roster'}</div>
+          <div className="faction-dropdown-item ptg-roster-action ptg-roster-action-reset" onMouseDown={() => { setOpen(false); onStartFromScratch(); }}>{enemy ? 'New Enemy from Scratch' : 'Start from Scratch'}</div>
+          {onClear && <div className="faction-dropdown-item ptg-roster-action ptg-roster-action-reset" onMouseDown={() => { setOpen(false); onClear(); }}>Clear Enemy</div>}
         </div>
       )}
     </div>
@@ -274,7 +275,19 @@ export default function PathToGloryPage({ headerCollapsed }) {
   // Bumping this remounts <PathToGloryWizard>, forcing it to re-read localStorage
   // from scratch — used both for "Start from Scratch" and for loading a saved roster.
   const [wizardResetKey, setWizardResetKey] = useState(0);
-  const fetchPtgRosters = () => axios.get('/api/ptg-rosters').then(res => setPtgRosters(res.data)).catch(() => {});
+  const fetchPtgRosters = () => axios.get('/api/ptg-rosters').then(res => {
+    setPtgRosters(res.data);
+    // The server's is_enemy flag is the source of truth for which roster is
+    // the enemy (so it follows you between devices); keep the local label in step.
+    const srv = res.data.find(r => r.is_enemy);
+    setEnemyRoster(prev => {
+      const next = srv ? { id: srv.id, name: srv.name, faction_slug: srv.faction_slug } : null;
+      if (JSON.stringify(prev) === JSON.stringify(next)) return prev;
+      try { next ? localStorage.setItem('aos-ptg-enemy-roster', JSON.stringify(next)) : localStorage.removeItem('aos-ptg-enemy-roster'); } catch {}
+      return next;
+    });
+    return res.data;
+  }).catch(() => {});
   useEffect(() => { fetchPtgRosters(); }, []);
 
   const handleLoadRoster = async (id) => {
@@ -282,6 +295,7 @@ export default function PathToGloryPage({ headerCollapsed }) {
       const res = await axios.get(`/api/ptg-rosters/${id}`);
       localStorage.setItem(RECRUIT_WIZARD_KEY, JSON.stringify(res.data.data));
       setWizardResetKey(k => k + 1);
+      setShowEnemyWizard(false);
       setPtgView('recruit');
       setShowRecruitWizard(true);
     } catch { /* roster fetch failed — leave current wizard state untouched */ }
@@ -294,31 +308,116 @@ export default function PathToGloryPage({ headerCollapsed }) {
     try {
       await axios.delete(`/api/ptg-rosters/${id}`);
       fetchPtgRosters();
-      if (enemyRoster && String(enemyRoster.id) === String(id)) setEnemyRosterPersist(null);
+      if (enemyRoster && String(enemyRoster.id) === String(id)) handleClearEnemy();
     } catch { /* ignore */ }
   };
 
-  // ── Enemy roster + share links ──
-  // The roster last picked from (or shared into) the Enemy Roster slot; its
-  // name becomes that dropdown's label. Remembered per browser.
+  // ── Enemy Roster ──
+  // The enemy's build lives in its own wizard slot (ENEMY_WIZARD_KEY), so
+  // loading, viewing or editing it never touches your own roster. The slot is
+  // tied to one saved roster (enemyRoster.id): edits made in the enemy wizard
+  // autosave back to that roster. "Face Thy Enemies" opens it; its faction
+  // also becomes the page's Enemy Faction filter (which drives the E-side
+  // sort and the split warscroll view).
   const ENEMY_ROSTER_KEY = 'aos-ptg-enemy-roster';
+  const ENEMY_WIZARD_KEY = 'aos-ptg-enemy-wizard';
   const [enemyRoster, setEnemyRoster] = useState(() => {
     try { return JSON.parse(localStorage.getItem(ENEMY_ROSTER_KEY)) || null; } catch { return null; }
   });
-  const setEnemyRosterPersist = (r) => {
+  const setEnemyRosterPersist = (r, { sync = true } = {}) => {
+    const done = sync ? axios.put('/api/ptg-enemy', { id: r ? r.id : null }).catch(() => {}) : Promise.resolve();
     setEnemyRoster(r);
     try { r ? localStorage.setItem(ENEMY_ROSTER_KEY, JSON.stringify(r)) : localStorage.removeItem(ENEMY_ROSTER_KEY); } catch {}
+    if (!r) { try { localStorage.removeItem(ENEMY_WIZARD_KEY); } catch {} }
+    return done;
   };
-  const handleLoadEnemyRoster = (id) => {
-    const r = ptgRosters.find(x => String(x.id) === String(id));
-    if (r) setEnemyRosterPersist({ id: r.id, name: r.name });
-    handleLoadRoster(id);
+  const [showEnemyWizard, setShowEnemyWizard] = useState(false);
+  const [enemyWizardKey, setEnemyWizardKey] = useState(0);
+  const rosterFactionSlug = (d) => (d && (d.faction || d.selectedFaction)) || null;
+
+  const openEnemyWizard = () => {
+    setShowRecruitWizard(false);
+    setPtgView('battle');
+    setShowEnemyWizard(true);
+  };
+  const loadEnemyRoster = async (id, { open = true } = {}) => {
+    try {
+      const { data: r } = await axios.get(`/api/ptg-rosters/${id}`);
+      localStorage.setItem(ENEMY_WIZARD_KEY, JSON.stringify(r.data));
+      lastEnemySaved.current = JSON.stringify(r.data);
+      const slug = r.faction_slug || rosterFactionSlug(r.data);
+      await setEnemyRosterPersist({ id: r.id, name: r.name, faction_slug: slug });
+      if (slug) { setEnemyFaction(slug); setPage(1); }
+      setEnemyWizardKey(k => k + 1);
+      if (open) openEnemyWizard();
+      return r;
+    } catch {
+      setShareMsg({ text: 'Could not load that roster.' });
+      return null;
+    }
+  };
+
+  // Autosave enemy-wizard edits back to its saved roster (debounced). The
+  // wizard reports a snapshot on mount too; identical snapshots are skipped.
+  const lastEnemySaved = useRef((() => { try { return localStorage.getItem(ENEMY_WIZARD_KEY); } catch { return null; } })());
+  const enemySaveTimer = useRef(null);
+  const handleEnemySnapshot = (snap) => {
+    if (!enemyRoster) return;
+    const json = JSON.stringify(snap);
+    if (json === lastEnemySaved.current) return;
+    if (enemySaveTimer.current) clearTimeout(enemySaveTimer.current);
+    const target = enemyRoster;
+    enemySaveTimer.current = setTimeout(() => {
+      const slug = rosterFactionSlug(snap) || target.faction_slug || null;
+      const factionObj = factions.find(f => f.faction_slug === slug);
+      axios.put(`/api/ptg-rosters/${target.id}`, {
+        name: target.name, faction_slug: slug, faction_name: factionObj ? factionObj.faction : null, data: snap,
+      }).then(() => { lastEnemySaved.current = json; fetchPtgRosters(); })
+        .catch(() => {});
+    }, 800);
+  };
+  useEffect(() => () => { if (enemySaveTimer.current) clearTimeout(enemySaveTimer.current); }, []);
+
+  const handleFaceThyEnemies = () => {
+    // Re-fetch so edits made on another device show up; fall back to the
+    // local copy if the server can't be reached.
+    if (enemyRoster) { loadEnemyRoster(enemyRoster.id).then(r => { if (!r) openEnemyWizard(); }); return; }
+    setPtgView('battle');
+    setShareMsg({ text: 'No enemy yet — pick one from Enemy Roster, start one from scratch there, or open a share link from your opponent.' });
+  };
+  const handleEnemyStartFromScratch = async () => {
+    const name = window.prompt('Name the enemy roster:', 'Enemy Roster');
+    if (!name) return;
+    try {
+      const { data: res } = await axios.post('/api/ptg-rosters', { name, faction_slug: null, faction_name: null, data: {} });
+      await fetchPtgRosters();
+      await loadEnemyRoster(res.id);
+    } catch { setShareMsg({ text: 'Could not create the enemy roster.' }); }
+  };
+  // "+ Save Current Roster" from the Enemy side = save a copy of the enemy
+  // as a new roster (the enemy itself already autosaves).
+  const handleEnemySaveCopy = async () => {
+    let data = null; try { data = JSON.parse(localStorage.getItem(ENEMY_WIZARD_KEY)); } catch {}
+    if (!enemyRoster || !data) { setShareMsg({ text: 'No enemy roster loaded yet.' }); return; }
+    const name = window.prompt('Save a copy of the enemy roster as:', `${enemyRoster.name} (Copy)`);
+    if (!name) return;
+    const slug = rosterFactionSlug(data) || enemyRoster.faction_slug || null;
+    const factionObj = factions.find(f => f.faction_slug === slug);
+    try {
+      await axios.post('/api/ptg-rosters', { name, faction_slug: slug, faction_name: factionObj ? factionObj.faction : null, data });
+      fetchPtgRosters();
+    } catch {}
+  };
+  const handleClearEnemy = () => {
+    setEnemyRosterPersist(null);
+    setShowEnemyWizard(false);
+    setEnemyFaction('');
   };
   const [shareMsg, setShareMsg] = useState(null);
 
   // Opening /path-to-glory?share=TOKEN saves the sender's roster into this
-  // account ("Enemy: <name> (<sender>)"), makes it the Enemy Roster, and
-  // offers to open it in the wizard now (which replaces unsaved progress).
+  // account ("Enemy: <name> (<sender>)") and loads it straight into the
+  // Enemy Roster slot — your own wizard is left alone.
   const shareHandled = useRef(false);
   useEffect(() => {
     if (shareHandled.current) return;
@@ -328,19 +427,14 @@ export default function PathToGloryPage({ headerCollapsed }) {
     (async () => {
       try {
         const { data: res } = await axios.post(`/api/share/${encodeURIComponent(token)}/open`);
+        clearShareParam();
         if (res.kind !== 'ptg') { setShareMsg({ text: 'That link is for an Army Builder list — open it on the Army Builder page.' }); return; }
         await fetchPtgRosters();
-        setEnemyRosterPersist({ id: res.id, name: res.name });
-        clearShareParam();
-        const verb = res.created ? 'Saved' : res.refreshed ? 'Updated' : 'You already have';
-        const hasProgress = !!localStorage.getItem(RECRUIT_WIZARD_KEY);
-        const openNow = window.confirm(
-          `${verb} ${res.sender}'s roster as your enemy: "${res.name}".\n\n` +
-          (hasProgress
-            ? 'Open it in the wizard now? This replaces the wizard\'s current progress (unsaved changes will be lost). Cancel keeps it in your Enemy Roster list.'
-            : 'Open it in the wizard now?'));
-        if (openNow) handleLoadRoster(res.id);
-        else setShareMsg({ text: `"${res.name}" is in your Enemy Roster list.` });
+        const r = await loadEnemyRoster(res.id);
+        if (r) setShareMsg({ text: res.created
+          ? `Loaded ${res.sender}'s roster as your enemy: "${res.name}"`
+          : res.refreshed ? `Updated your enemy "${res.name}" to ${res.sender}'s latest version`
+          : `Opened your enemy roster "${res.name}"` });
       } catch (err) {
         clearShareParam();
         setShareMsg({ text: err.response?.data?.error || 'Could not open that shared roster.' });
@@ -348,11 +442,14 @@ export default function PathToGloryPage({ headerCollapsed }) {
     })();
   }, []); // eslint-disable-line
 
+  // Shares your own roster (the Recruit wizard), or — when the enemy wizard
+  // is open — the enemy roster you're looking at.
   const handleShareRoster = async () => {
-    const raw = localStorage.getItem(RECRUIT_WIZARD_KEY);
+    const sharingEnemy = showEnemyWizard && enemyRoster;
+    const raw = localStorage.getItem(sharingEnemy ? ENEMY_WIZARD_KEY : RECRUIT_WIZARD_KEY);
     let data = null; try { data = JSON.parse(raw); } catch {}
     if (!data) { setShareMsg({ text: 'Nothing to share yet — open Recruit Your Forces first.' }); return; }
-    const name = data.armyName || data.warlordName || 'Path to Glory Roster';
+    const name = sharingEnemy ? enemyRoster.name : (data.armyName || data.warlordName || 'Path to Glory Roster');
     const factionSlug = data.faction || data.selectedFaction || null;
     const factionObj = factions.find(f => f.faction_slug === factionSlug);
     try {
@@ -371,6 +468,7 @@ export default function PathToGloryPage({ headerCollapsed }) {
     if (!window.confirm('Start from scratch? This wipes the wizard\'s current progress (any unsaved changes will be lost).')) return;
     localStorage.removeItem(RECRUIT_WIZARD_KEY);
     setWizardResetKey(k => k + 1);
+    setShowEnemyWizard(false);
     setPtgView('recruit');
     setShowRecruitWizard(true);
   };
@@ -868,13 +966,14 @@ export default function PathToGloryPage({ headerCollapsed }) {
           <div className="ptg-stagger-item">
             <button
               className={`ptg-action-btn${ptgView === 'recruit' ? ' ptg-action-active' : ''}`}
-              onClick={() => { setPtgView('recruit'); setShowRecruitWizard(true); }}
+              onClick={() => { setShowEnemyWizard(false); setPtgView('recruit'); setShowRecruitWizard(true); }}
             >
               Recruit Your Forces
             </button>
           </div>
           <div className="ptg-stagger-item">
-            <button className={`ptg-action-btn${ptgView === 'battle' ? ' ptg-action-active' : ''}`} onClick={() => setPtgView('battle')}>
+            <button className={`ptg-action-btn${ptgView === 'battle' ? ' ptg-action-active' : ''}`} onClick={handleFaceThyEnemies}
+              title={enemyRoster ? `Open your enemy: ${enemyRoster.name}` : 'Pick an Enemy Roster first'}>
               Face Thy Enemies
             </button>
           </div>
@@ -882,11 +981,14 @@ export default function PathToGloryPage({ headerCollapsed }) {
             <RosterDropdown
               label={enemyRoster ? enemyRoster.name : 'Enemy Roster'}
               rosters={ptgRosters}
-              onLoad={handleLoadEnemyRoster}
+              activeId={enemyRoster?.id}
+              enemy
+              onLoad={id => loadEnemyRoster(id)}
               onDuplicate={handleDuplicateRoster}
               onDelete={handleDeleteRoster}
-              onStartFromScratch={handleStartFromScratch}
-              onSaveCurrent={handleSaveCurrentRoster}
+              onStartFromScratch={handleEnemyStartFromScratch}
+              onSaveCurrent={handleEnemySaveCopy}
+              onClear={enemyRoster ? handleClearEnemy : null}
             />
           </div>
         </div>
@@ -1294,6 +1396,16 @@ export default function PathToGloryPage({ headerCollapsed }) {
     </div>
 
     {showRecruitWizard && <PathToGloryWizard key={wizardResetKey} factions={factions} onClose={() => setShowRecruitWizard(false)} />}
+    {showEnemyWizard && enemyRoster && (
+      <PathToGloryWizard
+        key={`enemy-${enemyWizardKey}`}
+        factions={factions}
+        storageKey={ENEMY_WIZARD_KEY}
+        enemyName={enemyRoster.name}
+        onSnapshot={handleEnemySnapshot}
+        onClose={() => setShowEnemyWizard(false)}
+      />
+    )}
 
     {lightboxUnit && (() => {
       const rows = data?.data ?? [];

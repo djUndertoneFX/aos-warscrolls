@@ -1058,10 +1058,15 @@ function useRowList(initial = []) {
 
 const STORAGE_KEY = 'aos-ptg-recruit-wizard';
 
-export default function PathToGloryWizard({ onClose, factions = [] }) {
+// storageKey: which localStorage slot this wizard reads/writes — your own
+// roster uses STORAGE_KEY; the Enemy Roster opens in its own slot so viewing
+// or editing the enemy never touches your build. enemyName marks the wizard
+// as the enemy's (red frame + banner). onSnapshot(snapshot) fires on every
+// autosave so the page can push enemy edits back to that saved roster.
+export default function PathToGloryWizard({ onClose, factions = [], storageKey = STORAGE_KEY, enemyName = null, onSnapshot = null }) {
   // Read once per mount — resumes wherever the user left off last time they
   // opened this wizard (localStorage persists it across close/reopen).
-  const saved = (() => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; } })();
+  const saved = (() => { try { return JSON.parse(localStorage.getItem(storageKey)) || {}; } catch { return {}; } })();
   // WarscrollsPage.js's own Hide toggles ('aos-filters') — read once as the
   // Starting Units step's default so it opens already matching whatever the
   // player left Hide: Scourge/Regiments of Renown/Legends set to on the main
@@ -1845,7 +1850,8 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
       startingUnits, heroicTraitChoice, heroicTraitAssignee, artefactChoice, artefactAssignee,
       unitsHideLegends, unitsHideScourge, unitsHideRoR,
     };
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot)); } catch {}
+    try { localStorage.setItem(storageKey, JSON.stringify(snapshot)); } catch {}
+    if (onSnapshot) onSnapshot(snapshot);
   }, [
     step, activeDoc, presentMode, campaign, customCampaignName, selectedFaction, warlordSubStep,
     warlordName, warlordKeywordsLine1, warlordKeywordsLine2, rangedWeapons, meleeWeapons,
@@ -3299,7 +3305,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
   return (
     <>
       <div className="gw-overlay" />
-      <div className={`ptg-wizard${wizardViewMode === 'dual' ? ' ptg-wizard-dual-mode' : ''}`} ref={modalRef} role="dialog" aria-modal="true" aria-label={'Recruit Your Forces!'}>
+      <div className={`ptg-wizard${wizardViewMode === 'dual' ? ' ptg-wizard-dual-mode' : ''}${enemyName ? ' ptg-wizard-enemy' : ''}`} ref={modalRef} role="dialog" aria-modal="true" aria-label={enemyName ? `Enemy roster: ${enemyName}` : 'Recruit Your Forces!'}>
         <div className="gw-view-toggle ptg-wizard-view-toggle">
           <button
             type="button"
@@ -3321,13 +3327,14 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
 
         <div className="ptg-wizard-banner">
           Path to Glory!{campaignLabel && <span className="ptg-wizard-banner-campaign"> — {campaignLabel}</span>}
+          {enemyName && <span className="ptg-wizard-banner-enemy"> — Enemy: {enemyName.replace(/^Enemy:\s*/, "")}</span>}
         </div>
 
         {wizardViewMode === 'dual' ? (
           <div className="ptg-wizard-dual">
             <div className="ptg-wizard-dual-left">
               <div className="ptg-wizard-header">
-                <div className="ptg-wizard-title">{'Recruit Your Forces!'}</div>
+                <div className="ptg-wizard-title">{enemyName ? 'Face Thy Enemies!' : 'Recruit Your Forces!'}</div>
               </div>
               {renderStepFlow()}
             </div>
@@ -3347,7 +3354,7 @@ export default function PathToGloryWizard({ onClose, factions = [] }) {
         ) : (
           <>
             <div className="ptg-wizard-header">
-              <div className="ptg-wizard-title">{'Recruit Your Forces!'}</div>
+              <div className="ptg-wizard-title">{enemyName ? 'Face Thy Enemies!' : 'Recruit Your Forces!'}</div>
             </div>
 
             <div className="ptg-doc-tray">

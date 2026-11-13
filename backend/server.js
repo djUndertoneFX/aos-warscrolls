@@ -956,7 +956,7 @@ app.get('/api/ptg-rosters', requireAuth, (req, res) => {
   const db = getDb();
   try {
     const rows = db.prepare(
-      'SELECT id, name, faction_slug, faction_name, updated_at FROM ptg_rosters WHERE user_id = ? ORDER BY updated_at DESC'
+      'SELECT id, name, faction_slug, faction_name, is_enemy, updated_at FROM ptg_rosters WHERE user_id = ? ORDER BY updated_at DESC'
     ).all(req.user.id);
     res.json(rows);
   } finally {
@@ -1001,6 +1001,24 @@ app.put('/api/ptg-rosters/:id', requireAuth, (req, res) => {
     db.prepare(
       `UPDATE ptg_rosters SET name = ?, faction_slug = ?, faction_name = ?, data = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
     ).run(name, faction_slug || null, faction_name || null, JSON.stringify(data), req.params.id);
+    res.json({ ok: true });
+  } finally {
+    db.close();
+  }
+});
+
+// PUT /api/ptg-enemy — set (body { id }) or clear (body { id: null }) the
+// account's Enemy Roster.
+app.put('/api/ptg-enemy', requireAuth, (req, res) => {
+  const { id } = req.body || {};
+  const db = getDb();
+  try {
+    if (id != null) {
+      const row = db.prepare('SELECT id FROM ptg_rosters WHERE id = ? AND user_id = ?').get(id, req.user.id);
+      if (!row) return res.status(404).json({ error: 'Roster not found' });
+    }
+    db.prepare('UPDATE ptg_rosters SET is_enemy = 0 WHERE user_id = ?').run(req.user.id);
+    if (id != null) db.prepare('UPDATE ptg_rosters SET is_enemy = 1 WHERE id = ?').run(id);
     res.json({ ok: true });
   } finally {
     db.close();
@@ -1300,6 +1318,10 @@ app.post('/api/share/:token/open', requireAuth, (req, res) => {
       ).run(share.token, req.user.id, id);
     }
 
+    if (share.kind === 'ptg') {
+      db.prepare('UPDATE ptg_rosters SET is_enemy = 0 WHERE user_id = ?').run(req.user.id);
+      db.prepare('UPDATE ptg_rosters SET is_enemy = 1 WHERE id = ?').run(id);
+    }
     const row = db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(id);
     res.json({ kind: share.kind, id, name: row.name, sender: senderName, created: !priorRow, refreshed });
     if (share.kind === 'army' && (!priorRow || refreshed)) {

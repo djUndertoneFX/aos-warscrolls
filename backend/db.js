@@ -281,6 +281,10 @@ function initDb() {
     CREATE INDEX IF NOT EXISTS idx_army_builder_lists_user ON army_builder_lists(user_id);
   `);
 
+  // Which saved Path to Glory roster is the account's current Enemy Roster
+  // (at most one per user) — kept server-side so it follows you across devices.
+  try { db.exec('ALTER TABLE ptg_rosters ADD COLUMN is_enemy INTEGER NOT NULL DEFAULT 0'); } catch {}
+
   // Shared list links — "Share" on Army Builder / Path to Glory snapshots the
   // sender's list under a random token; opening /army-builder?share=TOKEN
   // (or /path-to-glory?share=TOKEN) copies it into the recipient's account as
