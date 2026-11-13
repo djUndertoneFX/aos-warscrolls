@@ -6175,7 +6175,7 @@ textarea.ptg-doc-overlay-input {
   left: 50%;
   bottom: 1.5rem;
   transform: translateX(-50%);
-  z-index: 3000;
+  z-index: 100000;
   max-width: min(92vw, 560px);
   padding: 0.7rem 1rem;
   border: 1px solid var(--gold, #c9a84c);
@@ -6205,3 +6205,4 @@ textarea.ptg-doc-overlay-input {
 .ptg-roster-item-active { background: rgba(139, 46, 46, 0.3); }
 .ptg-wizard.ptg-wizard-enemy { border-color: #8b2e2e; box-shadow: 0 0 0 2px #8b2e2e, 0 10px 40px rgba(0,0,0,0.6); }
 .ptg-wizard-banner-enemy { color: #e58a8a; }
+.ab-roster-share-btn { left: 82px; }

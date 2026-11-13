@@ -873,7 +873,7 @@ function ArmyRosterModal({
   listName, factionName, pointsLimit, setPointsLimit, battleFormation, totalPoints,
   doc, setDoc, unitsById, moveToSlot,
   regimentsTotal, auxTotal, armyUnitsTotal,
-  onCommanderNameChange, onRenameList,
+  onCommanderNameChange, onRenameList, onShare,
   // Split-view usage (every stage except Select Units): rendered as a plain
   // pane alongside the stage content instead of a fixed-position modal —
   // no overlay, no close button, no Escape handling (it's always visible,
@@ -983,6 +983,7 @@ function ArmyRosterModal({
   const content = (
     <>
         {!inline && !printPreview && <button className="ab-roster-print-btn" onClick={handlePrintClick} title="Print">🖨 Print</button>}
+        {!inline && !printPreview && onShare && <button className="ab-roster-print-btn ab-roster-share-btn" onClick={onShare} title="Copy a link to this list. Whoever opens it gets it as an Enemy List.">🔗 Share</button>}
         {!inline && !printPreview && <button className="gw-close" onClick={onClose} title="Close (Esc)">✕</button>}
 
         {printPreview ? (
@@ -2418,6 +2419,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
         totalPoints={totalPoints}
         onCommanderNameChange={setCommanderName}
         onRenameList={name => renameList(activeListId, name)}
+        onShare={shareCurrentList}
         doc={armyRosterDoc}
         setDoc={setArmyRosterDoc}
         unitsById={unitsById}
