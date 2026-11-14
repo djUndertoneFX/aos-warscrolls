@@ -6,6 +6,7 @@ import { useSettings } from '../SettingsContext';
 import { useAuth } from '../AuthContext';
 import { calcWeaponADO, resolveWeaponLoadout } from '../awoCalc';
 import VoiceControlWidget from '../components/VoiceControlWidget';
+import ImageLightbox, { nameSlug } from '../components/ImageLightbox';
 import { createAndCopyShareLink, getShareParam, getShareView, clearShareParam, ShareToast } from '../shareLink';
 
 function parseBullets(raw) {
@@ -1533,6 +1534,11 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
   const [expandedIds, setExpandedIds] = useState(new Set());
   const [fullExpandedIds, setFullExpandedIds] = useState(new Set());
   const [detailUnit, setDetailUnit] = useState(null);
+  // Unit picture: hover a thumbnail for a floating preview, click it for the
+  // full-size lightbox (arrows step through the list) — same as Warscrolls.
+  const [lightboxUnit, setLightboxUnit] = useState(null);
+  const [thumbHover, setThumbHover] = useState(null); // { id, x, y }
+  const [imgExistIds, setImgExistIds] = useState(null); // ids with a resolvable picture (lightbox skip-nav)
   const tableWrapperRef = useRef(null);
 
   const [searchInput, setSearchInput] = useState(saved.search ?? '');
@@ -1914,6 +1920,14 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
   // Friendly still lists selected allies even with Other Factions hidden.
   const otherRows = (faction && (!hideOtherFactions || friendlyOnly)) ? sortRows(allRows.filter(r => r.faction_slug !== faction)) : [];
   const navList = [...ownRows, ...otherRows];
+  const navIdsKey = navList.map(r => r.id).join(',');
+  // Only looked up once the lightbox is opened (one bulk call per list).
+  useEffect(() => {
+    if (!lightboxUnit || !navIdsKey) return;
+    axios.post('/api/unit-images-exist', { ids: navIdsKey.split(',').map(Number) })
+      .then(res => setImgExistIds(new Set(res.data.ids)))
+      .catch(() => setImgExistIds(null));
+  }, [navIdsKey, !!lightboxUnit]); // eslint-disable-line
 
   const [navbarExtrasEl, setNavbarExtrasEl] = useState(null);
   useEffect(() => {
@@ -1994,11 +2008,13 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
           <td className="col-name" onClick={e => { e.stopPropagation(); setDetailUnit(row); }}>
             <span className="unit-name-link">{row.name}</span>
           </td>
-          <td className="col-thumb">
+          <td className="col-thumb" onClick={e => { e.stopPropagation(); setThumbHover(null); setLightboxUnit(row); }}>
             <img
               src={`${axios.defaults.baseURL || ''}/api/unit-image/${row.id}`}
               alt="" className="thumb-img" loading="lazy"
-              onClick={e => e.stopPropagation()}
+              onMouseEnter={e => setThumbHover({ id: row.id, x: e.clientX, y: e.clientY })}
+              onMouseMove={e => setThumbHover(h => h ? { ...h, x: e.clientX, y: e.clientY } : h)}
+              onMouseLeave={() => setThumbHover(null)}
               onError={e => { e.target.style.display = 'none'; }}
             />
           </td>
@@ -2396,6 +2412,34 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
         </div>
       )}
     </div>
+
+    {thumbHover && ReactDOM.createPortal(
+      <div className="thumb-popup-fixed" style={{ left: thumbHover.x + 16, top: thumbHover.y + 16 }}>
+        <img src={`${axios.defaults.baseURL || ''}/api/unit-image/${thumbHover.id}`} alt="" onError={e => { e.target.style.display = 'none'; }} />
+      </div>,
+      document.body
+    )}
+
+    {lightboxUnit && (() => {
+      // Arrows skip units with no picture and repeats of the same picture
+      // (cross-faction units), like the Warscrolls page.
+      const idx = navList.findIndex(u => u.id === lightboxUnit.id);
+      const seen = new Set();
+      const playable = new Set();
+      for (const r of navList) { const sl = nameSlug(r.name); if (seen.has(sl)) continue; seen.add(sl); if (!imgExistIds || imgExistIds.has(r.id)) playable.add(r.id); }
+      const find = dir => { for (let i = idx + dir; i >= 0 && i < navList.length; i += dir) if (playable.has(navList[i].id)) return navList[i]; return null; };
+      const prevUnit = find(-1), nextUnit = find(1);
+      return (
+        <ImageLightbox
+          unit={lightboxUnit}
+          hasPrev={!!prevUnit}
+          hasNext={!!nextUnit}
+          onClose={() => setLightboxUnit(null)}
+          onPrev={() => prevUnit && setLightboxUnit(prevUnit)}
+          onNext={() => nextUnit && setLightboxUnit(nextUnit)}
+        />
+      );
+    })()}
 
     {detailUnit && (() => {
       const idx = navList.findIndex(u => u.id === detailUnit.id);
