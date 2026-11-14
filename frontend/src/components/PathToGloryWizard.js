@@ -1537,7 +1537,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
           setWarlordHealth(GENERIC_WARLORD_PROFILE.health);
           setWarlordSave(GENERIC_WARLORD_PROFILE.save);
           setWarlordControl(GENERIC_WARLORD_PROFILE.control);
-          const step3 = steps.find(s => /choose an archetype/i.test(s.step_title));
+          const step3 = steps.find(s => /(?:choose|pick) an archetype/i.test(s.step_title));
           if (step3?.options?.length) applyArchetypeChoice(step2, step3, 0);
         }).catch(() => {});
       }
@@ -1585,7 +1585,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
         setWarlordSave(GENERIC_WARLORD_PROFILE.save);
         setWarlordControl(GENERIC_WARLORD_PROFILE.control);
       }
-      const step3 = steps.find(s => /choose an archetype/i.test(s.step_title));
+      const step3 = steps.find(s => /(?:choose|pick) an archetype/i.test(s.step_title));
       if (step3?.options?.length) applyArchetypeChoice(step2, step3, 0);
       const factionObj = factions.find(f => f.faction_slug === selectedFaction);
       setWarlordName(`${factionObj ? factionObj.faction : selectedFaction} Hero`);
@@ -1623,7 +1623,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
       setWarlordHealth(GENERIC_WARLORD_PROFILE.health);
       setWarlordSave(GENERIC_WARLORD_PROFILE.save);
       setWarlordControl(GENERIC_WARLORD_PROFILE.control);
-      const step3 = steps.find(s => /choose an archetype/i.test(s.step_title));
+      const step3 = steps.find(s => /(?:choose|pick) an archetype/i.test(s.step_title));
       if (step3?.options?.length) applyArchetypeChoice(step2, step3, 0);
     }).catch(() => {});
   }, []); // eslint-disable-line
@@ -2086,11 +2086,11 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   const dpTally = React.useMemo(() => {
     if (!apotheosisSteps.length) return null;
     const dpStepData        = apotheosisSteps.find(s => /destiny point limit/i.test(s.step_title || ''));
-    const archetypeStepData = apotheosisSteps.find(s => /choose an archetype/i.test(s.step_title || ''));
+    const archetypeStepData = apotheosisSteps.find(s => /(?:choose|pick) an archetype/i.test(s.step_title || ''));
     const companionStepData = apotheosisSteps.find(s => /choose a companion/i.test(s.step_title || ''));
     const originFlawStepData = apotheosisSteps.find(s => /origin.*flaw/i.test(s.step_title || ''));
-    const mountStepData     = apotheosisSteps.find(s => /choose a battle mount/i.test(s.step_title || ''));
-    const mountUpgradesStepData = apotheosisSteps.find(s => /pick any battle mount upgrades/i.test(s.step_title || ''));
+    const mountStepData     = apotheosisSteps.find(s => /^(?:choose|pick) a battle mount$/i.test(s.step_title || ''));
+    const mountUpgradesStepData = apotheosisSteps.find(s => /^(?:pick any |battle any )?battle mount upgrades$/i.test(s.step_title || ''));
     const otherUpgradesStepData = apotheosisSteps.find(s => /pick any other upgrades/i.test(s.step_title || ''));
 
     let total = 0;
@@ -2136,8 +2136,8 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
     if (!apotheosisSteps.length) return [];
     const companionStepData = apotheosisSteps.find(s => /choose a companion/i.test(s.step_title || ''));
     const originFlawStepData = apotheosisSteps.find(s => /origin.*flaw/i.test(s.step_title || ''));
-    const mountStepData = apotheosisSteps.find(s => /choose a battle mount/i.test(s.step_title || ''));
-    const mountUpgradesStepData = apotheosisSteps.find(s => /pick any battle mount upgrades/i.test(s.step_title || ''));
+    const mountStepData = apotheosisSteps.find(s => /^(?:choose|pick) a battle mount$/i.test(s.step_title || ''));
+    const mountUpgradesStepData = apotheosisSteps.find(s => /^(?:pick any |battle any )?battle mount upgrades$/i.test(s.step_title || ''));
     const otherUpgradesStepData = apotheosisSteps.find(s => /pick any other upgrades/i.test(s.step_title || ''));
 
     const lines = [];
@@ -2196,8 +2196,8 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
 
     const companionStepData = apotheosisSteps.find(s => /choose a companion/i.test(s.step_title || ''));
     const originFlawStepData = apotheosisSteps.find(s => /origin.*flaw/i.test(s.step_title || ''));
-    const mountStepData = apotheosisSteps.find(s => /choose a battle mount/i.test(s.step_title || ''));
-    const mountUpgradesStepData = apotheosisSteps.find(s => /pick any battle mount upgrades/i.test(s.step_title || ''));
+    const mountStepData = apotheosisSteps.find(s => /^(?:choose|pick) a battle mount$/i.test(s.step_title || ''));
+    const mountUpgradesStepData = apotheosisSteps.find(s => /^(?:pick any |battle any )?battle mount upgrades$/i.test(s.step_title || ''));
     const otherUpgradesStepData = apotheosisSteps.find(s => /pick any other upgrades/i.test(s.step_title || ''));
 
     const subAbilitiesOf = opt => {
@@ -2502,9 +2502,9 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   // forcing one of the real picks.
   const renderApotheosisStep = stepData => {
     const isDpStep = /destiny point limit/i.test(stepData.step_title || '');
-    const isArchetypeStep = /choose an archetype/i.test(stepData.step_title || '');
+    const isArchetypeStep = /(?:choose|pick) an archetype/i.test(stepData.step_title || '');
     const isCompanionStep = /choose a companion/i.test(stepData.step_title || '');
-    const isMountStep = /choose a battle mount/i.test(stepData.step_title || '');
+    const isMountStep = /^(?:choose|pick) a battle mount$/i.test(stepData.step_title || '');
     // Up to 1 origin AND up to 1 flaw, independently — a plain toggle per
     // group (click a selected card to deselect it back to "none"), not a
     // forced/auto-advancing single choice like the steps above.
@@ -2513,7 +2513,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
     // independently, no mutual exclusivity, no auto-advance. Same treatment
     // for both upgrade steps.
     const isOtherUpgradesStep = /pick any other upgrades/i.test(stepData.step_title || '');
-    const isMountUpgradesStep = /pick any battle mount upgrades/i.test(stepData.step_title || '');
+    const isMountUpgradesStep = /^(?:pick any |battle any )?battle mount upgrades$/i.test(stepData.step_title || '');
     const isSingleSelect = isDpStep || isArchetypeStep || isCompanionStep || isMountStep;
     return (
     <>

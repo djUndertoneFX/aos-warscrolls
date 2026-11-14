@@ -221,14 +221,15 @@ function parseCardOptions($, block, group) {
   return options;
 }
 
-// Parse a Step 7/8-style "Upgrade | Effect" table into one option per row.
+// Parse a Step 7/8-style "Upgrade | Effect" table (Sons of Behemat's
+// "Moniker | Effect" / "Epithet | Effect" tables have the same layout) into one option per row.
 function parseUpgradeTable($, table) {
   const options = [];
   const $table = $(table);
   const rows = ownRows($, $table).toArray();
   if (rows.length < 2) return options;
   const headerText = normalizeText($(rows[0]).text());
-  if (!/upgrade/i.test(headerText) || !/effect/i.test(headerText)) return options;
+  if (!/upgrade|moniker|epithet/i.test(headerText) || !/effect/i.test(headerText)) return options;
   for (const row of rows.slice(1)) {
     const $cells = $(row).children('td');
     if ($cells.length < 2) continue;
@@ -338,7 +339,7 @@ function parseStepContent($, blocks) {
     $b.find('table.customTable').each((_, table) => {
       if ($(table).parents('table.customTable').length) return; // skip nested weapon/regiment tables
       const headerText = normalizeText(ownRows($, $(table)).first().text());
-      if (/^Upgrade\s*Effect/i.test(headerText)) {
+      if (/^(Upgrade|Moniker|Epithet)\s*Effect/i.test(headerText)) {
         options.push(...parseUpgradeTable($, table));
       } else if (/Hero Type/i.test(headerText)) {
         options.push(...parseReferenceTable($, table));
