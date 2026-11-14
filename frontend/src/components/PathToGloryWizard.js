@@ -3,6 +3,8 @@ import { flushSync } from 'react-dom';
 import axios from 'axios';
 import { AbilityCard, getPhaseStyle } from './WarscrollGW';
 
+import BATTLEPACKS from './ptgBattlepacks';
+
 function parseFormationBullets(raw) {
   try { return JSON.parse(raw || '[]'); } catch { return []; }
 }
@@ -91,12 +93,14 @@ const STEPS = [
   'Prepare for Battle',
 ];
 
-// GW currently publishes 3 Path to Glory battlepacks — only Ascension's core
-// rules are implemented so far, so the other two are shown but disabled.
+// GW currently publishes 3 Path to Glory battlepacks. Ascension's rules are
+// hand-transcribed above; Ravaged Coast and Blighted Wilds come from
+// ptgBattlepacks.js (their Paths, universal enhancements and lores, and
+// in-battle rules) plus the BATTLEPACK_RULES summaries below.
 const CAMPAIGNS = [
   { key: 'ascension',    name: 'Ascension',                 desc: 'The core Path to Glory campaign — forge your warlord’s rise to legend.', available: true },
-  { key: 'ravaged-coast', name: 'Ravaged Coast',             desc: 'A narrative Path to Glory battlepack.', available: false },
-  { key: 'blighted-wilds', name: 'Blighted Wilds',           desc: 'A narrative Path to Glory battlepack.', available: false },
+  { key: 'ravaged-coast', name: 'Ravaged Coast',             desc: 'Aqshy’s Ravaged Coast — hunt emberstone, which replaces glory and renown for growing your army.', available: true },
+  { key: 'blighted-wilds', name: 'Blighted Wilds',           desc: 'Thyria, western Ghyran — purge the corruption. Glory points, renown, battle scars and battleplan rewards.', available: true },
   { key: 'custom',        name: 'Foreign War of Aggression', desc: 'A custom, homebrew campaign of your own design.', available: true, custom: true },
 ];
 
@@ -106,6 +110,55 @@ const CAMPAIGNS = [
 // Roster's Points Limit field when that campaign is picked.
 const CAMPAIGN_POINTS_LIMITS = {
   ascension: '1000',
+  'ravaged-coast': '1000',
+  'blighted-wilds': '1000',
+};
+
+// Every Path the wizard knows, for name/rank lookups by key (keys are
+// prefixed per battlepack: rc-, bw-, so they never collide).
+const BATTLEPACK_PATHS = Object.values(BATTLEPACKS).flatMap(b => b.paths);
+
+// Short summaries of each battlepack's roster-building and aftermath rules,
+// shown on the Select your Campaign step and alongside the relevant steps.
+// The full in-battle rules (BATTLEPACKS[key].battle_abilities) render as
+// ability cards underneath.
+const BATTLEPACK_RULES = {
+  'ravaged-coast': {
+    roster: [
+      'Starting roster: 1000 points (groups can agree higher). No single unit may cost more than 350 points (except Sons of Behemat Heroes).',
+      'Pick a faction and up to 1 battle formation, then a general (a single-model Hero who leads their own regiment).',
+      'General’s regiment: up to 4 non-Hero units with the general’s faction keyword. Up to 4 more regiments, each led by a Hero of the same Grand Alliance with up to 3 non-Hero units of that Hero’s faction.',
+      'Auxiliary units allowed (the player with fewer gets +1 command point each battle round). Units can start reinforced.',
+      'No Regiment of Renown, faction terrain or enhancements at the start. Unique units can’t take enhancements or Paths (and are discouraged).',
+      'Your general starts at the Aspiring rank and picks a Path (and 1 of its 2 Aspiring abilities) straight away.',
+      'Starting spells/prayers: 1 Unlimited spell and 1 Unlimited prayer from your faction’s lores, plus 1 more spell the first time a Wizard joins the roster and 1 more prayer the first time a Priest does. The Arcane Tome holds 6 spells/prayers in total.',
+    ],
+    aftermath: [
+      'Gain emberstone shards: win = 3, loss = D3, draw = D3 (re-roll once). +D3 for a Hateful Shores battleplan. +1 per emberstone token your army ended the battle with. Renown points convert at 5 : 1.',
+      'Manage your roster: promote a Hero, retire units (refunds 1–5 shards by points value), move/remove enhancements, change your general (they suffer D3 battle wounds), change a unit’s Path (drop 1 rank).',
+      'Spend shards (each action once per aftermath): embark on a Path / Aspiring 1, Elite 2, Mighty 4, Legendary 6. Enhancement 3, spell or prayer 2. Recruit a unit 2 / 3 / 4 / 6 / 8 / 10 / 15 (by 100-point bands, 601+ = 15). Faction terrain 3, emberstone-enhanced weapon 2, Ravaged Coast Regiment of Renown 2.',
+      'Tend to battle wounds and battle scars.',
+      'Battleplans unlock in order: Scorched Outskirts → Gnaw’s Edge (once a player has gained 20+ shards) → Hateful Shores (after a Gnaw’s Edge win) → Raid on Hel’s Claw (once both players have a Hateful Shores win). Winning a major victory at Hel’s Claw ends the campaign.',
+    ],
+  },
+  'blighted-wilds': {
+    roster: [
+      'Suggested starting roster: 1000 points (or each player starts with a Spearhead army in the general’s regiment).',
+      'Pick a faction (Armies of Renown allowed) and up to 1 battle formation, then a general (a single-model Hero who leads their own regiment).',
+      'General’s regiment: up to 4 non-Hero units with the general’s faction keyword. Up to 4 more regiments, each led by a Hero of the same Grand Alliance with up to 3 non-Hero units of that Hero’s faction.',
+      'Only Regiments of Ghyran can be used as Regiments of Renown (max 1). 1 faction terrain feature and 1 Landmark of Ghyran allowed. Auxiliary units and reinforced units allowed.',
+      'Your general starts with 5 renown points at the Aspiring rank and picks a Path straight away. Paths from other battlepacks (e.g. Ravaged Coast) can be picked too.',
+      'Enhancements: pick 1 heroic trait and 1 artefact of power (from your battletome or The Pride of Thyria / Thyrian Wonders), plus 1 from each unique enhancement table your faction has.',
+      'Starting lores: up to 3 spells from 1 spell lore, up to 3 prayers from 1 prayer lore, and up to 3 Summon spells/prayers from 1 manifestation lore (universal manifestation lores allowed). Arcane Tome: 6 non-Summon + 3 Summon slots.',
+    ],
+    aftermath: [
+      'Earn glory points (cumulative, by the opponent’s army size <1000 / 1000–1250 / 1251–1500 / 1501–2000 / >2000): fought a battle 60/110/150/180/200, major victory +30/40/50/55/60, minor victory +20/30/40/45/50, your general not slain +10/15/20/25/30.',
+      'Gain renown: each unit that fought and survived D3, destroyed units 1, your favoured warriors (not your general) D6, plus bonus renown from ‘Purify the Land’. Ranks: Aspiring 5–14, Elite 15–29, Mighty 30–44, Legendary 45+.',
+      'Manage your roster: promote a Hero, add a Landmark of Ghyran, add 1 new unit or reinforce 1 unit (costs glory points equal to its points), retire units (refund half their points), move/remove enhancements, change your general (D3 battle wounds), change a unit’s Path. Max 5 regiments.',
+      'Tend to battle wounds and battle scars: heal resting units, determine battle wounds and scars, heal battle wounds.',
+      'Each battleplan also has a reward for the winner (see Battleplan Rewards below).',
+    ],
+  },
 };
 
 // Per-faction Warlord-creation steps ("Path to Glory: The Anvil of
@@ -1116,6 +1169,18 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
 
   // ── Step 0: Campaign ──
   const [campaign, setCampaign] = useState(() => saved.campaign ?? null);
+  // The picked battlepack's data (Ravaged Coast / Blighted Wilds), or null
+  // for Ascension and custom campaigns — drives the Paths, Enhancements,
+  // Lores and step-8 (Quest / Emberstone / Glory) content below.
+  const bp = BATTLEPACKS[campaign] || null;
+  const stepLabels = STEPS.map((l, i) => (i !== 7 ? l
+    : campaign === 'ravaged-coast' ? 'Emberstone Vault'
+    : campaign === 'blighted-wilds' ? 'Glory & Renown'
+    : l));
+  // Ravaged Coast: emberstone shards currently in the vault, and gained over
+  // the whole campaign (the roster tracks both).
+  const [emberstoneVault, setEmberstoneVault] = useState(() => saved.emberstoneVault ?? '0');
+  const [emberstoneTotal, setEmberstoneTotal] = useState(() => saved.emberstoneTotal ?? '0');
   const [customCampaignName, setCustomCampaignName] = useState(() => saved.customCampaignName ?? '');
 
   // ── Step 1: Faction ──
@@ -1778,7 +1843,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
       id: `${Date.now()}-warlord`,
       name: warlordName,
       size: '1',
-      notes: [warlordEnhancements, PATHS.find(p => p.key === warlordPath)?.name].filter(Boolean).join('; '),
+      notes: [warlordEnhancements, (PATHS.find(p => p.key === warlordPath) || BATTLEPACK_PATHS.find(p => p.key === warlordPath))?.name].filter(Boolean).join('; '),
       points: '',
     } : null;
 
@@ -1849,6 +1914,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
       commander, armyRosterName, pointsLimit, armyRosterFaction, armyRosterFormation, regiments, auxUnits, armyNotes,
       startingUnits, heroicTraitChoice, heroicTraitAssignee, artefactChoice, artefactAssignee,
       unitsHideLegends, unitsHideScourge, unitsHideRoR,
+      emberstoneVault, emberstoneTotal,
     };
     try { localStorage.setItem(storageKey, JSON.stringify(snapshot)); } catch {}
     if (onSnapshot) onSnapshot(snapshot);
@@ -1862,6 +1928,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
     warlordWarscroll, warlordRank, warlordRenown, warlordEnhancements, warlordPath, warlordPathAbility, warlordPathRankChoices, oobUnits,
     commander, armyRosterName, pointsLimit, armyRosterFaction, armyRosterFormation, regiments, auxUnits, armyNotes,
     startingUnits, heroicTraitChoice, heroicTraitAssignee, artefactChoice, artefactAssignee,
+    emberstoneVault, emberstoneTotal,
   ]);
 
   const renderWeaponTable = (title, rows, add, update, remove, hasRange) => (
@@ -2183,7 +2250,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
     }
     push('Enhancements', enhancements);
 
-    const selectedPathObj = PATHS.find(p => p.key === warlordPath) || (FACTION_PATHS[selectedFaction] ?? []).find(p => p.key === warlordPath);
+    const selectedPathObj = PATHS.find(p => p.key === warlordPath) || BATTLEPACK_PATHS.find(p => p.key === warlordPath) || (FACTION_PATHS[selectedFaction] ?? []).find(p => p.key === warlordPath);
     if (selectedPathObj?.ranks) {
       const pathAbilities = selectedPathObj.ranks
         .map(r => (warlordPathRankChoices[r.rank] != null ? { ...r.options[warlordPathRankChoices[r.rank]], name: `${r.rank}: ${r.options[warlordPathRankChoices[r.rank]].name}` } : null))
@@ -2627,7 +2694,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
     currentQuest, questPoints, questNotes, questsCompleted, background, notableEvents,
     spellLore, prayerLore, manifestationLore,
     warlordWarscroll, warlordRank, warlordRenown, warlordEnhancements,
-    warlordPathLabel: PATHS.find(p => p.key === warlordPath)?.name || '',
+    warlordPathLabel: (PATHS.find(p => p.key === warlordPath) || BATTLEPACK_PATHS.find(p => p.key === warlordPath))?.name || '',
     warlordPathAbility, oobUnits,
     commander, armyRosterName, pointsLimit, armyRosterFaction, armyRosterFormation,
     regiments, auxUnits, armyNotes, regimentsTotal, auxTotal, armyUnitsTotal,
@@ -2927,10 +2994,69 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
           );
   };
 
+  // A titled grid of Path cards (battlepack Paths) — same card/selection
+  // look as the Core and Faction groups on the Paths step.
+  const renderPathGroup = (title, list) => (
+    <div className="ptg-apotheosis-group">
+      {title && <div className="ptg-apotheosis-group-title">{title}</div>}
+      <div className="ptg-apotheosis-options-grid">
+        {list.map(p => (
+          <button
+            key={p.key}
+            type="button"
+            className={`ptg-apotheosis-option-btn${warlordPath === p.key ? ' ptg-apotheosis-option-selected' : ''}`}
+            onClick={() => pickWarlordPath(p.key)}
+          >
+            <div className="gw-ability-card">
+              <div className="gw-ability-body">
+                <div className="gw-ability-name">
+                  {p.name}
+                  {p.restricted && <span className="gw-ability-source-note" title="Restriction">({p.restricted})</span>}
+                </div>
+                <p className="gw-ability-para">{p.ranks.map(r => r.options.map(o => o.name).join(' / ')).join(' · ')}</p>
+              </div>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
+  // Battlepack rules reference: the roster/aftermath summaries plus the
+  // battlepack's in-battle abilities as cards. `which` picks the parts.
+  const renderBattlepackRules = (which = ['roster', 'aftermath', 'battle']) => {
+    if (!bp) return null;
+    const r = BATTLEPACK_RULES[bp.key] || {};
+    return (
+      <div className="ptg-bp-rules">
+        {which.includes('roster') && r.roster && (
+          <details className="ptg-bp-details" open>
+            <summary>{bp.name}: building your roster</summary>
+            <ul className="ptg-bp-list">{r.roster.map((t, i) => <li key={i}>{t}</li>)}</ul>
+          </details>
+        )}
+        {which.includes('aftermath') && r.aftermath && (
+          <details className="ptg-bp-details">
+            <summary>{bp.name}: the aftermath sequence</summary>
+            <ul className="ptg-bp-list">{r.aftermath.map((t, i) => <li key={i}>{t}</li>)}</ul>
+          </details>
+        )}
+        {which.includes('battle') && Object.entries(bp.battle_abilities || {}).map(([g, list]) => (
+          <details className="ptg-bp-details" key={g}>
+            <summary>{bp.name}: {g} ({list.length})</summary>
+            <div className="ptg-apotheosis-options-grid">
+              {list.map((ab, i) => <div key={i} className="ptg-bp-card"><AbilityCard ab={{ ...ab, bullets: parseFormationBullets(ab.bullets) }} keywords={[]} /></div>)}
+            </div>
+          </details>
+        ))}
+      </div>
+    );
+  };
+
   const renderStepFlow = () => (
           <>
             <div className="ptg-wizard-steps">
-              {STEPS.map((label, i) => (
+              {stepLabels.map((label, i) => (
                 <button
                   key={i}
                   className={`ptg-wizard-step${i === step ? ' ptg-wizard-step-active' : ''}${i < step ? ' ptg-wizard-step-done' : ''}`}
@@ -2944,7 +3070,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
             </div>
 
             <div className="ptg-wizard-body">
-              <div className="ptg-wizard-body-title">{step + 1}. {STEPS[step]}</div>
+              <div className="ptg-wizard-body-title">{step + 1}. {stepLabels[step]}</div>
               {step === 0 ? (
                 <>
                   <div className="ptg-campaign-grid">
@@ -2956,7 +3082,9 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                         onClick={() => {
                           setCampaign(c.key);
                           if (CAMPAIGN_POINTS_LIMITS[c.key]) setPointsLimit(CAMPAIGN_POINTS_LIMITS[c.key]);
-                          setStep(s => Math.min(STEPS.length - 1, s + 1));
+                          // Battlepacks stay on this step so their rules
+                          // summary (below the cards) can be read first.
+                          if (!BATTLEPACKS[c.key]) setStep(s => Math.min(STEPS.length - 1, s + 1));
                         }}
                       >
                         <div className="ptg-campaign-name">{c.name}</div>
@@ -2965,6 +3093,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                       </button>
                     ))}
                   </div>
+                  {renderBattlepackRules()}
                   {campaign === 'custom' && (
                     <input
                       className="ptg-campaign-name-input"
@@ -3059,6 +3188,16 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                 </div>
               ) : step === 3 ? (
                 <div className="ptg-path-step">
+                  {bp ? (
+                    <>
+                      {renderPathGroup(`${bp.name} — Hero Paths`, bp.paths.filter(p => p.hero))}
+                      {campaign === 'blighted-wilds' && renderPathGroup('Ravaged Coast — Hero Paths (allowed in Blighted Wilds)', BATTLEPACKS['ravaged-coast'].paths.filter(p => p.hero))}
+                      <details className="ptg-bp-details">
+                        <summary>{bp.name} — Unit Paths (non-Hero units, earned during the campaign)</summary>
+                        {renderPathGroup(null, bp.paths.filter(p => !p.hero))}
+                      </details>
+                    </>
+                  ) : (<>
                   <div className="ptg-apotheosis-group-title">Core</div>
                   <div className="ptg-apotheosis-options-grid">
                     {PATHS.map(p => (
@@ -3080,6 +3219,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                       </button>
                     ))}
                   </div>
+                  </>)}
 
                   <div className="ptg-path-section-divider" />
 
@@ -3113,6 +3253,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
 
                   {(() => {
                     const selectedPathObj = PATHS.find(p => p.key === warlordPath)
+                      || BATTLEPACK_PATHS.find(p => p.key === warlordPath)
                       || (FACTION_PATHS[selectedFaction] ?? []).find(p => p.key === warlordPath);
                     if (!selectedPathObj?.ranks) return null;
                     return (
@@ -3130,7 +3271,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                                   className={`ptg-apotheosis-option-btn${warlordPathRankChoices[r.rank] === oi ? ' ptg-apotheosis-option-selected' : ''}`}
                                   onClick={() => pickPathRankOption(selectedPathObj.ranks, r.rank, oi)}
                                 >
-                                  <AbilityCard ab={{ ...opt, bullets: [] }} keywords={[]} />
+                                  <AbilityCard ab={{ ...opt, bullets: Array.isArray(opt.bullets) ? opt.bullets : [] }} keywords={[]} />
                                 </button>
                               ))}
                             </div>
@@ -3169,6 +3310,20 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                       <span>Legends</span>
                     </label>
                   </div>
+                  {campaign === 'ravaged-coast' && (() => {
+                    const over = factionUnits.filter(u => {
+                      const sel = startingUnits[u.id];
+                      if (!sel) return false;
+                      const pts = parseInt(u.points, 10) || 0;
+                      return (sel.train > 0 && pts > 350) || (sel.reinforce > 0 && pts * 2 > 350);
+                    });
+                    return (
+                      <div className={`ptg-wizard-body-placeholder${over.length ? ' ptg-bp-warning' : ''}`}>
+                        Ravaged Coast: no single unit in your starting army can cost more than 350 points (except Sons of Behemat Heroes).
+                        {over.length > 0 && <> Over the cap: {over.map(u => u.name).join(', ')}.</>}
+                      </div>
+                    );
+                  })()}
                   {factionUnitsLoading ? (
                     <div className="ptg-wizard-body-placeholder">Loading…</div>
                   ) : factionUnits.length === 0 ? (
@@ -3232,17 +3387,42 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                 </div>
               ) : step === 5 ? (
                 <div className="ptg-enhancements-step">
-                  {renderEnhancementTable('Heroic Traits', factionRules.heroic_traits, heroicTraitChoice, heroicTraitAssignee, pickHeroicTrait, reassignHeroicTrait)}
+                  {campaign === 'ravaged-coast' && (
+                    <div className="ptg-wizard-body-placeholder">Ravaged Coast armies start with no enhancements — these are bought with emberstone shards (3 each) in the aftermath sequence. Pick one here to note what you’re saving for.</div>
+                  )}
+                  {/* Battlepack universal tables are appended after the
+                      faction's own, so existing picks (stored by index)
+                      keep pointing at the same card. */}
+                  {renderEnhancementTable('Heroic Traits', [...(factionRules.heroic_traits || []), ...(bp?.heroic_traits || [])], heroicTraitChoice, heroicTraitAssignee, pickHeroicTrait, reassignHeroicTrait)}
                   <div className="ptg-path-section-divider" />
-                  {renderEnhancementTable('Artefacts of Power', factionRules.artefacts, artefactChoice, artefactAssignee, pickArtefact, reassignArtefact)}
+                  {renderEnhancementTable('Artefacts of Power', [...(factionRules.artefacts || []), ...(bp?.artefacts || [])], artefactChoice, artefactAssignee, pickArtefact, reassignArtefact)}
                 </div>
               ) : step === 6 ? (
                 <div className="ptg-lores-step">
-                  {renderLoreColumn('Spell Lore', factionRules.spell_lore, spellLore, setSpellLore)}
+                  {bp && <ul className="ptg-bp-list">{(BATTLEPACK_RULES[bp.key]?.roster || []).filter(t => /spell|lore/i.test(t)).map((t, i) => <li key={i}>{t}</li>)}</ul>}
+                  {renderLoreColumn('Spell Lore', [...(factionRules.spell_lore || []), ...(bp?.spell_lore || [])], spellLore, setSpellLore)}
                   <div className="ptg-path-section-divider" />
-                  {renderLoreColumn('Prayer Lore', factionRules.prayer_lore, prayerLore, setPrayerLore)}
+                  {renderLoreColumn('Prayer Lore', [...(factionRules.prayer_lore || []), ...(bp?.prayer_lore || [])], prayerLore, setPrayerLore)}
                   <div className="ptg-path-section-divider" />
                   {renderLoreColumn('Manifestation Lore', factionRules.manifestation_lore, manifestationLore, setManifestationLore)}
+                </div>
+              ) : step === 7 && campaign === 'ravaged-coast' ? (
+                <div className="ptg-quest-step">
+                  <div className="ptg-wizard-body-placeholder">Ravaged Coast has no quests — your army grows by gathering emberstone shards and spending them in the aftermath sequence.</div>
+                  <div className="ptg-quest-log-grid">
+                    <div className="ptg-field"><label>Emberstone Vault</label><input type="text" value={emberstoneVault} onChange={e => setEmberstoneVault(e.target.value)} /></div>
+                    <div className="ptg-field"><label>Total Shards Gained</label><input type="text" value={emberstoneTotal} onChange={e => setEmberstoneTotal(e.target.value)} /></div>
+                  </div>
+                  {renderBattlepackRules(['aftermath', 'battle'])}
+                </div>
+              ) : step === 7 && campaign === 'blighted-wilds' ? (
+                <div className="ptg-quest-step">
+                  <div className="ptg-wizard-body-placeholder">Blighted Wilds has no quests — each battleplan has its own reward instead (below). Track glory points and your general’s renown here.</div>
+                  <div className="ptg-quest-log-grid">
+                    <div className="ptg-field"><label>Glory Points</label><input type="text" value={gloryPoints} onChange={e => setGloryPoints(e.target.value)} /></div>
+                    <div className="ptg-field"><label>General’s Renown</label><input type="text" value={warlordRenown} onChange={e => setWarlordRenown(e.target.value)} /></div>
+                  </div>
+                  {renderBattlepackRules(['aftermath', 'battle'])}
                 </div>
               ) : step === 7 ? (
                 <div className="ptg-quest-step">

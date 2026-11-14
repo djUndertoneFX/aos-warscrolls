@@ -6206,3 +6206,13 @@ textarea.ptg-doc-overlay-input {
 .ptg-wizard.ptg-wizard-enemy { border-color: #8b2e2e; box-shadow: 0 0 0 2px #8b2e2e, 0 10px 40px rgba(0,0,0,0.6); }
 .ptg-wizard-banner-enemy { color: #e58a8a; }
 .ab-roster-share-btn { left: 82px; }
+
+/* ── Path to Glory battlepacks (Ravaged Coast / Blighted Wilds) ── */
+.ptg-bp-rules { margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem; text-align: left; }
+.ptg-bp-details { border: 1px solid rgba(200,168,64,0.3); border-radius: 4px; padding: 0.4rem 0.7rem; background: rgba(0,0,0,0.2); text-align: left; }
+.ptg-bp-details > summary { cursor: pointer; font-family: 'Cinzel', serif; color: var(--gold, #c9a84c); font-size: 0.9rem; }
+.ptg-bp-details[open] > summary { margin-bottom: 0.5rem; }
+.ptg-bp-list { margin: 0.3rem 0 0.5rem 1.1rem; padding: 0; line-height: 1.45; font-size: 0.88rem; text-align: left; }
+.ptg-bp-list li { margin-bottom: 0.3rem; }
+.ptg-bp-card { pointer-events: none; }
+.ptg-bp-warning { border-color: #8b2e2e; color: #e58a8a; }
