@@ -530,9 +530,20 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
     params.push(...idList);
   }
 
+  // Showing marked units (Friendly/Enemy filter with marks): a unit you marked
+  // always shows for its side, whatever its faction — armies can include
+  // allies from other factions of the same grand alliance (dj 2026-11-14:
+  // Gobsprakk, a Kruleboyz unit, marked Enemy for an Ogor list vanished).
+  // So the Faction dropdowns and Hide: Other Factions don't filter marked rows.
+  const markJoin = showFriendly === '1' || showEnemy === '1';
+  // ids= lookups (split view's marked units) are the same: no faction checks.
+  const skipFactionFilters = markJoin || !!ids;
+
   // Faction slug filter — frontend has already computed which slugs to send
   // based on whether friendly/enemy marks exist (byFaction vs byMark logic).
-  if (faction && enemyFaction) {
+  if (skipFactionFilters) {
+    // see above
+  } else if (faction && enemyFaction) {
     conditions.push('(w.faction_slug = ? OR w.faction_slug = ?)');
     params.push(faction, enemyFaction);
   } else if (faction) {
@@ -571,7 +582,7 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
   if (req.query.hideRoR   === '1') { conditions.push("(w.keywords IS NOT NULL AND w.keywords != '')"); }
   if (req.query.spearheadOnly === '1') { conditions.push('w.spearhead IS NOT NULL'); }
 
-  if (hideOtherFactions === '1') {
+  if (hideOtherFactions === '1' && !skipFactionFilters) {
     // Always exclude RoR/cross-faction units (they have empty keywords).
     // When a faction IS selected, the faction_slug filter already restricts the set;
     // this condition removes the RoR units stored under that faction_slug.
