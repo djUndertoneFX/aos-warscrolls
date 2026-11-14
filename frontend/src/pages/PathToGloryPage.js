@@ -521,7 +521,9 @@ export default function PathToGloryPage({ headerCollapsed }) {
   const [isManifestation, setIsManifestation] = useState(saved.isManifestation ?? false);
   const [hideLegends, setHideLegends]                 = useState(saved.hideLegends           ?? true);
   const [hideOtherFactions, setHideOtherFactions]     = useState(saved.hideOtherFactions     ?? false);
-  const [hideScourgeOfGhyran, setHideScourgeOfGhyran] = useState(saved.hideScourgeOfGhyran   ?? false);
+  // Scourge of Ghyran / Aqshy units are matched-play only — Path to Glory
+  // never shows them (dj 2026-11-14), so this is always on and has no toggle.
+  const hideScourgeOfGhyran = true;
   const [hideRoR, setHideRoR]                         = useState(saved.hideRoR               ?? false);
   const [showFriendly, setShowFriendly] = useState(saved.showFriendly ?? false);
   const [showEnemy, setShowEnemy]       = useState(saved.showEnemy    ?? false);
@@ -610,7 +612,7 @@ export default function PathToGloryPage({ headerCollapsed }) {
   useEffect(() => {
     if (friendlyIds.length === 0) { setFriendlyFlaggedFull([]); return; }
     let cancelled = false;
-    axios.get('/api/warscrolls', { params: { ids: friendlyIds.join(','), pageSize: 300, sortBy: 'faction' } })
+    axios.get('/api/warscrolls', { params: { ids: friendlyIds.join(','), pageSize: 300, sortBy: 'faction', hideScourgeOfGhyran: '1' } })
       .then(res => { if (!cancelled) setFriendlyFlaggedFull(res.data.data ?? []); })
       .catch(() => { if (!cancelled) setFriendlyFlaggedFull([]); });
     return () => { cancelled = true; };
@@ -619,7 +621,7 @@ export default function PathToGloryPage({ headerCollapsed }) {
   useEffect(() => {
     if (enemyIds.length === 0) { setEnemyFlaggedFull([]); return; }
     let cancelled = false;
-    axios.get('/api/warscrolls', { params: { ids: enemyIds.join(','), pageSize: 300, sortBy: 'faction' } })
+    axios.get('/api/warscrolls', { params: { ids: enemyIds.join(','), pageSize: 300, sortBy: 'faction', hideScourgeOfGhyran: '1' } })
       .then(res => { if (!cancelled) setEnemyFlaggedFull(res.data.data ?? []); })
       .catch(() => { if (!cancelled) setEnemyFlaggedFull([]); });
     return () => { cancelled = true; };
@@ -628,7 +630,7 @@ export default function PathToGloryPage({ headerCollapsed }) {
   useEffect(() => {
     if (friendlyIds.length > 0 || !faction) { setFriendlyFactionFallback([]); return; }
     let cancelled = false;
-    axios.get('/api/warscrolls', { params: { faction, pageSize: 300, sortBy: 'faction' } })
+    axios.get('/api/warscrolls', { params: { faction, pageSize: 300, sortBy: 'faction', hideScourgeOfGhyran: '1' } })
       .then(res => { if (!cancelled) setFriendlyFactionFallback(res.data.data ?? []); })
       .catch(() => { if (!cancelled) setFriendlyFactionFallback([]); });
     return () => { cancelled = true; };
@@ -637,7 +639,7 @@ export default function PathToGloryPage({ headerCollapsed }) {
   useEffect(() => {
     if (enemyIds.length > 0 || !enemyFaction) { setEnemyFactionFallback([]); return; }
     let cancelled = false;
-    axios.get('/api/warscrolls', { params: { faction: enemyFaction, pageSize: 300, sortBy: 'faction' } })
+    axios.get('/api/warscrolls', { params: { faction: enemyFaction, pageSize: 300, sortBy: 'faction', hideScourgeOfGhyran: '1' } })
       .then(res => { if (!cancelled) setEnemyFactionFallback(res.data.data ?? []); })
       .catch(() => { if (!cancelled) setEnemyFactionFallback([]); });
     return () => { cancelled = true; };
@@ -1098,10 +1100,6 @@ export default function PathToGloryPage({ headerCollapsed }) {
           </div>
           <div className="cb-group cb-group-right">
             <div className="cb-group-header">Hide:</div>
-            <label className="cb-item">
-              <input type="checkbox" id="cb-scourge" checked={hideScourgeOfGhyran} onChange={e => { setHideScourgeOfGhyran(e.target.checked); setPage(1); }} />
-              <span>Scourge</span>
-            </label>
             <label className="cb-item">
               <input type="checkbox" id="cb-other-factions" checked={hideOtherFactions} onChange={e => { setHideOtherFactions(e.target.checked); setPage(1); }} />
               <span>Other Factions</span>

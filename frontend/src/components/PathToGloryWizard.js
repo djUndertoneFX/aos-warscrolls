@@ -1345,7 +1345,8 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   // Same 3 Hide toggles as WarscrollsPage/ArmyBuilderPage (Other Factions
   // doesn't apply — this list is already scoped to one faction).
   const [unitsHideLegends, setUnitsHideLegends] = useState(() => saved.unitsHideLegends ?? sharedFilterDefaults.hideLegends ?? true);
-  const [unitsHideScourge, setUnitsHideScourge] = useState(() => saved.unitsHideScourge ?? sharedFilterDefaults.hideScourgeOfGhyran ?? false);
+  // Scourge units are matched-play only: never offered in Path to Glory.
+  const unitsHideScourge = true;
   const [unitsHideRoR, setUnitsHideRoR] = useState(() => saved.unitsHideRoR ?? sharedFilterDefaults.hideRoR ?? false);
   useEffect(() => {
     if (!effectiveFactionSlug) { setFactionUnits([]); return; }
@@ -3292,15 +3293,11 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                       <span className="ab-points-label"> pts</span>
                     </span>
                   </div>
-                  {/* Same 3 applicable Hide toggles as Warscrolls/Army Builder (Other
-                      Factions doesn't apply — this list is already one faction only),
-                      defaulting to whatever those pages currently have set. */}
+                  {/* Hide toggles shared with Warscrolls/Army Builder (Other Factions
+                      doesn't apply — this list is already one faction only; Scourge
+                      units are never shown in Path to Glory). */}
                   <div className="cb-group cb-group-right ptg-units-hide-row">
                     <div className="cb-group-header">Hide:</div>
-                    <label className="cb-item">
-                      <input type="checkbox" checked={unitsHideScourge} onChange={e => setUnitsHideScourge(e.target.checked)} />
-                      <span>Scourge</span>
-                    </label>
                     <label className="cb-item">
                       <input type="checkbox" checked={unitsHideRoR} onChange={e => setUnitsHideRoR(e.target.checked)} />
                       <span>Regiments of Renown</span>
