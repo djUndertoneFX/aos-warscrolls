@@ -655,7 +655,8 @@ function resolveImagePaths(id, db) {
 
   // Fallback: strip title prefixes and try the base unit slug
   for (const prefix of TITLE_PREFIXES) {
-    if (ws.name.startsWith(prefix + ' ')) {
+    // Case-insensitive: warscroll names are stored lowercase.
+    if (ws.name.toLowerCase().startsWith(prefix.toLowerCase() + ' ')) {
       const baseSlug = nameSlug(ws.name.slice(prefix.length + 1));
       const customBase = resolveCustom(baseSlug);
       if (customBase.length > 0) return customBase;
