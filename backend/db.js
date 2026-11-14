@@ -285,6 +285,17 @@ function initDb() {
   // (at most one per user) — kept server-side so it follows you across devices.
   try { db.exec('ALTER TABLE ptg_rosters ADD COLUMN is_enemy INTEGER NOT NULL DEFAULT 0'); } catch {}
 
+  // Matched Play page: the account's current game (armies, battleplan,
+  // battle tactics, scores) as one opaque JSON blob, so it follows the user
+  // between devices.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS matched_play_state (
+      user_id INTEGER PRIMARY KEY,
+      data TEXT NOT NULL,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
   // Shared list links — "Share" on Army Builder / Path to Glory snapshots the
   // sender's list under a random token; opening /army-builder?share=TOKEN
   // (or /path-to-glory?share=TOKEN) copies it into the recipient's account as

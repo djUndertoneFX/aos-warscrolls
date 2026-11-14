@@ -1244,6 +1244,29 @@ app.delete('/api/army-builder-lists/:id', requireAuth, (req, res) => {
   }
 });
 
+// ── Matched Play saved game ─────────────────────────────────────────────────
+app.get('/api/matched-play-state', requireAuth, (req, res) => {
+  const db = getDb();
+  try {
+    const row = db.prepare('SELECT data, updated_at FROM matched_play_state WHERE user_id = ?').get(req.user.id);
+    res.json(row ? { data: JSON.parse(row.data), updated_at: row.updated_at } : { data: null });
+  } finally {
+    db.close();
+  }
+});
+app.put('/api/matched-play-state', requireAuth, (req, res) => {
+  const { data } = req.body || {};
+  if (!data || typeof data !== 'object') return res.status(400).json({ error: 'data is required' });
+  const db = getDb();
+  try {
+    db.prepare(`INSERT INTO matched_play_state (user_id, data, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(user_id) DO UPDATE SET data = excluded.data, updated_at = CURRENT_TIMESTAMP`).run(req.user.id, JSON.stringify(data));
+    res.json({ ok: true });
+  } finally {
+    db.close();
+  }
+});
+
 // ── Shared list links ───────────────────────────────────────────────────────
 // POST /api/share — snapshot the sender's current list and return a token.
 // Body: { kind: 'army'|'ptg', source_key, name, faction_slug, faction_name, data }.

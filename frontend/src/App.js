@@ -13,6 +13,7 @@ import BattleBuddyPage from './pages/BattleBuddyPage';
 import SimulacrumPage from './pages/SimulacrumPage';
 import SpearheadPage from './pages/SpearheadPage';
 import PathToGloryPage from './pages/PathToGloryPage';
+import MatchedPlayPage from './pages/MatchedPlayPage';
 import { rememberAfterLogin, afterLoginPath, clearAfterLoginIf } from './shareLink';
 import './styles.css';
 
@@ -20,7 +21,7 @@ const NAV_PAGES = [
   { label: 'Warscrolls',         path: '/warscrolls' },
   { label: 'Army Builder',       path: '/army-builder' },
   { label: 'Battle Buddy',       path: '/battle-buddy' },
-  { label: 'Matched Play',       path: '/matched-play',    soon: true },
+  { label: 'Matched Play',       path: '/matched-play' },
   { label: 'Spearhead',          path: '/spearhead' },
   { label: 'Path to Glory',      path: '/path-to-glory' },
   { label: 'Consult the Oracle', path: '/consult-oracle',  soon: true },
@@ -267,7 +268,7 @@ function AppRoutes() {
         } />
         <Route path="/army-builder"  element={<ProtectedRoute><ArmyBuilderPage headerCollapsed={headerCollapsed} /></ProtectedRoute>} />
         <Route path="/battle-buddy"  element={<ProtectedRoute><BattleBuddyPage /></ProtectedRoute>} />
-        <Route path="/matched-play"  element={<ProtectedRoute><ComingSoon title="Matched Play" /></ProtectedRoute>} />
+        <Route path="/matched-play"  element={<ProtectedRoute><MatchedPlayPage /></ProtectedRoute>} />
         <Route path="/spearhead"     element={<ProtectedRoute><SpearheadPage headerCollapsed={headerCollapsed} /></ProtectedRoute>} />
         <Route path="/path-to-glory"  element={<ProtectedRoute><PathToGloryPage headerCollapsed={headerCollapsed} /></ProtectedRoute>} />
         <Route path="/consult-oracle" element={<ProtectedRoute><ComingSoon title="Consult the Oracle" /></ProtectedRoute>} />
