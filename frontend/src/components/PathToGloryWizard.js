@@ -1063,7 +1063,7 @@ const STORAGE_KEY = 'aos-ptg-recruit-wizard';
 // or editing the enemy never touches your build. enemyName marks the wizard
 // as the enemy's (red frame + banner). onSnapshot(snapshot) fires on every
 // autosave so the page can push enemy edits back to that saved roster.
-export default function PathToGloryWizard({ onClose, factions = [], storageKey = STORAGE_KEY, enemyName = null, onSnapshot = null }) {
+export default function PathToGloryWizard({ onClose, factions = [], storageKey = STORAGE_KEY, enemyName = null, onSnapshot = null, onShare = null }) {
   // Read once per mount — resumes wherever the user left off last time they
   // opened this wizard (localStorage persists it across close/reopen).
   const saved = (() => { try { return JSON.parse(localStorage.getItem(storageKey)) || {}; } catch { return {}; } })();
@@ -3323,6 +3323,15 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
         <button className="gw-close" onClick={onClose} title="Close (Esc)">✕</button>
         {activeDoc === 'warlord' && !warlordPrintPreview && (
           <button className="ab-roster-print-btn" onClick={handleWarlordPrintClick} title="Print">🖨 Print</button>
+        )}
+        {/* Share sits beside Print on the Warlord sheet, and in Print's spot
+            on the Army Roster sheet (which has no Print). */}
+        {onShare && ((activeDoc === 'warlord' && !warlordPrintPreview) || activeDoc === 'army') && (
+          <button
+            className={`ab-roster-print-btn${activeDoc === 'warlord' ? ' ab-roster-share-btn' : ''}`}
+            onClick={onShare}
+            title={enemyName ? 'Copy a link to this enemy roster' : 'Copy a link to your roster. Whoever opens it gets it as their Enemy Roster.'}
+          >🔗 Share</button>
         )}
 
         <div className="ptg-wizard-banner">

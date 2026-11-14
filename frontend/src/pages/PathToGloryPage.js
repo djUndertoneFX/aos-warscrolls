@@ -1395,7 +1395,7 @@ export default function PathToGloryPage({ headerCollapsed }) {
       )}
     </div>
 
-    {showRecruitWizard && <PathToGloryWizard key={wizardResetKey} factions={factions} onClose={() => setShowRecruitWizard(false)} />}
+    {showRecruitWizard && <PathToGloryWizard key={wizardResetKey} factions={factions} onShare={handleShareRoster} onClose={() => setShowRecruitWizard(false)} />}
     {showEnemyWizard && enemyRoster && (
       <PathToGloryWizard
         key={`enemy-${enemyWizardKey}`}
@@ -1403,6 +1403,7 @@ export default function PathToGloryPage({ headerCollapsed }) {
         storageKey={ENEMY_WIZARD_KEY}
         enemyName={enemyRoster.name}
         onSnapshot={handleEnemySnapshot}
+        onShare={handleShareRoster}
         onClose={() => setShowEnemyWizard(false)}
       />
     )}
