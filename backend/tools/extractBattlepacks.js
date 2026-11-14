@@ -1,8 +1,8 @@
-// usage: node extract2.js
+// usage: node extractBattlepacks.js <ravaged-coast.html> <blighted-wilds.html>  (pages saved from wahapedia.ru/aos4/the-rules/...), then node emitBattlepacks.js
 const fs = require('fs');
-const cheerio = require('/home/claude/aos-warscrolls/backend/node_modules/cheerio');
-const { parseAbilityBlock, normalizeText } = require('/home/claude/aos-warscrolls/backend/scrapeRules.js');
-const { resolvePhaseKeyString } = require('/home/claude/aos-warscrolls/backend/phaseKey.js');
+const cheerio = require('cheerio');
+const { parseAbilityBlock, normalizeText } = require('../scrapeRules');
+const { resolvePhaseKeyString } = require('../phaseKey');
 
 function events(file) {
   const $ = cheerio.load(fs.readFileSync(file, 'utf8'));
@@ -72,10 +72,10 @@ function build(file, cfg) {
   for (let i = ba; i < bb; i++) { const e = ev[i]; if (e.t === 'h') g = titleCase(e.v); if (e.t === 'ab' && g) (res.battle_abilities[g] = res.battle_abilities[g] || []).push(clean(e.v, true)); }
   return res;
 }
-const RC = build('/tmp/rc/rc.html', { key: 'ravaged-coast', name: 'Ravaged Coast', prefix: 'rc-', pathRanges: [['Path of the Brawler', 'Universal Enhancements and Lores']],
+const RC = build(process.argv[2], { key: 'ravaged-coast', name: 'Ravaged Coast', prefix: 'rc-', pathRanges: [['Path of the Brawler', 'Universal Enhancements and Lores']],
   groups: { heroic_traits: "Hallmarks of Hel's Claw", artefacts: 'Aqshian Artefacts', spell_lore: 'Lore of Magmic Fury', prayer_lore: 'Prayers of Aqshian Wrath' },
   battleFrom: 'Path to Glory Battles', battleTo: 'Battleplans' });
-const BW = build('/tmp/bw/bw.html', { key: 'blighted-wilds', name: 'Blighted Wilds', prefix: 'bw-', pathRanges: [['Path of the Thyrian Druid', 'Universal Enhancements and Lores'], ['Path of the Alchemist', 'FAQ']],
+const BW = build(process.argv[3], { key: 'blighted-wilds', name: 'Blighted Wilds', prefix: 'bw-', pathRanges: [['Path of the Thyrian Druid', 'Universal Enhancements and Lores'], ['Path of the Alchemist', 'FAQ']],
   groups: { heroic_traits: 'The Pride of Thyria', artefacts: 'Thyrian Wonders', spell_lore: 'Lore of the Overgrown Wilds', prayer_lore: 'Prayers of the Jade Soul' },
   battleFrom: '1. Gather Your Armies', battleTo: 'Battleplans' });
 for (const c of [RC, BW]) {
@@ -84,4 +84,4 @@ for (const c of [RC, BW]) {
   console.log('  HT', c.heroic_traits.length, 'ART', c.artefacts.length, 'SP', c.spell_lore.length, 'PR', c.prayer_lore.length);
   console.log('  battle:', Object.entries(c.battle_abilities).map(([k, v]) => `${k}(${v.length})`).join(', '));
 }
-fs.writeFileSync('/tmp/rcs/campaigns.json', JSON.stringify({ 'ravaged-coast': RC, 'blighted-wilds': BW }));
+fs.writeFileSync(require('path').join(__dirname, 'battlepacks.json'), JSON.stringify({ 'ravaged-coast': RC, 'blighted-wilds': BW }));

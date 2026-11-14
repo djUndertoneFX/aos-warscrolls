@@ -32,3 +32,4 @@ Thumbs.db
 # Rescrape outputs (local only)
 rescrape-output.log
 rescrape-report.json
+backend/tools/battlepacks.json

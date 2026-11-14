@@ -1,5 +1,5 @@
 const fs = require('fs');
-const d = JSON.parse(fs.readFileSync('/tmp/rcs/campaigns.json', 'utf8'));
+const d = JSON.parse(fs.readFileSync(require('path').join(__dirname, 'battlepacks.json'), 'utf8'));
 // tidy battle-ability groups
 const rc = d['ravaged-coast'].battle_abilities;
 rc['Battle Scars'] = rc['Untimely Arrival']; delete rc['Untimely Arrival'];
@@ -24,5 +24,5 @@ const header = `// Path to Glory battlepack data for the Ravaged Coast and Bligh
 //     universal tables, usable by any faction in that campaign.
 //   battle_abilities: in-battle rules, grouped by section, for reference.
 `;
-fs.writeFileSync('/home/claude/aos-warscrolls/frontend/src/components/ptgBattlepacks.js', header + 'const BATTLEPACKS = ' + JSON.stringify(d, null, 1) + ';\n\nexport default BATTLEPACKS;\n');
+fs.writeFileSync(require('path').join(__dirname, '../../frontend/src/components/ptgBattlepacks.js'), header + 'const BATTLEPACKS = ' + JSON.stringify(d, null, 1) + ';\n\nexport default BATTLEPACKS;\n');
 console.log(Object.keys(keep), rewards.length);
