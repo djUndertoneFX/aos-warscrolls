@@ -500,13 +500,42 @@ function PathToGlorySource({ side, state, setState, factionRules }) {
     try {
       const { data: full } = await axios.get(`/api/ptg-rosters/${id}`);
       const blob = full.data || {};
-      const regimentUnitIds = (blob.regiments || []).flatMap(r => r.units || []);
-      const auxIds = (blob.auxUnits || []).map(u => u.warscrollId || u.id).filter(Boolean);
-      const unitIds = [...new Set([...regimentUnitIds, ...auxIds])];
+      const factionSlug = blob.faction || blob.selectedFaction || full.faction_slug || null;
+
+      // The roster's Starting Units map is the only place the wizard keeps
+      // real warscroll ids — `regiments[].units[]` and `auxUnits[]` are the
+      // printed Army Roster's own free-text rows ({id, name, size, notes,
+      // points}), where `id` is a row id with nothing to do with a
+      // warscroll. Reading those as warscroll ids is why a saved Path to
+      // Glory roster used to load here with no units in it at all.
+      const unitIds = Object.entries(blob.startingUnits || {})
+        .filter(([, sel]) => ((sel?.train || 0) + (sel?.reinforce || 0)) > 0)
+        .map(([warscrollId]) => warscrollId);
       let units = [];
       if (unitIds.length > 0) {
         const { data: uData } = await axios.get(`/api/warscrolls?ids=${unitIds.join(',')}&pageSize=300&sortBy=faction`);
         units = uData.data || [];
+      }
+
+      // Anything typed straight onto the Army Roster (or saved before the
+      // Starting Units step existed) has only a name to go on — match those
+      // back against the faction's warscrolls so a hand-built roster still
+      // brings its units across.
+      const haveNames = new Set(units.map(u => (u.name || '').trim().toLowerCase()));
+      const rosterNames = [
+        ...(blob.regiments || []).flatMap(r => (r.units || []).map(u => (u?.name || '').trim())),
+        ...(blob.auxUnits || []).map(u => (u?.name || '').trim()),
+      ].filter(Boolean);
+      const missing = [...new Set(rosterNames.map(n => n.toLowerCase()))].filter(n => !haveNames.has(n));
+      if (missing.length > 0 && factionSlug) {
+        try {
+          const { data: fData } = await axios.get(`/api/warscrolls?faction=${factionSlug}&pageSize=9999`);
+          const byName = new Map((fData.data || []).map(u => [(u.name || '').trim().toLowerCase(), u]));
+          for (const n of missing) {
+            const match = byName.get(n);
+            if (match && !units.some(u => u.id === match.id)) units.push(match);
+          }
+        } catch { /* a name we can't resolve just doesn't appear — not fatal */ }
       }
       const selection = {
         heroic_traits: [],
@@ -524,13 +553,13 @@ function PathToGlorySource({ side, state, setState, factionRules }) {
       setState(s => ({
         ...s, loading: false,
         units,
-        factionSlug: blob.faction || full.faction_slug || null,
+        factionSlug,
         factionName: full.faction_name || null,
         battleFormation: blob.battleFormation || null,
         selection,
         loadedRosterId: id,
       }));
-      if (blob.faction) factionRules.fetchFor(blob.faction);
+      if (factionSlug) factionRules.fetchFor(factionSlug);
     } catch {
       setState(s => ({ ...s, loading: false, error: 'Failed to load that roster.' }));
     } finally {
@@ -557,7 +586,7 @@ function PathToGlorySource({ side, state, setState, factionRules }) {
   }
   return (
     <div className="bb-source-list">
-      {rosters.length > 1 && rosters.map(r => (
+      {rosters.map(r => (
         <div key={r.id} className="bb-source-list-row">
           <span className="bb-source-list-name">{r.name}</span>
           <span className="bb-source-list-faction">{r.faction_name || '—'}</span>

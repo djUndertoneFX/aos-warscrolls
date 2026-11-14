@@ -6275,3 +6275,132 @@ textarea.ptg-doc-overlay-input {
 .mp-tactic-chip:disabled { opacity: 0.35; cursor: not-allowed; }
 .mp-total { font-family: 'Cinzel', serif; font-size: 1rem; }
 .mp-stepper { display: inline-flex; }
+
+/* Anvil of Apotheosis: a characteristic or weapon-profile cell the
+   player's current picks have changed. Tinted green (the gain reads as a
+   gain) with the option names in a title tooltip; a cell an option pins to
+   a fixed value is also read-only, shown by the dimmer, heavier border. */
+.ptg-field input.ptg-stat-modified,
+.ptg-warscroll-table-row input.ptg-stat-modified {
+  background: rgba(96, 150, 84, 0.22);
+  border-color: rgba(142, 200, 118, 0.75);
+  color: #e6f0cf;
+  font-weight: 600;
+}
+.ptg-field input.ptg-stat-locked,
+.ptg-warscroll-table-row input.ptg-stat-locked {
+  border-style: dashed;
+  cursor: default;
+}
+
+/* Step 5's collapsed "Add unit from other faction in grand alliance"
+   section — the same parchment-on-dark treatment as the step's own
+   header, set apart by a rule above it so it reads as an extra below the
+   home faction's list rather than part of it. */
+.ptg-ally-section {
+  margin-top: 1.25rem;
+  border-top: 1px solid rgba(200,168,64,0.3);
+  padding-top: 0.75rem;
+}
+.ptg-ally-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  background: rgba(0,0,0,0.25);
+  border: 1px solid rgba(200,168,64,0.4);
+  border-radius: 4px;
+  padding: 0.55rem 0.7rem;
+  color: #d8cca8;
+  font-family: 'Palatino Linotype', Palatino, Georgia, serif;
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+  text-align: left;
+  cursor: pointer;
+}
+.ptg-ally-toggle:hover { border-color: #c8a840; color: #f0e4c0; }
+.ptg-ally-chevron { font-size: 0.7rem; color: #c8a840; }
+.ptg-ally-count {
+  margin-left: auto;
+  font-size: 0.72rem;
+  color: #9fc08a;
+  letter-spacing: 0.04em;
+}
+.ptg-ally-body { padding-top: 0.75rem; }
+.ptg-ally-field { max-width: 22rem; }
+
+/* "Assign your Regiments" step — drag-to-rearrange rows. */
+.ptg-regiment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.9rem;
+}
+.ptg-regiment-dropzone { padding-bottom: 0.4rem; }
+.ptg-regiment-header .ptg-regiment-pts {
+  margin-left: auto;
+  font-size: 0.72rem;
+  color: var(--text-dim, #8a8578);
+}
+.ptg-regiment-empty {
+  padding: 0.8rem;
+  border: 1px dashed rgba(200,168,64,0.35);
+  border-radius: 4px;
+  color: var(--text-dim, #8a8578);
+  font-size: 0.78rem;
+  font-style: italic;
+  text-align: center;
+}
+.ptg-regiment-drag-row {
+  display: grid;
+  grid-template-columns: 1.2rem minmax(8rem, 2fr) 5.5rem minmax(4rem, 2fr) 4.5rem 1.4rem;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  margin-bottom: 0.3rem;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(200,168,64,0.4);
+  border-radius: 3px;
+  color: #d8cca8;
+  font-size: 0.78rem;
+  cursor: grab;
+}
+.ptg-regiment-drag-row:hover { border-color: #c8a840; }
+.ptg-regiment-dragging { opacity: 0.45; }
+.ptg-regiment-grip { color: rgba(200,168,64,0.7); cursor: grab; }
+.ptg-regiment-unit-name { letter-spacing: 0.03em; }
+.ptg-regiment-unit-meta { color: var(--text-dim, #8a8578); font-size: 0.72rem; }
+.ptg-regiment-unit-pts { text-align: right; }
+
+/* "Set Paths & Ranks" step — one card per unit. */
+.ptg-path-unit-card {
+  margin-bottom: 1.1rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(200,168,64,0.35);
+  border-radius: 4px;
+  background: rgba(0,0,0,0.18);
+}
+.ptg-path-unit-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+  margin-bottom: 0.6rem;
+}
+.ptg-path-unit-name {
+  font-family: 'Palatino Linotype', Palatino, Georgia, serif;
+  font-size: 0.95rem;
+  color: #e8d9a8;
+  letter-spacing: 0.04em;
+}
+.ptg-path-unit-role {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim, #8a8578);
+}
+.ptg-path-unit-renown, .ptg-path-unit-rank { width: 5.5rem; margin-left: auto; }
+.ptg-path-unit-rank { margin-left: 0; }
+.ptg-path-unit-path { min-width: 14rem; }
+.ptg-path-rank-locked { opacity: 0.45; }
+.ptg-path-rank-locked .ptg-apotheosis-option-btn { cursor: not-allowed; }

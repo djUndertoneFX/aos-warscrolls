@@ -2,6 +2,10 @@ import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import axios from 'axios';
 import { AbilityCard, getPhaseStyle } from './WarscrollGW';
+import {
+  parseWarscrollMods, addToCharacteristic, subtractFromCharacteristic,
+  weaponRowMatchesTarget, describeMod,
+} from '../apotheosisEffects';
 
 import BATTLEPACKS from './ptgBattlepacks';
 
@@ -90,8 +94,14 @@ const STEPS = [
   'Add your Enhancements',
   'Add your Lores',
   'Pick your First Quest',
+  'Assign your Regiments',
+  'Set Paths & Ranks',
   'Prepare for Battle',
 ];
+
+// Renown thresholds in rank order — index into this is how far up a Path's
+// rank abilities a unit has actually unlocked (see rankForRenown).
+const RANK_ORDER = ['Aspiring', 'Elite', 'Mighty', 'Legendary'];
 
 // GW currently publishes 3 Path to Glory battlepacks. Ascension's rules are
 // hand-transcribed above; Ravaged Coast and Blighted Wilds come from
@@ -1362,6 +1372,63 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
       .finally(() => setFactionUnitsLoading(false));
   }, [effectiveFactionSlug, unitsHideLegends, unitsHideScourge, unitsHideRoR]);
 
+  // Step 5's "Add unit from other faction in grand alliance" section — a
+  // Path to Glory starting roster may take units from any faction sharing
+  // the warlord's Grand Alliance, so the step carries a second,
+  // collapsed-by-default picker: choose one of those other factions and
+  // its units list and add exactly like the home faction's do (same
+  // startingUnits map, same Train/Reinforce counts, same points total).
+  const [allyPickerOpen, setAllyPickerOpen] = useState(() => saved.allyPickerOpen ?? false);
+  const [allyFaction, setAllyFaction] = useState(() => saved.allyFaction ?? '');
+  const [allyUnitsLoading, setAllyUnitsLoading] = useState(false);
+  // Keyed by faction slug and ACCUMULATED rather than replaced as the
+  // pulldown moves — a unit picked from one allied faction has to keep
+  // resolving (for the points total and the Order of Battle) after the
+  // pulldown moves on to another faction, and across a reload. Only the
+  // fields those lookups and the table actually read are kept, since this
+  // rides along in the wizard's localStorage payload.
+  const [allyUnitsByFaction, setAllyUnitsByFaction] = useState(() => saved.allyUnitsByFaction ?? {});
+
+  const allyFactionOptions = React.useMemo(() => {
+    const home = factions.find(f => f.faction_slug === effectiveFactionSlug);
+    if (!home) return [];
+    return factions.filter(f => f.grand_alliance === home.grand_alliance && f.faction_slug !== home.faction_slug);
+  }, [factions, effectiveFactionSlug]);
+
+  useEffect(() => {
+    if (!allyFaction) return;
+    setAllyUnitsLoading(true);
+    axios.get('/api/warscrolls', { params: {
+      faction: allyFaction, pageSize: 9999,
+      ...(unitsHideLegends ? { isLegends: '0' } : {}),
+      ...(unitsHideScourge ? { hideScourgeOfGhyran: '1' } : {}),
+      ...(unitsHideRoR     ? { hideRoR: '1' } : {}),
+    } })
+      .then(res => {
+        const slim = (res.data.data ?? [])
+          .filter(r => !r.is_terrain && !r.is_manifestation)
+          .map(u => ({
+            id: u.id, name: u.name, points: u.points, keywords: u.keywords,
+            faction_slug: u.faction_slug, faction: u.faction,
+            is_hero: u.is_hero, is_infantry: u.is_infantry, is_cavalry: u.is_cavalry,
+            is_beast: u.is_beast, is_monster: u.is_monster, is_war_machine: u.is_war_machine,
+          }));
+        setAllyUnitsByFaction(prev => {
+          // Browsing through several allied factions would otherwise leave
+          // every list it touched in localStorage forever — keep only the
+          // one on screen and the ones something was actually picked from.
+          const next = { [allyFaction]: slim };
+          for (const [slug, units] of Object.entries(prev)) {
+            if (slug === allyFaction) continue;
+            if (units.some(u => startingUnitsRef.current[u.id])) next[slug] = units;
+          }
+          return next;
+        });
+      })
+      .catch(() => setAllyUnitsByFaction(prev => ({ ...prev, [allyFaction]: prev[allyFaction] ?? [] })))
+      .finally(() => setAllyUnitsLoading(false));
+  }, [allyFaction, unitsHideLegends, unitsHideScourge, unitsHideRoR]);
+
   // { [warscrollId]: { train, reinforce } } — Train/Reinforce counts for
   // the starting roster, same shape/semantics as Army Builder's own
   // `roster` state (ArmyBuilderPage.js): reinforced = 2x models AND 2x
@@ -1380,16 +1447,32 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
       return next;
     });
   };
+  // Read by the allied-faction fetch's cache prune, which must see the
+  // CURRENT picks without taking startingUnits as a dependency (that would
+  // re-fetch the whole allied unit list on every + / − click).
+  const startingUnitsRef = useRef(startingUnits);
+  useEffect(() => { startingUnitsRef.current = startingUnits; }, [startingUnits]);
+
+  // Every unit a startingUnits pick can refer to: the home faction's list
+  // plus every allied faction's list still cached. Looking picks up in
+  // here rather than in factionUnits alone is what lets an allied unit
+  // keep its points and its Order of Battle row after the allied-faction
+  // pulldown has moved on to a different faction.
+  const startingUnitPool = React.useMemo(
+    () => [...factionUnits, ...Object.values(allyUnitsByFaction).flat()],
+    [factionUnits, allyUnitsByFaction],
+  );
+
   const startingUnitsTotal = React.useMemo(() => {
     let sum = 0;
     for (const [id, sel] of Object.entries(startingUnits)) {
-      const unit = factionUnits.find(u => String(u.id) === String(id));
+      const unit = startingUnitPool.find(u => String(u.id) === String(id));
       if (!unit) continue;
       const pts = parseInt(unit.points, 10) || 0;
       sum += (sel.train || 0) * pts + (sel.reinforce || 0) * pts * 2;
     }
     return sum;
-  }, [startingUnits, factionUnits]);
+  }, [startingUnits, startingUnitPool]);
 
   // Applies the chosen Archetype on top of the faction's baseline starting
   // warscroll (Step 2's starting_weapon/starting_keywords) — always
@@ -1710,7 +1793,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
         const existing = next.filter(r => r.sourceUnitId === unitId);
         if (existing.length === target) continue;
         if (existing.length < target) {
-          const unit = factionUnits.find(u => String(u.id) === String(unitId));
+          const unit = startingUnitPool.find(u => String(u.id) === String(unitId));
           if (!unit) continue;
           const toAdd = target - existing.length;
           const displayName = titleCaseWords(unit.name);
@@ -1735,7 +1818,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
       return next.map(r => {
         if (!r.sourceUnitId) return r;
         const sel = startingUnits[r.sourceUnitId];
-        const unit = factionUnits.find(u => String(u.id) === String(r.sourceUnitId));
+        const unit = startingUnitPool.find(u => String(u.id) === String(r.sourceUnitId));
         if (!sel || !unit) return r;
         const idx = countsByUnit[r.sourceUnitId] ?? 0;
         countsByUnit[r.sourceUnitId] = idx + 1;
@@ -1746,7 +1829,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
         return (reinforced === r.reinforced && points === r.points) ? r : { ...r, reinforced, points };
       });
     });
-  }, [startingUnits, factionUnits]); // eslint-disable-line
+  }, [startingUnits, startingUnitPool]); // eslint-disable-line
 
   // Step 6 "Add your Enhancements" — pick 1 from each enhancement table
   // (Heroic Traits, Artefacts of Power) and assign it to an eligible Hero.
@@ -1835,41 +1918,196 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   // non-Hero rows join whichever regiment is currently open. Fully replaces
   // Regiments each run (safe to re-run after adding more OOB units) but
   // never touches Auxiliary Units, which stays manually edited.
-  const prepareArmyRoster = () => {
-    setArmyRosterFaction(factions.find(f => f.faction_slug === selectedFaction)?.faction || '');
-    setArmyRosterFormation(battleFormation || '');
-    if (!armyRosterName?.trim() && armyName?.trim()) setArmyRosterName(armyName);
+  // Is this Order of Battle row a Hero? Matched back against the real
+  // warscroll it came from (startingUnitPool), since oobUnits itself is
+  // free text with no type flags. A hand-typed row with no matching
+  // warscroll counts as a non-Hero — it just joins the open regiment.
+  const oobRowWarscrollName = row => (row.warscroll || row.name || '').trim();
+  const oobRowWarscroll = row => {
+    const name = oobRowWarscrollName(row).toLowerCase();
+    if (!name) return null;
+    return startingUnitPool.find(fu => (fu.name || '').toLowerCase() === name) || null;
+  };
+  const isHeroRow = row => !!oobRowWarscroll(row)?.is_hero;
 
+  // The default regiment layout: the Warlord leads the General's Regiment,
+  // then every Order of Battle row in list order — each Hero opening a new
+  // regiment, every non-Hero filling out whichever regiment is currently
+  // open. This is the shape the physical Army Roster sheet expects
+  // ("General's Regiment 1 / Regiment 2 / ..."), and the starting point the
+  // "Assign your Regiments" step lets the player drag away from.
+  // sourceUnitId ties each row back to what produced it ('warlord', or an
+  // oobUnits row id) so re-running this can keep what was dragged.
+  const buildDefaultRegiments = () => {
+    const uid = tag => `${tag}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const warlordUnit = warlordName?.trim() ? {
-      id: `${Date.now()}-warlord`,
+      id: uid('ru'),
+      sourceUnitId: 'warlord',
       name: warlordName,
       size: '1',
       notes: [warlordEnhancements, (PATHS.find(p => p.key === warlordPath) || BATTLEPACK_PATHS.find(p => p.key === warlordPath))?.name].filter(Boolean).join('; '),
       points: '',
     } : null;
 
-    let current = { id: `${Date.now()}-0`, units: warlordUnit ? [warlordUnit] : [] };
-    const newRegiments = [current];
+    let current = { id: uid('r'), units: warlordUnit ? [warlordUnit] : [] };
+    const built = [current];
 
     oobUnits.forEach(row => {
-      const warscrollName = (row.warscroll || row.name || '').trim();
+      const warscrollName = oobRowWarscrollName(row);
       if (!warscrollName) return;
-      const match = factionUnits.find(fu => fu.name === warscrollName);
+      const match = oobRowWarscroll(row);
       const unit = {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        id: uid('ru'),
+        sourceUnitId: row.id,
         name: warscrollName,
         size: match?.unit_size || '',
         notes: [row.enhancements, row.pathAbility].filter(Boolean).join('; '),
-        points: match?.points || '',
+        points: row.points || match?.points || '',
       };
       if (match?.is_hero && current.units.length > 0) {
-        current = { id: `${Date.now()}-${newRegiments.length}-${Math.random().toString(36).slice(2)}`, units: [] };
-        newRegiments.push(current);
+        current = { id: uid('r'), units: [] };
+        built.push(current);
       }
       current.units.push(unit);
     });
-    setRegiments(newRegiments);
+    return built;
   };
+
+  // What the regiment layout was last reconciled against — any change to
+  // the Warlord's name or the set of Order of Battle rows means the layout
+  // has units missing from it, or units in it that are gone.
+  const rosterSignature = `${warlordName || ''}#${oobUnits.map(u => `${u.id}:${oobRowWarscrollName(u)}`).join('|')}`;
+  const [regimentsSeedSig, setRegimentsSeedSig] = useState(() => saved.regimentsSeedSig ?? '');
+
+  // ── Paths & Ranks, per Order of Battle unit ───────────────────────────
+  // The Warlord already picks a Path back in step 4; this is the same
+  // machinery for everybody else on the Order of Battle. A unit only
+  // unlocks a Path rank's abilities once its Renown has earned it that
+  // rank (Aspiring at 5, Elite at 15, Mighty at 30, Legendary at 45 — see
+  // rankForRenown), so higher ranks render locked rather than hidden, to
+  // show what the unit is working towards.
+  // Which Paths a given unit may walk. A battlepack brings its own Paths
+  // and they replace the core four (the book's own rule — see the step 4
+  // picker), split into Hero Paths and the Unit Paths a non-Hero earns
+  // during the campaign; without one, only Heroes have Paths at all.
+  // Blighted Wilds additionally allows Ravaged Coast's Paths.
+  const pathsForUnit = isHero => {
+    const fromBattlepack = bp
+      ? [
+          ...bp.paths.filter(pth => !!pth.hero === isHero),
+          ...(campaign === 'blighted-wilds'
+            ? BATTLEPACKS['ravaged-coast'].paths.filter(pth => !!pth.hero === isHero)
+            : []),
+        ]
+      : (isHero ? PATHS : []);
+    return [...fromBattlepack, ...(isHero ? (FACTION_PATHS[selectedFaction] ?? []) : [])];
+  };
+  const findPathByKey = key => (
+    PATHS.find(pth => pth.key === key)
+    || BATTLEPACK_PATHS.find(pth => pth.key === key)
+    || (FACTION_PATHS[selectedFaction] ?? []).find(pth => pth.key === key)
+    || null
+  );
+  const unlockedRankCount = renown => RANK_ORDER.indexOf(rankForRenown(renown)) + 1;
+
+  const setOobUnitRenown = (rowId, value) => setOobUnits(rows => rows.map(r => (
+    r.id === rowId ? { ...r, renown: value, rank: rankForRenown(value) } : r
+  )));
+  // Switching Path clears that unit's rank picks — a different Path's
+  // ranks are a different set of choices, not meant to carry over (same
+  // rule pickWarlordPath follows for the Warlord).
+  const setOobUnitPath = (rowId, key) => setOobUnits(rows => rows.map(r => (
+    r.id === rowId ? { ...r, path: key || '', pathRankChoices: {}, pathAbility: '' } : r
+  )));
+  // The readable summary written back into pathAbility is what the Order
+  // of Battle document actually prints, so the picks show up on the sheet
+  // rather than only inside the wizard.
+  const pickOobUnitRankOption = (rowId, pathObj, rank, optIdx) => setOobUnits(rows => rows.map(r => {
+    if (r.id !== rowId) return r;
+    const choices = { ...(r.pathRankChoices || {}), [rank]: optIdx };
+    const summary = (pathObj.ranks || [])
+      .map(rr => (choices[rr.rank] != null ? rr.options[choices[rr.rank]]?.name : null))
+      .filter(Boolean)
+      .join(', ');
+    return { ...r, pathRankChoices: choices, pathAbility: summary };
+  }));
+
+  const prepareArmyRoster = () => {
+    setArmyRosterFaction(factions.find(f => f.faction_slug === selectedFaction)?.faction || '');
+    setArmyRosterFormation(battleFormation || '');
+    if (!armyRosterName?.trim() && armyName?.trim()) setArmyRosterName(armyName);
+    setRegiments(buildDefaultRegiments());
+    setRegimentsSeedSig(rosterSignature);
+  };
+
+  // Brings the regiment layout back in line with the roster WITHOUT
+  // discarding what the player dragged: rows whose unit is gone are
+  // dropped, rows already placed stay exactly where they are, and anything
+  // new is slotted into the regiment the default layout would have given
+  // it. Runs when the player opens the step (not continuously), so a
+  // half-finished drag can't be reshuffled underneath them.
+  const reconcileRegiments = () => {
+    const defaults = buildDefaultRegiments();
+    const defaultIndexBySource = new Map();
+    defaults.forEach((reg, ri) => reg.units.forEach(u => defaultIndexBySource.set(u.sourceUnitId, ri)));
+
+    setRegiments(prev => {
+      const live = new Set(defaultIndexBySource.keys());
+      // Keep hand-typed rows (no sourceUnitId) and rows whose unit survives.
+      const next = prev.map(r => ({ ...r, units: r.units.filter(u => !u.sourceUnitId || live.has(u.sourceUnitId)) }));
+      const placed = new Set(next.flatMap(r => r.units.map(u => u.sourceUnitId)).filter(Boolean));
+
+      for (const [sourceId, regIndex] of defaultIndexBySource) {
+        if (placed.has(sourceId)) continue;
+        const unit = defaults[regIndex].units.find(u => u.sourceUnitId === sourceId);
+        while (next.length <= regIndex) next.push({ id: `r-${Date.now()}-${next.length}`, units: [] });
+        next[regIndex] = { ...next[regIndex], units: [...next[regIndex].units, unit] };
+      }
+      // An emptied regiment in the middle would otherwise print as a blank
+      // block on the Army Roster; the first one always stays.
+      const trimmed = next.filter((r, i) => i === 0 || r.units.length > 0);
+      return trimmed.length ? trimmed : [{ id: 'r1', units: [] }];
+    });
+    setRegimentsSeedSig(rosterSignature);
+  };
+
+  // Drag and drop between/within regiments. The dragged row is identified
+  // by its own id alone — regiment ids are looked up at drop time, so a
+  // row dropped back into a list it was already in reorders instead of
+  // duplicating.
+  const [draggedRegUnitId, setDraggedRegUnitId] = useState(null);
+  const moveRegimentUnit = (unitId, targetRegId, beforeUnitId = null) => {
+    if (!unitId) return;
+    setRegiments(rs => {
+      let moving = null;
+      const stripped = rs.map(r => ({
+        ...r,
+        units: r.units.filter(u => {
+          if (u.id !== unitId) return true;
+          moving = u;
+          return false;
+        }),
+      }));
+      if (!moving) return rs;
+      return stripped.map(r => {
+        if (r.id !== targetRegId) return r;
+        if (!beforeUnitId || beforeUnitId === unitId) return { ...r, units: [...r.units, moving] };
+        const at = r.units.findIndex(u => u.id === beforeUnitId);
+        if (at < 0) return { ...r, units: [...r.units, moving] };
+        return { ...r, units: [...r.units.slice(0, at), moving, ...r.units.slice(at)] };
+      });
+    });
+  };
+
+  // Auto-arrange on arrival, and whenever the roster has changed since the
+  // last time this step saw it. Gated on the step rather than running
+  // continuously so a unit added later can't reshuffle a layout the player
+  // is in the middle of dragging on another screen.
+  useEffect(() => {
+    if (step !== 8) return;
+    if (regimentsSeedSig === rosterSignature) return;
+    reconcileRegiments();
+  }, [step, rosterSignature]); // eslint-disable-line
 
   useEffect(() => {
     const h = e => {
@@ -1913,7 +2151,8 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
       spellLore, prayerLore, manifestationLore,
       warlordWarscroll, warlordRank, warlordRenown, warlordEnhancements, warlordPath, warlordPathAbility, warlordPathRankChoices, oobUnits,
       commander, armyRosterName, pointsLimit, armyRosterFaction, armyRosterFormation, regiments, auxUnits, armyNotes,
-      startingUnits, heroicTraitChoice, heroicTraitAssignee, artefactChoice, artefactAssignee,
+      startingUnits, allyPickerOpen, allyFaction, allyUnitsByFaction, regimentsSeedSig,
+      heroicTraitChoice, heroicTraitAssignee, artefactChoice, artefactAssignee,
       unitsHideLegends, unitsHideScourge, unitsHideRoR,
       emberstoneVault, emberstoneTotal,
     };
@@ -1928,9 +2167,28 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
     spellLore, prayerLore, manifestationLore,
     warlordWarscroll, warlordRank, warlordRenown, warlordEnhancements, warlordPath, warlordPathAbility, warlordPathRankChoices, oobUnits,
     commander, armyRosterName, pointsLimit, armyRosterFaction, armyRosterFormation, regiments, auxUnits, armyNotes,
-    startingUnits, heroicTraitChoice, heroicTraitAssignee, artefactChoice, artefactAssignee,
+    startingUnits, allyPickerOpen, allyFaction, allyUnitsByFaction, regimentsSeedSig,
+    heroicTraitChoice, heroicTraitAssignee, artefactChoice, artefactAssignee,
     emberstoneVault, emberstoneTotal,
   ]);
+
+  // One weapon-profile cell. The value shown is the effective one (base
+  // plus every Anvil of Apotheosis pick); a cell an option changed is
+  // tinted and carries a tooltip naming the option(s) responsible, and a
+  // cell an option pins to a fixed value is read-only while it's picked.
+  const statCell = (row, field, update) => {
+    const reasons = row.__mods?.[field];
+    const locked = !!row.__setBy?.[field];
+    return (
+      <input
+        className={reasons ? `ptg-stat-modified${locked ? ' ptg-stat-locked' : ''}` : undefined}
+        title={reasons ? reasons.join('\n') : undefined}
+        readOnly={locked}
+        value={row[field] || ''}
+        onChange={e => update(row.id, field, e.target.value)}
+      />
+    );
+  };
 
   const renderWeaponTable = (title, rows, add, update, remove, hasRange) => (
     <div className="ptg-warscroll-table-block">
@@ -1945,12 +2203,12 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
           {rows.map(r => (
             <div className="ptg-warscroll-table-row" key={r.id}>
               <input value={r.name || ''} onChange={e => update(r.id, 'name', e.target.value)} placeholder="Weapon" />
-              {hasRange && <input value={r.rng || ''} onChange={e => update(r.id, 'rng', e.target.value)} />}
-              <input value={r.atk || ''} onChange={e => update(r.id, 'atk', e.target.value)} />
-              <input value={r.hit || ''} onChange={e => update(r.id, 'hit', e.target.value)} />
-              <input value={r.wnd || ''} onChange={e => update(r.id, 'wnd', e.target.value)} />
-              <input value={r.rnd || ''} onChange={e => update(r.id, 'rnd', e.target.value)} />
-              <input value={r.dmg || ''} onChange={e => update(r.id, 'dmg', e.target.value)} />
+              {hasRange && statCell(r, 'rng', update)}
+              {statCell(r, 'atk', update)}
+              {statCell(r, 'hit', update)}
+              {statCell(r, 'wnd', update)}
+              {statCell(r, 'rnd', update)}
+              {statCell(r, 'dmg', update)}
               <button className="ptg-oob-row-remove" onClick={() => remove(r.id)} title="Remove weapon">✕</button>
               <input
                 className="ptg-warscroll-table-abilities"
@@ -1966,6 +2224,27 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
     </div>
   );
 
+  // One characteristic on the stat wheel — same effective-value treatment
+  // as statCell above (tinted + tooltipped when a pick changed it,
+  // read-only while a pick pins it to a fixed value).
+  const renderStatField = (label, statKey, setBase) => {
+    const reasons = effectiveWarlordStats.sources[statKey];
+    const locked = !!effectiveWarlordStats.setBy[statKey];
+    return (
+      <div className="ptg-field" title={reasons.length ? reasons.join('\n') : undefined}>
+        <label>{label}</label>
+        <input
+          type="text"
+          className={reasons.length ? `ptg-stat-modified${locked ? ' ptg-stat-locked' : ''}` : undefined}
+          readOnly={locked}
+          value={effectiveWarlordStats[statKey] ?? ''}
+          onChange={e => setStatRebased(setBase, statKey)(e.target.value)}
+          placeholder="—"
+        />
+      </div>
+    );
+  };
+
   // Shared between the Warlord Warscroll doc editor and the "Pick your
   // Warlord" wizard step, so filling it out in either place stays in sync.
   const renderWarlordForm = () => (
@@ -1975,13 +2254,13 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
         <input type="text" value={warlordName} onChange={e => setWarlordName(e.target.value)} placeholder="e.g. Iladrien the Bright" />
       </div>
       <div className="ptg-warlord-characteristics">
-        <div className="ptg-field"><label>Move</label><input type="text" value={warlordMove} onChange={e => setWarlordMove(e.target.value)} placeholder="—" /></div>
-        <div className="ptg-field"><label>Health</label><input type="text" value={warlordHealth} onChange={e => setWarlordHealth(e.target.value)} placeholder="—" /></div>
-        <div className="ptg-field"><label>Save</label><input type="text" value={warlordSave} onChange={e => setWarlordSave(e.target.value)} placeholder="—" /></div>
-        <div className="ptg-field"><label>Control</label><input type="text" value={warlordControl} onChange={e => setWarlordControl(e.target.value)} placeholder="—" /></div>
+        {renderStatField('Move', 'move', setWarlordMove)}
+        {renderStatField('Health', 'health', setWarlordHealth)}
+        {renderStatField('Save', 'save', setWarlordSave)}
+        {renderStatField('Control', 'control', setWarlordControl)}
       </div>
-      {renderWeaponTable('Ranged Weapons', rangedWeapons, addRanged, updateRanged, removeRanged, true)}
-      {renderWeaponTable('Melee Weapons', meleeWeapons, addMelee, updateMelee, removeMelee, false)}
+      {renderWeaponTable('Ranged Weapons', effectiveRangedWeapons, addRanged, updateRangedRebased, removeRanged, true)}
+      {renderWeaponTable('Melee Weapons', effectiveMeleeWeapons, addMelee, updateMeleeRebased, removeMelee, false)}
       {chosenOptionsSummary.length > 0 && (
         <div className="ptg-warlord-choices-summary">
           {chosenOptionsSummary.map((c, i) => (
@@ -1993,11 +2272,163 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
       )}
       <div className="ptg-field">
         <label>Keywords</label>
-        <input type="text" value={warlordKeywordsLine1} onChange={e => setWarlordKeywordsLine1(e.target.value)} placeholder="HERO, INFANTRY, …" />
+        <input
+          type="text"
+          className={effectiveKeywordsLine1 !== warlordKeywordsLine1 ? 'ptg-stat-modified' : undefined}
+          title={effectiveKeywordsLine1 !== warlordKeywordsLine1 ? 'Rewritten by your Anvil of Apotheosis picks — deselect them to edit' : undefined}
+          readOnly={effectiveKeywordsLine1 !== warlordKeywordsLine1}
+          value={effectiveKeywordsLine1}
+          onChange={e => setWarlordKeywordsLine1(e.target.value)}
+          placeholder="HERO, INFANTRY, …"
+        />
         <input type="text" value={warlordKeywordsLine2} onChange={e => setWarlordKeywordsLine2(e.target.value)} placeholder="ORDER, IDONETH DEEPKIN, AELF, …" />
       </div>
     </>
   );
+
+  // One unit's row on the "Set Paths & Ranks" step — the Warlord and every
+  // Order of Battle unit render through the same card, differing only in
+  // which piece of state they read and write (the Warlord has its own
+  // dedicated fields; everyone else lives on their oobUnits row).
+  // Non-Heroes get the renown/rank half only: Paths are a Hero thing.
+  const renderPathCard = ({ key, title, subtitle, isHero, renown, onRenown, pathKey, onPath, rankChoices, onPick }) => {
+    const rank = rankForRenown(renown);
+    const pathObj = findPathByKey(pathKey);
+    const unlocked = unlockedRankCount(renown);
+    const pathOptions = pathsForUnit(isHero);
+    return (
+      <div className="ptg-path-unit-card" key={key}>
+        <div className="ptg-path-unit-head">
+          <span className="ptg-path-unit-name">{title.toUpperCase()}</span>
+          <span className="ptg-path-unit-role">{subtitle}</span>
+          <div className="ptg-field ptg-path-unit-renown">
+            <label>Renown</label>
+            <input value={renown || ''} onChange={e => onRenown(e.target.value)} />
+          </div>
+          <div className="ptg-field ptg-path-unit-rank">
+            <label>Rank</label>
+            <input value={rank || '—'} readOnly title="Derived from Renown — earned at 5+ points" />
+          </div>
+          {pathOptions.length > 0 && (
+            <div className="ptg-field ptg-path-unit-path">
+              <label>Path</label>
+              <select value={pathKey || ''} onChange={e => onPath(e.target.value)}>
+                <option value="">…</option>
+                {pathOptions.map(p => (
+                  <option key={p.key} value={p.key}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+
+        {pathObj && !pathObj.ranks && (
+          <div className="ptg-wizard-body-placeholder">
+            No rank abilities sourced for {pathObj.name} yet.
+          </div>
+        )}
+        {pathObj?.ranks && pathObj.ranks.map((r, ri) => {
+          const locked = ri >= unlocked;
+          return (
+            <div key={r.rank} className={`ptg-apotheosis-group${locked ? ' ptg-path-rank-locked' : ''}`}>
+              <div className="ptg-apotheosis-group-title">
+                {r.rank}
+                {locked && <span className="ptg-lore-count"> (locked — needs more renown)</span>}
+              </div>
+              <div className="ptg-apotheosis-options-grid">
+                {r.options.map((opt, oi) => (
+                  <button
+                    key={oi}
+                    type="button"
+                    disabled={locked}
+                    className={`ptg-apotheosis-option-btn${rankChoices?.[r.rank] === oi ? ' ptg-apotheosis-option-selected' : ''}`}
+                    onClick={() => onPick(pathObj, r.rank, oi)}
+                  >
+                    <AbilityCard ab={{ ...opt, bullets: [] }} keywords={[]} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // Step 5's unit list — rendered once for the warlord's own faction and
+  // again for whichever Grand Alliance ally the player expands, both
+  // writing into the same startingUnits map (warscroll ids are unique
+  // across factions, so an allied pick can't collide with a home one).
+  const renderStartingUnitsTable = (units, loading, emptyMessage) => {
+    if (loading) return <div className="ptg-wizard-body-placeholder">Loading…</div>;
+    if (units.length === 0) return <div className="ptg-wizard-body-placeholder">{emptyMessage}</div>;
+    return (
+      <table className="ptg-units-table">
+        <thead>
+          <tr>
+            <th className="ab-count-th">Units</th>
+            <th className="ab-count-th">Reinf.</th>
+            <th>Name</th>
+            <th>Pts</th>
+            <th>Keywords</th>
+          </tr>
+        </thead>
+        <tbody>
+          {/* The list already comes back faction/type/name-ordered (see
+              /api/warscrolls' typeOrder, same query every other page uses)
+              — no client re-sort, so a section header per unitTypeLabel
+              change lines up with real, contiguous groups instead of
+              firing every row. */}
+          {units.map((u, i) => {
+            const sel = startingUnits[u.id] ?? { train: 0, reinforce: 0 };
+            const typeChanged = i === 0 || unitTypeLabel(units[i - 1]) !== unitTypeLabel(u);
+            return (
+              <React.Fragment key={u.id}>
+                {typeChanged && (
+                  <tr className="separator-type">
+                    <td colSpan={5}>{unitTypeLabel(u)}</td>
+                  </tr>
+                )}
+                <tr>
+                  <td className="col-count">
+                    <div className="ab-count-stepper">
+                      <button type="button" className="ab-count-btn" onClick={() => bumpStartingUnitCount(u.id, 'train', -1)}>−</button>
+                      <span className="ab-count-value">{sel.train || 0}</span>
+                      <button type="button" className="ab-count-btn" onClick={() => bumpStartingUnitCount(u.id, 'train', 1)}>+</button>
+                    </div>
+                  </td>
+                  <td className="col-count">
+                    {u.is_hero ? (
+                      <span className="ab-count-na" title="Heroes can't be reinforced">—</span>
+                    ) : (
+                      <div className="ab-count-stepper">
+                        <button type="button" className="ab-count-btn" onClick={() => bumpStartingUnitCount(u.id, 'reinforce', -1)}>−</button>
+                        <span className="ab-count-value">{sel.reinforce || 0}</span>
+                        <button type="button" className="ab-count-btn" onClick={() => bumpStartingUnitCount(u.id, 'reinforce', 1)}>+</button>
+                      </div>
+                    )}
+                  </td>
+                  <td className="ptg-units-name">{(u.name || '').toUpperCase()}</td>
+                  <td className="ptg-units-pts">{u.points || '—'}</td>
+                  <td className="ptg-units-keywords">{(u.keywords || '').split(',').slice(0, 6).join(', ')}</td>
+                </tr>
+              </React.Fragment>
+            );
+          })}
+        </tbody>
+      </table>
+    );
+  };
+
+  // How many units the roster currently takes from OTHER factions in the
+  // Grand Alliance — shown on the collapsed section's header so a pick
+  // made there isn't invisible once it's folded away again.
+  const allyPickedCount = React.useMemo(() => {
+    const allyIds = new Set(Object.values(allyUnitsByFaction).flat().map(u => String(u.id)));
+    return Object.entries(startingUnits)
+      .filter(([id]) => allyIds.has(String(id)))
+      .reduce((n, [, sel]) => n + (sel.train || 0) + (sel.reinforce || 0), 0);
+  }, [startingUnits, allyUnitsByFaction]);
 
   // Step 6 "Add your Enhancements" — one enhancement table (Heroic Traits
   // or Artefacts of Power), single-select pick + an assignee dropdown
@@ -2312,6 +2743,185 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
     return target.altNames.includes(name);
   };
 
+  // ── Live warscroll from the Anvil of Apotheosis picks ─────────────────
+  //
+  // Every option currently picked has its scraped effect text parsed into
+  // the concrete warscroll changes it describes (see
+  // ../apotheosisEffects.js) and those are layered over the base warscroll
+  // on each render rather than written into it. Base = the faction's
+  // starting warscroll plus whatever the player typed; effective = base +
+  // every current pick, and the effective numbers are what both the form
+  // and the printed warscroll show.
+  //
+  // Deriving rather than baking in is what makes switching Battle Mount,
+  // changing Archetype, or deselecting an upgrade land on the right
+  // numbers — the alternative (apply on select, reverse on deselect)
+  // silently stacks a previous pick's changes on top of the new one's the
+  // moment a reverse is missed.
+  //
+  // Two effects stay imperative on purpose and are skipped by the parser
+  // (its ALREADY_HANDLED_RE): Anti-X, whose keyword the player picks
+  // separately below, and the Path-rank-scaling Attacks bonus, which has
+  // its own keep-in-sync effect. Both already write into the base weapon
+  // rows and persist there, so deriving them too would double them up on
+  // any roster saved before this.
+  const apotheosisModSources = React.useMemo(() => {
+    if (!apotheosisSteps.length) return [];
+    const stepBy = re => apotheosisSteps.find(st => re.test(st.step_title || ''));
+    const archetypeStepData = stepBy(/(?:choose|pick) an archetype/i);
+    const companionStepData = stepBy(/choose a companion/i);
+    const originFlawStepData = stepBy(/origin.*flaw/i);
+    const mountStepData = stepBy(/^(?:choose|pick) a battle mount$/i);
+    const mountUpgradesStepData = stepBy(/^(?:pick any |battle any )?battle mount upgrades$/i);
+    const otherUpgradesStepData = stepBy(/pick any other upgrades/i);
+
+    // Order matters: a later pick's "set" wins over an earlier one's, and
+    // this is the order the player makes them in (Archetype first, loose
+    // upgrades last), which is also the order the source presents them.
+    const picked = [];
+    if (archetypeStepData?.options?.[archetypeChoice]) picked.push(archetypeStepData.options[archetypeChoice]);
+    if (companionChoice >= 0 && companionStepData?.options?.[companionChoice]) picked.push(companionStepData.options[companionChoice]);
+    if (originFlawStepData) {
+      const byGroup = {};
+      for (const o of originFlawStepData.options) { (byGroup[o.option_group] ??= []).push(o); }
+      for (const group of ['Origins', 'Flaws']) {
+        const idx = originFlawChoice?.[group];
+        if (idx != null && byGroup[group]?.[idx]) picked.push(byGroup[group][idx]);
+      }
+    }
+    if (mountChoice >= 0 && mountStepData?.options?.[mountChoice]) picked.push(mountStepData.options[mountChoice]);
+    for (const i of battleMountUpgradesChoice) if (mountUpgradesStepData?.options?.[i]) picked.push(mountUpgradesStepData.options[i]);
+    for (const i of otherUpgradesChoice) if (otherUpgradesStepData?.options?.[i]) picked.push(otherUpgradesStepData.options[i]);
+
+    return picked
+      .map(opt => ({ opt, mods: parseWarscrollMods(opt.effect) }))
+      .filter(entry => entry.mods.length > 0);
+  }, [apotheosisSteps, archetypeChoice, companionChoice, originFlawChoice, mountChoice, battleMountUpgradesChoice, otherUpgradesChoice]);
+
+  // Stat wheel. `sources` drives the "what changed this" tooltip, `setBy`
+  // marks a characteristic an option pins to a fixed value (typing into it
+  // would be ignored, so the field is made read-only instead), and
+  // `addDelta` is what a typed edit on an added-to field is rebased by.
+  const effectiveWarlordStats = React.useMemo(() => {
+    const out = { move: warlordMove, health: warlordHealth, save: warlordSave, control: warlordControl };
+    const sources = { move: [], health: [], save: [], control: [] };
+    const setBy = {};
+    const addDelta = {};
+    for (const { opt, mods } of apotheosisModSources) {
+      for (const m of mods) {
+        if (m.kind !== 'stat') continue;
+        if (m.op === 'set') {
+          out[m.stat] = m.value;
+          setBy[m.stat] = opt.name;
+          addDelta[m.stat] = 0; // a later "set" discards the earlier adds it replaces
+        } else if (m.op === 'add') {
+          const next = addToCharacteristic(out[m.stat], m.value);
+          if (next == null) continue;
+          out[m.stat] = next;
+          addDelta[m.stat] = (addDelta[m.stat] || 0) + m.value;
+        } else if (m.op === 'prefix') {
+          if (!String(out[m.stat] || '').startsWith(m.value)) out[m.stat] = `${m.value}${out[m.stat] || ''}`;
+        }
+        sources[m.stat].push(`${opt.name} — ${describeMod(m)}`);
+      }
+    }
+    return { ...out, sources, setBy, addDelta };
+  }, [apotheosisModSources, warlordMove, warlordHealth, warlordSave, warlordControl]);
+
+  // Weapon rows. Returns copies carrying three bookkeeping fields the
+  // renderers use and nothing else reads: __mods (which cells an option
+  // changed, for highlighting), __setBy (cells pinned to a fixed value)
+  // and __addDelta (for rebasing a typed edit back onto the base row).
+  const buildEffectiveWeapons = React.useCallback((rows, listIsMelee) => {
+    if (!apotheosisModSources.length) return rows;
+    return rows.map(row => {
+      const next = { ...row, __mods: {}, __setBy: {}, __addDelta: {} };
+      for (const { opt, mods } of apotheosisModSources) {
+        // An "X or add N to Y" option is a choice between two weapons —
+        // only the branch naming a weapon this hero actually has applies,
+        // and only one branch of the group ever does.
+        const usedGroups = new Set();
+        for (const m of mods) {
+          if (m.kind !== 'weapon') continue;
+          if (!weaponRowMatchesTarget(next, m.target, listIsMelee, companionWeaponNames)) continue;
+          if (m.exclusiveGroup) {
+            if (usedGroups.has(m.exclusiveGroup)) continue;
+            usedGroups.add(m.exclusiveGroup);
+          }
+          if (m.op === 'set') {
+            next[m.field] = m.value;
+            next.__setBy[m.field] = opt.name;
+            next.__addDelta[m.field] = 0;
+          } else {
+            const bumped = addToCharacteristic(next[m.field], m.value);
+            if (bumped == null) continue;
+            next[m.field] = bumped;
+            next.__addDelta[m.field] = (next.__addDelta[m.field] || 0) + m.value;
+          }
+          (next.__mods[m.field] ??= []).push(`${opt.name} — ${describeMod(m)}`);
+        }
+      }
+      return next;
+    });
+  }, [apotheosisModSources, companionWeaponNames]);
+
+  const effectiveMeleeWeapons = React.useMemo(() => buildEffectiveWeapons(meleeWeapons, true), [buildEffectiveWeapons, meleeWeapons]);
+  const effectiveRangedWeapons = React.useMemo(() => buildEffectiveWeapons(rangedWeapons, false), [buildEffectiveWeapons, rangedWeapons]);
+
+  // Keyword line 1 (HERO, INFANTRY, …) is the one Battle Mounts and
+  // upgrades rewrite; line 2 is the alliance/faction line and never
+  // changes. Every operation here is idempotent — applying the same mod to
+  // an already-updated line is a no-op — because an Archetype's keywords
+  // are ALSO written straight into the base line by applyArchetypeChoice,
+  // and re-deriving them must not duplicate them.
+  const effectiveKeywordsLine1 = React.useMemo(() => {
+    let parts = (warlordKeywordsLine1 || '').split(',').map(k => k.trim()).filter(Boolean);
+    const head = k => k.replace(/\s*\(.*$/, '').trim().toUpperCase();
+    const has = k => parts.some(p => p.toUpperCase() === k.toUpperCase());
+    const addKeyword = k => {
+      if (has(k)) return;
+      // "WIZARD (1)" replaces an existing "WIZARD (2)" rather than sitting
+      // beside it; a bare keyword with no value just appends.
+      const i = /\(/.test(k) ? parts.findIndex(p => head(p) === head(k)) : -1;
+      if (i >= 0) parts[i] = k; else parts.push(k);
+    };
+    for (const { mods } of apotheosisModSources) {
+      for (const m of mods) {
+        if (m.kind === 'keywordNumber') {
+          const i = parts.findIndex(p => head(p) === m.keyword.toUpperCase());
+          const current = i >= 0 ? parseInt(/(\d+)/.exec(parts[i])?.[1] ?? '0', 10) : 0;
+          const value = m.op === 'add' ? current + m.value : m.value;
+          if (i >= 0) parts[i] = `${m.keyword} ${value}`; else parts.push(`${m.keyword} ${value}`);
+        } else if (m.kind === 'keyword' && m.op === 'replace') {
+          const i = parts.findIndex(p => p.toUpperCase() === m.from.toUpperCase());
+          if (i >= 0) parts.splice(i, 1);
+          m.to.forEach(addKeyword);
+        } else if (m.kind === 'keyword' && m.op === 'add') {
+          m.keywords.forEach(addKeyword);
+        }
+      }
+    }
+    return parts.join(', ');
+  }, [apotheosisModSources, warlordKeywordsLine1]);
+
+  // A typed edit on a field an option is adding to should set the TOTAL
+  // the player typed, so the delta is subtracted back out and stored as
+  // the new base. Fields an option pins to a fixed value ignore edits —
+  // the option owns them until it is deselected.
+  const setStatRebased = (setBase, statKey) => typed => {
+    if (effectiveWarlordStats.setBy[statKey]) return;
+    const delta = effectiveWarlordStats.addDelta[statKey] || 0;
+    setBase(delta ? (subtractFromCharacteristic(typed, delta) ?? typed) : typed);
+  };
+  const updateWeaponRebased = (update, effectiveRows) => (id, field, value) => {
+    const row = effectiveRows.find(r => r.id === id);
+    if (row?.__setBy?.[field]) return;
+    const delta = row?.__addDelta?.[field] || 0;
+    update(id, field, delta ? (addToCharacteristic(value, -delta) ?? value) : value);
+  };
+  const updateMeleeRebased = updateWeaponRebased(updateMelee, effectiveMeleeWeapons);
+  const updateRangedRebased = updateWeaponRebased(updateRanged, effectiveRangedWeapons);
+
   // Adds/removes one ability-text tag on whichever weapon row(s) `target`
   // resolves to, replacing any existing tag sharing the same `family` prefix
   // (so re-picking Focused Hunter's unit type swaps the old keyword out
@@ -2341,30 +2951,6 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
       .map(s => s.trim().toUpperCase().replace(/WAR MACH\w*NE/, 'WAR MACHINE'))
       .filter(s => s && !/^A FACTION KEYWORD$/.test(s));
     return list.length ? list : ANTI_X_FALLBACK_KEYWORDS;
-  };
-
-  // "Your hero's Save characteristic is X+." flat-replacement effects (e.g.
-  // Ornate Armour) — applied straight onto warlordSave the instant the
-  // option is toggled, same as if the player had crossed out the old value
-  // and written the new one by hand. previousBaseRef remembers what was
-  // there before so deselecting restores it rather than leaving the
-  // override's value stuck. Not a continuously-recomputed override (see
-  // OverlayEditableField/Task the Save field is directly editable from,
-  // added alongside this) — once applied, the field is just a normal typed
-  // value again, indistinguishable from a manual edit, which is what keeps
-  // this simple instead of needing a parallel "effective vs base" concept.
-  const saveOverrideRef = useRef(null); // { previousBase } while an override from THIS effect is active
-  const parseSaveOverride = effectText => /Save characteristic is (\d\+)/i.exec(effectText || '')?.[1] || null;
-  const applySaveOverride = (opt, adding) => {
-    const overrideVal = parseSaveOverride(opt.effect);
-    if (!overrideVal) return;
-    if (adding) {
-      if (!saveOverrideRef.current) saveOverrideRef.current = { previousBase: warlordSave };
-      setWarlordSave(overrideVal);
-    } else if (saveOverrideRef.current) {
-      setWarlordSave(saveOverrideRef.current.previousBase);
-      saveOverrideRef.current = null;
-    }
   };
 
   // "...add a number equal to the number of ranks this unit has earned on
@@ -2418,21 +3004,20 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
     });
   }, [warlordRank]); // eslint-disable-line
 
-  // Applies (or removes) a picked option's actual mechanical effect the
-  // instant it's toggled/switched — Anti-X and Charge (+1 Damage) tag a
-  // weapon's Abilities text, Save-override and rank-scaling Attacks
-  // (above) edit the stat/weapon fields directly. Every other option on
-  // these steps stays purely informational text (this wizard doesn't try
-  // to parse every possible stat change), but these four repeat often
-  // enough, or were specifically asked for, to be worth wiring up for real.
+  // The two mechanical effects that still have to be applied imperatively
+  // when an option is toggled, because neither is a pure function of the
+  // option's own text: Anti-X/Charge write a tag into the weapon's freely
+  // typed Abilities string, and the rank-scaling Attacks bonus depends on
+  // the hero's Rank field. Everything else an option does to the warscroll
+  // — stat wheel, weapon profiles, keywords — is derived on every render
+  // instead (see apotheosisModSources / effectiveWarlordStats above), so
+  // it needs no toggle-time bookkeeping at all.
   const applyUpgradeWeaponEffect = (opt, adding) => {
     if (isChargeDamageOption(opt)) {
       setWeaponAbilityTag(parseWeaponTargetPhrase(opt.effect), 'charge (+1 damage)', 'Charge (+1 Damage)', adding);
     } else if (isAntiXOption(opt)) {
       const keyword = antiXChoiceByOption[opt.id] || parseAntiXKeywords(opt.effect)[0];
       setWeaponAbilityTag(parseWeaponTargetPhrase(opt.effect), 'anti-', `Anti-${keyword} (+1 Rend)`, adding);
-    } else if (parseSaveOverride(opt.effect)) {
-      applySaveOverride(opt, adding);
     } else if (parseRankScalingAttackWeapon(opt.effect)) {
       applyRankScalingAttack(opt, adding);
     }
@@ -2679,15 +3264,30 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   // once per render rather than threading ~30 individual props down through
   // DocPage/buildOverlayFields.
   const officiantData = {
-    warlordName, warlordMove, warlordHealth, warlordSave, warlordControl,
-    rangedWeapons, meleeWeapons, warlordKeywordsLine1, warlordKeywordsLine2, warlordAbilityGroups,
+    warlordName,
+    warlordMove: effectiveWarlordStats.move,
+    warlordHealth: effectiveWarlordStats.health,
+    warlordSave: effectiveWarlordStats.save,
+    warlordControl: effectiveWarlordStats.control,
+    rangedWeapons: effectiveRangedWeapons,
+    meleeWeapons: effectiveMeleeWeapons,
+    warlordKeywordsLine1: effectiveKeywordsLine1,
+    warlordKeywordsLine2, warlordAbilityGroups,
     warlordDocVariant,
     // Same setters/updaters renderWarlordForm's Non Corporeal inputs use —
     // lets the Officiant (image) view's overlay fields edit the identical
     // state directly on the scan (see OverlayEditableField/
     // buildWarlordOverlayFields), instead of that being replica-form-only.
-    setWarlordName, setWarlordMove, setWarlordHealth, setWarlordSave, setWarlordControl,
-    setWarlordKeywordsLine1, setWarlordKeywordsLine2, updateRanged, updateMelee,
+    // Rebasing setters, so editing a number straight on the scan sets the
+    // TOTAL the player typed rather than fighting the picks layered on top
+    // of it (see setStatRebased/updateWeaponRebased).
+    setWarlordName,
+    setWarlordMove: setStatRebased(setWarlordMove, 'move'),
+    setWarlordHealth: setStatRebased(setWarlordHealth, 'health'),
+    setWarlordSave: setStatRebased(setWarlordSave, 'save'),
+    setWarlordControl: setStatRebased(setWarlordControl, 'control'),
+    setWarlordKeywordsLine1, setWarlordKeywordsLine2,
+    updateRanged: updateRangedRebased, updateMelee: updateMeleeRebased,
     armyName, realmOfOrigin, customRealmName,
     realmLabel: REALMS.find(r => r.key === realmOfOrigin)?.name || '',
     gloryPoints, battleFormation,
@@ -3308,7 +3908,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                     </label>
                   </div>
                   {campaign === 'ravaged-coast' && (() => {
-                    const over = factionUnits.filter(u => {
+                    const over = startingUnitPool.filter(u => {
                       const sel = startingUnits[u.id];
                       if (!sel) return false;
                       const pts = parseInt(u.points, 10) || 0;
@@ -3321,66 +3921,46 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                       </div>
                     );
                   })()}
-                  {factionUnitsLoading ? (
-                    <div className="ptg-wizard-body-placeholder">Loading…</div>
-                  ) : factionUnits.length === 0 ? (
-                    <div className="ptg-wizard-body-placeholder">No warscrolls found for this faction.</div>
-                  ) : (
-                    <table className="ptg-units-table">
-                      <thead>
-                        <tr>
-                          <th className="ab-count-th">Units</th>
-                          <th className="ab-count-th">Reinf.</th>
-                          <th>Name</th>
-                          <th>Pts</th>
-                          <th>Keywords</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {/* factionUnits already comes back faction/type/name-ordered
-                            (see /api/warscrolls' typeOrder, same query every other
-                            page uses) — no client re-sort, so a section header per
-                            unitTypeLabel change lines up with real, contiguous groups
-                            instead of firing every row. */}
-                        {factionUnits.map((u, i) => {
-                          const sel = startingUnits[u.id] ?? { train: 0, reinforce: 0 };
-                          const typeChanged = i === 0 || unitTypeLabel(factionUnits[i - 1]) !== unitTypeLabel(u);
-                          return (
-                            <React.Fragment key={u.id}>
-                              {typeChanged && (
-                                <tr className="separator-type">
-                                  <td colSpan={5}>{unitTypeLabel(u)}</td>
-                                </tr>
-                              )}
-                              <tr>
-                                <td className="col-count">
-                                  <div className="ab-count-stepper">
-                                    <button type="button" className="ab-count-btn" onClick={() => bumpStartingUnitCount(u.id, 'train', -1)}>−</button>
-                                    <span className="ab-count-value">{sel.train || 0}</span>
-                                    <button type="button" className="ab-count-btn" onClick={() => bumpStartingUnitCount(u.id, 'train', 1)}>+</button>
-                                  </div>
-                                </td>
-                                <td className="col-count">
-                                  {u.is_hero ? (
-                                    <span className="ab-count-na" title="Heroes can't be reinforced">—</span>
-                                  ) : (
-                                    <div className="ab-count-stepper">
-                                      <button type="button" className="ab-count-btn" onClick={() => bumpStartingUnitCount(u.id, 'reinforce', -1)}>−</button>
-                                      <span className="ab-count-value">{sel.reinforce || 0}</span>
-                                      <button type="button" className="ab-count-btn" onClick={() => bumpStartingUnitCount(u.id, 'reinforce', 1)}>+</button>
-                                    </div>
-                                  )}
-                                </td>
-                                <td className="ptg-units-name">{(u.name || '').toUpperCase()}</td>
-                                <td className="ptg-units-pts">{u.points || '—'}</td>
-                                <td className="ptg-units-keywords">{(u.keywords || '').split(',').slice(0, 6).join(', ')}</td>
-                              </tr>
-                            </React.Fragment>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  )}
+                  {renderStartingUnitsTable(factionUnits, factionUnitsLoading, 'No warscrolls found for this faction.')}
+
+                  {/* A Path to Glory starting roster can include units from any
+                      faction in the warlord's own Grand Alliance — collapsed by
+                      default because most rosters never use it, and the home
+                      faction's list is the one the step is really about. */}
+                  <div className={`ptg-ally-section${allyPickerOpen ? ' ptg-ally-section-open' : ''}`}>
+                    <button
+                      type="button"
+                      className="ptg-ally-toggle"
+                      aria-expanded={allyPickerOpen}
+                      onClick={() => setAllyPickerOpen(o => !o)}
+                    >
+                      <span className="ptg-ally-chevron" aria-hidden="true">{allyPickerOpen ? '▾' : '▸'}</span>
+                      <span>Add unit from other faction in grand alliance</span>
+                      {allyPickedCount > 0 && <span className="ptg-ally-count">{allyPickedCount} added</span>}
+                    </button>
+                    {allyPickerOpen && (
+                      allyFactionOptions.length === 0 ? (
+                        <div className="ptg-wizard-body-placeholder">Pick a faction in step 1 first.</div>
+                      ) : (
+                        <div className="ptg-ally-body">
+                          <div className="ptg-field ptg-ally-field">
+                            <label>Faction</label>
+                            <select value={allyFaction} onChange={e => setAllyFaction(e.target.value)}>
+                              <option value="">Choose a faction…</option>
+                              {allyFactionOptions.map(f => (
+                                <option key={f.faction_slug} value={f.faction_slug}>{f.faction}</option>
+                              ))}
+                            </select>
+                          </div>
+                          {allyFaction && renderStartingUnitsTable(
+                            allyUnitsByFaction[allyFaction] ?? [],
+                            allyUnitsLoading,
+                            'No warscrolls found for this faction.',
+                          )}
+                        </div>
+                      )
+                    )}
+                  </div>
                 </div>
               ) : step === 5 ? (
                 <div className="ptg-enhancements-step">
@@ -3447,6 +4027,117 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                   </div>
                 </div>
               ) : step === 8 ? (
+                <div className="ptg-regiments-step">
+                  <div className="ptg-units-step-header">
+                    <span>Regiments</span>
+                    <span className="ab-points-block">
+                      <span className="ab-points-value">{regimentsTotal}</span>
+                      <span className="ab-points-label"> pts in regiments</span>
+                    </span>
+                  </div>
+                  <p className="ptg-apotheosis-intro">
+                    Your Warlord leads the General&rsquo;s Regiment and every other Hero opens one of
+                    their own, with the rest of the roster filling the slots below them in order.
+                    Drag any unit onto another regiment, or onto a different row, to rearrange.
+                  </p>
+                  <div className="ptg-regiment-actions">
+                    <button type="button" className="ptg-wizard-nav-btn" onClick={reconcileRegiments}>
+                      Pull in new units
+                    </button>
+                    <button
+                      type="button"
+                      className="ptg-wizard-nav-btn"
+                      onClick={() => { setRegiments(buildDefaultRegiments()); setRegimentsSeedSig(rosterSignature); }}
+                      title="Discards any rearranging and rebuilds the default order"
+                    >
+                      Reset to default order
+                    </button>
+                    <button type="button" className="ptg-wizard-nav-btn ptg-oob-add-btn" onClick={addRegiment}>+ Add Regiment</button>
+                  </div>
+                  {regiments.map((r, ri) => (
+                    <div
+                      className="ptg-regiment-block ptg-regiment-dropzone"
+                      key={r.id}
+                      onDragOver={e => e.preventDefault()}
+                      onDrop={e => { e.preventDefault(); moveRegimentUnit(draggedRegUnitId, r.id); setDraggedRegUnitId(null); }}
+                    >
+                      <div className="ptg-regiment-header">
+                        <span>{ri === 0 ? "General's Regiment 1" : `Regiment ${ri + 1}`}</span>
+                        <span className="ptg-regiment-pts">
+                          {r.units.reduce((sum, u) => sum + (parseInt(u.points, 10) || 0), 0)}pts
+                        </span>
+                        {regiments.length > 1 && (
+                          <button className="ptg-oob-row-remove" onClick={() => removeRegiment(r.id)} title="Remove regiment">✕</button>
+                        )}
+                      </div>
+                      {r.units.length === 0 ? (
+                        <div className="ptg-regiment-empty">Drag a unit here</div>
+                      ) : r.units.map(u => (
+                        <div
+                          className={`ptg-regiment-drag-row${draggedRegUnitId === u.id ? ' ptg-regiment-dragging' : ''}`}
+                          key={u.id}
+                          draggable
+                          onDragStart={e => { setDraggedRegUnitId(u.id); e.dataTransfer.effectAllowed = 'move'; }}
+                          onDragEnd={() => setDraggedRegUnitId(null)}
+                          onDragOver={e => e.preventDefault()}
+                          onDrop={e => {
+                            e.preventDefault();
+                            e.stopPropagation(); // else the regiment's own drop handler appends it to the end instead
+                            moveRegimentUnit(draggedRegUnitId, r.id, u.id);
+                            setDraggedRegUnitId(null);
+                          }}
+                        >
+                          <span className="ptg-regiment-grip" aria-hidden="true">⠿</span>
+                          <span className="ptg-regiment-unit-name">{(u.name || 'Unnamed unit').toUpperCase()}</span>
+                          <span className="ptg-regiment-unit-meta">{u.size ? `${u.size} models` : ''}</span>
+                          <span className="ptg-regiment-unit-meta">{u.notes}</span>
+                          <span className="ptg-regiment-unit-pts">{u.points ? `${u.points}pts` : '—'}</span>
+                          <button className="ptg-oob-row-remove" onClick={() => removeRegimentUnit(r.id, u.id)} title="Remove from regiment">✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              ) : step === 9 ? (
+                <div className="ptg-paths-step">
+                  <p className="ptg-apotheosis-intro">
+                    Renown earns a unit its rank — Aspiring at 5, Elite at 15, Mighty at 30, Legendary
+                    at 45 — and each rank unlocks one ability from that unit&rsquo;s Path. Heroes walk a
+                    Path of their own; everyone else just tracks renown and rank.
+                  </p>
+
+                  {renderPathCard({
+                    key: 'warlord',
+                    title: warlordName?.trim() || 'Warlord',
+                    subtitle: 'Warlord',
+                    isHero: true,
+                    renown: warlordRenown,
+                    onRenown: v => { setWarlordRenown(v); setWarlordRank(rankForRenown(v)); },
+                    pathKey: warlordPath,
+                    onPath: key => pickWarlordPath(key || null),
+                    rankChoices: warlordPathRankChoices,
+                    onPick: (pathObj, rank, oi) => pickPathRankOption(pathObj.ranks, rank, oi),
+                  })}
+
+                  {oobUnits.length === 0 && (
+                    <div className="ptg-wizard-body-placeholder">
+                      No units on the Order of Battle yet — add some in &ldquo;Add your Starting units&rdquo;.
+                    </div>
+                  )}
+                  {oobUnits.map(row => renderPathCard({
+                    key: row.id,
+                    title: oobRowWarscrollName(row) || 'Unnamed unit',
+                    subtitle: isHeroRow(row) ? 'Hero' : 'Unit',
+                    isHero: isHeroRow(row),
+                    renown: row.renown,
+                    onRenown: v => setOobUnitRenown(row.id, v),
+                    pathKey: row.path,
+                    onPath: key => setOobUnitPath(row.id, key),
+                    rankChoices: row.pathRankChoices || {},
+                    onPick: (pathObj, rank, oi) => pickOobUnitRankOption(row.id, pathObj, rank, oi),
+                  }))}
+                </div>
+              ) : step === 10 ? (
                 <div className="ptg-prepare-step">
                   <div className="ptg-wizard-body-placeholder">
                     Fills in the Army Roster document's Faction, Battle Formation, Army Name, and every Regiment from your Warlord and Order of Battle picks so far — matched back against the faction's real warscrolls for size/points where possible. Safe to run again after adding more units; Auxiliary Units are left alone either way.
