@@ -455,7 +455,7 @@ app.get('/api/user-units', requireAuth, (req, res) => {
     // JOIN warscrolls to automatically exclude stale marks pointing to
     // deleted warscroll IDs (e.g. after the scraper re-runs and re-numbers IDs)
     const rows = db.prepare(
-      `SELECT uu.warscroll_id, uu.is_friendly, uu.is_enemy
+      `SELECT uu.warscroll_id, uu.is_friendly, uu.is_enemy, uu.friendly_ally_faction, uu.enemy_ally_faction
        FROM user_units uu
        JOIN warscrolls w ON w.id = uu.warscroll_id
        WHERE uu.user_id = ?`
@@ -477,7 +477,8 @@ app.post('/api/user-units/clear-flag', requireAuth, (req, res) => {
   }
   const db = getDb();
   try {
-    db.prepare(`UPDATE user_units SET ${flag} = 0 WHERE user_id = ?`).run(req.user.id);
+    const allyCol = flag === 'is_friendly' ? 'friendly_ally_faction' : 'enemy_ally_faction';
+    db.prepare(`UPDATE user_units SET ${flag} = 0, ${allyCol} = NULL WHERE user_id = ?`).run(req.user.id);
     res.json({ ok: true });
   } finally {
     db.close();
@@ -490,13 +491,21 @@ app.post('/api/user-units/:warscrollId', requireAuth, (req, res) => {
   const warscrollId = parseInt(req.params.warscrollId);
   const db = getDb();
   try {
+    // Ally assignment ("+ Add unit" from another faction): only changed when
+    // the body includes the key; always cleared when that side's mark is off.
+    const prev = db.prepare('SELECT friendly_ally_faction, enemy_ally_faction FROM user_units WHERE user_id = ? AND warscroll_id = ?').get(req.user.id, warscrollId) || {};
+    const pick = (key, on) => !on ? null : (key in req.body) ? (req.body[key] || null) : (prev[key] ?? null);
+    const fAlly = pick('friendly_ally_faction', !!is_friendly);
+    const eAlly = pick('enemy_ally_faction', !!is_enemy);
     db.prepare(`
-      INSERT INTO user_units (user_id, warscroll_id, is_friendly, is_enemy)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO user_units (user_id, warscroll_id, is_friendly, is_enemy, friendly_ally_faction, enemy_ally_faction)
+      VALUES (?, ?, ?, ?, ?, ?)
       ON CONFLICT(user_id, warscroll_id) DO UPDATE SET
         is_friendly = excluded.is_friendly,
-        is_enemy = excluded.is_enemy
-    `).run(req.user.id, warscrollId, is_friendly ? 1 : 0, is_enemy ? 1 : 0);
+        is_enemy = excluded.is_enemy,
+        friendly_ally_faction = excluded.friendly_ally_faction,
+        enemy_ally_faction = excluded.enemy_ally_faction
+    `).run(req.user.id, warscrollId, is_friendly ? 1 : 0, is_enemy ? 1 : 0, fAlly, eAlly);
     res.json({ ok: true });
   } finally {
     db.close();
@@ -530,15 +539,30 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
     params.push(...idList);
   }
 
+  // Units added with "+ Add unit" from another faction carry a temporary
+  // assignment to the faction that was selected at the time (user_units
+  // friendly_/enemy_ally_faction). When showing marked units, such a unit also
+  // passes the faction filters — but only for that side and only while that
+  // same faction is selected (e.g. Gobsprakk added to an Ogor enemy list
+  // shows with Enemy Faction = Ogor Mawtribes, not with any other faction).
+  const markJoin = showFriendly === '1' || showEnemy === '1';
+  const allyParts = [];
+  const allyParams = [];
+  if (markJoin) {
+    if (faction && showFriendly === '1')      { allyParts.push('(uu.is_friendly = 1 AND uu.friendly_ally_faction = ?)'); allyParams.push(faction); }
+    if (enemyFaction && showEnemy === '1')    { allyParts.push('(uu.is_enemy = 1 AND uu.enemy_ally_faction = ?)');       allyParams.push(enemyFaction); }
+  }
+  const orAlly = cond => allyParts.length ? `(${cond} OR ${allyParts.join(' OR ')})` : cond;
+
   // Faction slug filter — frontend has already computed which slugs to send
   // based on whether friendly/enemy marks exist (byFaction vs byMark logic).
   if (faction && enemyFaction) {
-    conditions.push('(w.faction_slug = ? OR w.faction_slug = ?)');
-    params.push(faction, enemyFaction);
+    conditions.push(orAlly('(w.faction_slug = ? OR w.faction_slug = ?)'));
+    params.push(faction, enemyFaction, ...allyParams);
   } else if (faction) {
-    conditions.push('w.faction_slug = ?'); params.push(faction);
+    conditions.push(orAlly('w.faction_slug = ?')); params.push(faction, ...allyParams);
   } else if (enemyFaction) {
-    conditions.push('w.faction_slug = ?'); params.push(enemyFaction);
+    conditions.push(orAlly('w.faction_slug = ?')); params.push(enemyFaction, ...allyParams);
   }
 
   if (alliance) { conditions.push('w.grand_alliance = ?'); params.push(alliance); }
@@ -575,7 +599,8 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
     // Always exclude RoR/cross-faction units (they have empty keywords).
     // When a faction IS selected, the faction_slug filter already restricts the set;
     // this condition removes the RoR units stored under that faction_slug.
-    conditions.push("(w.keywords IS NOT NULL AND w.keywords != '')");
+    // (Units added to this faction with "+ Add unit" still pass.)
+    conditions.push(orAlly("(w.keywords IS NOT NULL AND w.keywords != '')")); params.push(...allyParams);
     // Additionally, when a faction is selected, exclude units whose keywords
     // don't include the selected faction's identifier (catches any non-RoR guests).
     if (faction || enemyFaction) {
@@ -589,11 +614,11 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
         .map(getDistinctWord)
         .filter(Boolean);
       if (words.length === 1) {
-        conditions.push('instr(UPPER(w.keywords), ?) > 0');
-        params.push(words[0]);
+        conditions.push(orAlly('instr(UPPER(w.keywords), ?) > 0'));
+        params.push(words[0], ...allyParams);
       } else if (words.length === 2) {
-        conditions.push('(instr(UPPER(w.keywords), ?) > 0 OR instr(UPPER(w.keywords), ?) > 0)');
-        params.push(words[0], words[1]);
+        conditions.push(orAlly('(instr(UPPER(w.keywords), ?) > 0 OR instr(UPPER(w.keywords), ?) > 0)'));
+        params.push(words[0], words[1], ...allyParams);
       }
     }
   }
@@ -601,7 +626,7 @@ app.get('/api/warscrolls', requireAuth, (req, res) => {
   // Mark-based JOIN — only active when frontend sends showFriendly/showEnemy,
   // which it only does when the user actually has marked units.
   let join = '';
-  if (showFriendly === '1' || showEnemy === '1') {
+  if (markJoin) {
     join = `JOIN user_units uu ON uu.warscroll_id = w.id AND uu.user_id = ?`;
     params.unshift(req.user.id);
     const flags = [];

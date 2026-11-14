@@ -390,8 +390,15 @@ export default function WarscrollsPage({ headerCollapsed }) {
   // shows units that were already filtered out of the table you clicked
   // from (or hides ones the table still shows).
   const activeFactionSlugs = [faction, enemyFaction].filter(Boolean);
+  // ...plus units given a temporary assignment to the selected faction via
+  // "+ Add unit" (same rule as server.js: that side, that faction only).
+  const isAssignedHere = u => {
+    const m = userUnits[u.id];
+    return !!m && ((faction && m.is_friendly && m.friendly_ally_faction === faction)
+      || (enemyFaction && m.is_enemy && m.enemy_ally_faction === enemyFaction));
+  };
   const filterByActiveFactions = units => activeFactionSlugs.length > 0
-    ? units.filter(u => activeFactionSlugs.includes(u.faction_slug))
+    ? units.filter(u => activeFactionSlugs.includes(u.faction_slug) || isAssignedHere(u))
     : units;
   const splitFriendlyNavList = friendlyIds.length > 0 ? filterByActiveFactions(friendlyFlaggedFull) : friendlyFactionFallback;
   const splitEnemyNavList    = enemyIds.length > 0    ? filterByActiveFactions(enemyFlaggedFull)    : enemyFactionFallback;
@@ -487,7 +494,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
   useEffect(() => {
     axios.get('/api/user-units').then(res => {
       const map = {};
-      res.data.forEach(r => { map[r.warscroll_id] = { is_friendly: r.is_friendly, is_enemy: r.is_enemy }; });
+      res.data.forEach(r => { map[r.warscroll_id] = { is_friendly: r.is_friendly, is_enemy: r.is_enemy, friendly_ally_faction: r.friendly_ally_faction || null, enemy_ally_faction: r.enemy_ally_faction || null }; });
       setUserUnits(map);
     }).catch(() => {});
   }, []);
@@ -569,11 +576,18 @@ export default function WarscrollsPage({ headerCollapsed }) {
     return ids;
   }, [rows, imgExistIds]);
 
-  const toggleFlag = useCallback(async (warscrollId, flag) => {
+  const toggleFlag = useCallback(async (warscrollId, flag, row = null) => {
     const current = userUnits[warscrollId] || { is_friendly: 0, is_enemy: 0 };
     const updated = { ...current, [flag]: current[flag] ? 0 : 1 };
+    const allyKey = flag === 'is_friendly' ? 'friendly_ally_faction' : 'enemy_ally_faction';
+    if (!updated[flag]) updated[allyKey] = null;
     if (addMode && flag === (addMode === 'friendly' ? 'is_friendly' : 'is_enemy')) {
       setAddedIds(prev => { const n = new Set(prev); n.add(warscrollId); return n; });
+      // "+ Add unit" from another faction = temporary assignment to the faction
+      // selected for that side right now (Faction / Enemy Faction dropdown).
+      // It then shows on that side only while that faction is selected.
+      const sideFaction = flag === 'is_friendly' ? faction : enemyFaction;
+      if (updated[flag] && sideFaction && row && row.faction_slug !== sideFaction) updated[allyKey] = sideFaction;
     }
     setUserUnits(prev => ({ ...prev, [warscrollId]: updated }));
     try {
@@ -581,7 +595,7 @@ export default function WarscrollsPage({ headerCollapsed }) {
     } catch {
       setUserUnits(prev => ({ ...prev, [warscrollId]: current }));
     }
-  }, [userUnits, addMode]);
+  }, [userUnits, addMode, faction, enemyFaction]);
 
   // Right-click on the Friendly/Enemy filter checkbox: clear all marks in that column
   const clearFlagColumn = useCallback(async (flag) => {
@@ -1077,10 +1091,10 @@ export default function WarscrollsPage({ headerCollapsed }) {
                         style={{cursor:'pointer'}}
                       >
                         <td className="col-rownum">{rowNum}</td>
-                        <td className="col-flag" onClick={e => { e.stopPropagation(); toggleFlag(row.id, 'is_friendly'); }}>
+                        <td className="col-flag" onClick={e => { e.stopPropagation(); toggleFlag(row.id, 'is_friendly', row); }}>
                           <span className={`flag-check friendly${(userUnits[row.id]?.is_friendly) ? ' active' : ''}`}>✓</span>
                         </td>
-                        <td className="col-flag" onClick={e => { e.stopPropagation(); toggleFlag(row.id, 'is_enemy'); }}>
+                        <td className="col-flag" onClick={e => { e.stopPropagation(); toggleFlag(row.id, 'is_enemy', row); }}>
                           <span className={`flag-check enemy${(userUnits[row.id]?.is_enemy) ? ' active' : ''}`}>✓</span>
                         </td>
                         <td>

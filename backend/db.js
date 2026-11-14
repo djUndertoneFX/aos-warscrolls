@@ -285,6 +285,14 @@ function initDb() {
   // (at most one per user) — kept server-side so it follows you across devices.
   try { db.exec('ALTER TABLE ptg_rosters ADD COLUMN is_enemy INTEGER NOT NULL DEFAULT 0'); } catch {}
 
+  // "+ Add unit" temporary assignment (dj 2026-11-14): a unit marked through
+  // Warscrolls' Add unit while a Faction / Enemy Faction is selected, from a
+  // different faction (e.g. a Kruleboyz ally added to an Ogor list), records
+  // that selected faction here. The unit then shows for that side only while
+  // the same faction is selected; cleared when that side's mark is removed.
+  try { db.exec('ALTER TABLE user_units ADD COLUMN friendly_ally_faction TEXT'); } catch {}
+  try { db.exec('ALTER TABLE user_units ADD COLUMN enemy_ally_faction TEXT'); } catch {}
+
   // Matched Play page: the account's current game (armies, battleplan,
   // battle tactics, scores) as one opaque JSON blob, so it follows the user
   // between devices.
