@@ -40,6 +40,36 @@ const IMAGE_DIR = process.env.IMAGE_DIR ||
     ? path.join(path.dirname(process.env.DB_PATH), 'unit-images')
     : path.join(__dirname, 'unit-images'));
 
+// When images live on a volume (DB_PATH/IMAGE_DIR set, i.e. Railway), copy
+// any picture that's committed in the repo (backend/unit-images/**) but
+// missing on the volume. Existing volume files are never overwritten, so
+// uploads via PUT /api/unit-image stay as they are. Runs once at startup.
+function syncBundledImages() {
+  const bundled = path.join(__dirname, 'unit-images');
+  if (path.resolve(bundled) === path.resolve(IMAGE_DIR) || !fs.existsSync(bundled)) return;
+  let copied = 0;
+  const walk = rel => {
+    const src = path.join(bundled, rel);
+    for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+      const r = path.join(rel, entry.name);
+      if (entry.isDirectory()) { walk(r); continue; }
+      if (!/\.jpe?g$/i.test(entry.name)) continue;
+      const dest = path.join(IMAGE_DIR, r);
+      if (fs.existsSync(dest)) continue;
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.copyFileSync(path.join(bundled, r), dest);
+      copied++;
+    }
+  };
+  try {
+    walk('');
+    if (copied) console.log(`Copied ${copied} bundled unit image(s) to ${IMAGE_DIR}`);
+  } catch (e) {
+    console.error('Bundled image sync failed:', e.message);
+  }
+}
+syncBundledImages();
+
 // Seasonal/title prefixes prepended to unit names — strip these to find the base unit image
 const TITLE_PREFIXES = [
   'Scourge of Aqshy',
