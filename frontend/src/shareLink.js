@@ -10,8 +10,23 @@ import axios from 'axios';
 
 const SHARE_PATHS = { army: '/army-builder', ptg: '/path-to-glory' };
 
-export function shareUrl(kind, token) {
-  return `${window.location.origin}${SHARE_PATHS[kind]}?share=${encodeURIComponent(token)}`;
+// `view` (optional) = extra query params describing what the sender was
+// looking at, e.g. { view: 'roster', mode: 'image' }, so the link opens the
+// recipient on the same screen. Only short known keys are passed.
+const VIEW_KEYS = ['view', 'mode', 'doc'];
+export function shareUrl(kind, token, view = {}) {
+  const q = new URLSearchParams({ share: token });
+  for (const k of VIEW_KEYS) if (view[k]) q.set(k, String(view[k]));
+  return `${window.location.origin}${SHARE_PATHS[kind]}?${q.toString()}`;
+}
+
+export function getShareView() {
+  try {
+    const q = new URLSearchParams(window.location.search);
+    const v = {};
+    for (const k of VIEW_KEYS) if (q.get(k)) v[k] = q.get(k);
+    return v;
+  } catch { return {}; }
 }
 
 function legacyCopy(text) {
@@ -33,8 +48,8 @@ function legacyCopy(text) {
 // within the click itself, so where ClipboardItem exists the write starts
 // immediately with a promise of the text (the network call resolves it).
 // Returns { url, copied }.
-export async function createAndCopyShareLink(payload) {
-  const urlPromise = axios.post('/api/share', payload).then(r => shareUrl(payload.kind, r.data.token));
+export async function createAndCopyShareLink(payload, view = {}) {
+  const urlPromise = axios.post('/api/share', payload).then(r => shareUrl(payload.kind, r.data.token, view));
 
   if (typeof window.ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
     try {
@@ -58,6 +73,7 @@ export function clearShareParam() {
   try {
     const u = new URL(window.location.href);
     u.searchParams.delete('share');
+    for (const k of VIEW_KEYS) u.searchParams.delete(k);
     window.history.replaceState(window.history.state, '', u.pathname + u.search + u.hash);
   } catch {}
 }

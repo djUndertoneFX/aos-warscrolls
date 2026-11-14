@@ -8,7 +8,7 @@ import { useSettings } from '../SettingsContext';
 import { useAuth } from '../AuthContext';
 import { calcWeaponADO, resolveWeaponLoadout } from '../awoCalc';
 import VoiceControlWidget from '../components/VoiceControlWidget';
-import { createAndCopyShareLink, getShareParam, clearShareParam, ShareToast } from '../shareLink';
+import { createAndCopyShareLink, getShareParam, getShareView, clearShareParam, ShareToast } from '../shareLink';
 
 function sumADO(weapons, unitSize, save, ward, rounding) {
   let total = 0, any = false;
@@ -340,10 +340,12 @@ export default function PathToGloryPage({ headerCollapsed }) {
     setPtgView('battle');
     setShowEnemyWizard(true);
   };
-  const loadEnemyRoster = async (id, { open = true } = {}) => {
+  // overrides: fields laid over the roster's saved wizard state before the
+  // wizard mounts — used by share links to open on the sender's sheet/mode.
+  const loadEnemyRoster = async (id, { open = true, overrides = null } = {}) => {
     try {
       const { data: r } = await axios.get(`/api/ptg-rosters/${id}`);
-      localStorage.setItem(ENEMY_WIZARD_KEY, JSON.stringify(r.data));
+      localStorage.setItem(ENEMY_WIZARD_KEY, JSON.stringify(overrides ? { ...r.data, ...overrides } : r.data));
       lastEnemySaved.current = JSON.stringify(r.data);
       const slug = r.faction_slug || rosterFactionSlug(r.data);
       await setEnemyRosterPersist({ id: r.id, name: r.name, faction_slug: slug });
@@ -427,10 +429,19 @@ export default function PathToGloryPage({ headerCollapsed }) {
     (async () => {
       try {
         const { data: res } = await axios.post(`/api/share/${encodeURIComponent(token)}/open`);
+        // Same view as the sender: ?view=page = they shared from the unit
+        // list (don't pop the wizard); ?view=wizard&doc=…&mode=… = open the
+        // wizard on that sheet (warlord / army / …) in Image or Replica.
+        // Older links with no view open the wizard as before.
+        const view = getShareView();
         clearShareParam();
         if (res.kind !== 'ptg') { setShareMsg({ text: 'That link is for an Army Builder list — open it on the Army Builder page.' }); return; }
         await fetchPtgRosters();
-        const r = await loadEnemyRoster(res.id);
+        const overrides = {};
+        if (view.doc && ['warlord', 'roster', 'oob', 'army'].includes(view.doc)) overrides.activeDoc = view.doc;
+        if (view.view === 'wizard' && !view.doc) overrides.activeDoc = null;
+        if (view.mode === 'image' || view.mode === 'replica') overrides.presentMode = view.mode;
+        const r = await loadEnemyRoster(res.id, { open: view.view !== 'page', overrides: Object.keys(overrides).length ? overrides : null });
         if (r) setShareMsg({ text: res.created
           ? `Loaded ${res.sender}'s roster as your enemy: "${res.name}"`
           : res.refreshed ? `Updated your enemy "${res.name}" to ${res.sender}'s latest version`
@@ -444,7 +455,7 @@ export default function PathToGloryPage({ headerCollapsed }) {
 
   // Shares your own roster (the Recruit wizard), or — when the enemy wizard
   // is open — the enemy roster you're looking at.
-  const handleShareRoster = async () => {
+  const handleShareRoster = async (view = { view: 'page' }) => {
     const sharingEnemy = showEnemyWizard && enemyRoster;
     const raw = localStorage.getItem(sharingEnemy ? ENEMY_WIZARD_KEY : RECRUIT_WIZARD_KEY);
     let data = null; try { data = JSON.parse(raw); } catch {}
@@ -456,7 +467,7 @@ export default function PathToGloryPage({ headerCollapsed }) {
       const { url, copied } = await createAndCopyShareLink({
         kind: 'ptg', source_key: name, name,
         faction_slug: factionSlug, faction_name: factionObj ? factionObj.faction : null, data,
-      });
+      }, view);
       setShareMsg(copied
         ? { text: 'Share link copied — send it to your opponent. It opens this roster as their enemy.' }
         : { text: "Couldn't reach the clipboard — copy this link:", url });
@@ -997,7 +1008,7 @@ export default function PathToGloryPage({ headerCollapsed }) {
           <button className="ptg-action-btn ptg-action-btn-secondary" onClick={() => {}}>
             Level Up!
           </button>
-          <button className="share-btn" onClick={handleShareRoster} title="Copy a link to the roster in the wizard. Whoever opens it gets it as their Enemy Roster.">🔗 Share</button>
+          <button className="share-btn" onClick={() => handleShareRoster()} title="Copy a link to the roster in the wizard. Whoever opens it gets it as their Enemy Roster.">🔗 Share</button>
           <ShareToast msg={shareMsg} onClose={() => setShareMsg(null)} />
         </div>
 

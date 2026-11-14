@@ -6,7 +6,7 @@ import { useSettings } from '../SettingsContext';
 import { useAuth } from '../AuthContext';
 import { calcWeaponADO, resolveWeaponLoadout } from '../awoCalc';
 import VoiceControlWidget from '../components/VoiceControlWidget';
-import { createAndCopyShareLink, getShareParam, clearShareParam, ShareToast } from '../shareLink';
+import { createAndCopyShareLink, getShareParam, getShareView, clearShareParam, ShareToast } from '../shareLink';
 
 function parseBullets(raw) {
   try { return JSON.parse(raw || '[]'); } catch { return []; }
@@ -1361,6 +1361,14 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
         }));
         loadListIntoState(full.data);
         try { localStorage.setItem(LAST_ACTIVE_KEY, id); } catch {}
+        // Same view as the sender: the build step comes with the list data
+        // (activeStage); the Army Roster popup + its Image/Replica mode come
+        // from the link (?view=roster&mode=image|replica).
+        const view = getShareView();
+        if (view.view === 'roster') {
+          if (view.mode === 'image' || view.mode === 'replica') setRosterPresentMode(view.mode);
+          setRosterDocOpen(true);
+        }
         setShareMsg({ text: res.created
           ? `Loaded ${res.sender}'s list as your enemy: "${full.name}"`
           : res.refreshed ? `Updated your enemy list "${full.name}" to ${res.sender}'s latest version`
@@ -1373,7 +1381,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
     })();
   }, [listsLoading]); // eslint-disable-line
 
-  const shareCurrentList = async () => {
+  const shareCurrentList = async (view = {}) => {
     const id = activeListIdRef.current;
     const meta = listsStore.lists[id];
     const factionName = factions.find(f => f.faction_slug === faction)?.faction ?? null;
@@ -1382,7 +1390,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
         kind: 'army', source_key: String(id), name: meta?.name || 'Army List',
         faction_slug: faction || null, faction_name: factionName,
         data: listToDataBlob({ faction, pointsLimit, roster, rosterOrder, battleFormation, heroAssignments, activeStage, armyRosterDoc, selectedOptions }),
-      });
+      }, view);
       setShareMsg(copied
         ? { text: 'Share link copied — send it to your opponent. It opens this list as their enemy.' }
         : { text: "Couldn't reach the clipboard — copy this link:", url });
@@ -2110,7 +2118,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
         <div className="ab-header-cell ab-header-roster">
           <ArmyRosterThumb onClick={() => setRosterDocOpen(true)} />
           <div className="ab-roster-thumb-label">Army Roster</div>
-          <button className="share-btn" onClick={shareCurrentList} title="Copy a link to this list. Whoever opens it gets it as an Enemy List.">🔗 Share</button>
+          <button className="share-btn" onClick={() => shareCurrentList()} title="Copy a link to this list. Whoever opens it gets it as an Enemy List.">🔗 Share</button>
         </div>
 
         <div className="ab-header-cell ab-header-list ab-header-enemy-list">
@@ -2419,7 +2427,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
         totalPoints={totalPoints}
         onCommanderNameChange={setCommanderName}
         onRenameList={name => renameList(activeListId, name)}
-        onShare={shareCurrentList}
+        onShare={() => shareCurrentList({ view: 'roster', mode: rosterPresentMode })}
         doc={armyRosterDoc}
         setDoc={setArmyRosterDoc}
         unitsById={unitsById}

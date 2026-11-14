@@ -3329,7 +3329,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
         {onShare && ((activeDoc === 'warlord' && !warlordPrintPreview) || activeDoc === 'army') && (
           <button
             className={`ab-roster-print-btn${activeDoc === 'warlord' ? ' ab-roster-share-btn' : ''}`}
-            onClick={onShare}
+            onClick={() => onShare({ view: 'wizard', doc: activeDoc, mode: presentMode })}
             title={enemyName ? 'Copy a link to this enemy roster' : 'Copy a link to your roster. Whoever opens it gets it as their Enemy Roster.'}
           >🔗 Share</button>
         )}
