@@ -1623,6 +1623,15 @@ th.ab-count-th { padding-left: 0.35rem; padding-right: 0.35rem; text-align: cent
   border-top: 1px solid var(--border);
 }
 .ptg-roster-action-reset { color: var(--text-dim); }
+/* The menu sizes itself to its longest roster name (min-width: 100% and no
+   cap on .faction-dropdown-menu). The Enemy Roster trigger sits near the
+   right edge of the page, so a long name — "Dylans Path to Glory Ogors.
+   (Copy) — Ogor Mawtribes" — grew the menu straight off the window and took
+   the trailing icons with it: only Duplicate stayed on screen. Cap the
+   width, open the enemy menu leftward from its right edge, and let the name
+   ellipsis instead of pushing. */
+.ptg-roster-dropdown .faction-dropdown-menu { max-width: min(30rem, 90vw); }
+.ptg-roster-dropdown-enemy .faction-dropdown-menu { left: auto; right: 0; }
 .ptg-roster-item {
   display: flex;
   align-items: center;
@@ -1630,6 +1639,8 @@ th.ab-count-th { padding-left: 0.35rem; padding-right: 0.35rem; text-align: cent
   gap: 0.5rem;
 }
 .ptg-roster-item-name {
+  flex: 1 1 auto;
+  min-width: 0; /* without this a flex child won't shrink below its content, so the ellipsis never engages */
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1652,6 +1663,16 @@ th.ab-count-th { padding-left: 0.35rem; padding-right: 0.35rem; text-align: cent
 }
 .ptg-roster-icon-btn:hover { color: var(--gold-light); border-color: var(--border-gold); background: rgba(200,168,64,0.1); }
 .ptg-roster-icon-btn-danger:hover { color: #e07070; border-color: rgba(224,112,112,0.5); background: rgba(224,112,112,0.1); }
+.ptg-roster-rename-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-gold);
+  border-radius: 3px;
+  color: var(--parchment);
+  font-size: 0.85rem;
+  padding: 0.1rem 0.3rem;
+}
 
 .sim-model-counts {
   display: flex;
@@ -6205,7 +6226,30 @@ textarea.ptg-doc-overlay-input {
 .ptg-roster-item-active { background: rgba(139, 46, 46, 0.3); }
 .ptg-wizard.ptg-wizard-enemy { border-color: #8b2e2e; box-shadow: 0 0 0 2px #8b2e2e, 0 10px 40px rgba(0,0,0,0.6); }
 .ptg-wizard-banner-enemy { color: #e58a8a; }
+/* The roster's name in the wizard banner doubles as the rename control:
+   click it and it becomes an input, inheriting the banner's Cinzel caps so
+   the title doesn't visibly change shape while you're typing in it. */
+.ptg-wizard-banner-name-editable { cursor: text; border-bottom: 1px dashed transparent; }
+.ptg-wizard-banner-name-editable:hover { border-bottom-color: currentColor; }
+.ptg-wizard-banner-name-input {
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-align: inherit;
+  color: inherit;
+  background: rgba(0,0,0,0.35);
+  border: 1px solid var(--border-gold);
+  border-radius: 3px;
+  padding: 0 0.3rem;
+  max-width: 60vw;
+}
+.ptg-wizard-banner-name-input:focus { outline: none; border-color: #c8a840; }
 .ab-roster-share-btn { left: 82px; }
+/* The wizard's own Import List button takes the top-left corner (Print's
+   usual spot), so when it's present Print and Share shift right past it. */
+.ptg-wizard-importable .ab-roster-print-btn { left: 120px; }
+.ptg-wizard-importable .ab-roster-share-btn { left: 192px; }
+.ptg-wizard-importable .ptg-wizard-import-btn { left: 10px; }
 
 /* ── Path to Glory battlepacks (Ravaged Coast / Blighted Wilds) ── */
 .ptg-bp-rules { margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem; text-align: left; }
@@ -6404,3 +6448,139 @@ textarea.ptg-doc-overlay-input {
 .ptg-path-unit-path { min-width: 14rem; }
 .ptg-path-rank-locked { opacity: 0.45; }
 .ptg-path-rank-locked .ptg-apotheosis-option-btn { cursor: not-allowed; }
+
+/* "Import List" dialog — paste-a-list popup, shared by Path to Glory and
+   the Army Builder. Sits above the wizard, so its z-index clears it. */
+.ptg-import-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 4000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.72);
+  padding: 2rem;
+}
+.ptg-import-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  width: min(760px, 100%);
+  max-height: min(80vh, 760px);
+  padding: 1.1rem 1.25rem;
+  background: #16130d;
+  border: 1px solid var(--border-gold, rgba(200,168,64,0.5));
+  border-radius: 6px;
+  box-shadow: 0 18px 60px rgba(0,0,0,0.6);
+}
+.ptg-import-header {
+  font-family: 'Cinzel', serif;
+  font-size: 1.05rem;
+  letter-spacing: 0.06em;
+  color: var(--gold-light, #e8d9a8);
+  text-transform: uppercase;
+}
+.ptg-import-textarea {
+  flex: 1;
+  min-height: 20rem;
+  resize: vertical;
+  box-sizing: border-box;
+  padding: 0.7rem 0.8rem;
+  background: rgba(0,0,0,0.35);
+  border: 1px solid rgba(200,168,64,0.4);
+  border-radius: 4px;
+  color: #d8cca8;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+.ptg-import-textarea:focus { outline: none; border-color: #c8a840; }
+.ptg-import-report {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 0.4rem;
+}
+.ptg-import-report-title {
+  margin: 0.6rem 0 0.3rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim, #8a8578);
+}
+.ptg-import-report-list { margin: 0; padding-left: 1.1rem; font-size: 0.82rem; line-height: 1.5; }
+.ptg-import-ok { color: #9fc08a; }
+.ptg-import-warn { color: #d8b45c; }
+.ptg-import-error { color: #e07070; font-size: 0.82rem; }
+.ptg-import-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+.ptg-import-confirm { border-color: #c8a840; color: var(--gold-light, #e8d9a8); }
+.ptg-import-confirm:disabled { opacity: 0.45; cursor: not-allowed; }
+.ab-import-btn { margin-top: 0.35rem; }
+
+/* ── In-app confirm / prompt / alert (see components/AppDialog.js) ──
+   Replaces window.confirm & co so the dialog is titled "AoS Warscrolls"
+   rather than the browser's "<origin> says". */
+.app-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.72);
+  padding: 2rem;
+}
+.app-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  width: min(440px, 100%);
+  padding: 1.1rem 1.25rem;
+  background: #16130d;
+  border: 1px solid var(--border-gold, rgba(200,168,64,0.5));
+  border-radius: 6px;
+  box-shadow: 0 18px 60px rgba(0,0,0,0.6);
+}
+.app-dialog-title {
+  font-family: 'Cinzel', serif;
+  font-size: 1.05rem;
+  letter-spacing: 0.06em;
+  color: var(--gold-light, #e8d9a8);
+  text-transform: uppercase;
+}
+.app-dialog-message {
+  color: var(--parchment, #ddd2b4);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+.app-dialog-input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  background: rgba(0,0,0,0.35);
+  border: 1px solid rgba(200,168,64,0.4);
+  border-radius: 4px;
+  color: var(--parchment, #ddd2b4);
+  font-size: 0.95rem;
+}
+.app-dialog-input:focus { outline: none; border-color: #c8a840; }
+.app-dialog-actions { display: flex; justify-content: flex-end; gap: 0.5rem; }
+.app-dialog-btn {
+  background: transparent;
+  border: 1px solid rgba(200,168,64,0.4);
+  border-radius: 4px;
+  color: var(--text-dim, #9a8f72);
+  font-family: 'Cinzel', serif;
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  padding: 0.35rem 0.9rem;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.app-dialog-btn:hover { color: var(--gold-light, #e8d9a8); border-color: var(--border-gold, #c8a840); background: rgba(200,168,64,0.1); }
+.app-dialog-btn-confirm { border-color: #c8a840; color: var(--gold-light, #e8d9a8); }
+.app-dialog-btn-danger { border-color: rgba(224,112,112,0.6); color: #e07070; }
+.app-dialog-btn-danger:hover { color: #ff8c8c; border-color: #e07070; background: rgba(224,112,112,0.12); }

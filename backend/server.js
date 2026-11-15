@@ -1047,16 +1047,26 @@ app.post('/api/ptg-rosters', requireAuth, (req, res) => {
   }
 });
 
-// PUT /api/ptg-rosters/:id — overwrite an existing saved roster (re-saving the same build)
+// PUT /api/ptg-rosters/:id — partial update: only the fields present in the
+// body are changed, mirroring /api/army-builder-lists/:id. A rename sends
+// just { name }; the enemy-roster autosave sends only the build fields, so a
+// stale in-flight save can never clobber a rename that landed in between.
 app.put('/api/ptg-rosters/:id', requireAuth, (req, res) => {
   const { name, faction_slug, faction_name, data } = req.body;
   const db = getDb();
   try {
     const existing = db.prepare('SELECT id FROM ptg_rosters WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
     if (!existing) return res.status(404).json({ error: 'Roster not found' });
-    db.prepare(
-      `UPDATE ptg_rosters SET name = ?, faction_slug = ?, faction_name = ?, data = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
-    ).run(name, faction_slug || null, faction_name || null, JSON.stringify(data), req.params.id);
+    const sets = [];
+    const params = [];
+    if (name !== undefined)         { sets.push('name = ?');         params.push(name); }
+    if (faction_slug !== undefined) { sets.push('faction_slug = ?'); params.push(faction_slug || null); }
+    if (faction_name !== undefined) { sets.push('faction_name = ?'); params.push(faction_name || null); }
+    if (data !== undefined)         { sets.push('data = ?');         params.push(JSON.stringify(data)); }
+    if (sets.length === 0) return res.status(400).json({ error: 'No fields to update' });
+    sets.push('updated_at = CURRENT_TIMESTAMP');
+    params.push(req.params.id);
+    db.prepare(`UPDATE ptg_rosters SET ${sets.join(', ')} WHERE id = ?`).run(...params);
     res.json({ ok: true });
   } finally {
     db.close();
@@ -1081,16 +1091,20 @@ app.put('/api/ptg-enemy', requireAuth, (req, res) => {
   }
 });
 
-// POST /api/ptg-rosters/:id/duplicate — clone a saved roster so the user can branch off variants
+// POST /api/ptg-rosters/:id/duplicate — clone a saved roster so the user can branch off variants.
+// An optional `name` lets the caller name the copy at the point of
+// duplicating (the UI prompts for one, same as "Save as a Copy" does);
+// without it the copy falls back to "<original> (Copy)".
 app.post('/api/ptg-rosters/:id/duplicate', requireAuth, (req, res) => {
   const db = getDb();
   try {
     const row = db.prepare('SELECT * FROM ptg_rosters WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
     if (!row) return res.status(404).json({ error: 'Roster not found' });
+    const name = (req.body?.name || '').trim() || `${row.name} (Copy)`;
     const info = db.prepare(
       'INSERT INTO ptg_rosters (user_id, name, faction_slug, faction_name, data) VALUES (?, ?, ?, ?, ?)'
-    ).run(req.user.id, `${row.name} (Copy)`, row.faction_slug, row.faction_name, row.data);
-    res.json({ id: info.lastInsertRowid });
+    ).run(req.user.id, name, row.faction_slug, row.faction_name, row.data);
+    res.json({ id: info.lastInsertRowid, name });
   } finally {
     db.close();
   }
@@ -1275,12 +1289,15 @@ app.post('/api/army-builder-lists/:id/duplicate', requireAuth, (req, res) => {
   try {
     const row = db.prepare('SELECT * FROM army_builder_lists WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
     if (!row) return res.status(404).json({ error: 'List not found' });
+    // Optional `name` — the UI prompts for one when you duplicate, so the
+    // copy can be named there instead of having to be renamed afterwards.
+    const name = (req.body?.name || '').trim() || `${row.name} (Copy)`;
     const info = db.prepare(
       'INSERT INTO army_builder_lists (user_id, name, faction_slug, faction_name, data, list_type) VALUES (?, ?, ?, ?, ?, ?)'
-    ).run(req.user.id, `${row.name} (Copy)`, row.faction_slug, row.faction_name, row.data, row.list_type);
-    res.json({ id: info.lastInsertRowid });
+    ).run(req.user.id, name, row.faction_slug, row.faction_name, row.data, row.list_type);
+    res.json({ id: info.lastInsertRowid, name });
     broadcastListChange(req.user.id, req.headers['x-client-id'], 'list-upsert', {
-      id: info.lastInsertRowid, name: `${row.name} (Copy)`, faction_slug: row.faction_slug, faction_name: row.faction_name, data: JSON.parse(row.data), list_type: row.list_type,
+      id: info.lastInsertRowid, name, faction_slug: row.faction_slug, faction_name: row.faction_name, data: JSON.parse(row.data), list_type: row.list_type,
     });
   } finally {
     db.close();

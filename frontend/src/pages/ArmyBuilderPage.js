@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import axios from 'axios';
+import ImportListModal from '../components/ImportListModal';
+import { useAppDialog } from '../components/AppDialog';
+import { parseArmyList, resolveArmyList } from '../importList';
 import WarscrollGW, { AbilityCard } from '../components/WarscrollGW';
 import { useSettings } from '../SettingsContext';
 import { useAuth } from '../AuthContext';
@@ -1412,6 +1415,77 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
     }
   };
 
+  // ── Import List ───────────────────────────────────────────────────────
+  // Reads a New Recruit export into a brand new list: faction, points
+  // limit, battle formation and the roster itself, matching unit names
+  // against the whole Grand Alliance so an allied unit still lands. Always
+  // a new list, never over the one you have open. Because Matched Play and
+  // Battle Buddy both read these same saved lists, importing here is what
+  // makes a pasted list available to them too.
+  const [importType, setImportType] = useState(null); // 'own' | 'enemy' while the dialog is open
+  // In-app prompt/confirm — titled "AoS Warscrolls", not "<origin> says".
+  const { prompt, dialog } = useAppDialog();
+  const handleImportList = async (text) => {
+    const parsed = parseArmyList(text);
+    const factionObj = factions.find(f =>
+      f.faction.toLowerCase() === (parsed.faction || '').toLowerCase()
+      || f.faction_slug === (parsed.faction || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'));
+    const alliance = factionObj?.grand_alliance;
+    const pool = alliance ? factions.filter(f => f.grand_alliance === alliance).map(f => f.faction_slug) : [];
+    let warscrolls = [];
+    for (const slug of pool) {
+      try {
+        const { data } = await axios.get('/api/warscrolls', { params: { faction: slug, pageSize: 9999 } });
+        warscrolls = warscrolls.concat(data.data || []);
+      } catch { /* a faction we can't fetch just can't contribute matches */ }
+    }
+    const resolved = resolveArmyList(parsed, factions, warscrolls);
+
+    const filled = [];
+    const skipped = [...parsed.warnings];
+    if (!resolved.factionSlug && parsed.faction) {
+      skipped.push(`Faction "${parsed.faction}" didn't match any known faction.`);
+    }
+
+    const name = parsed.listName || 'Imported List';
+    const blank = makeBlankList(name);
+    const imported = {
+      ...blank,
+      faction: resolved.factionSlug || '',
+      pointsLimit: parsed.points || blank.pointsLimit,
+      roster: resolved.roster,
+      rosterOrder: resolved.rosterOrder,
+      battleFormation: parsed.formation || '',
+    };
+    if (resolved.factionSlug) filled.push(`Faction: ${factionObj.faction}`);
+    if (parsed.points) filled.push(`Points limit: ${parsed.points}`);
+    if (parsed.formation) filled.push(`Battle formation: ${parsed.formation}`);
+    const unitCount = Object.values(resolved.roster).reduce((n, sel) => n + (sel.train || 0) + (sel.reinforce || 0), 0);
+    filled.push(`${unitCount} units`);
+    const allies = resolved.matched.filter(mu => mu.isAlly);
+    if (allies.length) filled.push(`${allies.length} Grand Alliance ally unit(s)`);
+    for (const u of resolved.matched.filter(mu => mu.anvil)) {
+      skipped.push(`"${u.name}" is an Anvil of Apotheosis hero — it has no warscroll, so import it on the Path to Glory page instead.`);
+    }
+    for (const u of resolved.unmatched) skipped.push(`No warscroll matched "${u.name}" (${u.points}pts).`);
+
+    const { data: res } = await axios.post('/api/army-builder-lists', {
+      name,
+      faction_slug: resolved.factionSlug,
+      faction_name: factionObj ? factionObj.faction : null,
+      data: listToDataBlob(imported),
+      list_type: importType || 'own',
+    }, clientIdHeader());
+    const newId = String(res.id);
+    setListsStore(prev => ({
+      activeListId: newId,
+      lists: { ...prev.lists, [newId]: { name, faction_slug: resolved.factionSlug, faction_name: factionObj ? factionObj.faction : null, list_type: importType || 'own' } },
+    }));
+    loadListIntoState(imported);
+    try { localStorage.setItem(LAST_ACTIVE_KEY, newId); } catch {}
+    return { filled: [`Saved as ${importType === 'enemy' ? 'enemy ' : ''}list "${name}"`, ...filled], skipped };
+  };
+
   const createList = async (type = 'own') => {
     const sameTypeCount = Object.values(listsStore.lists).filter(l => (l.list_type || 'own') === type).length;
     const name = type === 'enemy' ? `New Enemy List ${sameTypeCount + 1}` : `New List ${sameTypeCount + 1}`;
@@ -1430,6 +1504,11 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
   const duplicateList = async (id) => {
     const meta = listsStore.lists[id];
     if (!meta) return;
+    // Name the copy up front, the same way "Save as a Copy" does — a list
+    // called "New List 3 (Copy)" that you then have to go and rename is a
+    // step nobody wants.
+    const name = await prompt('Name the copy:', `${meta.name} (Copy)`);
+    if (name === null) return;
     try {
       // If duplicating the currently-active list, flush the live state first —
       // the debounced autosave may not have reached the server yet, and the
@@ -1442,7 +1521,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
           data: listToDataBlob({ faction, pointsLimit, roster, rosterOrder, battleFormation, heroAssignments, activeStage, armyRosterDoc, selectedOptions }),
         }, clientIdHeader());
       }
-      const { data: dup } = await axios.post(`/api/army-builder-lists/${id}/duplicate`, null, clientIdHeader());
+      const { data: dup } = await axios.post(`/api/army-builder-lists/${id}/duplicate`, { name: name.trim() }, clientIdHeader());
       const dupId = String(dup.id);
       const { data: full } = await axios.get(`/api/army-builder-lists/${dupId}`);
       setListsStore(prev => ({
@@ -2098,6 +2177,14 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
 
   return (
     <>
+    {dialog}
+    {importType && (
+      <ImportListModal
+        title={importType === 'enemy' ? 'Import Enemy List' : 'Import List'}
+        onClose={() => setImportType(null)}
+        onImport={handleImportList}
+      />
+    )}
     <div className="table-page ab-page">
       <div className="page-header ab-page-header">
         <div className="page-title">
@@ -2117,6 +2204,12 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
             onRename={renameList}
             onDelete={deleteList}
           />
+          <button
+            type="button"
+            className="ab-list-new-btn ab-import-btn"
+            onClick={() => setImportType('own')}
+            title="Paste an army list exported from New Recruit"
+          >Import List</button>
         </div>
 
         <div className="ab-header-cell ab-header-stages">
@@ -2150,6 +2243,12 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
             onRename={renameList}
             onDelete={deleteList}
           />
+          <button
+            type="button"
+            className="ab-list-new-btn ab-import-btn"
+            onClick={() => setImportType('enemy')}
+            title="Paste an opponent's army list exported from New Recruit"
+          >Import List</button>
         </div>
 
         <div className="ab-points-block ab-points-stacked">

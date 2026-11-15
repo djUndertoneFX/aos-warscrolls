@@ -4,6 +4,11 @@ import axios from 'axios';
 import WarscrollGW from '../components/WarscrollGW';
 import ImageLightbox, { nameSlug } from '../components/ImageLightbox';
 import PathToGloryWizard from '../components/PathToGloryWizard';
+import ImportListModal from '../components/ImportListModal';
+import { useAppDialog } from '../components/AppDialog';
+import { parseArmyList, resolveArmyList } from '../importList';
+import { buildWizardState } from '../importToWizard';
+import BATTLEPACKS from '../components/ptgBattlepacks';
 import { useSettings } from '../SettingsContext';
 import { useAuth } from '../AuthContext';
 import { calcWeaponADO, resolveWeaponLoadout } from '../awoCalc';
@@ -206,21 +211,38 @@ function makeAdoKTooltip(includeSaveWard, save, ward) {
   return `Average Damage Output Efficiency\n  (ADO-R + ADO-M) ÷ Points × 1000, ${context}. Higher = more damage per point. Sort descending for best-value units.`;
 }
 
-// Stub roster picker — "store, recall, remove" a saved Path to Glory roster.
-// Not wired to any persistence yet; UI only.
 // Shared saved-roster pulldown — used for both "My Roster" and "Enemy
 // Roster" since a build isn't intrinsically one or the other, just
 // whichever slot picks it. Same list, same actions, in both places.
-function RosterDropdown({ label, rosters, onLoad, onDuplicate, onDelete, onStartFromScratch, onSaveCurrent, activeId = null, enemy = false, onClear = null }) {
+function RosterDropdown({ label, rosters, onLoad, onRename, onDuplicate, onDelete, onStartFromScratch, onSaveCurrent, activeId = null, enemy = false, onClear = null }) {
   const [open, setOpen] = useState(false);
+  const [renamingId, setRenamingId] = useState(null);
+  const [renameValue, setRenameValue] = useState('');
   const ref = useRef(null);
+  const renameInputRef = useRef(null);
 
   useEffect(() => {
     if (!open) return;
-    const handler = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const handler = e => { if (ref.current && !ref.current.contains(e.target)) { setOpen(false); setRenamingId(null); } };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
+
+  // Focusing/selecting explicitly once the input mounts — React's autoFocus
+  // doesn't reliably land the select() before the browser settles the cursor.
+  // Same reason as ListManager on the Army Builder page.
+  useEffect(() => {
+    if (renamingId && renameInputRef.current) {
+      renameInputRef.current.focus();
+      renameInputRef.current.select();
+    }
+  }, [renamingId]);
+
+  const startRename = (id, name) => { setRenamingId(id); setRenameValue(name); };
+  const commitRename = () => {
+    if (renamingId && renameValue.trim()) onRename(renamingId, renameValue.trim());
+    setRenamingId(null);
+  };
 
   return (
     <div className={`faction-dropdown ptg-roster-dropdown${enemy ? ' ptg-roster-dropdown-enemy' : ''}${enemy && activeId != null ? ' ptg-roster-dropdown-set' : ''}`} ref={ref}>
@@ -236,11 +258,44 @@ function RosterDropdown({ label, rosters, onLoad, onDuplicate, onDelete, onStart
             <div
               key={r.id}
               className={`faction-dropdown-item ptg-roster-item${activeId != null && String(activeId) === String(r.id) ? ' ptg-roster-item-active' : ''}`}
-              onMouseDown={() => { onLoad(r.id); setOpen(false); }}
-              title={enemy ? `Make "${r.name}" your enemy and open it` : `Load "${r.name}"`}
+              onMouseDown={() => { if (renamingId === r.id) return; onLoad(r.id); setOpen(false); }}
+              title={renamingId === r.id ? '' : (enemy ? `Make "${r.name}" your enemy and open it` : `Load "${r.name}"`)}
             >
-              <span className="ptg-roster-item-name">{r.name}{r.faction_name ? ` — ${r.faction_name}` : ''}</span>
+              {renamingId === r.id ? (
+                <input
+                  ref={renameInputRef}
+                  className="ptg-roster-rename-input"
+                  value={renameValue}
+                  onFocus={e => e.target.select()}
+                  onChange={e => setRenameValue(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') setRenamingId(null); }}
+                  onBlur={commitRename}
+                  onMouseDown={e => e.stopPropagation()}
+                  onClick={e => e.stopPropagation()}
+                />
+              ) : (
+                <span className="ptg-roster-item-name">{r.name}{r.faction_name ? ` — ${r.faction_name}` : ''}</span>
+              )}
               <span className="ptg-roster-item-icons">
+                {/* Same thing clicking the name does — the row is clickable,
+                    but with the icon buttons sitting next to it that isn't
+                    obvious, so the way in gets an icon of its own. */}
+                <button
+                  className="ptg-roster-icon-btn"
+                  title={enemy ? `Edit "${r.name}" as your enemy` : `Edit "${r.name}" in the wizard`}
+                  onMouseDown={e => { e.stopPropagation(); onLoad(r.id); setOpen(false); }}
+                >✎</button>
+                {/* Rename is also available by clicking the roster's name in
+                    the wizard banner; this renames without opening it. ✎ is
+                    already "open" here, so the name button gets its own mark. */}
+                <button
+                  className="ptg-roster-icon-btn"
+                  title="Rename this roster"
+                  // preventDefault as well as stopPropagation: without it the
+                  // button takes focus on mouse-up, which blurs the input that
+                  // just mounted and commits the rename before you can type.
+                  onMouseDown={e => { e.stopPropagation(); e.preventDefault(); startRename(r.id, r.name); }}
+                >Aa</button>
                 <button
                   className="ptg-roster-icon-btn"
                   title="Duplicate this roster"
@@ -269,6 +324,10 @@ export default function PathToGloryPage({ headerCollapsed }) {
   const [ptgView, setPtgView] = useState('recruit'); // 'recruit' | 'battle' — stub for now, no behavior wired yet
   const [showRecruitWizard, setShowRecruitWizard] = useState(false);
   const RECRUIT_WIZARD_KEY = 'aos-ptg-recruit-wizard';
+
+  // In-app confirm/prompt/alert — titled "AoS Warscrolls" instead of the
+  // browser's "<origin> says". Render {dialog} once, near the other modals.
+  const { confirm, prompt, alert, dialog } = useAppDialog();
 
   // ── Saved Path to Glory rosters (shared list for both My/Enemy Roster dropdowns) ──
   const [ptgRosters, setPtgRosters] = useState([]);
@@ -300,11 +359,33 @@ export default function PathToGloryPage({ headerCollapsed }) {
       setShowRecruitWizard(true);
     } catch { /* roster fetch failed — leave current wizard state untouched */ }
   };
+  // Prompts for the copy's name the same way "Save a Copy" does, so a
+  // duplicate arrives already named rather than as "<original> (Copy)"
+  // waiting to be renamed.
   const handleDuplicateRoster = async (id) => {
-    try { await axios.post(`/api/ptg-rosters/${id}/duplicate`); fetchPtgRosters(); } catch { /* ignore */ }
+    const existing = ptgRosters.find(r => String(r.id) === String(id));
+    const name = await prompt('Name the copy:', `${existing?.name || 'Roster'} (Copy)`);
+    if (name === null) return;
+    try {
+      await axios.post(`/api/ptg-rosters/${id}/duplicate`, { name: name.trim() });
+      fetchPtgRosters();
+    } catch { /* ignore */ }
+  };
+  const handleRenameRoster = async (id, name) => {
+    const existing = ptgRosters.find(r => String(r.id) === String(id));
+    if (!name || name === existing?.name) return;
+    // Optimistic — the dropdown's label updates as you leave the input
+    // rather than a round-trip later; fetchPtgRosters() then reconciles
+    // (and re-syncs the Enemy Roster label if this was the enemy).
+    setPtgRosters(prev => prev.map(r => (String(r.id) === String(id) ? { ...r, name } : r)));
+    setEnemyRoster(prev => (prev && String(prev.id) === String(id) ? { ...prev, name } : prev));
+    try {
+      await axios.put(`/api/ptg-rosters/${id}`, { name });
+    } catch { /* ignore */ }
+    fetchPtgRosters();
   };
   const handleDeleteRoster = async (id) => {
-    if (!window.confirm('Delete this saved roster? This cannot be undone.')) return;
+    if (!await confirm('Delete this saved roster? This cannot be undone.', { confirmLabel: 'Delete', danger: true })) return;
     try {
       await axios.delete(`/api/ptg-rosters/${id}`);
       fetchPtgRosters();
@@ -372,8 +453,10 @@ export default function PathToGloryPage({ headerCollapsed }) {
     enemySaveTimer.current = setTimeout(() => {
       const slug = rosterFactionSlug(snap) || target.faction_slug || null;
       const factionObj = factions.find(f => f.faction_slug === slug);
+      // No `name` in the body: the PUT is a partial update, and a snapshot
+      // queued before a rename would otherwise write the old name back.
       axios.put(`/api/ptg-rosters/${target.id}`, {
-        name: target.name, faction_slug: slug, faction_name: factionObj ? factionObj.faction : null, data: snap,
+        faction_slug: slug, faction_name: factionObj ? factionObj.faction : null, data: snap,
       }).then(() => { lastEnemySaved.current = json; fetchPtgRosters(); })
         .catch(() => {});
     }, 800);
@@ -388,7 +471,7 @@ export default function PathToGloryPage({ headerCollapsed }) {
     setShareMsg({ text: 'No enemy yet — pick one from Enemy Roster, start one from scratch there, or open a share link from your opponent.' });
   };
   const handleEnemyStartFromScratch = async () => {
-    const name = window.prompt('Name the enemy roster:', 'Enemy Roster');
+    const name = await prompt('Name the enemy roster:', 'Enemy Roster');
     if (!name) return;
     try {
       const { data: res } = await axios.post('/api/ptg-rosters', { name, faction_slug: null, faction_name: null, data: {} });
@@ -401,7 +484,7 @@ export default function PathToGloryPage({ headerCollapsed }) {
   const handleEnemySaveCopy = async () => {
     let data = null; try { data = JSON.parse(localStorage.getItem(ENEMY_WIZARD_KEY)); } catch {}
     if (!enemyRoster || !data) { setShareMsg({ text: 'No enemy roster loaded yet.' }); return; }
-    const name = window.prompt('Save a copy of the enemy roster as:', `${enemyRoster.name} (Copy)`);
+    const name = await prompt('Save a copy of the enemy roster as:', `${enemyRoster.name} (Copy)`);
     if (!name) return;
     const slug = rosterFactionSlug(data) || enemyRoster.faction_slug || null;
     const factionObj = factions.find(f => f.faction_slug === slug);
@@ -475,19 +558,85 @@ export default function PathToGloryPage({ headerCollapsed }) {
       setShareMsg({ text: err.response?.data?.error || 'Sharing failed — try again.' });
     }
   };
-  const handleStartFromScratch = () => {
-    if (!window.confirm('Start from scratch? This wipes the wizard\'s current progress (any unsaved changes will be lost).')) return;
+  const handleStartFromScratch = async () => {
+    if (!await confirm('Start from scratch? This wipes the wizard\'s current progress (any unsaved changes will be lost).', { confirmLabel: 'Start over', danger: true })) return;
     localStorage.removeItem(RECRUIT_WIZARD_KEY);
     setWizardResetKey(k => k + 1);
     setShowEnemyWizard(false);
     setPtgView('recruit');
     setShowRecruitWizard(true);
   };
+  // ── Import List ───────────────────────────────────────────────────────
+  // Reads a New Recruit export and fills in as much of the wizard as the
+  // list actually states: campaign, faction, formation, points limit,
+  // starting units (Grand Alliance allies included), Order of Battle rows,
+  // regiments, and — for an "Anvil of Apotheosis:" hero — its destiny
+  // point tier, archetype, origin/flaw, upgrades and Path rank abilities.
+  // Saved as a new roster rather than overwriting whatever is open, then
+  // opened in the wizard.
+  // Which roster slot an in-progress import lands in: 'own' opens it in the
+  // Recruit wizard, 'enemy' saves it and makes it your Enemy Roster. null
+  // while the dialog is closed.
+  const [importTarget, setImportTarget] = useState(null);
+  const handleImportList = async (text) => {
+    const parsed = parseArmyList(text);
+
+    // Allies from elsewhere in the Grand Alliance are legal in Path to
+    // Glory, so units are matched against the whole alliance, not just the
+    // named faction.
+    const factionObj = factions.find(f =>
+      f.faction.toLowerCase() === (parsed.faction || '').toLowerCase()
+      || f.faction_slug === (parsed.faction || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'));
+    const alliance = factionObj?.grand_alliance;
+    const pool = alliance ? factions.filter(f => f.grand_alliance === alliance).map(f => f.faction_slug) : [];
+    let warscrolls = [];
+    for (const slug of pool) {
+      try {
+        const { data } = await axios.get('/api/warscrolls', { params: { faction: slug, pageSize: 9999 } });
+        warscrolls = warscrolls.concat(data.data || []);
+      } catch { /* a faction we can't fetch just can't contribute matches */ }
+    }
+
+    const resolved = resolveArmyList(parsed, factions, warscrolls);
+
+    let apotheosisSteps = [];
+    if (resolved.factionSlug) {
+      try {
+        const { data } = await axios.get(`/api/apotheosis/${resolved.factionSlug}`);
+        apotheosisSteps = data.steps || [];
+      } catch { /* unsourced faction — the Anvil picks stay as notes */ }
+    }
+    const paths = Object.values(BATTLEPACKS).flatMap(b => b.paths || []);
+
+    const { state, report } = buildWizardState(parsed, resolved, { factions, apotheosisSteps, paths });
+
+    const name = parsed.listName || 'Imported List';
+    const { data: created } = await axios.post('/api/ptg-rosters', {
+      name,
+      faction_slug: resolved.factionSlug,
+      faction_name: factionObj ? factionObj.faction : null,
+      data: state,
+    });
+    await fetchPtgRosters();
+    if (importTarget === 'enemy') {
+      // loadEnemyRoster does the rest: enemy wizard slot, Enemy Faction
+      // filter, the server-side is_enemy flag, and opening the wizard on it.
+      await loadEnemyRoster(created.id);
+      return { ...report, filled: [`Saved as roster "${name}" (#${created.id}) and set as your enemy`, ...report.filled] };
+    }
+    localStorage.setItem(RECRUIT_WIZARD_KEY, JSON.stringify(state));
+    setWizardResetKey(k => k + 1);
+    setShowEnemyWizard(false);
+    setPtgView('recruit');
+    setShowRecruitWizard(true);
+    return { ...report, filled: [`Saved as roster "${name}" (#${created.id})`, ...report.filled] };
+  };
+
   const handleSaveCurrentRoster = async () => {
     const raw = localStorage.getItem(RECRUIT_WIZARD_KEY);
-    if (!raw) { window.alert('Nothing to save yet — open Recruit Your Forces first.'); return; }
+    if (!raw) { alert('Nothing to save yet — open Recruit Your Forces first.'); return; }
     let data; try { data = JSON.parse(raw); } catch { return; }
-    const name = window.prompt('Name this roster:', data.armyName || data.warlordName || 'My Roster');
+    const name = await prompt('Name this roster:', data.armyName || data.warlordName || 'My Roster');
     if (!name) return;
     const factionSlug = data.faction || data.selectedFaction || null;
     const factionObj = factions.find(f => f.faction_slug === factionSlug);
@@ -970,6 +1119,7 @@ export default function PathToGloryPage({ headerCollapsed }) {
               label="My Roster"
               rosters={ptgRosters}
               onLoad={handleLoadRoster}
+              onRename={handleRenameRoster}
               onDuplicate={handleDuplicateRoster}
               onDelete={handleDeleteRoster}
               onStartFromScratch={handleStartFromScratch}
@@ -985,6 +1135,15 @@ export default function PathToGloryPage({ headerCollapsed }) {
             </button>
           </div>
           <div className="ptg-stagger-item">
+            <button
+              className="ptg-action-btn"
+              onClick={() => setImportTarget('own')}
+              title="Paste an army list exported from New Recruit"
+            >
+              Import List
+            </button>
+          </div>
+          <div className="ptg-stagger-item">
             <button className={`ptg-action-btn${ptgView === 'battle' ? ' ptg-action-active' : ''}`} onClick={handleFaceThyEnemies}
               title={enemyRoster ? `Open your enemy: ${enemyRoster.name}` : 'Pick an Enemy Roster first'}>
               Face Thy Enemies
@@ -997,6 +1156,7 @@ export default function PathToGloryPage({ headerCollapsed }) {
               activeId={enemyRoster?.id}
               enemy
               onLoad={id => loadEnemyRoster(id)}
+              onRename={handleRenameRoster}
               onDuplicate={handleDuplicateRoster}
               onDelete={handleDeleteRoster}
               onStartFromScratch={handleEnemyStartFromScratch}
@@ -1404,13 +1564,31 @@ export default function PathToGloryPage({ headerCollapsed }) {
       )}
     </div>
 
-    {showRecruitWizard && <PathToGloryWizard key={wizardResetKey} factions={factions} onShare={handleShareRoster} onClose={() => setShowRecruitWizard(false)} />}
+    {dialog}
+    {importTarget && (
+      <ImportListModal
+        title={importTarget === 'enemy' ? 'Import Enemy List' : 'Import List'}
+        onClose={() => setImportTarget(null)}
+        onImport={handleImportList}
+      />
+    )}
+    {showRecruitWizard && (
+      <PathToGloryWizard
+        key={wizardResetKey}
+        factions={factions}
+        onImport={() => setImportTarget('own')}
+        onShare={handleShareRoster}
+        onClose={() => setShowRecruitWizard(false)}
+      />
+    )}
     {showEnemyWizard && enemyRoster && (
       <PathToGloryWizard
         key={`enemy-${enemyWizardKey}`}
         factions={factions}
         storageKey={ENEMY_WIZARD_KEY}
         enemyName={enemyRoster.name}
+        onRename={name => handleRenameRoster(enemyRoster.id, name)}
+        onImport={() => setImportTarget('enemy')}
         onSnapshot={handleEnemySnapshot}
         onShare={handleShareRoster}
         onClose={() => setShowEnemyWizard(false)}

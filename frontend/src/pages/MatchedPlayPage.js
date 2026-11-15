@@ -3,6 +3,7 @@ import axios from 'axios';
 import { AbilityCard } from '../components/WarscrollGW';
 import VoiceControlWidget from '../components/VoiceControlWidget';
 import GHB from '../matchedPlayData';
+import { useAppDialog } from '../components/AppDialog';
 
 // ── Matched Play (General's Handbook 2026-27) ────────────────────────────────
 // A game companion for a matched play battle: pick both armies (your Army
@@ -83,6 +84,8 @@ export default function MatchedPlayPage() {
   });
   const [lists, setLists] = useState([]);
   const [rolling, setRolling] = useState(false);
+  // In-app confirm — titled "AoS Warscrolls", not "<origin> says".
+  const { confirm, dialog } = useAppDialog();
   const loaded = useRef(false);
   const saveTimer = useRef(null);
 
@@ -179,7 +182,10 @@ export default function MatchedPlayPage() {
     // Season rule 'Raising the Heat': attacker starts at fury 1, defender at 2.
     fury: side ? { [side]: 1, [side === 'you' ? 'opp' : 'you']: 2 } : g.fury,
   }));
-  const newGame = () => { if (window.confirm('Start a new game? This clears the current scores, battleplan and picks.')) setGame({ ...blankGame(), lists: game.lists, points: game.points }); };
+  const newGame = async () => {
+    if (!await confirm('Start a new game? This clears the current scores, battleplan and picks.', { confirmLabel: 'New game', danger: true })) return;
+    setGame({ ...blankGame(), lists: game.lists, points: game.points });
+  };
 
   const STAGES = [
     ['armies', '1 Armies'], ['battleplan', '2 Battleplan'], ['tactics', '3 Battle Tactics'], ['score', '4 Scoreboard'], ['rules', 'Rules'],
@@ -195,6 +201,7 @@ export default function MatchedPlayPage() {
 
   return (
     <div className="table-page mp-page">
+      {dialog}
       <div className="page-header mp-header">
         <div className="page-title">Matched Play<span>{GHB.source}</span></div>
         <div className="mp-stages">

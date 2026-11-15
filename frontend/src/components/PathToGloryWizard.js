@@ -1126,7 +1126,7 @@ const STORAGE_KEY = 'aos-ptg-recruit-wizard';
 // or editing the enemy never touches your build. enemyName marks the wizard
 // as the enemy's (red frame + banner). onSnapshot(snapshot) fires on every
 // autosave so the page can push enemy edits back to that saved roster.
-export default function PathToGloryWizard({ onClose, factions = [], storageKey = STORAGE_KEY, enemyName = null, onSnapshot = null, onShare = null }) {
+export default function PathToGloryWizard({ onClose, factions = [], storageKey = STORAGE_KEY, enemyName = null, onRename = null, onImport = null, onSnapshot = null, onShare = null }) {
   // Read once per mount — resumes wherever the user left off last time they
   // opened this wizard (localStorage persists it across close/reopen).
   const saved = (() => { try { return JSON.parse(localStorage.getItem(storageKey)) || {}; } catch { return {}; } })();
@@ -1137,6 +1137,24 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   const sharedFilterDefaults = (() => { try { return JSON.parse(localStorage.getItem('aos-filters')) || {}; } catch { return {}; } })();
 
   const [step, setStep] = useState(() => saved.step ?? 0);
+  // The roster's name is shown in the banner and, when the page passes
+  // `onRename`, is editable there — clicking it turns it into an input and
+  // committing renames the saved roster. A local draft keeps typing
+  // responsive; the committed value comes back down as a new `enemyName`.
+  const bannerName = (enemyName || '').replace(/^Enemy:\s*/, '');
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState(bannerName);
+  const nameInputRef = useRef(null);
+  useEffect(() => { if (!editingName) setNameDraft(bannerName); }, [bannerName, editingName]);
+  useEffect(() => {
+    if (editingName && nameInputRef.current) { nameInputRef.current.focus(); nameInputRef.current.select(); }
+  }, [editingName]);
+  const commitName = () => {
+    const next = nameDraft.trim();
+    if (next && next !== bannerName && onRename) onRename(next);
+    else setNameDraft(bannerName);
+    setEditingName(false);
+  };
   const [activeDoc, setActiveDoc] = useState(() => saved.activeDoc ?? null); // null | 'warlord' | 'roster' | 'oob' | 'army'
   const [presentMode, setPresentMode] = useState(() => saved.presentMode ?? 'replica'); // 'image' | 'replica'
   // Whole-modal layout, spans all 9 main steps + their sub-steps and the
@@ -1358,6 +1376,11 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   // Scourge units are matched-play only: never offered in Path to Glory.
   const unitsHideScourge = true;
   const [unitsHideRoR, setUnitsHideRoR] = useState(() => saved.unitsHideRoR ?? sharedFilterDefaults.hideRoR ?? false);
+  // Narrows both unit tables to the rows actually carrying a Train/Reinforce
+  // count — the faction lists run to 40+ warscrolls, so once the picking is
+  // done this is how you read back what you chose without scrolling. Off by
+  // default: on an empty roster it would hide everything.
+  const [unitsOnlyAdded, setUnitsOnlyAdded] = useState(() => saved.unitsOnlyAdded ?? false);
   useEffect(() => {
     if (!effectiveFactionSlug) { setFactionUnits([]); return; }
     setFactionUnitsLoading(true);
@@ -1684,9 +1707,16 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   // forever. Runs once against whatever faction was already active at
   // mount; a no-op for anyone whose starting warscroll is already filled.
   const mountFactionRef = useRef(saved.selectedFaction ?? null);
+  // StrictMode double-invokes mount effects in development, and this one's
+  // fetch resolves after both invocations have already passed the
+  // needsBackfill check — so without a ref guard it adds the faction's
+  // starting weapon twice, which is exactly what an imported list (whose
+  // snapshot names a faction but carries no weapons) hits every time.
+  const mountBackfillRan = useRef(false);
   useEffect(() => {
     const mountFaction = mountFactionRef.current;
-    if (!mountFaction) return;
+    if (!mountFaction || mountBackfillRan.current) return;
+    mountBackfillRan.current = true;
     const needsBackfill = !warlordMove && !warlordKeywordsLine1 && rangedWeapons.length === 0 && meleeWeapons.length === 0;
     if (!needsBackfill) return;
     axios.get(`/api/apotheosis/${mountFaction}`).then(res => {
@@ -2053,8 +2083,17 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
 
     setRegiments(prev => {
       const live = new Set(defaultIndexBySource.keys());
-      // Keep hand-typed rows (no sourceUnitId) and rows whose unit survives.
-      const next = prev.map(r => ({ ...r, units: r.units.filter(u => !u.sourceUnitId || live.has(u.sourceUnitId)) }));
+      // Keep rows whose unit is still on the roster, plus hand-typed rows —
+      // but not an entirely blank one. The Army Roster's own "+ Add Unit"
+      // seeds empty rows for you to type into, and those were coming
+      // through here as an "UNNAMED UNIT" line with no points.
+      const isBlankRow = u => !u.sourceUnitId
+        && !(u.name || '').trim() && !(u.size || '').trim()
+        && !(u.notes || '').trim() && !(u.points || '').trim();
+      const next = prev.map(r => ({
+        ...r,
+        units: r.units.filter(u => !isBlankRow(u) && (!u.sourceUnitId || live.has(u.sourceUnitId))),
+      }));
       const placed = new Set(next.flatMap(r => r.units.map(u => u.sourceUnitId)).filter(Boolean));
 
       for (const [sourceId, regIndex] of defaultIndexBySource) {
@@ -2105,9 +2144,15 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   // is in the middle of dragging on another screen.
   useEffect(() => {
     if (step !== 8) return;
+    // Which rows are Heroes — and so which ones open a regiment of their
+    // own — is resolved by matching each Order of Battle row back against
+    // its warscroll. Run before those have loaded and every unit lands in
+    // one regiment, and the signature stamp below means it never re-runs.
+    if (factionUnitsLoading) return;
+    if (oobUnits.length > 0 && startingUnitPool.length === 0) return;
     if (regimentsSeedSig === rosterSignature) return;
     reconcileRegiments();
-  }, [step, rosterSignature]); // eslint-disable-line
+  }, [step, rosterSignature, factionUnitsLoading, startingUnitPool.length]); // eslint-disable-line
 
   useEffect(() => {
     const h = e => {
@@ -2153,7 +2198,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
       commander, armyRosterName, pointsLimit, armyRosterFaction, armyRosterFormation, regiments, auxUnits, armyNotes,
       startingUnits, allyPickerOpen, allyFaction, allyUnitsByFaction, regimentsSeedSig,
       heroicTraitChoice, heroicTraitAssignee, artefactChoice, artefactAssignee,
-      unitsHideLegends, unitsHideScourge, unitsHideRoR,
+      unitsHideLegends, unitsHideScourge, unitsHideRoR, unitsOnlyAdded,
       emberstoneVault, emberstoneTotal,
     };
     try { localStorage.setItem(storageKey, JSON.stringify(snapshot)); } catch {}
@@ -2362,6 +2407,15 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   const renderStartingUnitsTable = (units, loading, emptyMessage) => {
     if (loading) return <div className="ptg-wizard-body-placeholder">Loading…</div>;
     if (units.length === 0) return <div className="ptg-wizard-body-placeholder">{emptyMessage}</div>;
+    const shown = unitsOnlyAdded
+      ? units.filter(u => {
+          const sel = startingUnits[u.id];
+          return ((sel?.train || 0) + (sel?.reinforce || 0)) > 0;
+        })
+      : units;
+    if (shown.length === 0) {
+      return <div className="ptg-wizard-body-placeholder">Nothing added from this faction yet — untick &ldquo;Only added units&rdquo; to pick some.</div>;
+    }
     return (
       <table className="ptg-units-table">
         <thead>
@@ -2379,9 +2433,9 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
               — no client re-sort, so a section header per unitTypeLabel
               change lines up with real, contiguous groups instead of
               firing every row. */}
-          {units.map((u, i) => {
+          {shown.map((u, i) => {
             const sel = startingUnits[u.id] ?? { train: 0, reinforce: 0 };
-            const typeChanged = i === 0 || unitTypeLabel(units[i - 1]) !== unitTypeLabel(u);
+            const typeChanged = i === 0 || unitTypeLabel(shown[i - 1]) !== unitTypeLabel(u);
             return (
               <React.Fragment key={u.id}>
                 {typeChanged && (
@@ -2605,7 +2659,16 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   // Mounts use. Returns null for upgrades that are pure stat tweaks with no
   // bullet at all (e.g. "Formidable Bulk"), which is most of them.
   const parseInlineAbilityBullet = b => {
-    const m = /^\[([^\]]+)\]\s*(.+?)\s*[—-]\s*(.+)$/s.exec(b || '');
+    // Split on the "Declare:"/"Effect:" keyword rather than on a dash. Only
+    // about 4 in 10 of these bullets actually carry the dash — the rest run
+    // straight from the name into "Effect:" ("[Passive] LOVES A GOOD FIGHT
+    // Effect: ...") — so a dash-anchored split returned null for the
+    // majority and the warscroll printed the option's own pointer text
+    // ("Add the following ability to your hero's warscroll:") with nothing
+    // after it. Anchoring on the keyword also stops a hyphenated ability
+    // name splitting itself in half ("BACKUP THRUSTER-ENDRINS").
+    const m = /^\[([^\]]+)\]\s*(.+?)\s*(?:[—–-]\s*)?(?=Declare:|Effect:)(.*)$/s.exec(b || '')
+      || /^\[([^\]]+)\]\s*(.+?)\s*[—–-]\s*(.+)$/s.exec(b || '');
     if (!m) return null;
     const [, timing, name, rest] = m;
     const declMatch = /^Declare:\s*(.+?)\s*Effect:\s*(.+)$/s.exec(rest);
@@ -3363,6 +3426,11 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                   <div className="ptg-doc-editor-title">Print Preview</div>
                   <div className="ab-roster-print-actions">
                     <button className="ptg-wizard-nav-btn" onClick={() => setWarlordPrintPreview(false)}>‹ Cancel</button>
+                    <button
+                      className="ptg-wizard-nav-btn ptg-back-to-wizard"
+                      title="Return to the numbered steps to keep editing this army"
+                      onClick={() => { setWarlordPrintPreview(false); setActiveDoc(null); }}
+                    >‹ Back to the Wizard</button>
                     <button className="ptg-wizard-nav-btn ab-roster-print-confirm" onClick={() => window.print()}>🖨 Print</button>
                   </div>
                 </div>
@@ -3376,7 +3444,11 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
             <>
               <div className="ptg-doc-editor-header">
                 {showBackButton
-                  ? <button className="ptg-wizard-nav-btn" onClick={() => { setWarlordPrintPreview(false); setActiveDoc(null); }}>‹ Back to War Room</button>
+                  ? <button
+                      className="ptg-wizard-nav-btn ptg-back-to-wizard"
+                      title="Return to the numbered steps to keep editing this army"
+                      onClick={() => { setWarlordPrintPreview(false); setActiveDoc(null); }}
+                    >‹ Back to the Wizard</button>
                   : <span />}
                 <div className="ptg-doc-editor-title">{doc.title}</div>
                 <PresentToggle mode={presentMode} onChange={setPresentMode} />
@@ -3906,6 +3978,10 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                       <input type="checkbox" checked={unitsHideLegends} onChange={e => setUnitsHideLegends(e.target.checked)} />
                       <span>Legends</span>
                     </label>
+                    <label className="cb-item ptg-units-only-added" title="Show only the units you've added to this roster">
+                      <input type="checkbox" checked={unitsOnlyAdded} onChange={e => setUnitsOnlyAdded(e.target.checked)} />
+                      <span>Filter to added Units</span>
+                    </label>
                   </div>
                   {campaign === 'ravaged-coast' && (() => {
                     const over = startingUnitPool.filter(u => {
@@ -4173,7 +4249,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   return (
     <>
       <div className="gw-overlay" />
-      <div className={`ptg-wizard${wizardViewMode === 'dual' ? ' ptg-wizard-dual-mode' : ''}${enemyName ? ' ptg-wizard-enemy' : ''}`} ref={modalRef} role="dialog" aria-modal="true" aria-label={enemyName ? `Enemy roster: ${enemyName}` : 'Recruit Your Forces!'}>
+      <div className={`ptg-wizard${wizardViewMode === 'dual' ? ' ptg-wizard-dual-mode' : ''}${enemyName ? ' ptg-wizard-enemy' : ''}${onImport ? ' ptg-wizard-importable' : ''}`} ref={modalRef} role="dialog" aria-modal="true" aria-label={enemyName ? `Enemy roster: ${enemyName}` : 'Recruit Your Forces!'}>
         <div className="gw-view-toggle ptg-wizard-view-toggle">
           <button
             type="button"
@@ -4189,6 +4265,18 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
           ><span className="gw-view-icon gw-view-icon-split"><i /><i /></span></button>
         </div>
         <button className="gw-close" onClick={onClose} title="Close (Esc)">✕</button>
+        {/* Import is reachable from the page header too, but once you're in
+            the wizard the header is covered — and the enemy wizard is the
+            only place an enemy list can be imported straight into. */}
+        {onImport && (
+          <button
+            className="ab-roster-print-btn ptg-wizard-import-btn"
+            onClick={onImport}
+            title={enemyName
+              ? 'Paste an army list exported from New Recruit — it is saved as a roster and becomes your enemy'
+              : 'Paste an army list exported from New Recruit — it is saved as a roster and opened here'}
+          >Import List</button>
+        )}
         {activeDoc === 'warlord' && !warlordPrintPreview && (
           <button className="ab-roster-print-btn" onClick={handleWarlordPrintClick} title="Print">🖨 Print</button>
         )}
@@ -4204,7 +4292,33 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
 
         <div className="ptg-wizard-banner">
           Path to Glory!{campaignLabel && <span className="ptg-wizard-banner-campaign"> — {campaignLabel}</span>}
-          {enemyName && <span className="ptg-wizard-banner-enemy"> — Enemy: {enemyName.replace(/^Enemy:\s*/, "")}</span>}
+          {enemyName && (
+            <span className="ptg-wizard-banner-enemy"> — Enemy:{' '}
+              {editingName ? (
+                <input
+                  ref={nameInputRef}
+                  className="ptg-wizard-banner-name-input"
+                  value={nameDraft}
+                  size={Math.max(8, nameDraft.length + 1)}
+                  onChange={e => setNameDraft(e.target.value)}
+                  onKeyDown={e => {
+                    e.stopPropagation(); // the wizard closes on Esc — handle it here instead
+                    if (e.key === 'Enter') commitName();
+                    if (e.key === 'Escape') { setNameDraft(bannerName); setEditingName(false); }
+                  }}
+                  onBlur={commitName}
+                />
+              ) : onRename ? (
+                <span
+                  className="ptg-wizard-banner-name ptg-wizard-banner-name-editable"
+                  title="Click to rename this roster"
+                  onClick={() => setEditingName(true)}
+                >{bannerName}</span>
+              ) : (
+                <span className="ptg-wizard-banner-name">{bannerName}</span>
+              )}
+            </span>
+          )}
         </div>
 
         {wizardViewMode === 'dual' ? (
