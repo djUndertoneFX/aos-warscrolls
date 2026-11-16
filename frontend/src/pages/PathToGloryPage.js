@@ -309,7 +309,7 @@ function RosterDropdown({ label, rosters, onLoad, onRename, onDuplicate, onDelet
               </span>
             </div>
           ))}
-          <div className="faction-dropdown-item ptg-roster-action" onMouseDown={() => { setOpen(false); onSaveCurrent(); }}>{enemy ? '+ Save Enemy as a Copy' : '+ Save Current Roster'}</div>
+          {onSaveCurrent && <div className="faction-dropdown-item ptg-roster-action" onMouseDown={() => { setOpen(false); onSaveCurrent(); }}>{enemy ? '+ Save Enemy as a Copy' : '+ Save Current Roster'}</div>}
           <div className="faction-dropdown-item ptg-roster-action ptg-roster-action-reset" onMouseDown={() => { setOpen(false); onStartFromScratch(); }}>{enemy ? 'New Enemy from Scratch' : 'Start from Scratch'}</div>
           {onClear && <div className="faction-dropdown-item ptg-roster-action ptg-roster-action-reset" onMouseDown={() => { setOpen(false); onClear(); }}>Clear Enemy</div>}
         </div>
@@ -349,10 +349,68 @@ export default function PathToGloryPage({ headerCollapsed }) {
   }).catch(() => {});
   useEffect(() => { fetchPtgRosters(); }, []);
 
+  // ── Autosave: your own roster ──
+  // The Recruit wizard is always tied to a saved roster (CURRENT_ROSTER_KEY)
+  // and every change is written back to it (debounced), so nothing lives
+  // only in this browser. A fresh wizard creates its roster on the first
+  // real change (a campaign, faction, warlord or army name picked). There
+  // is no "Save Current Roster" any more (dj 2026-11-16).
+  const CURRENT_ROSTER_KEY = 'aos-ptg-current-roster';
+  const [currentRosterId, setCurrentRosterIdState] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(CURRENT_ROSTER_KEY)); } catch { return null; }
+  });
+  const currentRosterRef = useRef(currentRosterId);
+  const setCurrentRoster = (id) => {
+    currentRosterRef.current = id;
+    setCurrentRosterIdState(id);
+    try { id != null ? localStorage.setItem(CURRENT_ROSTER_KEY, JSON.stringify(id)) : localStorage.removeItem(CURRENT_ROSTER_KEY); } catch {}
+  };
+  const lastOwnSaved = useRef(null);
+  const ownSaveTimer = useRef(null);
+  // Saves run one at a time, so a change made while the roster is still
+  // being created is PUT to it afterwards instead of creating a second one.
+  const ownSaveChain = useRef(Promise.resolve());
+  const saveOwnSnapshot = async (snap) => {
+    const json = JSON.stringify(snap);
+    if (json === lastOwnSaved.current) return;
+    const slug = rosterFactionSlug(snap);
+    const factionObj = factions.find(f => f.faction_slug === slug);
+    const fields = { faction_slug: slug, faction_name: factionObj ? factionObj.faction : null, data: snap };
+    if (currentRosterRef.current != null) {
+      try {
+        await axios.put(`/api/ptg-rosters/${currentRosterRef.current}`, fields);
+        lastOwnSaved.current = json;
+        fetchPtgRosters();
+        return;
+      } catch (err) {
+        if (err.response?.status !== 404) return; // offline etc. — the next change retries
+        setCurrentRoster(null); // deleted elsewhere — save it as a new roster
+      }
+    }
+    try {
+      const { data: res } = await axios.post('/api/ptg-rosters', { name: snap.armyName || snap.warlordName || 'My Roster', ...fields });
+      setCurrentRoster(res.id);
+      lastOwnSaved.current = json;
+      fetchPtgRosters();
+    } catch { /* retried on the next change */ }
+  };
+  const handleOwnSnapshot = (snap) => {
+    if (currentRosterRef.current == null && !snap.campaign && !snap.selectedFaction && !snap.warlordName && !snap.armyName) return;
+    if (JSON.stringify(snap) === lastOwnSaved.current) return;
+    if (ownSaveTimer.current) clearTimeout(ownSaveTimer.current);
+    ownSaveTimer.current = setTimeout(() => {
+      ownSaveChain.current = ownSaveChain.current.then(() => saveOwnSnapshot(snap));
+    }, 800);
+  };
+  useEffect(() => () => { if (ownSaveTimer.current) clearTimeout(ownSaveTimer.current); }, []);
+
   const handleLoadRoster = async (id) => {
     try {
       const res = await axios.get(`/api/ptg-rosters/${id}`);
+      if (ownSaveTimer.current) clearTimeout(ownSaveTimer.current);
       localStorage.setItem(RECRUIT_WIZARD_KEY, JSON.stringify(res.data.data));
+      setCurrentRoster(res.data.id ?? id);
+      lastOwnSaved.current = JSON.stringify(res.data.data);
       setWizardResetKey(k => k + 1);
       setShowEnemyWizard(false);
       setPtgView('recruit');
@@ -388,6 +446,15 @@ export default function PathToGloryPage({ headerCollapsed }) {
     if (!await confirm('Delete this saved roster? This cannot be undone.', { confirmLabel: 'Delete', danger: true })) return;
     try {
       await axios.delete(`/api/ptg-rosters/${id}`);
+      if (currentRosterRef.current != null && String(currentRosterRef.current) === String(id)) {
+        // The roster open in Recruit Your Forces is gone — clear the wizard
+        // too, or its next autosave would bring it straight back.
+        if (ownSaveTimer.current) clearTimeout(ownSaveTimer.current);
+        setCurrentRoster(null);
+        lastOwnSaved.current = null;
+        localStorage.removeItem(RECRUIT_WIZARD_KEY);
+        setWizardResetKey(k => k + 1);
+      }
       fetchPtgRosters();
       if (enemyRoster && String(enemyRoster.id) === String(id)) handleClearEnemy();
     } catch { /* ignore */ }
@@ -559,7 +626,11 @@ export default function PathToGloryPage({ headerCollapsed }) {
     }
   };
   const handleStartFromScratch = async () => {
-    if (!await confirm('Start from scratch? This wipes the wizard\'s current progress (any unsaved changes will be lost).', { confirmLabel: 'Start over', danger: true })) return;
+    if (!await confirm('Start a new roster from scratch? Your current one stays saved in My Roster.', { confirmLabel: 'Start new' })) return;
+    if (ownSaveTimer.current) clearTimeout(ownSaveTimer.current);
+    await ownSaveChain.current;
+    setCurrentRoster(null);
+    lastOwnSaved.current = null;
     localStorage.removeItem(RECRUIT_WIZARD_KEY);
     setWizardResetKey(k => k + 1);
     setShowEnemyWizard(false);
@@ -624,26 +695,15 @@ export default function PathToGloryPage({ headerCollapsed }) {
       await loadEnemyRoster(created.id);
       return { ...report, filled: [`Saved as roster "${name}" (#${created.id}) and set as your enemy`, ...report.filled] };
     }
+    if (ownSaveTimer.current) clearTimeout(ownSaveTimer.current);
     localStorage.setItem(RECRUIT_WIZARD_KEY, JSON.stringify(state));
+    setCurrentRoster(created.id);
+    lastOwnSaved.current = JSON.stringify(state);
     setWizardResetKey(k => k + 1);
     setShowEnemyWizard(false);
     setPtgView('recruit');
     setShowRecruitWizard(true);
     return { ...report, filled: [`Saved as roster "${name}" (#${created.id})`, ...report.filled] };
-  };
-
-  const handleSaveCurrentRoster = async () => {
-    const raw = localStorage.getItem(RECRUIT_WIZARD_KEY);
-    if (!raw) { alert('Nothing to save yet — open Recruit Your Forces first.'); return; }
-    let data; try { data = JSON.parse(raw); } catch { return; }
-    const name = await prompt('Name this roster:', data.armyName || data.warlordName || 'My Roster');
-    if (!name) return;
-    const factionSlug = data.faction || data.selectedFaction || null;
-    const factionObj = factions.find(f => f.faction_slug === factionSlug);
-    try {
-      await axios.post('/api/ptg-rosters', { name, faction_slug: factionSlug, faction_name: factionObj ? factionObj.faction : null, data });
-      fetchPtgRosters();
-    } catch { /* ignore */ }
   };
 
   const [data, setData]           = useState(null);
@@ -1123,7 +1183,7 @@ export default function PathToGloryPage({ headerCollapsed }) {
               onDuplicate={handleDuplicateRoster}
               onDelete={handleDeleteRoster}
               onStartFromScratch={handleStartFromScratch}
-              onSaveCurrent={handleSaveCurrentRoster}
+              activeId={currentRosterId}
             />
           </div>
           <div className="ptg-stagger-item">
@@ -1577,6 +1637,7 @@ export default function PathToGloryPage({ headerCollapsed }) {
         key={wizardResetKey}
         factions={factions}
         onImport={() => setImportTarget('own')}
+        onSnapshot={handleOwnSnapshot}
         onShare={handleShareRoster}
         onClose={() => setShowRecruitWizard(false)}
       />
