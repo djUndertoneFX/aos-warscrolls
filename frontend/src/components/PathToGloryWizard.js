@@ -1210,6 +1210,10 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   const [emberstoneVault, setEmberstoneVault] = useState(() => saved.emberstoneVault ?? '0');
   const [emberstoneTotal, setEmberstoneTotal] = useState(() => saved.emberstoneTotal ?? '0');
   const [customCampaignName, setCustomCampaignName] = useState(() => saved.customCampaignName ?? '');
+  // "Allow other campaign paths": campaign keys whose Paths are offered on
+  // top of this campaign's own (e.g. a Warlord carried over from Ascension
+  // keeping Path of the Warrior in Ravaged Coast). Off by default.
+  const [extraPathCampaigns, setExtraPathCampaigns] = useState(() => (Array.isArray(saved.extraPathCampaigns) ? saved.extraPathCampaigns : []));
 
   // ── Step 1: Faction ──
   const [selectedFaction, setSelectedFaction] = useState(() => saved.selectedFaction ?? null);
@@ -2021,6 +2025,19 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   // picker), split into Hero Paths and the Unit Paths a non-Hero earns
   // during the campaign; without one, only Heroes have Paths at all.
   // Blighted Wilds additionally allows Ravaged Coast's Paths.
+  // Campaigns whose Paths could be borrowed: every real campaign except the
+  // one picked (and Ravaged Coast under Blighted Wilds, which already
+  // includes it). Ascension's Paths are the core four, all Hero Paths.
+  const otherPathCampaigns = CAMPAIGNS.filter(c => !c.custom && c.key !== campaign
+    && !(campaign === 'blighted-wilds' && c.key === 'ravaged-coast')
+    && !(!bp && c.key === 'ascension'));
+  const otherCampaignPathGroups = () => otherPathCampaigns
+    .filter(c => extraPathCampaigns.includes(c.key))
+    .map(c => ({
+      key: c.key,
+      name: c.name,
+      paths: c.key === 'ascension' ? PATHS.map(pth => ({ ...pth, hero: true })) : (BATTLEPACKS[c.key]?.paths || []),
+    }));
   const pathsForUnit = isHero => {
     const fromBattlepack = bp
       ? [
@@ -2030,7 +2047,12 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
             : []),
         ]
       : (isHero ? PATHS : []);
-    return [...fromBattlepack, ...(isHero ? (FACTION_PATHS[selectedFaction] ?? []) : [])];
+    const seen = new Set(fromBattlepack.map(pth => pth.key));
+    const fromOther = otherCampaignPathGroups()
+      .flatMap(g => g.paths)
+      .filter(pth => !!pth.hero === isHero)
+      .filter(pth => (seen.has(pth.key) ? false : (seen.add(pth.key), true)));
+    return [...fromBattlepack, ...fromOther, ...(isHero ? (FACTION_PATHS[selectedFaction] ?? []) : [])];
   };
   const findPathByKey = key => (
     PATHS.find(pth => pth.key === key)
@@ -2199,7 +2221,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
       startingUnits, allyPickerOpen, allyFaction, allyUnitsByFaction, regimentsSeedSig,
       heroicTraitChoice, heroicTraitAssignee, artefactChoice, artefactAssignee,
       unitsHideLegends, unitsHideScourge, unitsHideRoR, unitsOnlyAdded,
-      emberstoneVault, emberstoneTotal,
+      emberstoneVault, emberstoneTotal, extraPathCampaigns,
     };
     try { localStorage.setItem(storageKey, JSON.stringify(snapshot)); } catch {}
     if (onSnapshot) onSnapshot(snapshot);
@@ -2214,7 +2236,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
     commander, armyRosterName, pointsLimit, armyRosterFaction, armyRosterFormation, regiments, auxUnits, armyNotes,
     startingUnits, allyPickerOpen, allyFaction, allyUnitsByFaction, regimentsSeedSig,
     heroicTraitChoice, heroicTraitAssignee, artefactChoice, artefactAssignee,
-    emberstoneVault, emberstoneTotal,
+    emberstoneVault, emberstoneTotal, extraPathCampaigns,
   ]);
 
   // One weapon-profile cell. The value shown is the effective one (base
@@ -3686,7 +3708,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                   {p.name}
                   {p.restricted && <span className="gw-ability-source-note" title="Restriction">({p.restricted})</span>}
                 </div>
-                <p className="gw-ability-para">{p.ranks.map(r => r.options.map(o => o.name).join(' / ')).join(' · ')}</p>
+                <p className="gw-ability-para">{p.desc || p.ranks.map(r => r.options.map(o => o.name).join(' / ')).join(' · ')}</p>
               </div>
             </div>
           </button>
@@ -3893,6 +3915,35 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                     ))}
                   </div>
                   </>)}
+
+                  {otherPathCampaigns.length > 0 && (
+                    <div className="ptg-other-paths">
+                      <span className="ptg-other-paths-lbl">Allow other campaign paths:</span>
+                      {otherPathCampaigns.map(c => (
+                        <label key={c.key} className="ptg-other-paths-opt">
+                          <input
+                            type="checkbox"
+                            checked={extraPathCampaigns.includes(c.key)}
+                            onChange={e => setExtraPathCampaigns(list => (e.target.checked
+                              ? [...list.filter(k => k !== c.key), c.key]
+                              : list.filter(k => k !== c.key)))}
+                          />
+                          {c.name}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  {otherCampaignPathGroups().map(g => (
+                    <React.Fragment key={g.key}>
+                      {renderPathGroup(`${g.name} — Hero Paths`, g.paths.filter(p => p.hero))}
+                      {g.paths.some(p => !p.hero) && (
+                        <details className="ptg-bp-details">
+                          <summary>{g.name} — Unit Paths (non-Hero units)</summary>
+                          {renderPathGroup(null, g.paths.filter(p => !p.hero))}
+                        </details>
+                      )}
+                    </React.Fragment>
+                  ))}
 
                   <div className="ptg-path-section-divider" />
 

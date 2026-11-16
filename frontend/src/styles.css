@@ -6584,3 +6584,8 @@ textarea.ptg-doc-overlay-input {
 .app-dialog-btn-confirm { border-color: #c8a840; color: var(--gold-light, #e8d9a8); }
 .app-dialog-btn-danger { border-color: rgba(224,112,112,0.6); color: #e07070; }
 .app-dialog-btn-danger:hover { color: #ff8c8c; border-color: #e07070; background: rgba(224,112,112,0.12); }
+
+/* Path to Glory: "Allow other campaign paths" checkboxes on the Paths step */
+.ptg-other-paths { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 1rem; margin: 0.8rem 0 0.4rem; padding: 0.45rem 0.7rem; border: 1px dashed rgba(200,168,64,0.35); border-radius: 4px; font-size: 0.85rem; }
+.ptg-other-paths-lbl { font-family: 'Cinzel', serif; color: var(--gold, #c9a84c); }
+.ptg-other-paths-opt { display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; }
