@@ -7,6 +7,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import PreviewPage from './pages/PreviewPage';
 import WarscrollsPage from './pages/WarscrollsPage';
 import ArmyBuilderPage from './pages/ArmyBuilderPage';
 import BattleBuddyPage from './pages/BattleBuddyPage';
@@ -267,6 +268,9 @@ function AppRoutes() {
         <Route path="/register"         element={user ? <Navigate to={afterLoginPath()} replace /> : <RegisterPage />} />
         <Route path="/forgot-password"  element={user ? <Navigate to="/warscrolls" /> : <ForgotPasswordPage />} />
         <Route path="/reset-password"   element={<ResetPasswordPage />} />
+        {/* Preview links are deliberately outside ProtectedRoute: the whole
+            point is that an opponent can open one without an account. */}
+        <Route path="/preview/:token"   element={<PreviewPage />} />
         <Route path="/warscrolls" element={
           <ProtectedRoute><WarscrollsPage headerCollapsed={headerCollapsed} /></ProtectedRoute>
         } />

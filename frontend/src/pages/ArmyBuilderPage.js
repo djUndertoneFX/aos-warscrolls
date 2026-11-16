@@ -10,7 +10,7 @@ import { useAuth } from '../AuthContext';
 import { calcWeaponADO, resolveWeaponLoadout } from '../awoCalc';
 import VoiceControlWidget from '../components/VoiceControlWidget';
 import ImageLightbox, { nameSlug } from '../components/ImageLightbox';
-import { createAndCopyShareLink, getShareParam, getShareView, clearShareParam, ShareToast } from '../shareLink';
+import { createAndCopyShareLink, getShareParam, getShareView, clearShareParam, ShareToast, ShareButton, readShareMode } from '../shareLink';
 
 function parseBullets(raw) {
   try { return JSON.parse(raw || '[]'); } catch { return []; }
@@ -1385,7 +1385,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
     })();
   }, [listsLoading]); // eslint-disable-line
 
-  const shareCurrentList = async (view = {}) => {
+  const shareCurrentList = async (view = {}, mode = readShareMode()) => {
     const id = activeListIdRef.current;
     const meta = listsStore.lists[id];
     const factionName = factions.find(f => f.faction_slug === faction)?.faction ?? null;
@@ -1394,10 +1394,11 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
         kind: 'army', source_key: String(id), name: meta?.name || 'Army List',
         faction_slug: faction || null, faction_name: factionName,
         data: listToDataBlob({ faction, pointsLimit, roster, rosterOrder, battleFormation, heroAssignments, activeStage, armyRosterDoc, selectedOptions }),
-      }, view);
-      setShareMsg(copied
-        ? { text: 'Share link copied — send it to your opponent. It opens this list as their enemy.' }
-        : { text: "Couldn't reach the clipboard — copy this link:", url });
+      }, view, mode);
+      const sent = mode === 'preview'
+        ? 'Preview link copied — anyone with it can view this roster, no account needed.'
+        : 'Share link copied — send it to your opponent. It opens this list as their enemy.';
+      setShareMsg(copied ? { text: sent } : { text: "Couldn't reach the clipboard — copy this link:", url });
     } catch (err) {
       setShareMsg({ text: err.response?.data?.error || 'Sharing failed — try again.' });
     }
@@ -2227,7 +2228,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
         <div className="ab-header-cell ab-header-roster">
           <ArmyRosterThumb onClick={() => setRosterDocOpen(true)} />
           <div className="ab-roster-thumb-label">Army Roster</div>
-          <button className="share-btn" onClick={() => shareCurrentList()} title="Copy a link to this list. Whoever opens it gets it as an Enemy List.">🔗 Share</button>
+          <ShareButton onShare={mode => shareCurrentList({}, mode)} />
         </div>
 
         <div className="ab-header-cell ab-header-list ab-header-enemy-list">

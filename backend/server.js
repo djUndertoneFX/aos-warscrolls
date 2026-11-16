@@ -283,6 +283,33 @@ const SYNCED_TABLES = [
 
 // ─── Auth Middleware ─────────────────────────────────────────────────────────
 
+// Reference-data reads (factions, warscrolls, the Anvil of Apotheosis
+// tables, faction rules) that a signed-out preview needs in order to draw
+// the sheets. A valid preview token stands in for an account on THESE ROUTES
+// ONLY — it is checked against shared_lists on every request, so revoking a
+// share revokes the access with it, and it never sets req.user, so nothing
+// downstream can mistake a preview reader for a logged-in account or write
+// anything. Everything to do with a user's own data still needs requireAuth.
+function previewTokenIsValid(token) {
+  if (!token) return false;
+  const db = getDb();
+  try {
+    return !!db.prepare('SELECT 1 FROM shared_lists WHERE token = ?').get(String(token));
+  } catch {
+    return false;
+  } finally {
+    db.close();
+  }
+}
+
+function requireAuthOrPreview(req, res, next) {
+  if (!req.headers.authorization && previewTokenIsValid(req.headers['x-preview-token'])) {
+    req.preview = true;
+    return next();
+  }
+  return requireAuth(req, res, next);
+}
+
 function requireAuth(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth || !auth.startsWith('Bearer ')) {
@@ -513,7 +540,7 @@ app.post('/api/user-units/:warscrollId', requireAuth, (req, res) => {
 });
 
 // GET /api/warscrolls
-app.get('/api/warscrolls', requireAuth, (req, res) => {
+app.get('/api/warscrolls', requireAuthOrPreview, (req, res) => {
   const {
     faction, enemyFaction, alliance, search, ids,
     sortBy = 'faction', sortDir = 'asc',
@@ -865,7 +892,7 @@ app.get('/api/warscrolls/:id', requireAuth, (req, res) => {
 });
 
 // GET /api/factions
-app.get('/api/factions', requireAuth, (req, res) => {
+app.get('/api/factions', requireAuthOrPreview, (req, res) => {
   const db = getDb();
   try {
     const rows = db.prepare(`
@@ -881,7 +908,7 @@ app.get('/api/factions', requireAuth, (req, res) => {
 });
 
 // GET /api/faction-rules/:slug — all faction info slides for one faction
-app.get('/api/faction-rules/:slug', requireAuth, (req, res) => {
+app.get('/api/faction-rules/:slug', requireAuthOrPreview, (req, res) => {
   const db = getDb();
   try {
     const slug = req.params.slug;
@@ -979,7 +1006,7 @@ app.put('/api/battle-buddy-state', requireAuth, (req, res) => {
 // GET /api/apotheosis/:slug — Path to Glory "Anvil of Apotheosis" warlord-
 // creation steps for one faction. Empty steps array means this faction has
 // no such section published on the source yet (battletome-dependent, AoS 4e-only).
-app.get('/api/apotheosis/:slug', requireAuth, (req, res) => {
+app.get('/api/apotheosis/:slug', requireAuthOrPreview, (req, res) => {
   const db = getDb();
   try {
     const slug = req.params.slug;
@@ -1459,6 +1486,46 @@ app.post('/api/bugs', requireAuth, async (req, res) => {
   }
   res.json({ ok: true, id });
   syncBugReports().catch(e => console.error('[bugs] sync', e.message));
+});
+
+// ── Preview links (public, no auth) ─────────────────────────────────────
+// "Share preview" hands someone a read-only look at a roster without an
+// account. That deliberately puts the shared roster outside the site's
+// invite wall, so the exposure is kept as narrow as it can be while still
+// working: the token is the only key (72 bits of randomness, not guessable),
+// nothing here reveals who shared it, and the warscroll lookup below is
+// scoped to the roster's own Grand Alliance rather than opening the whole
+// table. Full-detail shares are unchanged and still require an account.
+app.get('/api/preview/:token', (req, res) => {
+  const db = getDb();
+  try {
+    const share = db.prepare('SELECT token, kind, name, faction_slug, faction_name, data, updated_at FROM shared_lists WHERE token = ?').get(req.params.token);
+    if (!share) return res.status(404).json({ error: 'This preview link is invalid or has been removed.' });
+    res.json({ ...share, data: JSON.parse(share.data) });
+  } finally {
+    db.close();
+  }
+});
+
+// Warscrolls a preview is allowed to show: everything in the shared roster's
+// Grand Alliance, which is the same pool the importer matches against (Path
+// to Glory allows allies from anywhere in the alliance). Requires a valid
+// token — there is no way to call this without one.
+app.get('/api/preview/:token/warscrolls', (req, res) => {
+  const db = getDb();
+  try {
+    const share = db.prepare('SELECT faction_slug FROM shared_lists WHERE token = ?').get(req.params.token);
+    if (!share) return res.status(404).json({ error: 'This preview link is invalid or has been removed.' });
+    const alliance = share.faction_slug
+      ? db.prepare('SELECT grand_alliance FROM warscrolls WHERE faction_slug = ? LIMIT 1').get(share.faction_slug)?.grand_alliance
+      : null;
+    const rows = alliance
+      ? db.prepare('SELECT * FROM warscrolls WHERE grand_alliance = ?').all(alliance)
+      : [];
+    res.json({ data: rows, total: rows.length });
+  } finally {
+    db.close();
+  }
 });
 
 app.post('/api/share', requireAuth, (req, res) => {

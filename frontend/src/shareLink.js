@@ -20,6 +20,36 @@ export function shareUrl(kind, token, view = {}) {
   return `${window.location.origin}${SHARE_PATHS[kind]}?${q.toString()}`;
 }
 
+// A preview link is a different address entirely, not a flag on the normal
+// one: it opens the read-only preview, needs no account, and never imports
+// anything into whoever opens it.
+export function previewUrl(token) {
+  return `${window.location.origin}/preview/${token}`;
+}
+
+// ── Share mode ──
+// Which of the two links the Share button makes. Sticky per browser: pick
+// one from the dropdown and the button keeps doing that until it's changed.
+// 'full' is the default and is the original behaviour.
+const SHARE_MODE_KEY = 'aos-share-mode';
+export const SHARE_MODES = [
+  { key: 'full', label: 'Share full details',
+    hint: 'Copies the list into their account as an enemy list. They need an account.' },
+  { key: 'preview', label: 'Share preview',
+    hint: 'A read-only look at the sheets. No account needed — anyone with the link can open it.' },
+];
+export function readShareMode() {
+  try { return localStorage.getItem(SHARE_MODE_KEY) === 'preview' ? 'preview' : 'full'; } catch { return 'full'; }
+}
+export function writeShareMode(mode) {
+  try { localStorage.setItem(SHARE_MODE_KEY, mode === 'preview' ? 'preview' : 'full'); } catch {}
+}
+export function useShareMode() {
+  const [mode, setModeState] = useState(readShareMode);
+  const setMode = m => { setModeState(m); writeShareMode(m); };
+  return [mode, setMode];
+}
+
 export function getShareView() {
   try {
     const q = new URLSearchParams(window.location.search);
@@ -48,8 +78,9 @@ function legacyCopy(text) {
 // within the click itself, so where ClipboardItem exists the write starts
 // immediately with a promise of the text (the network call resolves it).
 // Returns { url, copied }.
-export async function createAndCopyShareLink(payload, view = {}) {
-  const urlPromise = axios.post('/api/share', payload).then(r => shareUrl(payload.kind, r.data.token, view));
+export async function createAndCopyShareLink(payload, view = {}, mode = 'full') {
+  const urlPromise = axios.post('/api/share', payload)
+    .then(r => (mode === 'preview' ? previewUrl(r.data.token) : shareUrl(payload.kind, r.data.token, view)));
 
   if (typeof window.ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
     try {
@@ -80,6 +111,52 @@ export function clearShareParam() {
 
 export function getShareParam() {
   try { return new URLSearchParams(window.location.search).get('share'); } catch { return null; }
+}
+
+// Share split-button: the button itself fires whichever mode is currently
+// selected, and the ▾ opens the picker. Picking a mode both fires it and
+// makes it the new default, so "switch to preview" and "send a preview" are
+// the same single action rather than two.
+export function ShareButton({ onShare, className = 'share-btn', label = '🔗 Share' }) {
+  const [mode, setMode] = useShareMode();
+  const [open, setOpen] = useState(false);
+  const ref = React.useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const h = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [open]);
+
+  const active = SHARE_MODES.find(m => m.key === mode) || SHARE_MODES[0];
+  return (
+    <span className="share-split" ref={ref}>
+      <button className={`${className} share-split-main`} onClick={() => onShare(mode)} title={`${active.label} — ${active.hint}`}>
+        {label}{mode === 'preview' ? ' preview' : ''}
+      </button>
+      <button
+        className={`${className} share-split-caret`}
+        onClick={() => setOpen(o => !o)}
+        aria-label="Choose what Share sends"
+        title="Choose what Share sends"
+      >▾</button>
+      {open && (
+        <div className="share-split-menu">
+          {SHARE_MODES.map(m => (
+            <button
+              key={m.key}
+              className={`share-split-option${m.key === mode ? ' share-split-option-active' : ''}`}
+              onClick={() => { setMode(m.key); setOpen(false); onShare(m.key); }}
+            >
+              <span className="share-split-option-label">{m.label}</span>
+              <span className="share-split-option-hint">{m.hint}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </span>
+  );
 }
 
 // Small bottom-centre message. `msg` = { text, url? } or null.

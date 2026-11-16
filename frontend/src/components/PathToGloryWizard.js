@@ -205,6 +205,137 @@ export function pathRankLabel(row, allPaths) {
   return [found.name, found.rank || row?.rank].filter(Boolean).join(' - ');
 }
 
+// ── Applying Anvil of Apotheosis picks ──
+// Pulled out of the wizard's memos so the read-only preview can run the
+// identical maths: a shared sheet has to show the numbers the owner sees,
+// not the base profile sitting underneath the picks. The wizard's memos
+// below are now thin wrappers over these, so there is one implementation.
+export function apotheosisModsFrom(apotheosisSteps, c) {
+  if (!apotheosisSteps?.length) return [];
+  const stepBy = re => apotheosisSteps.find(st => re.test(st.step_title || ''));
+  const archetypeStepData = stepBy(/(?:choose|pick) an archetype/i);
+  const companionStepData = stepBy(/choose a companion/i);
+  const originFlawStepData = stepBy(/origin.*flaw/i);
+  const mountStepData = stepBy(/^(?:choose|pick) a battle mount$/i);
+  const mountUpgradesStepData = stepBy(/^(?:pick any |battle any )?battle mount upgrades$/i);
+  const otherUpgradesStepData = stepBy(/pick any other upgrades/i);
+
+  // Order matters: a later pick's "set" wins over an earlier one's, and
+  // this is the order the player makes them in (Archetype first, loose
+  // upgrades last), which is also the order the source presents them.
+  const picked = [];
+  if (archetypeStepData?.options?.[c.archetypeChoice]) picked.push(archetypeStepData.options[c.archetypeChoice]);
+  if (c.companionChoice >= 0 && companionStepData?.options?.[c.companionChoice]) picked.push(companionStepData.options[c.companionChoice]);
+  if (originFlawStepData) {
+    const byGroup = {};
+    for (const o of originFlawStepData.options) { (byGroup[o.option_group] ??= []).push(o); }
+    for (const group of ['Origins', 'Flaws']) {
+      const idx = c.originFlawChoice?.[group];
+      if (idx != null && byGroup[group]?.[idx]) picked.push(byGroup[group][idx]);
+    }
+  }
+  if (c.mountChoice >= 0 && mountStepData?.options?.[c.mountChoice]) picked.push(mountStepData.options[c.mountChoice]);
+  for (const i of (c.battleMountUpgradesChoice || [])) if (mountUpgradesStepData?.options?.[i]) picked.push(mountUpgradesStepData.options[i]);
+  for (const i of (c.otherUpgradesChoice || [])) if (otherUpgradesStepData?.options?.[i]) picked.push(otherUpgradesStepData.options[i]);
+
+  return picked
+    .map(opt => ({ opt, mods: parseWarscrollMods(opt.effect) }))
+    .filter(entry => entry.mods.length > 0);
+}
+
+export function applyStatMods(base, modSources) {
+  const out = { ...base };
+  const sources = { move: [], health: [], save: [], control: [] };
+  const setBy = {};
+  const addDelta = {};
+  for (const { opt, mods } of modSources) {
+    for (const m of mods) {
+      if (m.kind !== 'stat') continue;
+      if (m.op === 'set') {
+        out[m.stat] = m.value;
+        setBy[m.stat] = opt.name;
+        addDelta[m.stat] = 0; // a later "set" discards the earlier adds it replaces
+      } else if (m.op === 'add') {
+        const next = addToCharacteristic(out[m.stat], m.value);
+        if (next == null) continue;
+        out[m.stat] = next;
+        addDelta[m.stat] = (addDelta[m.stat] || 0) + m.value;
+      } else if (m.op === 'prefix') {
+        if (!String(out[m.stat] || '').startsWith(m.value)) out[m.stat] = `${m.value}${out[m.stat] || ''}`;
+      }
+      sources[m.stat].push(`${opt.name} — ${describeMod(m)}`);
+    }
+  }
+  return { ...out, sources, setBy, addDelta };
+}
+
+export function applyKeywordMods(line1, modSources) {
+  let parts = (line1 || '').split(',').map(k => k.trim()).filter(Boolean);
+  const head = k => k.replace(/\s*\(.*$/, '').trim().toUpperCase();
+  const has = k => parts.some(p => p.toUpperCase() === k.toUpperCase());
+  const addKeyword = k => {
+    if (has(k)) return;
+    // "WIZARD (1)" replaces an existing "WIZARD (2)" rather than sitting
+    // beside it; a bare keyword with no value just appends.
+    const i = /\(/.test(k) ? parts.findIndex(p => head(p) === head(k)) : -1;
+    if (i >= 0) parts[i] = k; else parts.push(k);
+  };
+  for (const { mods } of modSources) {
+    for (const m of mods) {
+      if (m.kind === 'keywordNumber') {
+        const i = parts.findIndex(p => head(p) === m.keyword.toUpperCase());
+        const current = i >= 0 ? parseInt(/(\d+)/.exec(parts[i])?.[1] ?? '0', 10) : 0;
+        const value = m.op === 'add' ? current + m.value : m.value;
+        if (i >= 0) parts[i] = `${m.keyword} ${value}`; else parts.push(`${m.keyword} ${value}`);
+      } else if (m.kind === 'keyword' && m.op === 'replace') {
+        const i = parts.findIndex(p => p.toUpperCase() === m.from.toUpperCase());
+        if (i >= 0) parts.splice(i, 1);
+        m.to.forEach(addKeyword);
+      } else if (m.kind === 'keyword' && m.op === 'add') {
+        m.keywords.forEach(addKeyword);
+      }
+    }
+  }
+  return parts.join(', ');
+}
+
+export function applyWeaponMods(rows, listIsMelee, modSources, companionNames = []) {
+  if (!modSources.length) return rows;
+  return rows.map(row => {
+    const next = { ...row, __mods: {}, __setBy: {}, __addDelta: {} };
+    for (const { opt, mods } of modSources) {
+      // An "X or add N to Y" option is a choice between two weapons — only
+      // the branch naming a weapon this hero actually has applies, and only
+      // one branch of the group ever does.
+      const usedGroups = new Set();
+      for (const m of mods) {
+        if (m.kind !== 'weapon') continue;
+        if (!weaponRowMatchesTarget(next, m.target, listIsMelee, companionNames)) continue;
+        if (m.exclusiveGroup) {
+          if (usedGroups.has(m.exclusiveGroup)) continue;
+          usedGroups.add(m.exclusiveGroup);
+        }
+        if (m.op === 'set') {
+          next[m.field] = m.value;
+          next.__setBy[m.field] = opt.name;
+          next.__addDelta[m.field] = 0;
+        } else {
+          const bumped = addToCharacteristic(next[m.field], m.value);
+          if (bumped == null) continue;
+          next[m.field] = bumped;
+          next.__addDelta[m.field] = (next.__addDelta[m.field] || 0) + m.value;
+        }
+        (next.__mods[m.field] ??= []).push(`${opt.name} — ${describeMod(m)}`);
+      }
+    }
+    return next;
+  });
+}
+
+export function wardFromKeywords(line) {
+  return (/\bWARD\s*\((\d+\+?)\)/i.exec(line || '') || [])[1] || '';
+}
+
 // Short summaries of each battlepack's roster-building and aftermath rules,
 // shown on the Select your Campaign step and alongside the relevant steps.
 // The full in-battle rules (BATTLEPACKS[key].battle_abilities) render as
@@ -545,7 +676,7 @@ const DOC_AVG_COLOR = {
 // scans of the official GW sheets (extracted from the PDFs the user
 // provided) — used both for the tray thumbnail and the "Image" presentation.
 // `micro`/`thumbMicro` are the blur-up placeholders above.
-const DOCS = [
+export const DOCS = [
   // Two Warlord Warscroll scans: `images` (minimal, only 2 weapon rows per
   // table, default) and `imagesFull` (the original 3 ranged/4 melee row
   // scan, used only when a hero actually has more weapons than the minimal
@@ -1141,7 +1272,7 @@ function buildOverlayFields(docKey, pageIndex, d) {
 // render*() functions) because it needs its own useContainImageBox hook —
 // hooks can't live in a function that's sometimes not called at all
 // (this whole page is skipped whenever presentMode is 'replica').
-function DocPage({ img, alt, docKey, pageIndex, data }) {
+export function DocPage({ img, alt, docKey, pageIndex, data }) {
   const containerRef = useRef(null);
   const box = useContainImageBox(containerRef);
   // Editable fields stay even when empty (there'd otherwise be nothing to
@@ -3196,105 +3327,31 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   // its own keep-in-sync effect. Both already write into the base weapon
   // rows and persist there, so deriving them too would double them up on
   // any roster saved before this.
-  const apotheosisModSources = React.useMemo(() => {
-    if (!apotheosisSteps.length) return [];
-    const stepBy = re => apotheosisSteps.find(st => re.test(st.step_title || ''));
-    const archetypeStepData = stepBy(/(?:choose|pick) an archetype/i);
-    const companionStepData = stepBy(/choose a companion/i);
-    const originFlawStepData = stepBy(/origin.*flaw/i);
-    const mountStepData = stepBy(/^(?:choose|pick) a battle mount$/i);
-    const mountUpgradesStepData = stepBy(/^(?:pick any |battle any )?battle mount upgrades$/i);
-    const otherUpgradesStepData = stepBy(/pick any other upgrades/i);
-
-    // Order matters: a later pick's "set" wins over an earlier one's, and
-    // this is the order the player makes them in (Archetype first, loose
-    // upgrades last), which is also the order the source presents them.
-    const picked = [];
-    if (archetypeStepData?.options?.[archetypeChoice]) picked.push(archetypeStepData.options[archetypeChoice]);
-    if (companionChoice >= 0 && companionStepData?.options?.[companionChoice]) picked.push(companionStepData.options[companionChoice]);
-    if (originFlawStepData) {
-      const byGroup = {};
-      for (const o of originFlawStepData.options) { (byGroup[o.option_group] ??= []).push(o); }
-      for (const group of ['Origins', 'Flaws']) {
-        const idx = originFlawChoice?.[group];
-        if (idx != null && byGroup[group]?.[idx]) picked.push(byGroup[group][idx]);
-      }
-    }
-    if (mountChoice >= 0 && mountStepData?.options?.[mountChoice]) picked.push(mountStepData.options[mountChoice]);
-    for (const i of battleMountUpgradesChoice) if (mountUpgradesStepData?.options?.[i]) picked.push(mountUpgradesStepData.options[i]);
-    for (const i of otherUpgradesChoice) if (otherUpgradesStepData?.options?.[i]) picked.push(otherUpgradesStepData.options[i]);
-
-    return picked
-      .map(opt => ({ opt, mods: parseWarscrollMods(opt.effect) }))
-      .filter(entry => entry.mods.length > 0);
-  }, [apotheosisSteps, archetypeChoice, companionChoice, originFlawChoice, mountChoice, battleMountUpgradesChoice, otherUpgradesChoice]);
+  const apotheosisModSources = React.useMemo(
+    () => apotheosisModsFrom(apotheosisSteps, {
+      archetypeChoice, companionChoice, originFlawChoice, mountChoice,
+      battleMountUpgradesChoice, otherUpgradesChoice,
+    }),
+    [apotheosisSteps, archetypeChoice, companionChoice, originFlawChoice, mountChoice, battleMountUpgradesChoice, otherUpgradesChoice],
+  );
 
   // Stat wheel. `sources` drives the "what changed this" tooltip, `setBy`
   // marks a characteristic an option pins to a fixed value (typing into it
   // would be ignored, so the field is made read-only instead), and
   // `addDelta` is what a typed edit on an added-to field is rebased by.
-  const effectiveWarlordStats = React.useMemo(() => {
-    const out = { move: warlordMove, health: warlordHealth, save: warlordSave, control: warlordControl };
-    const sources = { move: [], health: [], save: [], control: [] };
-    const setBy = {};
-    const addDelta = {};
-    for (const { opt, mods } of apotheosisModSources) {
-      for (const m of mods) {
-        if (m.kind !== 'stat') continue;
-        if (m.op === 'set') {
-          out[m.stat] = m.value;
-          setBy[m.stat] = opt.name;
-          addDelta[m.stat] = 0; // a later "set" discards the earlier adds it replaces
-        } else if (m.op === 'add') {
-          const next = addToCharacteristic(out[m.stat], m.value);
-          if (next == null) continue;
-          out[m.stat] = next;
-          addDelta[m.stat] = (addDelta[m.stat] || 0) + m.value;
-        } else if (m.op === 'prefix') {
-          if (!String(out[m.stat] || '').startsWith(m.value)) out[m.stat] = `${m.value}${out[m.stat] || ''}`;
-        }
-        sources[m.stat].push(`${opt.name} — ${describeMod(m)}`);
-      }
-    }
-    return { ...out, sources, setBy, addDelta };
-  }, [apotheosisModSources, warlordMove, warlordHealth, warlordSave, warlordControl]);
+  const effectiveWarlordStats = React.useMemo(
+    () => applyStatMods({ move: warlordMove, health: warlordHealth, save: warlordSave, control: warlordControl }, apotheosisModSources),
+    [apotheosisModSources, warlordMove, warlordHealth, warlordSave, warlordControl],
+  );
 
   // Weapon rows. Returns copies carrying three bookkeeping fields the
   // renderers use and nothing else reads: __mods (which cells an option
   // changed, for highlighting), __setBy (cells pinned to a fixed value)
   // and __addDelta (for rebasing a typed edit back onto the base row).
-  const buildEffectiveWeapons = React.useCallback((rows, listIsMelee) => {
-    if (!apotheosisModSources.length) return rows;
-    return rows.map(row => {
-      const next = { ...row, __mods: {}, __setBy: {}, __addDelta: {} };
-      for (const { opt, mods } of apotheosisModSources) {
-        // An "X or add N to Y" option is a choice between two weapons —
-        // only the branch naming a weapon this hero actually has applies,
-        // and only one branch of the group ever does.
-        const usedGroups = new Set();
-        for (const m of mods) {
-          if (m.kind !== 'weapon') continue;
-          if (!weaponRowMatchesTarget(next, m.target, listIsMelee, companionWeaponNames)) continue;
-          if (m.exclusiveGroup) {
-            if (usedGroups.has(m.exclusiveGroup)) continue;
-            usedGroups.add(m.exclusiveGroup);
-          }
-          if (m.op === 'set') {
-            next[m.field] = m.value;
-            next.__setBy[m.field] = opt.name;
-            next.__addDelta[m.field] = 0;
-          } else {
-            const bumped = addToCharacteristic(next[m.field], m.value);
-            if (bumped == null) continue;
-            next[m.field] = bumped;
-            next.__addDelta[m.field] = (next.__addDelta[m.field] || 0) + m.value;
-          }
-          (next.__mods[m.field] ??= []).push(`${opt.name} — ${describeMod(m)}`);
-        }
-      }
-      return next;
-    });
-  }, [apotheosisModSources, companionWeaponNames]);
+  const buildEffectiveWeapons = React.useCallback(
+    (rows, listIsMelee) => applyWeaponMods(rows, listIsMelee, apotheosisModSources, companionWeaponNames),
+    [apotheosisModSources, companionWeaponNames],
+  );
 
   const effectiveMeleeWeapons = React.useMemo(() => buildEffectiveWeapons(meleeWeapons, true), [buildEffectiveWeapons, meleeWeapons]);
   const effectiveRangedWeapons = React.useMemo(() => buildEffectiveWeapons(rangedWeapons, false), [buildEffectiveWeapons, rangedWeapons]);
@@ -3305,35 +3362,10 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   // an already-updated line is a no-op — because an Archetype's keywords
   // are ALSO written straight into the base line by applyArchetypeChoice,
   // and re-deriving them must not duplicate them.
-  const effectiveKeywordsLine1 = React.useMemo(() => {
-    let parts = (warlordKeywordsLine1 || '').split(',').map(k => k.trim()).filter(Boolean);
-    const head = k => k.replace(/\s*\(.*$/, '').trim().toUpperCase();
-    const has = k => parts.some(p => p.toUpperCase() === k.toUpperCase());
-    const addKeyword = k => {
-      if (has(k)) return;
-      // "WIZARD (1)" replaces an existing "WIZARD (2)" rather than sitting
-      // beside it; a bare keyword with no value just appends.
-      const i = /\(/.test(k) ? parts.findIndex(p => head(p) === head(k)) : -1;
-      if (i >= 0) parts[i] = k; else parts.push(k);
-    };
-    for (const { mods } of apotheosisModSources) {
-      for (const m of mods) {
-        if (m.kind === 'keywordNumber') {
-          const i = parts.findIndex(p => head(p) === m.keyword.toUpperCase());
-          const current = i >= 0 ? parseInt(/(\d+)/.exec(parts[i])?.[1] ?? '0', 10) : 0;
-          const value = m.op === 'add' ? current + m.value : m.value;
-          if (i >= 0) parts[i] = `${m.keyword} ${value}`; else parts.push(`${m.keyword} ${value}`);
-        } else if (m.kind === 'keyword' && m.op === 'replace') {
-          const i = parts.findIndex(p => p.toUpperCase() === m.from.toUpperCase());
-          if (i >= 0) parts.splice(i, 1);
-          m.to.forEach(addKeyword);
-        } else if (m.kind === 'keyword' && m.op === 'add') {
-          m.keywords.forEach(addKeyword);
-        }
-      }
-    }
-    return parts.join(', ');
-  }, [apotheosisModSources, warlordKeywordsLine1]);
+  const effectiveKeywordsLine1 = React.useMemo(
+    () => applyKeywordMods(warlordKeywordsLine1, apotheosisModSources),
+    [apotheosisModSources, warlordKeywordsLine1],
+  );
 
   // A typed edit on a field an option is adding to should set the TOTAL
   // the player typed, so the delta is subtracted back out and stored as
@@ -3705,7 +3737,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
     warlordKeywordsLine1: effectiveKeywordsLine1,
     // Ward comes in as a granted keyword — "WARD (6+)" — so the pip reads it
     // back off the effective keyword line rather than being its own field.
-    warlordWard: (/\bWARD\s*\((\d+\+?)\)/i.exec(effectiveKeywordsLine1 || '') || [])[1] || '',
+    warlordWard: wardFromKeywords(effectiveKeywordsLine1),
     warlordKeywordsLine2, warlordAbilityGroups,
     warlordDocVariant,
     // Same setters/updaters renderWarlordForm's Non Corporeal inputs use —
@@ -4906,4 +4938,66 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
       {docLightboxOpen && renderDocLightbox()}
     </>
   );
+}
+
+// ── Read-only preview ──
+// Builds the same `data` object DocPage consumes, but from a saved roster
+// blob instead of live wizard state, so a shared link can draw the sheets
+// without the wizard (and without an account). Deliberately omits every
+// set*/update* key: with no setters the overlay fields all render read-only,
+// which is exactly what a preview should be.
+export function buildPreviewDocData(state = {}, factions = [], apotheosisSteps = []) {
+  const g = (k, dflt = '') => (state[k] ?? dflt);
+  const modSources = apotheosisModsFrom(apotheosisSteps, {
+    archetypeChoice: g('archetypeChoice', -1),
+    companionChoice: g('companionChoice', -1),
+    originFlawChoice: g('originFlawChoice', {}),
+    mountChoice: g('mountChoice', -1),
+    battleMountUpgradesChoice: g('battleMountUpgradesChoice', []),
+    otherUpgradesChoice: g('otherUpgradesChoice', []),
+  });
+
+  const stats = applyStatMods(
+    { move: g('warlordMove'), health: g('warlordHealth'), save: g('warlordSave'), control: g('warlordControl') },
+    modSources,
+  );
+  const keywordsLine1 = applyKeywordMods(g('warlordKeywordsLine1'), modSources);
+  const ranged = applyWeaponMods(g('rangedWeapons', []), false, modSources);
+  const melee = applyWeaponMods(g('meleeWeapons', []), true, modSources);
+
+  const regiments = g('regiments', []);
+  const auxUnits = g('auxUnits', []);
+  const regimentsTotal = regiments.reduce((sum, r) => sum + (r.units || []).reduce((t, u) => t + (parseInt(u.points, 10) || 0), 0), 0);
+  const auxTotal = auxUnits.reduce((sum, u) => sum + (parseInt(u.points, 10) || 0), 0);
+
+  const factionSlug = g('faction') || g('selectedFaction') || '';
+  const allPaths = [...PATHS, ...BATTLEPACK_PATHS, ...(FACTION_PATHS[factionSlug] ?? [])];
+  const warlordPath = g('warlordPath');
+
+  return {
+    warlordName: g('warlordName'),
+    warlordMove: stats.move, warlordHealth: stats.health, warlordSave: stats.save, warlordControl: stats.control,
+    rangedWeapons: ranged, meleeWeapons: melee,
+    warlordKeywordsLine1: keywordsLine1,
+    warlordWard: wardFromKeywords(keywordsLine1),
+    warlordKeywordsLine2: g('warlordKeywordsLine2'),
+    warlordAbilityGroups: g('warlordAbilityGroups', []),
+    warlordDocVariant: (ranged.length > 2 || melee.length > 2) ? 'full' : 'minimal',
+    armyName: g('armyName'), realmOfOrigin: g('realmOfOrigin'), customRealmName: g('customRealmName'),
+    realmLabel: REALMS.find(r => r.key === g('realmOfOrigin'))?.name || '',
+    gloryPoints: g('gloryPoints'), battleFormation: g('battleFormation'),
+    factionLabel: factions.find(f => f.faction_slug === factionSlug)?.faction || '',
+    currentQuest: g('currentQuest'), questPoints: g('questPoints'), questNotes: g('questNotes'),
+    questsCompleted: g('questsCompleted'), background: g('background'), notableEvents: g('notableEvents'),
+    spellLore: g('spellLore'), prayerLore: g('prayerLore'), manifestationLore: g('manifestationLore'),
+    warlordWarscroll: g('warlordWarscroll'), warlordRank: g('warlordRank'), warlordRenown: g('warlordRenown'),
+    warlordEnhancements: g('warlordEnhancements'),
+    warlordPathLabel: (PATHS.find(x => x.key === warlordPath) || BATTLEPACK_PATHS.find(x => x.key === warlordPath))?.name || '',
+    warlordPathAbility: g('warlordPathAbility'),
+    oobUnits: g('oobUnits', []).map(u => ({ ...u, rank: pathRankLabel(u, allPaths) })),
+    commander: g('commander'), armyRosterName: g('armyRosterName'), pointsLimit: g('pointsLimit'),
+    armyRosterFaction: g('armyRosterFaction'), armyRosterFormation: g('armyRosterFormation'),
+    regiments, auxUnits, armyNotes: g('armyNotes'),
+    regimentsTotal, auxTotal, armyUnitsTotal: regimentsTotal + auxTotal,
+  };
 }

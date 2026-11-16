@@ -13,7 +13,7 @@ import { useSettings } from '../SettingsContext';
 import { useAuth } from '../AuthContext';
 import { calcWeaponADO, resolveWeaponLoadout } from '../awoCalc';
 import VoiceControlWidget from '../components/VoiceControlWidget';
-import { createAndCopyShareLink, getShareParam, getShareView, clearShareParam, ShareToast } from '../shareLink';
+import { createAndCopyShareLink, getShareParam, getShareView, clearShareParam, ShareToast, ShareButton, readShareMode } from '../shareLink';
 
 function sumADO(weapons, unitSize, save, ward, rounding) {
   let total = 0, any = false;
@@ -605,7 +605,7 @@ export default function PathToGloryPage({ headerCollapsed }) {
 
   // Shares your own roster (the Recruit wizard), or — when the enemy wizard
   // is open — the enemy roster you're looking at.
-  const handleShareRoster = async (view = { view: 'page' }) => {
+  const handleShareRoster = async (view = { view: 'page' }, mode = readShareMode()) => {
     const sharingEnemy = showEnemyWizard && enemyRoster;
     const raw = localStorage.getItem(sharingEnemy ? ENEMY_WIZARD_KEY : RECRUIT_WIZARD_KEY);
     let data = null; try { data = JSON.parse(raw); } catch {}
@@ -617,10 +617,11 @@ export default function PathToGloryPage({ headerCollapsed }) {
       const { url, copied } = await createAndCopyShareLink({
         kind: 'ptg', source_key: name, name,
         faction_slug: factionSlug, faction_name: factionObj ? factionObj.faction : null, data,
-      }, view);
-      setShareMsg(copied
-        ? { text: 'Share link copied — send it to your opponent. It opens this roster as their enemy.' }
-        : { text: "Couldn't reach the clipboard — copy this link:", url });
+      }, view, mode);
+      const sent = mode === 'preview'
+        ? 'Preview link copied — anyone with it can view these sheets, no account needed.'
+        : 'Share link copied — send it to your opponent. It opens this roster as their enemy.';
+      setShareMsg(copied ? { text: sent } : { text: "Couldn't reach the clipboard — copy this link:", url });
     } catch (err) {
       setShareMsg({ text: err.response?.data?.error || 'Sharing failed — try again.' });
     }
@@ -1230,7 +1231,7 @@ export default function PathToGloryPage({ headerCollapsed }) {
           <button className="ptg-action-btn ptg-action-btn-secondary" onClick={() => {}}>
             Level Up!
           </button>
-          <button className="share-btn" onClick={() => handleShareRoster()} title="Copy a link to the roster in the wizard. Whoever opens it gets it as their Enemy Roster.">🔗 Share</button>
+          <ShareButton onShare={mode => handleShareRoster({ view: 'page' }, mode)} />
           <ShareToast msg={shareMsg} onClose={() => setShareMsg(null)} />
         </div>
 
