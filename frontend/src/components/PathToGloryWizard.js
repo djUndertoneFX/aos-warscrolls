@@ -4963,10 +4963,21 @@ export function buildAbilityLookup({ factionSlug = '', factionRules = {}, campai
 export function abilitiesInText(text, lookup) {
   const out = [];
   const seen = new Set();
-  for (const raw of String(text || '').split(/[,;]/)) {
+  // Split on , and ; outside brackets — a sub-pick like "Hunter of Souls
+  // (Anti-INFANTRY (+1 Rend))" carries its own nested brackets.
+  const parts = [];
+  let depth = 0, cur = '';
+  for (const ch of String(text || '')) {
+    if (ch === '(') depth += 1;
+    else if (ch === ')') depth = Math.max(0, depth - 1);
+    if ((ch === ',' || ch === ';') && depth === 0) { parts.push(cur); cur = ''; } else cur += ch;
+  }
+  parts.push(cur);
+  for (const raw of parts) {
     const part = raw.trim();
     if (!part) continue;
-    const pm = /^(.*?)\s*\(([^)]*)\)\s*$/.exec(part);
+    const open = part.indexOf('(');
+    const pm = open > 0 && part.endsWith(')') ? [part, part.slice(0, open).trim(), part.slice(open + 1, -1).trim()] : null;
     const base = pm ? pm[1] : part;
     const ab = lookup.get(abilityKey(base)) || lookup.get(abilityKey(part));
     if (!ab || seen.has(abilityKey(part))) continue;
