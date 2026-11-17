@@ -6629,3 +6629,9 @@ textarea.ptg-doc-overlay-input {
 .ptg-wounds-scar-title { font-family: 'Cinzel', serif; color: var(--gold, #c9a84c); font-size: 0.9rem; display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.35rem; }
 .ptg-wounds-roll, .ptg-wounds-clear { font-family: inherit; font-size: 0.75rem; padding: 0.15rem 0.5rem; background: transparent; border: 1px solid var(--border-gold, #6b5a2e); color: var(--text-dim, #ccc); border-radius: 3px; cursor: pointer; }
 .ptg-wounds-clear { border-color: rgba(255,255,255,0.15); }
+
+/* Unit name block on Set Paths & Ranks / Apply Wounds: name + role, then a
+   "Reinforced" tag underneath so two copies of a unit can be told apart. */
+.ptg-path-unit-title { display: flex; flex-direction: column; align-items: flex-start; gap: 0.25rem; }
+.ptg-unit-reinforced-tag { font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase; color: #8fd0ff; border: 1px solid rgba(143,208,255,0.5); background: rgba(60,120,170,0.18); border-radius: 3px; padding: 0.05rem 0.4rem; }
+.ptg-path-unit-title .ptg-path-unit-role { margin-left: 0.6rem; }

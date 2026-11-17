@@ -2545,15 +2545,20 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   // Rank is picked directly (some campaigns, e.g. Ravaged Coast, have no
   // renown); typing a renown still moves it to the matching rank. The rank
   // decides which Path ranks are unlocked.
-  const renderPathCard = ({ key, title, subtitle, isHero, renown, onRenown, rank, onRank, pathKey, onPath, rankChoices, onPick }) => {
+  const renderPathCard = ({ key, title, subtitle, reinforced, isHero, renown, onRenown, rank, onRank, pathKey, onPath, rankChoices, onPick }) => {
     const pathObj = findPathByKey(pathKey);
     const unlocked = RANK_ORDER.indexOf(rank) + 1;
     const pathOptions = pathsForUnit(isHero);
     return (
       <div className="ptg-path-unit-card" key={key}>
         <div className="ptg-path-unit-head">
-          <span className="ptg-path-unit-name">{title.toUpperCase()}</span>
-          <span className="ptg-path-unit-role">{subtitle}</span>
+          <div className="ptg-path-unit-title">
+            <div>
+              <span className="ptg-path-unit-name">{title.toUpperCase()}</span>
+              <span className="ptg-path-unit-role">{subtitle}</span>
+            </div>
+            {reinforced && <span className="ptg-unit-reinforced-tag">Reinforced</span>}
+          </div>
           <div className="ptg-field ptg-path-unit-renown">
             <label>Renown</label>
             <input value={renown || ''} onChange={e => onRenown(e.target.value)} />
@@ -3996,7 +4001,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
 
   // One unit on the Apply Wounds step: battle wounds (−/+ or typed), the scar
   // bands it has reached with a pick / 🎲 roll for each, and Drained (Heroes).
-  const renderWoundsCard = ({ key, title, subtitle, isHero, wounds, onWounds, scars, onScars, drained, onDrained }) => {
+  const renderWoundsCard = ({ key, title, subtitle, reinforced, isHero, wounds, onWounds, scars, onScars, drained, onDrained }) => {
     const n = Math.max(0, parseInt(wounds, 10) || 0);
     const setN = v => onWounds(Math.max(0, Math.min(99, v)));
     const band = n >= RC_SUCCUMB_AT ? 'Succumbs' : [...RC_SCAR_TIERS].reverse().find(t => n >= t.min)?.name || 'None';
@@ -4005,8 +4010,13 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
     return (
       <div className={`ptg-wounds-card${n >= RC_SUCCUMB_AT ? ' ptg-wounds-card-dead' : ''}`} key={key}>
         <div className="ptg-wounds-head">
-          <span className="ptg-path-unit-name">{String(title || 'Unnamed unit').toUpperCase()}</span>
-          <span className="ptg-path-unit-role">{subtitle}</span>
+          <div className="ptg-path-unit-title">
+            <div>
+              <span className="ptg-path-unit-name">{String(title || 'Unnamed unit').toUpperCase()}</span>
+              <span className="ptg-path-unit-role">{subtitle}</span>
+            </div>
+            {reinforced && <span className="ptg-unit-reinforced-tag">Reinforced</span>}
+          </div>
           <div className="ptg-wounds-counter">
             <label>Battle Wounds</label>
             <div className="ptg-wounds-stepper">
@@ -4536,6 +4546,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                     key: row.id,
                     title: oobRowWarscrollName(row) || 'Unnamed unit',
                     subtitle: isHeroRow(row) ? 'Hero' : 'Unit',
+                    reinforced: !!(row.reinforced || '').trim(),
                     isHero: isHeroRow(row),
                     renown: row.renown,
                     onRenown: v => setOobUnitRenown(row.id, v),
@@ -4581,6 +4592,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                   })}
                   {oobUnits.filter(r => (r.name || r.warscroll || '').trim()).map(row => renderWoundsCard({
                     key: row.id, title: oobRowWarscrollName(row), subtitle: isHeroRow(row) ? 'Hero' : 'Unit', isHero: isHeroRow(row),
+                    reinforced: !!(row.reinforced || '').trim(),
                     wounds: row.wounds ?? 0,
                     onWounds: v => setOobUnits(rows => rows.map(r => (r.id === row.id ? { ...r, wounds: typeof v === 'function' ? v(r.wounds ?? 0) : v } : r))),
                     scars: row.scars || {},
