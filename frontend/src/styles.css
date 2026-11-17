@@ -6606,3 +6606,26 @@ textarea.ptg-doc-overlay-input {
 .filebug-cancel { background: transparent; border: 1px solid var(--border-gold, #6b5a2e); color: var(--text-dim, #aaa); }
 .filebug-send { background: #8f2a2a; border: 1px solid #c44; color: #fff; }
 .filebug-send:disabled { opacity: 0.5; cursor: default; }
+
+/* ── Path to Glory: Apply Wounds (Ravaged Coast) ── */
+.ptg-wounds-step { display: flex; flex-direction: column; gap: 0.8rem; text-align: left; }
+.ptg-wounds-card { border: 1px solid rgba(200,168,64,0.35); border-radius: 5px; padding: 0.6rem 0.8rem; background: rgba(0,0,0,0.2); }
+.ptg-wounds-card-dead { border-color: #b33a3a; background: rgba(120,20,20,0.15); }
+.ptg-wounds-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; }
+.ptg-wounds-counter { margin-left: auto; display: flex; flex-direction: column; align-items: center; gap: 0.15rem; }
+.ptg-wounds-counter label { font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim, #aaa); }
+.ptg-wounds-stepper { display: flex; align-items: stretch; }
+.ptg-wounds-stepper button { width: 2rem; background: rgba(0,0,0,0.35); border: 1px solid var(--border-gold, #6b5a2e); color: var(--gold, #c9a84c); font-size: 1.1rem; cursor: pointer; }
+.ptg-wounds-stepper button:disabled { opacity: 0.4; cursor: default; }
+.ptg-wounds-stepper input { width: 3rem; text-align: center; background: rgba(0,0,0,0.45); border: 1px solid var(--border-gold, #6b5a2e); border-left: 0; border-right: 0; color: var(--text, #eee); font-size: 1rem; }
+.ptg-wounds-band { min-width: 9rem; text-align: center; font-family: 'Cinzel', serif; font-size: 0.8rem; padding: 0.25rem 0.5rem; border-radius: 3px; border: 1px solid rgba(255,255,255,0.15); color: var(--text-dim, #aaa); }
+.ptg-wounds-band-serious { color: #f0c060; border-color: #a08030; }
+.ptg-wounds-band-severe { color: #f09050; border-color: #b05a20; }
+.ptg-wounds-band-critical { color: #ff7060; border-color: #b33a3a; }
+.ptg-wounds-band-succumbs { color: #fff; background: #8f2a2a; border-color: #c44; }
+.ptg-wounds-drained { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; cursor: pointer; }
+.ptg-wounds-warning { margin-top: 0.5rem; color: #ff9a8a; font-size: 0.85rem; }
+.ptg-wounds-scar { margin-top: 0.6rem; }
+.ptg-wounds-scar-title { font-family: 'Cinzel', serif; color: var(--gold, #c9a84c); font-size: 0.9rem; display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.35rem; }
+.ptg-wounds-roll, .ptg-wounds-clear { font-family: inherit; font-size: 0.75rem; padding: 0.15rem 0.5rem; background: transparent; border: 1px solid var(--border-gold, #6b5a2e); color: var(--text-dim, #ccc); border-radius: 3px; cursor: pointer; }
+.ptg-wounds-clear { border-color: rgba(255,255,255,0.15); }

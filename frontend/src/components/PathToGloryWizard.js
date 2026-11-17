@@ -98,7 +98,33 @@ const STEPS = [
   'Assign your Regiments',
   'Set Paths & Ranks',
   'Prepare for Battle',
+  'Apply Wounds', // Ravaged Coast only — see stepCount
 ];
+const WOUNDS_STEP = STEPS.indexOf('Apply Wounds');
+
+// Ravaged Coast aftermath step 4 — battle wounds and battle scars
+// (wahapedia.ru/aos4/the-rules/ravaged-coast/, "Tend to Battle Wounds and
+// Battle Scars"). A unit's first time reaching each band gives it that band's
+// scar (roll D6 on its table); a unit has at most 1 of each type, and scars
+// stay even after wounds are healed. 18+ wounds: it succumbs.
+const RC_SCAR_TIERS = [
+  { key: 'serious',  name: 'Serious',  min: 5,  table: [
+    { roll: '1-2', name: 'Smouldering Scars', effect: 'At the end of the battle, roll a dice. On a 5+, this unit suffers D3 battle wounds.' },
+    { roll: '3-4', name: 'Unyielding Blisters', effect: 'Damage points allocated to this unit cannot be healed.' },
+    { roll: '5-6', name: 'Scorched Limbs', effect: 'Subtract 1 from run rolls and charge rolls for this unit.' },
+  ] },
+  { key: 'severe',   name: 'Severe',   min: 9,  table: [
+    { roll: '1-2', name: 'Blood-deep Corruption', effect: 'This unit cannot use RUN or RETREAT abilities.' },
+    { roll: '3-4', name: 'Warp-rust', effect: "Each time you declare a FIGHT ability for this unit, as a reaction, roll a dice. On a 4+, for the rest of the turn, this unit's non-Companion melee weapons cannot be affected by weapon abilities." },
+    { roll: '5-6', name: 'Endless Chittering', effect: 'Each time you declare a command for this unit, as a reaction, roll a dice. On a 4+, that command has no effect, it still counts as having been used and the command points spent to use it are still lost.' },
+  ] },
+  { key: 'critical', name: 'Critical', min: 13, table: [
+    { roll: '1-2', name: 'Hissing Wheezes', effect: 'This unit has STRIKE-LAST.' },
+    { roll: '3-4', name: 'Ash-blighted', effect: "Subtract 1 from the Attacks characteristic of this unit's weapons." },
+    { roll: '5-6', name: 'Raging Agonies', effect: 'Each time you declare a non-CORE ability for this unit, as a reaction, roll a dice. On a 5+, that ability has no effect.' },
+  ] },
+];
+const RC_SUCCUMB_AT = 18;
 
 // Renown thresholds in rank order — index into this is how far up a Path's
 // rank abilities a unit has actually unlocked (see rankForRenown).
@@ -1298,10 +1324,20 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   // for Ascension and custom campaigns — drives the Paths, Enhancements,
   // Lores and step-8 (Quest / Emberstone / Glory) content below.
   const bp = BATTLEPACKS[campaign] || null;
-  const stepLabels = STEPS.map((l, i) => (i !== 7 ? l
+  // Apply Wounds is the last step, and only Ravaged Coast has it.
+  const stepCount = campaign === 'ravaged-coast' ? STEPS.length : WOUNDS_STEP;
+  const lastStepRef = useRef(stepCount - 1);
+  lastStepRef.current = stepCount - 1;
+  useEffect(() => { if (step > stepCount - 1) setStep(stepCount - 1); }, [step, stepCount]);
+  const stepLabels = STEPS.slice(0, stepCount).map((l, i) => (i !== 7 ? l
     : campaign === 'ravaged-coast' ? 'Emberstone Vault'
     : campaign === 'blighted-wilds' ? 'Glory & Renown'
     : l));
+  // Ravaged Coast battle wounds / scars on the Warlord (Order of Battle rows
+  // keep theirs on the row: wounds, scars, drained).
+  const [warlordWounds, setWarlordWounds] = useState(() => saved.warlordWounds ?? 0);
+  const [warlordScars, setWarlordScars] = useState(() => saved.warlordScars ?? {});
+  const [warlordDrained, setWarlordDrained] = useState(() => saved.warlordDrained ?? false);
   // Ravaged Coast: emberstone shards currently in the vault, and gained over
   // the whole campaign (the roster tracks both).
   const [emberstoneVault, setEmberstoneVault] = useState(() => saved.emberstoneVault ?? '0');
@@ -2315,7 +2351,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
       }
       if (activeDoc) return; // arrow keys only navigate wizard steps, not while editing a document
       if (e.key === 'ArrowLeft')  { e.preventDefault(); setStep(s => Math.max(0, s - 1)); }
-      if (e.key === 'ArrowRight') { e.preventDefault(); setStep(s => Math.min(STEPS.length - 1, s + 1)); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); setStep(s => Math.min(lastStepRef.current, s + 1)); }
     };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
@@ -2350,7 +2386,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
       startingUnits, allyPickerOpen, allyFaction, allyUnitsByFaction, regimentsSeedSig,
       heroicTraitChoice, heroicTraitAssignee, artefactChoice, artefactAssignee, enhancementSubChoice,
       unitsHideLegends, unitsHideScourge, unitsHideRoR, unitsOnlyAdded,
-      emberstoneVault, emberstoneTotal, extraPathCampaigns,
+      emberstoneVault, emberstoneTotal, extraPathCampaigns, warlordWounds, warlordScars, warlordDrained,
     };
     try { localStorage.setItem(storageKey, JSON.stringify(snapshot)); } catch {}
     if (onSnapshot) onSnapshot(snapshot);
@@ -2365,7 +2401,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
     commander, armyRosterName, pointsLimit, armyRosterFaction, armyRosterFormation, regiments, auxUnits, armyNotes,
     startingUnits, allyPickerOpen, allyFaction, allyUnitsByFaction, regimentsSeedSig,
     heroicTraitChoice, heroicTraitAssignee, artefactChoice, artefactAssignee, enhancementSubChoice,
-    emberstoneVault, emberstoneTotal, extraPathCampaigns,
+    emberstoneVault, emberstoneTotal, extraPathCampaigns, warlordWounds, warlordScars, warlordDrained,
   ]);
 
   // One weapon-profile cell. The value shown is the effective one (base
@@ -3939,6 +3975,60 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
     );
   };
 
+  // One unit on the Apply Wounds step: battle wounds (−/+ or typed), the scar
+  // bands it has reached with a pick / 🎲 roll for each, and Drained (Heroes).
+  const renderWoundsCard = ({ key, title, subtitle, isHero, wounds, onWounds, scars, onScars, drained, onDrained }) => {
+    const n = Math.max(0, parseInt(wounds, 10) || 0);
+    const setN = v => onWounds(Math.max(0, Math.min(99, v)));
+    const band = n >= RC_SUCCUMB_AT ? 'Succumbs' : [...RC_SCAR_TIERS].reverse().find(t => n >= t.min)?.name || 'None';
+    const pickScar = (tier, idx) => onScars(prev => ({ ...prev, [tier]: idx }));
+    const rollScar = tier => { const d = 1 + Math.floor(Math.random() * 6); pickScar(tier, Math.floor((d - 1) / 2)); return d; };
+    return (
+      <div className={`ptg-wounds-card${n >= RC_SUCCUMB_AT ? ' ptg-wounds-card-dead' : ''}`} key={key}>
+        <div className="ptg-wounds-head">
+          <span className="ptg-path-unit-name">{String(title || 'Unnamed unit').toUpperCase()}</span>
+          <span className="ptg-path-unit-role">{subtitle}</span>
+          <div className="ptg-wounds-counter">
+            <label>Battle Wounds</label>
+            <div className="ptg-wounds-stepper">
+              <button type="button" onClick={() => setN(n - 1)} disabled={n === 0}>−</button>
+              <input value={n} inputMode="numeric" onChange={e => setN(parseInt(e.target.value.replace(/\D/g, ''), 10) || 0)} />
+              <button type="button" onClick={() => setN(n + 1)}>+</button>
+            </div>
+          </div>
+          <div className={`ptg-wounds-band ptg-wounds-band-${band.toLowerCase()}`}>{band === 'None' ? 'No scar yet' : band === 'Succumbs' ? 'Succumbs to injuries' : `${band} scar band`}</div>
+          {isHero && (
+            <label className="ptg-wounds-drained" title="Failed a healing ritual (rolled a 1): −1 to casting, chanting and hit rolls until the end of your next battle">
+              <input type="checkbox" checked={!!drained} onChange={e => onDrained(e.target.checked)} /> Drained
+            </label>
+          )}
+        </div>
+        {n >= RC_SUCCUMB_AT && (
+          <div className="ptg-wounds-warning">18+ battle wounds: this unit succumbs to its injuries — remove it from the roster (its enhancements are lost).{subtitle === 'Warlord' ? ' Pick another Hero to be your general.' : ''}</div>
+        )}
+        {RC_SCAR_TIERS.filter(t => n >= t.min || scars?.[t.key] != null).map(t => {
+          const chosen = scars?.[t.key];
+          return (
+            <div key={t.key} className="ptg-wounds-scar">
+              <div className="ptg-wounds-scar-title">
+                {t.name} battle scar
+                <button type="button" className="ptg-wounds-roll" title="Roll a D6 on this table" onClick={() => rollScar(t.key)}>🎲 Roll D6</button>
+                {chosen != null && <button type="button" className="ptg-wounds-clear" title="Clear this scar (if it was entered by mistake)" onClick={() => onScars(prev => { const c = { ...prev }; delete c[t.key]; return c; })}>clear</button>}
+              </div>
+              <div className="ptg-apotheosis-options-grid">
+                {t.table.map((sc, i) => (
+                  <button key={sc.name} type="button" className={`ptg-apotheosis-option-btn${chosen === i ? ' ptg-apotheosis-option-selected' : ''}`} onClick={() => pickScar(t.key, i)}>
+                    <AbilityCard ab={{ name: `${sc.roll}: ${sc.name}`, timing: 'Passive', effect: sc.effect, bullets: [] }} keywords={[]} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   const renderStepFlow = () => (
           <>
             <div className="ptg-wizard-steps">
@@ -3970,7 +4060,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                           if (CAMPAIGN_POINTS_LIMITS[c.key]) setPointsLimit(CAMPAIGN_POINTS_LIMITS[c.key]);
                           // Battlepacks stay on this step so their rules
                           // summary (below the cards) can be read first.
-                          if (!BATTLEPACKS[c.key]) setStep(s => Math.min(STEPS.length - 1, s + 1));
+                          if (!BATTLEPACKS[c.key]) setStep(s => Math.min(WOUNDS_STEP - 1, s + 1));
                         }}
                       >
                         <div className="ptg-campaign-name">{c.name}</div>
@@ -3999,7 +4089,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                         key={f.faction_slug}
                         className={`ptg-faction-badge alliance-${f.grand_alliance}${selectedFaction === f.faction_slug ? ' ptg-faction-badge-selected' : ''}`}
                         style={pos ? { gridRow: pos[0], gridColumn: pos[1] } : undefined}
-                        onClick={() => { setSelectedFaction(f.faction_slug); setStep(s => Math.min(STEPS.length - 1, s + 1)); }}
+                        onClick={() => { setSelectedFaction(f.faction_slug); setStep(s => Math.min(stepCount - 1, s + 1)); }}
                       >
                         {f.faction}
                       </button>
@@ -4455,6 +4545,31 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                     Open Army Roster to review ›
                   </button>
                 </div>
+              ) : step === WOUNDS_STEP && campaign === 'ravaged-coast' ? (
+                <div className="ptg-wounds-step">
+                  <p className="ptg-apotheosis-intro">
+                    After each battle: units destroyed in it suffer D3 battle wounds; each unit that ended the battle with an
+                    emberstone token suffers 1 on a 1–4. A unit gets a scar the first time it reaches 5 (Serious), 9 (Severe) and
+                    13 (Critical) wounds — roll D6 on that table; at most 1 of each type, and scars stay after wounds are healed.
+                    At 18 it succumbs and leaves the roster. Up to 2 Heroes may try a healing ritual: on a 2+ remove that many wounds
+                    from a unit; on a 1 the Hero is drained (−1 to casting, chanting and hit rolls) until the end of your next battle.
+                  </p>
+                  {renderWoundsCard({
+                    key: 'warlord', title: warlordName?.trim() || 'Warlord', subtitle: 'Warlord', isHero: true,
+                    wounds: warlordWounds, onWounds: setWarlordWounds,
+                    scars: warlordScars, onScars: setWarlordScars,
+                    drained: warlordDrained, onDrained: setWarlordDrained,
+                  })}
+                  {oobUnits.filter(r => (r.name || r.warscroll || '').trim()).map(row => renderWoundsCard({
+                    key: row.id, title: oobRowWarscrollName(row), subtitle: isHeroRow(row) ? 'Hero' : 'Unit', isHero: isHeroRow(row),
+                    wounds: row.wounds ?? 0,
+                    onWounds: v => setOobUnits(rows => rows.map(r => (r.id === row.id ? { ...r, wounds: typeof v === 'function' ? v(r.wounds ?? 0) : v } : r))),
+                    scars: row.scars || {},
+                    onScars: v => setOobUnits(rows => rows.map(r => (r.id === row.id ? { ...r, scars: typeof v === 'function' ? v(r.scars || {}) : v } : r))),
+                    drained: !!row.drained,
+                    onDrained: v => setOobUnits(rows => rows.map(r => (r.id === row.id ? { ...r, drained: v } : r))),
+                  }))}
+                </div>
               ) : (
                 <div className="ptg-wizard-body-placeholder">Coming soon.</div>
               )}
@@ -4464,7 +4579,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
               <button className="ptg-wizard-nav-btn" onClick={() => setStep(s => Math.max(0, s - 1))} disabled={step === 0}>
                 ‹ Back
               </button>
-              <button className="ptg-wizard-nav-btn" onClick={() => setStep(s => Math.min(STEPS.length - 1, s + 1))} disabled={step === STEPS.length - 1}>
+              <button className="ptg-wizard-nav-btn" onClick={() => setStep(s => Math.min(stepCount - 1, s + 1))} disabled={step >= stepCount - 1}>
                 Next ›
               </button>
             </div>
