@@ -1874,16 +1874,24 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   const [heroicTraitAssignee, setHeroicTraitAssignee] = useState(() => saved.heroicTraitAssignee ?? 'warlord');
   const [artefactChoice, setArtefactChoice] = useState(() => saved.artefactChoice ?? null);
   const [artefactAssignee, setArtefactAssignee] = useState(() => saved.artefactAssignee ?? 'warlord');
+  // "Pick 1 of the following…" enhancements (e.g. Idoneth's Hunter of
+  // Souls: Anti-CAVALRY / Anti-INFANTRY / Anti-MONSTER) — which bullet was
+  // picked, by enhancement name. Defaults to the first bullet on pick, like
+  // Focused Hunter's unit-type buttons.
+  const [enhancementSubChoice, setEnhancementSubChoice] = useState(() => saved.enhancementSubChoice ?? {});
 
   // Adds/removes a single enhancement-name tag on whichever target's
   // Enhancements text field it belongs to ('warlord' or an oobUnits row
   // id), same comma-joined-tag approach as the weapon-ability tagging in
   // applyUpgradeWeaponEffect above — safe to call repeatedly since it only
-  // ever touches its own tag, never the rest of what's typed there.
-  const setEnhancementTag = (target, tag, add) => {
+  // ever touches its own tag, never the rest of what's typed there. `base`
+  // is the enhancement's own name: any earlier "<base> (<choice>)" variant
+  // of it is replaced too, so re-picking a sub-option swaps rather than stacks.
+  const setEnhancementTag = (target, tag, add, base = tag) => {
     if (!target || !tag) return;
     const apply = text => {
-      const tags = (text || '').split(',').map(s => s.trim()).filter(Boolean).filter(t => t !== tag);
+      const tags = (text || '').split(',').map(s => s.trim()).filter(Boolean)
+        .filter(t => t !== tag && t !== base && !t.startsWith(`${base} (`));
       if (add) tags.push(tag);
       return tags.join(', ');
     };
@@ -1891,29 +1899,54 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
     else setOobUnits(rows => rows.map(r => r.id === target ? { ...r, enhancements: apply(r.enhancements) } : r));
   };
 
+  // The tables list the faction's enhancements followed by the battlepack's
+  // universal ones, so picks index into the combined list.
+  const heroicTraitOptions = [...(factionRules.heroic_traits || []), ...(BATTLEPACKS[campaign]?.heroic_traits || [])];
+  const artefactOptions = [...(factionRules.artefacts || []), ...(BATTLEPACKS[campaign]?.artefacts || [])];
+
+  // "Pick 1 of the following …" enhancements: their bullets are the choices.
+  const enhancementChoices = opt => {
+    if (!opt || !/pick (?:1|one) of the following/i.test(opt.effect || '')) return null;
+    const bullets = Array.isArray(opt.bullets) ? opt.bullets : (() => { try { return JSON.parse(opt.bullets || '[]'); } catch { return []; } })();
+    const list = bullets.map(b => (typeof b === 'string' ? b : b?.text || b?.name || '')).map(t => t.trim()).filter(Boolean);
+    return list.length ? list : null;
+  };
+  const enhancementChoiceOf = opt => {
+    const list = enhancementChoices(opt);
+    if (!list) return null;
+    const c = enhancementSubChoice[opt.name];
+    return list.includes(c) ? c : list[0];
+  };
+  const enhancementTagFor = (opt, choice = enhancementChoiceOf(opt)) => (choice ? `${opt.name} (${choice})` : opt.name);
+
   const pickHeroicTrait = idx => {
-    const prevOpt = heroicTraitChoice != null ? factionRules.heroic_traits?.[heroicTraitChoice] : null;
-    if (prevOpt) setEnhancementTag(heroicTraitAssignee, prevOpt.name, false);
+    const prevOpt = heroicTraitChoice != null ? heroicTraitOptions[heroicTraitChoice] : null;
+    if (prevOpt) setEnhancementTag(heroicTraitAssignee, enhancementTagFor(prevOpt), false, prevOpt.name);
     setHeroicTraitChoice(idx);
-    const opt = factionRules.heroic_traits?.[idx];
-    if (opt) setEnhancementTag(heroicTraitAssignee, opt.name, true);
+    const opt = heroicTraitOptions[idx];
+    if (opt) setEnhancementTag(heroicTraitAssignee, enhancementTagFor(opt), true, opt.name);
   };
   const reassignHeroicTrait = newTarget => {
-    const opt = heroicTraitChoice != null ? factionRules.heroic_traits?.[heroicTraitChoice] : null;
-    if (opt) { setEnhancementTag(heroicTraitAssignee, opt.name, false); setEnhancementTag(newTarget, opt.name, true); }
+    const opt = heroicTraitChoice != null ? heroicTraitOptions[heroicTraitChoice] : null;
+    if (opt) { setEnhancementTag(heroicTraitAssignee, enhancementTagFor(opt), false, opt.name); setEnhancementTag(newTarget, enhancementTagFor(opt), true, opt.name); }
     setHeroicTraitAssignee(newTarget);
   };
   const pickArtefact = idx => {
-    const prevOpt = artefactChoice != null ? factionRules.artefacts?.[artefactChoice] : null;
-    if (prevOpt) setEnhancementTag(artefactAssignee, prevOpt.name, false);
+    const prevOpt = artefactChoice != null ? artefactOptions[artefactChoice] : null;
+    if (prevOpt) setEnhancementTag(artefactAssignee, enhancementTagFor(prevOpt), false, prevOpt.name);
     setArtefactChoice(idx);
-    const opt = factionRules.artefacts?.[idx];
-    if (opt) setEnhancementTag(artefactAssignee, opt.name, true);
+    const opt = artefactOptions[idx];
+    if (opt) setEnhancementTag(artefactAssignee, enhancementTagFor(opt), true, opt.name);
   };
   const reassignArtefact = newTarget => {
-    const opt = artefactChoice != null ? factionRules.artefacts?.[artefactChoice] : null;
-    if (opt) { setEnhancementTag(artefactAssignee, opt.name, false); setEnhancementTag(newTarget, opt.name, true); }
+    const opt = artefactChoice != null ? artefactOptions[artefactChoice] : null;
+    if (opt) { setEnhancementTag(artefactAssignee, enhancementTagFor(opt), false, opt.name); setEnhancementTag(newTarget, enhancementTagFor(opt), true, opt.name); }
     setArtefactAssignee(newTarget);
+  };
+  // Picking one of a "Pick 1 of the following" enhancement's options.
+  const pickEnhancementSubChoice = (opt, assignee, choice) => {
+    setEnhancementSubChoice(prev => ({ ...prev, [opt.name]: choice }));
+    setEnhancementTag(assignee, enhancementTagFor(opt, choice), true, opt.name);
   };
 
   // ── Army Roster ──
@@ -2219,7 +2252,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
       warlordWarscroll, warlordRank, warlordRenown, warlordEnhancements, warlordPath, warlordPathAbility, warlordPathRankChoices, oobUnits,
       commander, armyRosterName, pointsLimit, armyRosterFaction, armyRosterFormation, regiments, auxUnits, armyNotes,
       startingUnits, allyPickerOpen, allyFaction, allyUnitsByFaction, regimentsSeedSig,
-      heroicTraitChoice, heroicTraitAssignee, artefactChoice, artefactAssignee,
+      heroicTraitChoice, heroicTraitAssignee, artefactChoice, artefactAssignee, enhancementSubChoice,
       unitsHideLegends, unitsHideScourge, unitsHideRoR, unitsOnlyAdded,
       emberstoneVault, emberstoneTotal, extraPathCampaigns,
     };
@@ -2235,7 +2268,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
     warlordWarscroll, warlordRank, warlordRenown, warlordEnhancements, warlordPath, warlordPathAbility, warlordPathRankChoices, oobUnits,
     commander, armyRosterName, pointsLimit, armyRosterFaction, armyRosterFormation, regiments, auxUnits, armyNotes,
     startingUnits, allyPickerOpen, allyFaction, allyUnitsByFaction, regimentsSeedSig,
-    heroicTraitChoice, heroicTraitAssignee, artefactChoice, artefactAssignee,
+    heroicTraitChoice, heroicTraitAssignee, artefactChoice, artefactAssignee, enhancementSubChoice,
     emberstoneVault, emberstoneTotal, extraPathCampaigns,
   ]);
 
@@ -2510,8 +2543,17 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   // or Artefacts of Power), single-select pick + an assignee dropdown
   // ('warlord' or any Order of Battle unit added so far). Mirrors the
   // single-select AbilityCard button treatment from renderApotheosisStep.
-  const assigneeOptions = [{ value: 'warlord', label: warlordName?.trim() || 'Warlord' },
-    ...oobUnits.filter(u => u.name?.trim()).map(u => ({ value: u.id, label: u.name }))];
+  // Enhancements can only go on Heroes that aren't UNIQUE (core rules), so
+  // the list is the Warlord plus Order of Battle rows whose warscroll is a
+  // non-unique Hero. A current assignee that no longer qualifies stays
+  // listed, flagged, so the pick isn't silently moved.
+  const canTakeEnhancement = row => {
+    const ws = oobRowWarscroll(row);
+    return !!ws?.is_hero && !ws.is_unique && !/\bUNIQUE\b/i.test(ws.keywords || '');
+  };
+  const assigneeOptionsFor = current => [{ value: 'warlord', label: warlordName?.trim() || 'Warlord' },
+    ...oobUnits.filter(u => u.name?.trim() && (canTakeEnhancement(u) || u.id === current))
+      .map(u => ({ value: u.id, label: canTakeEnhancement(u) ? u.name : `${u.name} (not allowed: Heroes that aren't Unique only)` }))];
   const renderEnhancementTable = (title, options, choiceIdx, assignee, onPick, onReassign) => (
     <div className="ptg-enhancement-table">
       <div className="ptg-apotheosis-group-title">{title}</div>
@@ -2522,20 +2564,39 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
           <div className="ptg-field ptg-enhancement-assignee">
             <label>Assign to</label>
             <select value={assignee} onChange={e => onReassign(e.target.value)}>
-              {assigneeOptions.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
+              {assigneeOptionsFor(assignee).map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
             </select>
           </div>
           <div className="ptg-apotheosis-options-grid">
-            {options.map((opt, i) => (
-              <button
-                key={i}
-                type="button"
-                className={`ptg-apotheosis-option-btn${choiceIdx === i ? ' ptg-apotheosis-option-selected' : ''}`}
-                onClick={() => onPick(i)}
-              >
-                <AbilityCard ab={{ ...opt, bullets: parseFormationBullets(opt.bullets) }} keywords={[]} />
-              </button>
-            ))}
+            {options.map((opt, i) => {
+              const choices = enhancementChoices(opt);
+              const chosen = choices ? enhancementChoiceOf(opt) : null;
+              return (
+                <div key={i} className="ptg-apotheosis-option-wrap">
+                  <button
+                    type="button"
+                    className={`ptg-apotheosis-option-btn${choiceIdx === i ? ' ptg-apotheosis-option-selected' : ''}`}
+                    onClick={() => onPick(i)}
+                  >
+                    <AbilityCard ab={{ ...opt, bullets: parseFormationBullets(opt.bullets) }} keywords={[]} />
+                  </button>
+                  {choices && choiceIdx === i && (
+                    <div className="ptg-anti-x-picker">
+                      {choices.map(c => (
+                        <button
+                          key={c}
+                          type="button"
+                          className={`ptg-anti-x-picker-btn${chosen === c ? ' ptg-anti-x-picker-btn-selected' : ''}`}
+                          onClick={() => pickEnhancementSubChoice(opt, assignee, c)}
+                        >
+                          {c}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </>
       )}
@@ -2757,13 +2818,16 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
     }
 
     const enhancements = [];
-    if (heroicTraitChoice != null && factionRules.heroic_traits?.[heroicTraitChoice]) {
-      const t = factionRules.heroic_traits[heroicTraitChoice];
-      enhancements.push({ name: t.name, timing: t.timing, declare: t.declare, effect: t.effect, phase_key: t.phase_key });
+    // Only enhancements actually on the Warlord print on the Warlord sheet.
+    const enhancementCard = o => {
+      const choice = enhancementChoiceOf(o);
+      return { name: o.name, timing: o.timing, declare: o.declare, effect: choice ? `${o.effect} ${choice}.` : o.effect, phase_key: o.phase_key };
+    };
+    if (heroicTraitChoice != null && heroicTraitOptions[heroicTraitChoice] && heroicTraitAssignee === 'warlord') {
+      enhancements.push(enhancementCard(heroicTraitOptions[heroicTraitChoice]));
     }
-    if (artefactChoice != null && factionRules.artefacts?.[artefactChoice]) {
-      const a = factionRules.artefacts[artefactChoice];
-      enhancements.push({ name: a.name, timing: a.timing, declare: a.declare, effect: a.effect, phase_key: a.phase_key });
+    if (artefactChoice != null && artefactOptions[artefactChoice] && artefactAssignee === 'warlord') {
+      enhancements.push(enhancementCard(artefactOptions[artefactChoice]));
     }
     push('Enhancements', enhancements);
 
@@ -4097,9 +4161,9 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                   {/* Battlepack universal tables are appended after the
                       faction's own, so existing picks (stored by index)
                       keep pointing at the same card. */}
-                  {renderEnhancementTable('Heroic Traits', [...(factionRules.heroic_traits || []), ...(bp?.heroic_traits || [])], heroicTraitChoice, heroicTraitAssignee, pickHeroicTrait, reassignHeroicTrait)}
+                  {renderEnhancementTable('Heroic Traits', heroicTraitOptions, heroicTraitChoice, heroicTraitAssignee, pickHeroicTrait, reassignHeroicTrait)}
                   <div className="ptg-path-section-divider" />
-                  {renderEnhancementTable('Artefacts of Power', [...(factionRules.artefacts || []), ...(bp?.artefacts || [])], artefactChoice, artefactAssignee, pickArtefact, reassignArtefact)}
+                  {renderEnhancementTable('Artefacts of Power', artefactOptions, artefactChoice, artefactAssignee, pickArtefact, reassignArtefact)}
                 </div>
               ) : step === 6 ? (
                 <div className="ptg-lores-step">
