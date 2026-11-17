@@ -206,6 +206,16 @@ function parseKeywordMods(sentence, mods) {
     const add = [m[1], m[2]].filter(Boolean).map(s => s.replace(/\s+/g, ' ').trim());
     if (add.length) mods.push({ kind: 'keyword', op: 'add', keywords: add });
   }
+  // "Your hero's power level is 2." (Oracle of the Enclave) / "Add 1 to
+  // your hero's power level." — the number in its WIZARD (n) / PRIEST (n)
+  // keyword. Only unconditional sentences: "...for the rest of the phase"
+  // and the like are in-battle effects, not a profile change.
+  m = /^\s*(?:your hero'?s?|this unit'?s?)\s+power level is\s+(\d+)\.?\s*$/i.exec(sentence)
+    || /^\s*Add\s+(\d+)\s+to\s+(?:your hero'?s?|this unit'?s?)\s+power level\.?\s*$/i.exec(sentence);
+  if (m) {
+    mods.push({ kind: 'powerLevel', op: /^\s*Add\b/i.test(sentence) ? 'add' : 'set', value: parseInt(m[1], 10) });
+    return;
+  }
   // "Change the number after your hero's RELENTLESS DISCIPLINE keyword to
   // 6" / "Add 2 to the number after this unit's RELENTLESS DISCIPLINE
   // keyword" — a keyword whose printed value the pick moves.
@@ -276,5 +286,6 @@ export function describeMod(mod) {
   if (mod.kind === 'keyword') {
     return mod.op === 'replace' ? `${mod.from} → ${mod.to.join(', ')}` : `+${mod.keywords.join(', ')}`;
   }
+  if (mod.kind === 'powerLevel') return mod.op === 'set' ? `Power level ${mod.value}` : `Power level +${mod.value}`;
   return '';
 }

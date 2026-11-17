@@ -288,6 +288,13 @@ export function applyKeywordMods(line1, modSources) {
         const current = i >= 0 ? parseInt(/(\d+)/.exec(parts[i])?.[1] ?? '0', 10) : 0;
         const value = m.op === 'add' ? current + m.value : m.value;
         if (i >= 0) parts[i] = `${m.keyword} ${value}`; else parts.push(`${m.keyword} ${value}`);
+      } else if (m.kind === 'powerLevel') {
+        // The hero's WIZARD (n) — or PRIEST (n) if it isn't a Wizard.
+        const i = ['WIZARD', 'PRIEST'].map(k => parts.findIndex(p => head(p) === k)).find(x => x >= 0) ?? -1;
+        if (i >= 0) {
+          const current = parseInt(/\((\d+)\)/.exec(parts[i])?.[1] ?? '0', 10);
+          parts[i] = `${head(parts[i])} (${m.op === 'add' ? current + m.value : m.value})`;
+        }
       } else if (m.kind === 'keyword' && m.op === 'replace') {
         const i = parts.findIndex(p => p.toUpperCase() === m.from.toUpperCase());
         if (i >= 0) parts.splice(i, 1);
