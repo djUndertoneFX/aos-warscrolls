@@ -6904,3 +6904,11 @@ textarea.ptg-doc-overlay-input {
 .ptg-wizard-toolbar { position: absolute; top: 8px; left: 10px; z-index: 11; display: flex; gap: 8px; align-items: stretch; }
 .ptg-wizard-toolbar .ab-roster-print-btn,
 .ptg-wizard-toolbar .ab-roster-share-wrap { position: static; left: auto; top: auto; }
+/* Off-screen (but laid out, so its overlay measures) Officiant copy of a
+   sheet shown in Non Corporeal mode — what Print prints. */
+.ptg-doc-print-only { position: fixed !important; left: -10000px; top: 0; width: 900px; pointer-events: none; }
+@media print {
+  .ptg-doc-print-only { left: 0 !important; position: absolute !important; width: 100% !important; }
+  .ab-roster-print-target > .ptg-doc-page-wrap { break-after: page; page-break-after: always; }
+  .ab-roster-print-target > .ptg-doc-page-wrap:last-child { break-after: auto; page-break-after: auto; }
+}

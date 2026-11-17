@@ -3747,11 +3747,15 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
     return doc.images;
   };
 
-  const renderImageView = doc => {
+  // Every sheet prints its Officiant (image) pages; printOnly is the copy
+  // kept off-screen while a non-Warlord sheet is shown in Non Corporeal mode
+  // (the Warlord's Non Corporeal print has its own print-preview form).
+  const renderImageView = (doc, { printOnly = false } = {}) => {
     const images = docPageImages(doc);
     return (
       <div
-        className={`ptg-doc-image-view ptg-doc-image-view-zoomable${doc.key === 'warlord' ? ' ab-roster-print-target' : ''}`}
+        className={`ptg-doc-image-view ptg-doc-image-view-zoomable ab-roster-print-target${printOnly ? ' ptg-doc-print-only' : ''}`}
+        aria-hidden={printOnly || undefined}
         onClick={() => setDocLightboxOpen(true)}
         title="Click to zoom"
       >
@@ -3784,7 +3788,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   };
 
   const handleWarlordPrintClick = () => {
-    if (presentMode === 'replica') setWarlordPrintPreview(true);
+    if (presentMode === 'replica' && activeDoc === 'warlord') setWarlordPrintPreview(true);
     else window.print();
   };
 
@@ -3840,6 +3844,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
               <div className="ptg-doc-editor-body">
                 {presentMode === 'image' ? renderImageView(doc) : (
                   <>
+                    {activeDoc !== 'warlord' && renderImageView(doc, { printOnly: true })}
                     {activeDoc === 'warlord' && renderWarlordForm()}
 
                     {activeDoc === 'roster' && (
@@ -4816,14 +4821,13 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
               : 'Paste an army list exported from New Recruit — it is saved as a roster and opened here'}
           >Import List</button>
         )}
-        {activeDoc === 'warlord' && !warlordPrintPreview && (
+        {/* Every sheet: Print, then Share beside it. */}
+        {activeDoc && !warlordPrintPreview && (
           <button className="ab-roster-print-btn" onClick={handleWarlordPrintClick} title="Print">🖨 Print</button>
         )}
-        {/* Share sits beside Print on the Warlord sheet, and in Print's spot
-            on the Army Roster sheet (which has no Print). */}
-        {onShare && ((activeDoc === 'warlord' && !warlordPrintPreview) || activeDoc === 'army') && (
+        {onShare && activeDoc && !warlordPrintPreview && (
           <ShareButton
-            wrapperClassName={`ab-roster-share-wrap${activeDoc === 'warlord' ? ' ab-roster-share-wrap-beside-print' : ''}`}
+            wrapperClassName="ab-roster-share-wrap ab-roster-share-wrap-beside-print"
             className="ab-roster-print-btn"
             onShare={mode => onShare({ view: 'wizard', doc: activeDoc, mode: presentMode }, mode)}
           />
