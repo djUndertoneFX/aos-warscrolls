@@ -6444,7 +6444,7 @@ textarea.ptg-doc-overlay-input {
   color: var(--text-dim, #8a8578);
 }
 .ptg-path-unit-renown, .ptg-path-unit-rank { width: 5.5rem; margin-left: auto; }
-.ptg-path-unit-rank { margin-left: 0; }
+.ptg-path-unit-rank { margin-left: 0; width: 7.5rem; }
 .ptg-path-unit-path { min-width: 14rem; }
 .ptg-path-rank-locked { opacity: 0.45; }
 .ptg-path-rank-locked .ptg-apotheosis-option-btn { cursor: not-allowed; }

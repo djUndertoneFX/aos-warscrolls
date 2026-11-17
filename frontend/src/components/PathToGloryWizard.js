@@ -2173,7 +2173,6 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
     || (FACTION_PATHS[selectedFaction] ?? []).find(pth => pth.key === key)
     || null
   );
-  const unlockedRankCount = renown => RANK_ORDER.indexOf(rankForRenown(renown)) + 1;
 
   const setOobUnitRenown = (rowId, value) => setOobUnits(rows => rows.map(r => (
     r.id === rowId ? { ...r, renown: value, rank: rankForRenown(value) } : r
@@ -2471,10 +2470,12 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   // which piece of state they read and write (the Warlord has its own
   // dedicated fields; everyone else lives on their oobUnits row).
   // Non-Heroes get the renown/rank half only: Paths are a Hero thing.
-  const renderPathCard = ({ key, title, subtitle, isHero, renown, onRenown, pathKey, onPath, rankChoices, onPick }) => {
-    const rank = rankForRenown(renown);
+  // Rank is picked directly (some campaigns, e.g. Ravaged Coast, have no
+  // renown); typing a renown still moves it to the matching rank. The rank
+  // decides which Path ranks are unlocked.
+  const renderPathCard = ({ key, title, subtitle, isHero, renown, onRenown, rank, onRank, pathKey, onPath, rankChoices, onPick }) => {
     const pathObj = findPathByKey(pathKey);
-    const unlocked = unlockedRankCount(renown);
+    const unlocked = RANK_ORDER.indexOf(rank) + 1;
     const pathOptions = pathsForUnit(isHero);
     return (
       <div className="ptg-path-unit-card" key={key}>
@@ -2487,7 +2488,10 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
           </div>
           <div className="ptg-field ptg-path-unit-rank">
             <label>Rank</label>
-            <input value={rank || '—'} readOnly title="Derived from Renown — earned at 5+ points" />
+            <select value={RANK_ORDER.includes(rank) ? rank : ''} onChange={e => onRank(e.target.value)}>
+              <option value="">-</option>
+              {RANK_ORDER.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
           </div>
           {pathOptions.length > 0 && (
             <div className="ptg-field ptg-path-unit-path">
@@ -2513,7 +2517,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
             <div key={r.rank} className={`ptg-apotheosis-group${locked ? ' ptg-path-rank-locked' : ''}`}>
               <div className="ptg-apotheosis-group-title">
                 {r.rank}
-                {locked && <span className="ptg-lore-count"> (locked — needs more renown)</span>}
+                {locked && <span className="ptg-lore-count"> (locked — set Rank to {r.rank} or higher)</span>}
               </div>
               <div className="ptg-apotheosis-options-grid">
                 {r.options.map((opt, oi) => (
@@ -4384,7 +4388,8 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                   <p className="ptg-apotheosis-intro">
                     Renown earns a unit its rank — Aspiring at 5, Elite at 15, Mighty at 30, Legendary
                     at 45 — and each rank unlocks one ability from that unit&rsquo;s Path. Heroes walk a
-                    Path of their own; everyone else just tracks renown and rank.
+                    Path of their own; everyone else just tracks renown and rank. Rank can also be
+                    picked directly — for campaigns without renown, such as Ravaged Coast.
                   </p>
 
                   {renderCampaignPathToggles()}
@@ -4396,6 +4401,8 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                     isHero: true,
                     renown: warlordRenown,
                     onRenown: v => { setWarlordRenown(v); setWarlordRank(rankForRenown(v)); },
+                    rank: warlordRank,
+                    onRank: setWarlordRank,
                     pathKey: warlordPath,
                     onPath: key => pickWarlordPath(key || null),
                     rankChoices: warlordPathRankChoices,
@@ -4414,6 +4421,8 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                     isHero: isHeroRow(row),
                     renown: row.renown,
                     onRenown: v => setOobUnitRenown(row.id, v),
+                    rank: row.rank ?? rankForRenown(row.renown),
+                    onRank: v => setOobUnits(rows => rows.map(r => (r.id === row.id ? { ...r, rank: v } : r))),
                     pathKey: row.path,
                     onPath: key => setOobUnitPath(row.id, key),
                     rankChoices: row.pathRankChoices || {},
