@@ -1160,7 +1160,18 @@ function ArmyWarscrolls({ friendly, enemy, viewMode, singleSide, open, setOpen }
 }
 
 function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey, commandAbilities, viewMode, setViewMode, contentMode, setContentMode, wsOpen, setWsOpen }) {
-  const [singleSide, setSingleSide] = useState('friendly');
+  // Single View opens on whichever side actually has an army — loading only
+  // an enemy list used to land on an empty Friendly side ("No units selected
+  // for this side yet") with the enemy one click away on a toggle.
+  const [singleSide, setSingleSide] = useState(() => (friendly.units.length === 0 && enemy.units.length > 0 ? 'enemy' : 'friendly'));
+  const fCount = friendly.units.length, eCount = enemy.units.length;
+  useEffect(() => {
+    setSingleSide(s => {
+      if (s === 'friendly' && fCount === 0 && eCount > 0) return 'enemy';
+      if (s === 'enemy' && eCount === 0 && fCount > 0) return 'friendly';
+      return s;
+    });
+  }, [fCount, eCount]);
   // Ghyran defaults to hidden — matches the previous unconditional behavior
   // (Scourge of Ghyran-named content was always dropped before this checkbox
   // existed). Aqshy is the current season (see the unitSeason/abilitySeason

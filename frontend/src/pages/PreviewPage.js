@@ -148,9 +148,16 @@ export default function PreviewPage() {
     // Faction pages are built from contiguous runs of the same faction in
     // navList, so keep allies grouped rather than interleaved — the army's
     // own faction first, so its purple pages lead and the Warlord follows.
+    // Within a faction: Heroes, Infantry, Cavalry, Beasts, Monsters, War
+    // Machines, Terrain, Manifestations, then by name — the same order as
+    // every warscroll table on the site (/api/warscrolls' typeOrder).
     const own = docData.factionSlug;
+    const typeRank = u => (u.is_hero ? 1 : u.is_infantry ? 2 : u.is_cavalry ? 3 : u.is_beast ? 4
+      : u.is_monster ? 5 : u.is_war_machine ? 6 : u.is_terrain ? 7 : u.is_manifestation ? 8 : 7);
     out.sort((a, b) => ((a.faction_slug === own ? 0 : 1) - (b.faction_slug === own ? 0 : 1))
-      || (a.faction_slug || '').localeCompare(b.faction_slug || ''));
+      || (a.faction_slug || '').localeCompare(b.faction_slug || '')
+      || typeRank(a) - typeRank(b)
+      || (a.name || '').localeCompare(b.name || ''));
     return warlordUnit ? [warlordUnit, ...out] : out;
   }, [docData, unitsByName, warlordUnit]);
 
