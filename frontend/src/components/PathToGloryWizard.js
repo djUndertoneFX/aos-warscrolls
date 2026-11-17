@@ -224,11 +224,91 @@ const PATHS = [
         { name: 'Inspiring Leader', timing: 'Passive', lore_text: 'So renowned is this legendary warrior that they inspire all under their command to give everything they have in battle.', effect: 'Add 3 to the control scores of other friendly units while they are contesting the same objective as this Hero.' },
       ] },
     ] },
+  // Mage, Devout and the two Unit Paths (Defender, Attacker): rank data from
+  // the core rules' Path to Glory: Ascension (wahapedia.ru/aos4/the-rules/ascension/).
   { key: 'mage', name: 'Path of the Mage', restricted: 'Wizard only',
-    desc: 'To walk this Path, your warlord must already have some proficiency in the arcane arts. By the end, they will be able to shape the very realms.' },
+    desc: 'To walk this Path, your warlord must already have some proficiency in the arcane arts. By the end, they will be able to shape the very realms.',
+    ranks: [
+      { rank: 'Aspiring', options: [
+        {"name": "Dedicated Practitioner", "timing": "Passive", "lore_text": "Uncounted hours poring over esoteric texts has granted this wizard a deep insight into the nature of magic.", "effect": "Add 1 to casting rolls for this WIZARD.", "phase_key": "hero phase"},
+        {"name": "Eldritch Ward", "timing": "Passive", "lore_text": "This mage can weave excess magical energies into a cloak of mystic protection.", "effect": "If a casting roll of 10+ is made for this WIZARD, they have WARD (5+) until the start of your next turn.", "phase_key": "hero phase,combat"},
+      ] },
+      { rank: 'Elite', options: [
+        {"name": "Mystic Shield", "timing": "Your Hero Phase", "lore_text": "The caster’s allies are bathed in an unearthly glow that protects them from harm.", "declare": "Pick a visible friendly unit wholly within 12\" of this WIZARD to be the target. Then, make a casting roll of 2D6.", "effect": "The target has WARD (6+) this turn.", "casting_value": "6", "keywords": "SPELL", "phase_key": "hero phase,combat"},
+        {"name": "Arcane Conduit", "timing": "Your Hero Phase", "lore_text": "The caster focuses on channelling the motes of magic that suffuse the realms.", "declare": "Make a casting roll of 2D6.", "effect": "Until the end of the phase, add 1 to casting rolls for friendly units.", "casting_value": "3", "keywords": "SPELL", "phase_key": "hero phase"},
+      ] },
+      { rank: 'Mighty', options: [
+        {"name": "Magical Might", "timing": "Reaction: You declared a SPELL ability for this WIZARD", "lore_text": "This wizard is invigorated through the harnessing of magic.", "effect": "If that spell is cast, after resolving the effects of that spell, Heal (D3) this WIZARD."},
+        {"name": "Arcane Familiar", "timing": "Once Per Phase, Reaction: You declared a SPELL for this WIZARD", "lore_text": "A small creature follows this wizard and serves as a focus for their power.", "used_by": "This WIZARD.", "effect": "Re-roll 1 of the dice in the casting roll.", "phase_key": "hero phase"},
+      ] },
+      { rank: 'Legendary', options: [
+        {"name": "Eldritch Cataclysm", "timing": "Your Hero Phase", "lore_text": "A storm of raw magic sweeps across the enemy lines causing absolute havoc.", "declare": "Pick a visible enemy unit within 15\" of this WIZARD to be the target. Then, make a casting roll of 2D6.", "effect": "Roll a dice for each model in the target unit. For each 4+, inflict 1 mortal damage on that unit.", "casting_value": "8", "keywords": "SPELL", "phase_key": "hero phase"},
+        {"name": "Sunder the Earth", "timing": "Your Hero Phase", "lore_text": "The ground before the caster splits and a gaping fissure snakes forth.", "declare": "Pick a point on the battlefield within 18\" of this WIZARD. Then, make a casting roll of 2D6.", "effect": "Draw a line between that point and the closest point on this WIZARD’s base. Inflict D3 mortal damage on each unit the line crosses (roll for each).", "casting_value": "8", "keywords": "SPELL", "phase_key": "hero phase"},
+      ] },
+    ] },
   { key: 'devout', name: 'Path of the Devout', restricted: 'Priest only',
-    desc: 'With an unshakable faith to guide them, this warlord has been chosen by their patron deity for a greater purpose (or so they claim!).' },
+    desc: 'With an unshakable faith to guide them, this warlord has been chosen by their patron deity for a greater purpose (or so they claim!).',
+    ranks: [
+      { rank: 'Aspiring', options: [
+        {"name": "Focused Meditation", "timing": "Deployment Phase", "lore_text": "On the eve of battle, this mysterious priest isolates themselves to prepare for the fight to come.", "effect": "This PRIEST gains D3 ritual points.", "phase_key": "deployment"},
+        {"name": "Divine Blessing", "timing": "Passive", "lore_text": "It is said this one courts the attention of their deity and walks the realms as their holy envoy.", "effect": "This PRIEST has WARD (6+).", "phase_key": "combat"},
+      ] },
+      { rank: 'Elite', options: [
+        {"name": "Righteous Conviction", "timing": "Your Hero Phase", "lore_text": "The priest calls upon their deity to bless their allies with strength.", "declare": "Make a chanting roll of D6.", "effect": "Pick a visible friendly unit wholly within 12\" of this PRIEST. Until the start of your next turn, add 1 to wound rolls for combat attacks made by that unit.", "casting_value": "4", "keywords": "PRAYER", "phase_key": "hero phase,combat"},
+        {"name": "Resurrection", "timing": "Once Per Battle, Your Hero Phase", "lore_text": "A fallen hero is brought back from death, their vitality fully restored.", "declare": "Make a chanting roll of D6.", "effect": "Pick a friendly INFANTRY HERO that has been slain and return them to the battlefield. Set up that HERO wholly within 3\" of this PRIEST.", "casting_value": "7", "keywords": "PRAYER", "phase_key": "hero phase"},
+      ] },
+      { rank: 'Mighty', options: [
+        {"name": "Master of Ceremonies", "timing": "Passive", "lore_text": "This priest has dedicated their life to their craft.", "effect": "Each time you make a chanting roll for this PRIEST, you can roll 2 dice and pick 1 to be the roll."},
+        {"name": "Hallowed Champion", "timing": "Passive", "lore_text": "The faith of this priest is nigh on tangible to those around them.", "effect": "Friendly units have WARD (6+) while they are wholly within 12\" of this PRIEST.", "phase_key": "combat"},
+      ] },
+      { rank: 'Legendary', options: [
+        {"name": "Ritual of Death", "timing": "Your Hero Phase", "lore_text": "Thunder rumbles in the skies above as the wrath of a god is wrought upon their enemies.", "declare": "Make a chanting roll of D6.", "effect": "Inflict 1 mortal damage on each enemy unit on the battlefield. Inflict D3 mortal damage instead if the chanting roll was 9+ (roll for each).", "casting_value": "6", "keywords": "PRAYER", "phase_key": "hero phase"},
+        {"name": "Ritual of Life", "timing": "Your Hero Phase", "lore_text": "Responding to the fervent dedication of the priest, the gods themselves shower those who fight in their name with their blessings.", "declare": "Make a chanting roll of D6.", "effect": "Pick each friendly unit on the battlefield to Heal (1). Heal (D3) instead if the chanting roll was 9+ (roll for each).", "casting_value": "8", "keywords": "PRAYER", "phase_key": "hero phase"},
+      ] },
+    ] },
+  // Unit Paths (non-HERO units only) — hero: false keeps them off Hero lists.
+  { key: 'defender', name: 'Path of the Defender', restricted: 'non-Hero units only', hero: false,
+    ranks: [
+      { rank: 'Aspiring', options: [
+        {"name": "Hardened Resolve", "timing": "End of Any Turn", "lore_text": "Even when grievous wounds have been wrought upon their flesh, these warriors do not rest.", "effect": "Heal (1) this unit.", "phase_key": "end of turn"},
+        {"name": "Steel Discipline", "timing": "Passive", "lore_text": "Even in the heat of this battle, these warriors keep a calm disposition, falling back in formation to strengthen the line elsewhere.", "effect": "When this unit uses a RETREAT ability, no mortal damage is inflicted on it.", "phase_key": "movement"},
+      ] },
+      { rank: 'Elite', options: [
+        {"name": "Uncanny Survivability", "timing": "Passive", "lore_text": "These warriors have emerged unscathed from attacks that should have seen them slain.", "effect": "This unit has WARD (6+).", "phase_key": "combat"},
+        {"name": "Unbreakable Formation", "timing": "Once Per Battle, Any Combat Phase", "lore_text": "These warriors brace for impact and let the enemy crash into them as a wave does against a sheer cliff.", "effect": "Subtract 2 from the Rend characteristic of weapons used for attacks that target this unit this phase.", "phase_key": "combat"},
+      ] },
+      { rank: 'Mighty', options: [
+        {"name": "Mighty Custodians", "timing": "Passive", "lore_text": "These warriors would gladly sell their lives before letting the enemy lay claim to their lands.", "effect": "Add 3 to the control score of this unit while it is contesting an objective you control."},
+        {"name": "Battle-scarred Veterans", "timing": "Passive", "lore_text": "These warriors shrug off any flesh wounds and minor injuries.", "effect": "Before allocating damage points to this unit, remove 1 damage point in its damage pool."},
+      ] },
+      { rank: 'Legendary', options: [
+        {"name": "Warriors of Renown", "timing": "Passive", "lore_text": "Veterans of a dozen or more battles, these legendary warriors are famed for their resilience and sheer grit.", "effect": "This unit has WARD (5+).", "phase_key": "combat"},
+        {"name": "Indomitable Defenders", "timing": "Passive", "lore_text": "No quarter is given to those who would intrude upon the domain of these legendary warriors.", "effect": "This unit has STRIKE-FIRST while it is wholly within friendly territory or contesting an objective you control.", "phase_key": "combat"},
+      ] },
+    ] },
+  { key: 'attacker', name: 'Path of the Attacker', restricted: 'non-Hero units only', hero: false,
+    ranks: [
+      { rank: 'Aspiring', options: [
+        {"name": "Full-on Attack", "timing": "Once Per Battle, Any Combat Phase", "lore_text": "These warriors have forged a bond in the crucible of battle, and they instinctively know when to press home their assault.", "effect": "Add 1 to hit rolls for attacks made by this unit this phase.", "phase_key": "combat"},
+        {"name": "Battle Fury", "timing": "Passive", "lore_text": "Nothing can stop these warriors as they charge headlong into the fray.", "effect": "This unit can use CHARGE abilities even if it used a RUN ability in the same turn.", "phase_key": "movement"},
+      ] },
+      { rank: 'Elite', options: [
+        {"name": "Hunter’s Eye", "timing": "Once Per Battle, Deployment Phase", "lore_text": "These elite warriors race forward, eager to be the first to draw the blood of their quarry.", "declare": "Pick an enemy unit.", "effect": "That unit gains the QUARRY keyword. Add 1 to wound rolls for attacks made by this unit that target the QUARRY unit.", "phase_key": "combat,deployment"},
+        {"name": "Monster Killers", "timing": "Passive", "lore_text": "These legendary warriors are expert in the slaughter of monstrous foes.", "effect": "Add 1 to the Damage characteristic of this unit’s melee weapons for attacks that target a MONSTER."},
+      ] },
+      { rank: 'Mighty', options: [
+        {"name": "Mighty Conquerors", "timing": "Passive", "lore_text": "These fighters rest not until the lands of the enemy have been laid to ruin.", "effect": "Add 3 to the control score of this unit while it is contesting an objective controlled by your opponent."},
+        {"name": "Frenzy", "timing": "Passive", "lore_text": "When battle is met and the sounds of clashing blades ring out, these mighty warriors focus on nothing but the next kill.", "effect": "This unit has WARD (5+) if it used a FIGHT ability in the same phase.", "phase_key": "combat"},
+      ] },
+      { rank: 'Legendary', options: [
+        {"name": "Weapon Masters", "timing": "Passive", "lore_text": "These legendary warriors are renowned for their combat prowess.", "effect": "Add 1 to the Attacks characteristic of this unit’s melee weapons.", "phase_key": "combat"},
+        {"name": "Honed Gear", "timing": "Passive", "lore_text": "These warriors learned long ago that well-maintained arms bite deepest.", "effect": "Add 1 to the Rend characteristic of this unit’s melee weapons.", "phase_key": "combat"},
+      ] },
+    ] },
 ];
+// Core Paths split: Hero Paths (Warrior/Leader/Mage/Devout) and Unit Paths.
+const CORE_HERO_PATHS = PATHS.filter(p => p.hero !== false);
+const CORE_UNIT_PATHS = PATHS.filter(p => p.hero === false);
 
 // The 6 core-rulebook Quests (pg 241), for "Pick your First Quest" — full
 // text transcribed from the user's own photographs. lore_text is each
@@ -2069,7 +2149,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
     .map(c => ({
       key: c.key,
       name: c.name,
-      paths: c.key === 'ascension' ? PATHS.map(pth => ({ ...pth, hero: true })) : (BATTLEPACKS[c.key]?.paths || []),
+      paths: c.key === 'ascension' ? PATHS.map(pth => ({ ...pth, hero: pth.hero !== false })) : (BATTLEPACKS[c.key]?.paths || []),
     }));
   const pathsForUnit = isHero => {
     const fromBattlepack = bp
@@ -2079,7 +2159,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
             ? BATTLEPACKS['ravaged-coast'].paths.filter(pth => !!pth.hero === isHero)
             : []),
         ]
-      : (isHero ? PATHS : []);
+      : (isHero ? CORE_HERO_PATHS : CORE_UNIT_PATHS);
     const seen = new Set(fromBattlepack.map(pth => pth.key));
     const fromOther = otherCampaignPathGroups()
       .flatMap(g => g.paths)
@@ -3655,7 +3735,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                               <label>Path</label>
                               <select value={warlordPath || ''} onChange={e => setWarlordPath(e.target.value || null)}>
                                 <option value="">…</option>
-                                {PATHS.map(p => <option key={p.key} value={p.key}>{p.name}</option>)}
+                                {CORE_HERO_PATHS.map(p => <option key={p.key} value={p.key}>{p.name}</option>)}
                               </select>
                             </div>
                             <div className="ptg-field"><label>Path Abilities</label><input value={warlordPathAbility} onChange={e => setWarlordPathAbility(e.target.value)} /></div>
@@ -3985,7 +4065,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                   ) : (<>
                   <div className="ptg-apotheosis-group-title">Core</div>
                   <div className="ptg-apotheosis-options-grid">
-                    {PATHS.map(p => (
+                    {CORE_HERO_PATHS.map(p => (
                       <button
                         key={p.key}
                         type="button"
