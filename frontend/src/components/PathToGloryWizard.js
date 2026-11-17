@@ -1110,15 +1110,19 @@ function buildRosterOverlayFields(d) {
   fields.push({ spec: centerFieldXY(72, 40.10, 42, 0.015), value: d.background });
   fields.push({ spec: centerFieldXY(72, 47.66, 42, 0.015), value: d.notableEvents });
 
+  // Columns (2026-11-16, measured off dj's screenshot): box centres x 26.2 /
+  // 50.1 / 76.1%, nudged +0.5 to clear the printed row numbers; the printed
+  // page is slanted, so Prayer boxes sit 0.35% and Manifestation boxes 0.75%
+  // higher than Spell boxes (dy).
   const loreCols = [
-    { rows: d.spellLore, left: 28 },
-    { rows: d.prayerLore, left: 54 },
-    { rows: d.manifestationLore, left: 80 },
+    { rows: d.spellLore, left: 26.7, width: 20.5, dy: 0 },
+    { rows: d.prayerLore, left: 50.6, width: 20.5, dy: -0.35 },
+    { rows: d.manifestationLore, left: 76.6, width: 24, dy: -0.75 },
   ];
   const loreRowTops = [70.38, 75.06, 79.80, 84.46, 89.17, 93.88];
   for (const col of loreCols) {
     (col.rows || []).slice(0, 6).forEach((v, i) => {
-      fields.push({ spec: centerFieldXY(col.left, loreRowTops[i], 26, 0.015), value: v });
+      fields.push({ spec: fitFieldXY(col.left, loreRowTops[i] + col.dy, col.width, 0.015, 3.1), value: v });
     });
   }
   return fields;
