@@ -1057,13 +1057,14 @@ function buildArmyOverlayFields(d, pageIndex) {
     const reg5Tops = [35.64, 38.69, 41.71, 44.74];
     (reg5?.units || []).slice(0, 4).forEach((u, i) => regimentRow(u, reg5Tops[i]));
 
-    fields.push({ spec: centerField(80, 50.3, 15, 0.02), value: d.regimentsTotal != null ? `${d.regimentsTotal}pts` : null });
+    // Totals boxes (centres measured: Regiments 50.6%, Auxiliary 76.85%, Units 79.85%).
+    fields.push({ spec: fitFieldXY(80, 50.6, 22, 0.02, 2.6), value: d.regimentsTotal != null ? `${d.regimentsTotal}pts` : null });
 
     const auxTops = [59.57, 62.62, 65.64, 68.66, 71.71];
     (d.auxUnits || []).slice(0, 5).forEach((u, i) => regimentRow(u, auxTops[i]));
 
-    fields.push({ spec: centerField(80, 80.3, 15, 0.02), value: d.auxTotal != null ? `${d.auxTotal}pts` : null });
-    fields.push({ spec: centerField(80, 83, 15, 0.02), value: d.armyUnitsTotal != null ? `${d.armyUnitsTotal}pts` : null });
+    fields.push({ spec: fitFieldXY(80, 76.85, 22, 0.02, 2.6), value: d.auxTotal != null ? `${d.auxTotal}pts` : null });
+    fields.push({ spec: fitFieldXY(80, 79.85, 22, 0.02, 2.6), value: d.armyUnitsTotal != null ? `${d.armyUnitsTotal}pts` : null });
     fields.push({ spec: { left: 20, top: 87.5, width: 70, fontSize: 0.017 }, value: d.armyNotes });
   }
   return fields;
