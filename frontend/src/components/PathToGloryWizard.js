@@ -156,6 +156,55 @@ const CAMPAIGN_POINTS_LIMITS = {
 // prefixed per battlepack: rc-, bw-, so they never collide).
 const BATTLEPACK_PATHS = Object.values(BATTLEPACKS).flatMap(b => b.paths);
 
+// ── Reading a unit's Path and rank back off its Path abilities ──
+// The Order of Battle's Rank column is otherwise derived from renown alone
+// (rankForRenown), which leaves it blank below 5 points — so an imported
+// roster, which arrives at 0 renown with its Path abilities intact, printed
+// "Focused Sorcery, Overspilling Power" with nothing in Rank beside it. The
+// abilities themselves say which Path they belong to and how far up it the
+// unit has climbed, so read it from them.
+//
+// Matching is punctuation- and case-insensitive: New Recruit writes "First
+// to the Fight", the scraped tables have "First To The Fight".
+function abilityKey(s) {
+  return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+// Scores every known Path against the listed abilities and returns the one
+// matching most of them, with the highest rank any match sits at. Ties go to
+// the path declared on the row (`preferKey`), then to the first found.
+export function derivePathAndRank(abilityText, allPaths, preferKey = '') {
+  const names = String(abilityText || '').split(',').map(a => abilityKey(a)).filter(Boolean);
+  if (!names.length) return null;
+  let best = null;
+  for (const path of allPaths) {
+    if (!path?.ranks?.length) continue;
+    let matched = 0;
+    let topRank = -1;
+    path.ranks.forEach(r => {
+      const hit = (r.options || []).some(o => names.includes(abilityKey(o.name)));
+      if (!hit) return;
+      matched += 1;
+      topRank = Math.max(topRank, RANK_ORDER.indexOf(r.rank));
+    });
+    if (!matched) continue;
+    const preferred = preferKey && path.key === preferKey;
+    if (!best || matched > best.matched || (matched === best.matched && preferred && !best.preferred)) {
+      best = { name: path.name, rank: RANK_ORDER[topRank] || '', matched, preferred };
+    }
+  }
+  return best;
+}
+
+// "Path of the Brawler - Elite" for the Rank column. Falls back to whatever
+// rank the row already carries when the abilities match nothing known, so a
+// hand-typed ability never blanks out a rank the renown had earned.
+export function pathRankLabel(row, allPaths) {
+  const found = derivePathAndRank(row?.pathAbility, allPaths, row?.path || '');
+  if (!found) return row?.rank || '';
+  return [found.name, found.rank || row?.rank].filter(Boolean).join(' - ');
+}
+
 // Short summaries of each battlepack's roster-building and aftermath rules,
 // shown on the Select your Campaign step and alongside the relevant steps.
 // The full in-battle rules (BATTLEPACKS[key].battle_abilities) render as
@@ -829,6 +878,13 @@ function buildWarlordOverlayFields(d) {
   fields.push({ spec: centerField(12.3, 12.6, 8, 0.026), value: d.warlordHealth, editable: d.setWarlordHealth });
   fields.push({ spec: centerField(18.9, 12.6, 8, 0.026), value: d.warlordSave, editable: d.setWarlordSave });
   fields.push({ spec: centerField(15.5, 15.0, 10, 0.026), value: d.warlordControl, editable: d.setWarlordControl });
+  // The small circle at the wheel's top-right is the Ward pip. Nothing ever
+  // wrote to it, so an upgrade granting WARD (6+) — Uncanny Fortune, say —
+  // showed up in the keywords line and left the pip blank. Not editable: the
+  // value is read off whichever pick grants the keyword (see warlordWard),
+  // the same way a stat an option pins is read-only. Position scanned off
+  // the template (circle centre 21.7%, 9.4%).
+  fields.push({ spec: centerField(21.7, 9.4, 5, 0.022), value: d.warlordWard });
   fields.push({ spec: centerField(56, 12.5, 55, 0.056), value: d.warlordName, editable: d.setWarlordName });
 
   // Minimal template's 2 rows are pixel-measured (row band luminance scan):
@@ -2298,6 +2354,12 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
       .filter(pth => (seen.has(pth.key) ? false : (seen.add(pth.key), true)));
     return [...fromBattlepack, ...fromOther, ...(FACTION_PATHS[selectedFaction] ?? []).filter(p => pathFitsUnit(p, isHero))];
   };
+  // Everything pathRankLabel can match an ability against: the core four,
+  // both battlepacks', and the selected faction's own.
+  const allKnownPaths = React.useMemo(
+    () => [...PATHS, ...BATTLEPACK_PATHS, ...(FACTION_PATHS[selectedFaction] ?? [])],
+    [selectedFaction],
+  );
   const findPathByKey = key => (
     PATHS.find(pth => pth.key === key)
     || BATTLEPACK_PATHS.find(pth => pth.key === key)
@@ -3641,6 +3703,9 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
     rangedWeapons: effectiveRangedWeapons,
     meleeWeapons: effectiveMeleeWeapons,
     warlordKeywordsLine1: effectiveKeywordsLine1,
+    // Ward comes in as a granted keyword — "WARD (6+)" — so the pip reads it
+    // back off the effective keyword line rather than being its own field.
+    warlordWard: (/\bWARD\s*\((\d+\+?)\)/i.exec(effectiveKeywordsLine1 || '') || [])[1] || '',
     warlordKeywordsLine2, warlordAbilityGroups,
     warlordDocVariant,
     // Same setters/updaters renderWarlordForm's Non Corporeal inputs use —
@@ -3665,7 +3730,11 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
     spellLore, prayerLore, manifestationLore,
     warlordWarscroll, warlordRank, warlordRenown, warlordEnhancements,
     warlordPathLabel: (PATHS.find(p => p.key === warlordPath) || BATTLEPACK_PATHS.find(p => p.key === warlordPath))?.name || '',
-    warlordPathAbility, oobUnits,
+    warlordPathAbility,
+    // Display-only: the Rank column prints "<Path> - <Rank>" read off the
+    // row's Path abilities (see pathRankLabel). The stored rows keep their
+    // renown-derived rank untouched — this never writes back.
+    oobUnits: oobUnits.map(u => ({ ...u, rank: pathRankLabel(u, allKnownPaths) })),
     commander, armyRosterName,
     // Ravaged Coast has no fixed limit — the roster's limit is what's on it.
     pointsLimit: campaign === 'ravaged-coast' ? String(armyUnitsTotal) : pointsLimit,
