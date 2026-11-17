@@ -1158,6 +1158,13 @@ function buildOobOverlayFields(d, pageIndex = 0) {
   // Page 1 carries the Warlord; every page holds 5 units (extra Order of
   // Battle pages are added when there are more than 5 — see docPageImages).
   const onFirstPage = pageIndex === 0;
+  // "Wounds" in the gutter right of each Renown box (page margin 93.3–99.5%):
+  // a small label, then the unit's battle wounds (Apply Wounds step) under it.
+  const pushWounds = (rowCentre, wounds) => {
+    fields.push({ spec: fitFieldXY(96.4, rowCentre - 1.0, 5.8, 0.0105, 1.3), value: 'Wounds' });
+    const n = parseInt(wounds, 10);
+    fields.push({ spec: fitFieldXY(96.4, rowCentre + 0.7, 5.8, 0.018, 2), value: n > 0 ? String(n) : '' });
+  };
   // Row1 nudged +1.1% down from the box's measured geometric center per
   // direct feedback ("should be a bit lower") — a deliberate offset from
   // true-center, not a remeasurement.
@@ -1174,6 +1181,7 @@ function buildOobOverlayFields(d, pageIndex = 0) {
     fields.push({ spec: fitFieldXY(21.8, 25.3, 27, 0.018), value: d.warlordEnhancements });
     fields.push({ spec: fitFieldXY(49.8, 25.3, 26, 0.018), value: d.warlordPathLabel });
     fields.push({ spec: fitFieldXY(78.5, 25.3, 26, 0.018), value: d.warlordPathAbility });
+    pushWounds(warlordRow1, d.warlordWounds);
   }
 
   // Row1 (Unit Name/Warscroll/Rank/Renown) centers per unit block, each
@@ -1191,6 +1199,7 @@ function buildOobOverlayFields(d, pageIndex = 0) {
     fields.push({ spec: fitFieldXY(48.9, row1, 22, 0.018), value: u.warscroll });
     fields.push({ spec: fitFieldXY(71.4, row1, 18.5, 0.018), value: u.rank });
     fields.push({ spec: fitFieldXY(87.5, row1, 8.5, 0.018), value: u.renown });
+    pushWounds(row1, u.wounds);
     fields.push({ spec: fitFieldXY(21.8, row2, 27, 0.016), value: u.enhancements });
     fields.push({ spec: fitFieldXY(59.3, row2, 42.5, 0.016), value: u.pathAbility });
     fields.push({ spec: fitFieldXY(87.5, row2, 8.5, 0.014), value: u.reinforced });
@@ -3766,7 +3775,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
     spellLore, prayerLore, manifestationLore,
     warlordWarscroll, warlordRank, warlordRenown, warlordEnhancements,
     warlordPathLabel: (PATHS.find(p => p.key === warlordPath) || BATTLEPACK_PATHS.find(p => p.key === warlordPath))?.name || '',
-    warlordPathAbility,
+    warlordPathAbility, warlordWounds,
     // Display-only: the Rank column prints "<Path> - <Rank>" read off the
     // row's Path abilities (see pathRankLabel). The stored rows keep their
     // renown-derived rank untouched — this never writes back.
