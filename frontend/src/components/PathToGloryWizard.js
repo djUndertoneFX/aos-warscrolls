@@ -1205,9 +1205,9 @@ function buildArmyOverlayFields(d, pageIndex) {
     // Size 49.8–56.1%, Notes 58.5–83.5%, Points 85.5–91.8% of the width; each
     // row's writing line is ~2.3% of the height, starting just above `top`.
     const y = top - 1.15; // `top` is the row's centre; boxes are 2.3% tall
-    fields.push({ spec: { left: 22.6, top: y, width: 25, height: 2.3, fontSize: 0.017, fit: true }, value: r.name });
+    fields.push({ spec: { left: 23.4, top: y, width: 24.2, height: 2.3, fontSize: 0.017, fit: true }, value: r.name });
     fields.push({ spec: { ...centerField(52.95, y, 6.3, 0.017), height: 2.3, fit: true }, value: r.size });
-    fields.push({ spec: { left: 58.7, top: y, width: 24.6, height: 2.3, fontSize: 0.016, fit: true }, value: r.notes });
+    fields.push({ spec: { left: 59.4, top: y, width: 23.9, height: 2.3, fontSize: 0.016, fit: true }, value: r.notes });
     fields.push({ spec: { ...centerField(88.65, y, 6.3, 0.017), height: 2.3, fit: true }, value: r.points });
   };
 
