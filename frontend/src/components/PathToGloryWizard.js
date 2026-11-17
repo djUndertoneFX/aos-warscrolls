@@ -3753,6 +3753,32 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
           );
   };
 
+  // "Paths from:" checkboxes — one per campaign. The campaign being played
+  // (and Ravaged Coast under Blighted Wilds, which its rules allow) is
+  // always on; ticking another adds its Paths, e.g. for units carried over
+  // from Ascension. Shared by the Warlord Path and Set Paths & Ranks steps.
+  const renderCampaignPathToggles = () => {
+    const builtIn = c => !otherPathCampaigns.some(o => o.key === c.key);
+    return (
+      <div className="ptg-other-paths">
+        <span className="ptg-other-paths-lbl">Allow campaign paths:</span>
+        {CAMPAIGNS.filter(c => !c.custom).map(c => (
+          <label key={c.key} className="ptg-other-paths-opt" title={builtIn(c) ? 'Always allowed in this campaign' : `Also offer ${c.name}'s Paths`}>
+            <input
+              type="checkbox"
+              checked={builtIn(c) || extraPathCampaigns.includes(c.key)}
+              disabled={builtIn(c)}
+              onChange={e => setExtraPathCampaigns(list => (e.target.checked
+                ? [...list.filter(k => k !== c.key), c.key]
+                : list.filter(k => k !== c.key)))}
+            />
+            {c.name}
+          </label>
+        ))}
+      </div>
+    );
+  };
+
   // A titled grid of Path cards (battlepack Paths) — same card/selection
   // look as the Core and Faction groups on the Paths step.
   const renderPathGroup = (title, list) => (
@@ -3980,23 +4006,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                   </div>
                   </>)}
 
-                  {otherPathCampaigns.length > 0 && (
-                    <div className="ptg-other-paths">
-                      <span className="ptg-other-paths-lbl">Allow other campaign paths:</span>
-                      {otherPathCampaigns.map(c => (
-                        <label key={c.key} className="ptg-other-paths-opt">
-                          <input
-                            type="checkbox"
-                            checked={extraPathCampaigns.includes(c.key)}
-                            onChange={e => setExtraPathCampaigns(list => (e.target.checked
-                              ? [...list.filter(k => k !== c.key), c.key]
-                              : list.filter(k => k !== c.key)))}
-                          />
-                          {c.name}
-                        </label>
-                      ))}
-                    </div>
-                  )}
+                  {renderCampaignPathToggles()}
                   {otherCampaignPathGroups().map(g => (
                     <React.Fragment key={g.key}>
                       {renderPathGroup(`${g.name} — Hero Paths`, g.paths.filter(p => p.hero))}
@@ -4296,6 +4306,8 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                     at 45 — and each rank unlocks one ability from that unit&rsquo;s Path. Heroes walk a
                     Path of their own; everyone else just tracks renown and rank.
                   </p>
+
+                  {renderCampaignPathToggles()}
 
                   {renderPathCard({
                     key: 'warlord',

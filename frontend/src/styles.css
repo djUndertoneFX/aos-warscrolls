@@ -6589,3 +6589,5 @@ textarea.ptg-doc-overlay-input {
 .ptg-other-paths { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 1rem; margin: 0.8rem 0 0.4rem; padding: 0.45rem 0.7rem; border: 1px dashed rgba(200,168,64,0.35); border-radius: 4px; font-size: 0.85rem; }
 .ptg-other-paths-lbl { font-family: 'Cinzel', serif; color: var(--gold, #c9a84c); }
 .ptg-other-paths-opt { display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; }
+.ptg-other-paths-opt input:disabled { opacity: 0.6; }
+.ptg-other-paths-opt:has(input:disabled) { cursor: default; opacity: 0.75; }
