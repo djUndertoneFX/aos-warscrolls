@@ -89,6 +89,7 @@ const GENERIC_WARLORD_PROFILE = { move: '6"', health: '5', save: '5+', control: 
 const STEPS = [
   'Select your Campaign',
   'Pick your Faction',
+  'Pick your Battle Formation',
   'Train your Warlord',
   'Pick your Warlord Path',
   'Add your Starting units',
@@ -950,43 +951,58 @@ function buildRosterOverlayFields(d) {
 function centerFieldXY(left, top, width, fontSize) {
   return { left, top, width, align: 'center', centerX: true, centerY: true, fontSize };
 }
+// A box centred on (left, top) that is `height`% tall, whose text shrinks
+// (and wraps) until it fits instead of overflowing — see OverlayFitField.
+function fitFieldXY(left, top, width, fontSize, height = 3) {
+  return { ...centerFieldXY(left, top, width, fontSize), height, fit: true };
+}
 // X-centers below are from a second luminance scan (horizontal this time,
 // through each row's box interior) — the row1 Renown column and row2's
 // Path Abilities/Reinforced? columns had drifted furthest from their real
 // box centers (up to ~2.4%/36px), which is exactly the "Reinforced text
 // isn't centered in its field" symptom: the text WAS centered on its own
 // coordinate, just not on the box's true center.
-function buildOobOverlayFields(d) {
+function buildOobOverlayFields(d, pageIndex = 0) {
   const fields = [];
+  // Page 1 carries the Warlord; every page holds 5 units (extra Order of
+  // Battle pages are added when there are more than 5 — see docPageImages).
+  const onFirstPage = pageIndex === 0;
   // Row1 nudged +1.1% down from the box's measured geometric center per
   // direct feedback ("should be a bit lower") — a deliberate offset from
   // true-center, not a remeasurement.
   const warlordRow1 = 20.14;
-  fields.push({ spec: centerFieldXY(21.75, warlordRow1, 26, 0.02), value: d.warlordName });
-  fields.push({ spec: centerFieldXY(49.18, warlordRow1, 22, 0.02), value: d.warlordWarscroll });
-  fields.push({ spec: centerFieldXY(71.85, warlordRow1, 18, 0.02), value: d.warlordRank });
-  fields.push({ spec: centerFieldXY(87.83, warlordRow1, 9, 0.02), value: d.warlordRenown });
-  fields.push({ spec: centerFieldXY(21.75, 25.19, 26, 0.018), value: d.warlordEnhancements });
-  fields.push({ spec: centerFieldXY(59.7, 25.19, 43, 0.018), value: d.warlordPathLabel });
-  fields.push({ spec: centerFieldXY(88.4, 25.19, 10, 0.018), value: d.warlordPathAbility });
+  // Boxes re-measured 2026-11-16 (centre x, width as % of the sheet): row 1
+  // Name 21.8/27, Warscroll 48.9/22, Rank 71.4/18.5, Renown 87.5/8.5; the
+  // Warlord's row 2 is Enhancements 21.8/27, Path 49.8/26, Path Abilities
+  // 78.5/26. Every box is ~3.2% tall and shrinks its text to fit.
+  if (onFirstPage) {
+    fields.push({ spec: fitFieldXY(21.8, warlordRow1, 27, 0.02), value: d.warlordName });
+    fields.push({ spec: fitFieldXY(48.9, warlordRow1, 22, 0.02), value: d.warlordWarscroll });
+    fields.push({ spec: fitFieldXY(71.4, warlordRow1, 18.5, 0.02), value: d.warlordRank });
+    fields.push({ spec: fitFieldXY(87.5, warlordRow1, 8.5, 0.02), value: d.warlordRenown });
+    fields.push({ spec: fitFieldXY(21.8, 25.3, 27, 0.018), value: d.warlordEnhancements });
+    fields.push({ spec: fitFieldXY(49.8, 25.3, 26, 0.018), value: d.warlordPathLabel });
+    fields.push({ spec: fitFieldXY(78.5, 25.3, 26, 0.018), value: d.warlordPathAbility });
+  }
 
   // Row1 (Unit Name/Warscroll/Rank/Renown) centers per unit block, each
   // +1.1% lower than the box's measured center (same deliberate nudge as
   // the Warlord row above). Row2 (Enhancements/Path Abilities/Reinforced?)
   // sits at the box-measured center unchanged — only row1 was flagged as
   // needing to move.
-  const unitRow1Tops = [36.72, 49.31, 61.91, 74.50, 87.10];
+  const unitRow1Tops = [36.3, 48.89, 61.49, 74.08, 86.68];
   const unitRow2Tops = [41.56, 54.15, 66.75, 79.34, 91.94];
-  (d.oobUnits || []).slice(0, 5).forEach((u, i) => {
+  (d.oobUnits || []).slice(pageIndex * 5, pageIndex * 5 + 5).forEach((u, i) => {
     const row1 = unitRow1Tops[i];
     const row2 = unitRow2Tops[i];
-    fields.push({ spec: centerFieldXY(21.75, row1, 26, 0.018), value: u.name });
-    fields.push({ spec: centerFieldXY(49.18, row1, 22, 0.018), value: u.warscroll });
-    fields.push({ spec: centerFieldXY(71.85, row1, 18, 0.018), value: u.rank });
-    fields.push({ spec: centerFieldXY(87.83, row1, 9, 0.018), value: u.renown });
-    fields.push({ spec: centerFieldXY(21.75, row2, 26, 0.016), value: u.enhancements });
-    fields.push({ spec: centerFieldXY(59.7, row2, 43, 0.016), value: u.pathAbility });
-    fields.push({ spec: centerFieldXY(88.4, row2, 10, 0.016), value: u.reinforced });
+    // Unit row 2: Enhancements 21.8/27, Path Abilities 59.3/42.5, Reinforced? 87.5/8.5.
+    fields.push({ spec: fitFieldXY(21.8, row1, 27, 0.018), value: u.name });
+    fields.push({ spec: fitFieldXY(48.9, row1, 22, 0.018), value: u.warscroll });
+    fields.push({ spec: fitFieldXY(71.4, row1, 18.5, 0.018), value: u.rank });
+    fields.push({ spec: fitFieldXY(87.5, row1, 8.5, 0.018), value: u.renown });
+    fields.push({ spec: fitFieldXY(21.8, row2, 27, 0.016), value: u.enhancements });
+    fields.push({ spec: fitFieldXY(59.3, row2, 42.5, 0.016), value: u.pathAbility });
+    fields.push({ spec: fitFieldXY(87.5, row2, 8.5, 0.014), value: u.reinforced });
   });
   return fields;
 }
@@ -1001,42 +1017,49 @@ function buildArmyOverlayFields(d, pageIndex) {
     // Columns measured off the printed Army Roster: Warscroll Name 22.4–47.8%,
     // Size 49.8–56.1%, Notes 58.5–83.5%, Points 85.5–91.8% of the width; each
     // row's writing line is ~2.3% of the height, starting just above `top`.
-    fields.push({ spec: { left: 22.6, top: top - 0.25, width: 25, height: 2.3, fontSize: 0.017, fit: true }, value: r.name });
-    fields.push({ spec: { ...centerField(52.95, top - 0.25, 6.3, 0.017), height: 2.3, fit: true }, value: r.size });
-    fields.push({ spec: { left: 58.7, top: top - 0.25, width: 24.6, height: 2.3, fontSize: 0.016, fit: true }, value: r.notes });
-    fields.push({ spec: { ...centerField(88.65, top - 0.25, 6.3, 0.017), height: 2.3, fit: true }, value: r.points });
+    const y = top - 1.15; // `top` is the row's centre; boxes are 2.3% tall
+    fields.push({ spec: { left: 22.6, top: y, width: 25, height: 2.3, fontSize: 0.017, fit: true }, value: r.name });
+    fields.push({ spec: { ...centerField(52.95, y, 6.3, 0.017), height: 2.3, fit: true }, value: r.size });
+    fields.push({ spec: { left: 58.7, top: y, width: 24.6, height: 2.3, fontSize: 0.016, fit: true }, value: r.notes });
+    fields.push({ spec: { ...centerField(88.65, y, 6.3, 0.017), height: 2.3, fit: true }, value: r.points });
   };
 
   if (pageIndex === 0) {
-    fields.push({ spec: { left: 16, top: 15.8, width: 30, fontSize: 0.02 }, value: d.commander });
-    fields.push({ spec: { left: 41, top: 15.8, width: 30, fontSize: 0.02 }, value: d.armyRosterName });
-    fields.push({ spec: centerField(74, 15.8, 16, 0.02), value: d.pointsLimit });
-    fields.push({ spec: { left: 16, top: 23.5, width: 30, fontSize: 0.02 }, value: d.armyRosterFaction });
-    fields.push({ spec: { left: 41, top: 23.5, width: 30, fontSize: 0.02 }, value: d.armyRosterFormation });
+    // Header boxes (centres measured off the template): Commander / Army
+    // Name 6.8–39% / 40.8–73% wide, 16.3–20.8% high; Faction / Battle
+    // Formation same columns, 25–29.6% high; Points Limit 74.6–92.9% wide,
+    // 16.3–29.6% high.
+    fields.push({ spec: fitFieldXY(22.9, 18.6, 30, 0.02, 4), value: d.commander });
+    fields.push({ spec: fitFieldXY(56.9, 18.6, 30, 0.02, 4), value: d.armyRosterName });
+    fields.push({ spec: fitFieldXY(83.75, 23, 16, 0.03, 12), value: d.pointsLimit });
+    fields.push({ spec: fitFieldXY(22.9, 27.3, 30, 0.02, 4), value: d.armyRosterFaction });
+    fields.push({ spec: fitFieldXY(56.9, 27.3, 30, 0.02, 4), value: d.armyRosterFormation });
 
     const reg1 = d.regiments[0];
-    const reg1Tops = [40.7, 43.9, 47.1, 50.3, 53.5];
+    // Row centres measured off the template's General/Unit badges (rows are
+    // 3.02% apart); regimentRow takes the centre.
+    const reg1Tops = [42.0, 45.02, 48.04, 51.06, 54.08];
     (reg1?.units || []).slice(0, 5).forEach((u, i) => regimentRow(u, reg1Tops[i]));
 
     const reg2 = d.regiments[1];
-    const reg2Tops = [60.9, 64.1, 67.3, 70.5];
+    const reg2Tops = [63.41, 66.43, 69.45, 72.47];
     (reg2?.units || []).slice(0, 4).forEach((u, i) => regimentRow(u, reg2Tops[i]));
 
     const reg3 = d.regiments[2];
-    const reg3Tops = [80.9, 84.1, 87.3, 90.5];
+    const reg3Tops = [82.3, 85.32, 88.34, 91.36];
     (reg3?.units || []).slice(0, 4).forEach((u, i) => regimentRow(u, reg3Tops[i]));
   } else {
     const reg4 = d.regiments[3];
-    const reg4Tops = [15.9, 19.1, 22.3, 25.5];
+    const reg4Tops = [16.75, 19.8, 22.82, 25.84];
     (reg4?.units || []).slice(0, 4).forEach((u, i) => regimentRow(u, reg4Tops[i]));
 
     const reg5 = d.regiments[4];
-    const reg5Tops = [33.4, 36.6, 39.8, 43];
+    const reg5Tops = [35.64, 38.69, 41.71, 44.74];
     (reg5?.units || []).slice(0, 4).forEach((u, i) => regimentRow(u, reg5Tops[i]));
 
     fields.push({ spec: centerField(80, 50.3, 15, 0.02), value: d.regimentsTotal != null ? `${d.regimentsTotal}pts` : null });
 
-    const auxTops = [61.3, 64.5, 67.7, 70.9, 74.1];
+    const auxTops = [59.57, 62.62, 65.64, 68.66, 71.71];
     (d.auxUnits || []).slice(0, 5).forEach((u, i) => regimentRow(u, auxTops[i]));
 
     fields.push({ spec: centerField(80, 80.3, 15, 0.02), value: d.auxTotal != null ? `${d.auxTotal}pts` : null });
@@ -1050,7 +1073,7 @@ function buildOverlayFields(docKey, pageIndex, d) {
   switch (docKey) {
     case 'warlord': return buildWarlordOverlayFields(d);
     case 'roster':  return buildRosterOverlayFields(d);
-    case 'oob':     return buildOobOverlayFields(d);
+    case 'oob':     return buildOobOverlayFields(d, pageIndex);
     case 'army':    return buildArmyOverlayFields(d, pageIndex);
     default: return [];
   }
@@ -1293,7 +1316,8 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   // table, per-page override afterward same as every other page.
   const sharedFilterDefaults = (() => { try { return JSON.parse(localStorage.getItem('aos-filters')) || {}; } catch { return {}; } })();
 
-  const [step, setStep] = useState(() => saved.step ?? 0);
+  // Steps v2 added 'Pick your Battle Formation' at 2; older saves shift up one.
+  const [step, setStep] = useState(() => { const st = saved.step ?? 0; return (saved.stepsVersion ?? 1) < 2 && st >= 2 ? st + 1 : st; });
   // The roster's name is shown in the banner and, when the page passes
   // `onRename`, is editable there — clicking it turns it into an input and
   // committing renames the saved roster. A local draft keeps typing
@@ -1363,7 +1387,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   const lastStepRef = useRef(stepCount - 1);
   lastStepRef.current = stepCount - 1;
   useEffect(() => { if (step > stepCount - 1) setStep(stepCount - 1); }, [step, stepCount]);
-  const stepLabels = STEPS.slice(0, stepCount).map((l, i) => (i !== 7 ? l
+  const stepLabels = STEPS.slice(0, stepCount).map((l, i) => (i !== 8 ? l
     : campaign === 'ravaged-coast' ? 'Emberstone Vault'
     : campaign === 'blighted-wilds' ? 'Glory & Renown'
     : l));
@@ -2383,7 +2407,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   // continuously so a unit added later can't reshuffle a layout the player
   // is in the middle of dragging on another screen.
   useEffect(() => {
-    if (step !== 8) return;
+    if (step !== 9) return;
     // Which rows are Heroes — and so which ones open a regiment of their
     // own — is resolved by matching each Order of Battle row back against
     // its warscroll. Run before those have loaded and every unit lands in
@@ -2428,7 +2452,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   // Persist the whole wizard on every change, so closing and reopening resumes here.
   useEffect(() => {
     const snapshot = {
-      step, activeDoc, presentMode, wizardViewMode, campaign, customCampaignName, selectedFaction, warlordSubStep,
+      stepsVersion: 2, step, activeDoc, presentMode, wizardViewMode, campaign, customCampaignName, selectedFaction, warlordSubStep,
       warlordName, warlordKeywordsLine1, warlordKeywordsLine2, rangedWeapons, meleeWeapons,
       warlordMove, warlordHealth, warlordSave, warlordControl, warlordSnapshotsByFaction, destinyPointChoice, archetypeChoice, companionChoice, originFlawChoice, mountChoice, otherUpgradesChoice, battleMountUpgradesChoice, antiXChoiceByOption,
       armyName, heraldryImage, realmOfOrigin, customRealmName, faction, battleFormation, gloryPoints, gloryRounds,
@@ -3641,12 +3665,29 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
     warlordWarscroll, warlordRank, warlordRenown, warlordEnhancements,
     warlordPathLabel: (PATHS.find(p => p.key === warlordPath) || BATTLEPACK_PATHS.find(p => p.key === warlordPath))?.name || '',
     warlordPathAbility, oobUnits,
-    commander, armyRosterName, pointsLimit, armyRosterFaction, armyRosterFormation,
+    commander, armyRosterName,
+    // Ravaged Coast has no fixed limit — the roster's limit is what's on it.
+    pointsLimit: campaign === 'ravaged-coast' ? String(armyUnitsTotal) : pointsLimit,
+    // Fall back to the picks made earlier in the wizard until Prepare for
+    // Battle (or a hand edit) fills these in.
+    armyRosterFaction: armyRosterFaction || factions.find(f => f.faction_slug === effectiveFactionSlug)?.faction || '',
+    armyRosterFormation: armyRosterFormation || battleFormation,
     regiments, auxUnits, armyNotes, regimentsTotal, auxTotal, armyUnitsTotal,
   };
 
+  // The doc's page images; the Order of Battle gets an extra page for every
+  // 5 units past the first 5.
+  const docPageImages = doc => {
+    if (doc.key === 'warlord' && warlordDocVariant === 'full') return doc.imagesFull;
+    if (doc.key === 'oob') {
+      const pages = Math.max(1, Math.ceil(oobUnits.length / 5));
+      return Array.from({ length: pages }, () => doc.images[0]);
+    }
+    return doc.images;
+  };
+
   const renderImageView = doc => {
-    const images = (doc.key === 'warlord' && warlordDocVariant === 'full') ? doc.imagesFull : doc.images;
+    const images = docPageImages(doc);
     return (
       <div
         className={`ptg-doc-image-view ptg-doc-image-view-zoomable${doc.key === 'warlord' ? ' ab-roster-print-target' : ''}`}
@@ -3654,7 +3695,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
         title="Click to zoom"
       >
         {images.map((img, i) => (
-          <DocPage key={img.src} img={img} alt={doc.title} docKey={doc.key} pageIndex={i} data={officiantData} />
+          <DocPage key={`${img.src}-${i}`} img={img} alt={doc.title} docKey={doc.key} pageIndex={i} data={officiantData} />
         ))}
       </div>
     );
@@ -3668,13 +3709,13 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   const renderDocLightbox = () => {
     const doc = DOCS.find(d => d.key === activeDoc);
     if (!doc) return null;
-    const images = (doc.key === 'warlord' && warlordDocVariant === 'full') ? doc.imagesFull : doc.images;
+    const images = docPageImages(doc);
     return (
       <div className="ptg-doc-lightbox-backdrop" onClick={() => setDocLightboxOpen(false)}>
         <button className="gw-close ptg-doc-lightbox-close" onClick={() => setDocLightboxOpen(false)} title="Close (Esc)">✕</button>
         <div className="ptg-doc-lightbox-frame" onClick={e => e.stopPropagation()}>
           {images.map((img, i) => (
-            <DocPage key={img.src} img={img} alt={doc.title} docKey={doc.key} pageIndex={i} data={officiantData} />
+            <DocPage key={`${img.src}-${i}`} img={img} alt={doc.title} docKey={doc.key} pageIndex={i} data={officiantData} />
           ))}
         </div>
       </div>
@@ -3890,7 +3931,9 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                         <div className="ptg-army-header-grid">
                           <div className="ptg-field ptg-army-commander"><label>Commander</label><input type="text" value={commander} onChange={e => setCommander(e.target.value)} /></div>
                           <div className="ptg-field ptg-army-name"><label>Army Name</label><input type="text" value={armyRosterName} onChange={e => setArmyRosterName(e.target.value)} /></div>
-                          <div className="ptg-field ptg-army-points-limit"><label>Points Limit</label><input type="text" value={pointsLimit} onChange={e => setPointsLimit(e.target.value)} /></div>
+                          <div className="ptg-field ptg-army-points-limit"><label>Points Limit</label>{campaign === 'ravaged-coast'
+                            ? <input type="text" value={armyUnitsTotal} readOnly title="Ravaged Coast: the total of the units on your roster" />
+                            : <input type="text" value={pointsLimit} onChange={e => setPointsLimit(e.target.value)} />}</div>
                           <div className="ptg-field ptg-army-faction"><label>Faction</label><input type="text" value={armyRosterFaction} onChange={e => setArmyRosterFaction(e.target.value)} /></div>
                           <div className="ptg-field ptg-army-formation"><label>Battle Formation</label><input type="text" value={armyRosterFormation} onChange={e => setArmyRosterFormation(e.target.value)} /></div>
                         </div>
@@ -4160,6 +4203,33 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                   }))}
                 </div>
               ) : step === 2 ? (
+                <div className="ptg-formation-step">
+                  <p className="ptg-apotheosis-intro">Pick up to 1 battle formation for your army. It goes on your Path to Glory Roster and Army Roster.</p>
+                  {formationsLoading ? (
+                    <div className="ptg-wizard-body-placeholder">Loading…</div>
+                  ) : !(factionRules.formations || []).length ? (
+                    <div className="ptg-wizard-body-placeholder">{selectedFaction ? 'No battle formations found for this faction.' : 'Pick a faction first.'}</div>
+                  ) : (
+                    <div className="ptg-apotheosis-options-grid">
+                      {factionRules.formations.map(fm => (
+                        <button
+                          key={fm.id || fm.formation_name}
+                          type="button"
+                          className={`ptg-apotheosis-option-btn${battleFormation === fm.formation_name ? ' ptg-apotheosis-option-selected' : ''}`}
+                          onClick={() => {
+                            const next = battleFormation === fm.formation_name ? '' : fm.formation_name;
+                            setBattleFormation(next);
+                            setArmyRosterFormation(next);
+                          }}
+                        >
+                          <div className="ptg-formation-step-name">{fm.formation_name}</div>
+                          <AbilityCard ab={{ ...fm, bullets: parseFormationBullets(fm.bullets) }} keywords={[]} />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : step === 3 ? (
                 <div className="ptg-step-warlord ptg-step-warlord-split">
                   <div className="ptg-step-warlord-left">
                     {warlordSteps ? (
@@ -4225,7 +4295,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                     {renderWarlordForm()}
                   </div>
                 </div>
-              ) : step === 3 ? (
+              ) : step === 4 ? (
                 <div className="ptg-path-step">
                   {bp ? (
                     <>
@@ -4325,7 +4395,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                     );
                   })()}
                 </div>
-              ) : step === 4 ? (
+              ) : step === 5 ? (
                 <div className="ptg-units-step">
                   <div className="ptg-units-step-header">
                     <span>Starting units for {factions.find(f => f.faction_slug === selectedFaction)?.faction || 'this faction'}</span>
@@ -4409,7 +4479,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                     )}
                   </div>
                 </div>
-              ) : step === 5 ? (
+              ) : step === 6 ? (
                 <div className="ptg-enhancements-step">
                   {campaign === 'ravaged-coast' && (
                     <div className="ptg-wizard-body-placeholder">Ravaged Coast armies start with no enhancements — these are bought with emberstone shards (3 each) in the aftermath sequence. Pick one here to note what you’re saving for.</div>
@@ -4421,7 +4491,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                   <div className="ptg-path-section-divider" />
                   {renderEnhancementTable('Artefacts of Power', artefactOptions, artefactChoice, artefactAssignee, pickArtefact, reassignArtefact)}
                 </div>
-              ) : step === 6 ? (
+              ) : step === 7 ? (
                 <div className="ptg-lores-step">
                   {bp && <ul className="ptg-bp-list">{(BATTLEPACK_RULES[bp.key]?.roster || []).filter(t => /spell|lore/i.test(t)).map((t, i) => <li key={i}>{t}</li>)}</ul>}
                   {renderLoreColumn('Spell Lore', [...(factionRules.spell_lore || []), ...(bp?.spell_lore || [])], spellLore, setSpellLore)}
@@ -4430,7 +4500,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                   <div className="ptg-path-section-divider" />
                   {renderLoreColumn('Manifestation Lore', factionRules.manifestation_lore, manifestationLore, setManifestationLore)}
                 </div>
-              ) : step === 7 && campaign === 'ravaged-coast' ? (
+              ) : step === 8 && campaign === 'ravaged-coast' ? (
                 <div className="ptg-quest-step">
                   <div className="ptg-wizard-body-placeholder">Ravaged Coast has no quests — your army grows by gathering emberstone shards and spending them in the aftermath sequence.</div>
                   <div className="ptg-quest-log-grid">
@@ -4439,7 +4509,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                   </div>
                   {renderBattlepackRules(['aftermath', 'battle'])}
                 </div>
-              ) : step === 7 && campaign === 'blighted-wilds' ? (
+              ) : step === 8 && campaign === 'blighted-wilds' ? (
                 <div className="ptg-quest-step">
                   <div className="ptg-wizard-body-placeholder">Blighted Wilds has no quests — each battleplan has its own reward instead (below). Track glory points and your general’s renown here.</div>
                   <div className="ptg-quest-log-grid">
@@ -4448,7 +4518,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                   </div>
                   {renderBattlepackRules(['aftermath', 'battle'])}
                 </div>
-              ) : step === 7 ? (
+              ) : step === 8 ? (
                 <div className="ptg-quest-step">
                   <div className="ptg-apotheosis-group-title">Quest</div>
                   <div className="ptg-apotheosis-options-grid">
@@ -4473,7 +4543,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                     <div className="ptg-field"><label>Quests Completed</label><input type="text" value={questsCompleted} onChange={e => setQuestsCompleted(e.target.value)} /></div>
                   </div>
                 </div>
-              ) : step === 8 ? (
+              ) : step === 9 ? (
                 <div className="ptg-regiments-step">
                   <div className="ptg-units-step-header">
                     <span>Regiments</span>
@@ -4545,7 +4615,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                     </div>
                   ))}
                 </div>
-              ) : step === 9 ? (
+              ) : step === 10 ? (
                 <div className="ptg-paths-step">
                   <p className="ptg-apotheosis-intro">
                     Renown earns a unit its rank — Aspiring at 5, Elite at 15, Mighty at 30, Legendary
@@ -4592,7 +4662,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                     onPick: (pathObj, rank, oi) => pickOobUnitRankOption(row.id, pathObj, rank, oi),
                   }))}
                 </div>
-              ) : step === 10 ? (
+              ) : step === 11 ? (
                 <div className="ptg-prepare-step">
                   <div className="ptg-wizard-body-placeholder">
                     Fills in the Army Roster document's Faction, Battle Formation, Army Name, and every Regiment from your Warlord and Order of Battle picks so far — matched back against the faction's real warscrolls for size/points where possible. Safe to run again after adding more units; Auxiliary Units are left alone either way.
