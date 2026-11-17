@@ -1196,8 +1196,8 @@ function buildOobOverlayFields(d, pageIndex = 0) {
     const row1 = unitRow1Tops[i];
     const row2 = unitRow2Tops[i];
     // Unit row 2: Enhancements 21.8/27, Path Abilities 59.3/42.5, Reinforced? 87.5/8.5.
-    fields.push({ spec: fitFieldXY(21.8, row1, 27, 0.018), value: u.name });
-    fields.push({ spec: fitFieldXY(48.9, row1, 22, 0.018), value: u.warscroll });
+    fields.push({ spec: fitFieldXY(21.8, row1, 27, 0.018), value: u.name, unit: u.warscroll || u.name });
+    fields.push({ spec: fitFieldXY(48.9, row1, 22, 0.018), value: u.warscroll, unit: u.warscroll || u.name });
     fields.push({ spec: fitFieldXY(71.4, row1, 18.5, 0.018), value: u.rank });
     fields.push({ spec: fitFieldXY(87.5, row1, 8.5, 0.018), value: u.renown });
     pushWounds(row1, u.wounds);
@@ -1219,7 +1219,7 @@ function buildArmyOverlayFields(d, pageIndex) {
     // Size 49.8–56.1%, Notes 58.5–83.5%, Points 85.5–91.8% of the width; each
     // row's writing line is ~2.3% of the height, starting just above `top`.
     const y = top - 1.15; // `top` is the row's centre; boxes are 2.3% tall
-    fields.push({ spec: { left: 23.4, top: y, width: 24.2, height: 2.3, fontSize: 0.017, fit: true }, value: r.name });
+    fields.push({ spec: { left: 23.4, top: y, width: 24.2, height: 2.3, fontSize: 0.017, fit: true }, value: r.name, unit: r.name });
     fields.push({ spec: { ...centerField(52.95, y, 6.3, 0.017), height: 2.3, fit: true }, value: r.size });
     fields.push({ spec: { left: 59.4, top: y, width: 23.9, height: 2.3, fontSize: 0.016, fit: true }, value: r.notes });
     fields.push({ spec: { ...centerField(88.65, y, 6.3, 0.017), height: 2.3, fit: true }, value: r.points });
@@ -1286,7 +1286,10 @@ function buildOverlayFields(docKey, pageIndex, d) {
 // render*() functions) because it needs its own useContainImageBox hook —
 // hooks can't live in a function that's sometimes not called at all
 // (this whole page is skipped whenever presentMode is 'replica').
-export function DocPage({ img, alt, docKey, pageIndex, data }) {
+// onUnitHover / onUnitLeave / onUnitClick (share preview): fields tagged with
+// a `unit` (unit names on the Order of Battle and Army Roster) get an
+// invisible hotspot that reports the unit name.
+export function DocPage({ img, alt, docKey, pageIndex, data, onUnitHover, onUnitLeave, onUnitClick }) {
   const containerRef = useRef(null);
   const box = useContainImageBox(containerRef);
   // Editable fields stay even when empty (there'd otherwise be nothing to
@@ -1303,6 +1306,16 @@ export function DocPage({ img, alt, docKey, pageIndex, data }) {
             : f.type === 'abilities'
             ? <OverlayAbilitiesBlock key={i} box={box} spec={f.spec} groups={f.value} />
             : <OverlayField key={i} box={box} spec={f.spec}>{f.value}</OverlayField>
+        ))}
+        {(onUnitHover || onUnitClick) && box.width > 0 && fields.filter(f => f.unit).map((f, i) => (
+          <div
+            key={`hot-${i}`}
+            className="ptg-doc-unit-hotspot"
+            style={{ ...overlayFieldStyle(box, f.spec), ...(f.spec.height != null ? {} : { height: box.height * 0.022 }) }}
+            onMouseEnter={e => onUnitHover?.(f.unit, e)}
+            onMouseLeave={() => onUnitLeave?.(f.unit)}
+            onClick={() => onUnitClick?.(f.unit)}
+          />
         ))}
       </div>
     </div>
@@ -3168,24 +3181,6 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   // rather than the structured sub_abilities column Companions/Battle
   // Mounts use. Returns null for upgrades that are pure stat tweaks with no
   // bullet at all (e.g. "Formidable Bulk"), which is most of them.
-  const parseInlineAbilityBullet = b => {
-    // Split on the "Declare:"/"Effect:" keyword rather than on a dash. Only
-    // about 4 in 10 of these bullets actually carry the dash — the rest run
-    // straight from the name into "Effect:" ("[Passive] LOVES A GOOD FIGHT
-    // Effect: ...") — so a dash-anchored split returned null for the
-    // majority and the warscroll printed the option's own pointer text
-    // ("Add the following ability to your hero's warscroll:") with nothing
-    // after it. Anchoring on the keyword also stops a hyphenated ability
-    // name splitting itself in half ("BACKUP THRUSTER-ENDRINS").
-    const m = /^\[([^\]]+)\]\s*(.+?)\s*(?:[—–-]\s*)?(?=Declare:|Effect:)(.*)$/s.exec(b || '')
-      || /^\[([^\]]+)\]\s*(.+?)\s*[—–-]\s*(.+)$/s.exec(b || '');
-    if (!m) return null;
-    const [, timing, name, rest] = m;
-    const declMatch = /^Declare:\s*(.+?)\s*Effect:\s*(.+)$/s.exec(rest);
-    if (declMatch) return { name: name.trim(), timing: timing.trim(), declare: declMatch[1].trim(), effect: declMatch[2].trim() };
-    const effMatch = /^Effect:\s*(.+)$/s.exec(rest);
-    return { name: name.trim(), timing: timing.trim(), declare: '', effect: (effMatch ? effMatch[1] : rest).trim() };
-  };
 
   // Every rules-text ability the warlord has actually accumulated through
   // the wizard, grouped by where it came from — for printing into the
@@ -3194,80 +3189,11 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   // "Add 1 to Health") aren't included since they're already reflected on
   // the stat wheel/weapon tables directly, not a separate rules text block
   // a real warscroll would print.
-  const warlordAbilityGroups = React.useMemo(() => {
-    const groups = [];
-    const push = (header, abilities) => { if (abilities.length) groups.push({ header, abilities }); };
-
-    const companionStepData = apotheosisSteps.find(s => /choose a companion/i.test(s.step_title || ''));
-    const originFlawStepData = apotheosisSteps.find(s => /origin.*flaw/i.test(s.step_title || ''));
-    const mountStepData = apotheosisSteps.find(s => /^(?:choose|pick) a battle mount$/i.test(s.step_title || ''));
-    const mountUpgradesStepData = apotheosisSteps.find(s => /^(?:pick any |battle any )?battle mount upgrades$/i.test(s.step_title || ''));
-    const otherUpgradesStepData = apotheosisSteps.find(s => /pick any other upgrades/i.test(s.step_title || ''));
-
-    const subAbilitiesOf = opt => {
-      if (!opt) return [];
-      const subs = Array.isArray(opt.sub_abilities) ? opt.sub_abilities : JSON.parse(opt.sub_abilities || '[]');
-      return subs.map(s => ({ name: s.name, timing: s.timing, declare: s.declare, effect: s.effect, phase_key: s.phase_key }));
-    };
-
-    if (companionChoice >= 0) push('Companion', subAbilitiesOf(companionStepData?.options?.[companionChoice]));
-
-    if (originFlawStepData) {
-      const byGroup = {};
-      for (const o of originFlawStepData.options) { (byGroup[o.option_group] ??= []).push(o); }
-      const origin = originFlawChoice?.Origins != null ? byGroup.Origins?.[originFlawChoice.Origins] : null;
-      const flaw = originFlawChoice?.Flaws != null ? byGroup.Flaws?.[originFlawChoice.Flaws] : null;
-      if (origin) push('Origin', [{ name: origin.name, timing: origin.timing, declare: origin.declare, effect: origin.effect, phase_key: origin.phase_key }]);
-      if (flaw) push('Flaw', [{ name: flaw.name, timing: flaw.timing, declare: flaw.declare, effect: flaw.effect, phase_key: flaw.phase_key }]);
-    }
-
-    if (mountChoice >= 0) push('Battle Mount', subAbilitiesOf(mountStepData?.options?.[mountChoice]));
-
-    // Every picked upgrade prints — the ones with a real embedded ability
-    // (e.g. "Mighty Biovoltaic Blast") print THAT; a pure stat tweak (e.g.
-    // "Tactical Acumen", "Focused Hunter") prints its own name/effect
-    // directly instead (defaulting to a Passive banner, since mechanically
-    // that's what an always-on stat change is) rather than being skipped —
-    // the wheel/weapon tables already reflect the stat change itself, but
-    // the player still wants to see WHAT was picked and WHY on the sheet.
-    const upgradeAbilities = opt => {
-      const bullets = Array.isArray(opt?.bullets) ? opt.bullets : JSON.parse(opt?.bullets || '[]');
-      const embedded = bullets.map(parseInlineAbilityBullet).filter(Boolean);
-      if (embedded.length) return embedded;
-      if (!opt) return [];
-      return [{ name: opt.name, timing: opt.timing || 'Passive', declare: opt.declare, effect: opt.effect, phase_key: opt.phase_key }];
-    };
-    if (mountUpgradesStepData) {
-      push('Battle Mount Upgrades', battleMountUpgradesChoice.flatMap(i => upgradeAbilities(mountUpgradesStepData.options[i])));
-    }
-    if (otherUpgradesStepData) {
-      push('Other Upgrades', otherUpgradesChoice.flatMap(i => upgradeAbilities(otherUpgradesStepData.options[i])));
-    }
-
-    const enhancements = [];
-    // Only enhancements actually on the Warlord print on the Warlord sheet.
-    const enhancementCard = o => {
-      const choice = enhancementChoiceOf(o);
-      return { name: o.name, timing: o.timing, declare: o.declare, effect: choice ? `${o.effect} ${choice}.` : o.effect, phase_key: o.phase_key };
-    };
-    if (heroicTraitChoice != null && heroicTraitOptions[heroicTraitChoice] && heroicTraitAssignee === 'warlord') {
-      enhancements.push(enhancementCard(heroicTraitOptions[heroicTraitChoice]));
-    }
-    if (artefactChoice != null && artefactOptions[artefactChoice] && artefactAssignee === 'warlord') {
-      enhancements.push(enhancementCard(artefactOptions[artefactChoice]));
-    }
-    push('Enhancements', enhancements);
-
-    const selectedPathObj = PATHS.find(p => p.key === warlordPath) || BATTLEPACK_PATHS.find(p => p.key === warlordPath) || (FACTION_PATHS[selectedFaction] ?? []).find(p => p.key === warlordPath);
-    if (selectedPathObj?.ranks) {
-      const pathAbilities = selectedPathObj.ranks
-        .map(r => (warlordPathRankChoices[r.rank] != null ? { ...r.options[warlordPathRankChoices[r.rank]], name: `${r.rank}: ${r.options[warlordPathRankChoices[r.rank]].name}` } : null))
-        .filter(Boolean);
-      push(selectedPathObj.name, pathAbilities);
-    }
-
-    return groups;
-  }, [apotheosisSteps, companionChoice, originFlawChoice, mountChoice, battleMountUpgradesChoice, otherUpgradesChoice, heroicTraitChoice, artefactChoice, factionRules, warlordPath, warlordPathRankChoices, selectedFaction]);
+  const warlordAbilityGroups = React.useMemo(() => computeWarlordAbilityGroups({
+    apotheosisSteps, companionChoice, originFlawChoice, mountChoice, battleMountUpgradesChoice, otherUpgradesChoice,
+    heroicTraitOptions, artefactOptions, heroicTraitChoice, artefactChoice, heroicTraitAssignee, artefactAssignee,
+    enhancementSubChoice, warlordPath, warlordPathRankChoices, selectedFaction,
+  }), [apotheosisSteps, companionChoice, originFlawChoice, mountChoice, battleMountUpgradesChoice, otherUpgradesChoice, heroicTraitChoice, artefactChoice, heroicTraitAssignee, artefactAssignee, enhancementSubChoice, factionRules, warlordPath, warlordPathRankChoices, selectedFaction]);
 
   // "Anti-X (+1 Rend)"/"Charge (+1 Damage)" Other/Battle Mount Upgrade
   // options grant their bonus to a specific weapon (or weapon group) named
@@ -4960,7 +4886,125 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
 // without the wizard (and without an account). Deliberately omits every
 // set*/update* key: with no setters the overlay fields all render read-only,
 // which is exactly what a preview should be.
-export function buildPreviewDocData(state = {}, factions = [], apotheosisSteps = []) {
+// Extracts a structured ability from an upgrade option's embedded
+// "[Timing] NAME — Declare: ... Effect: ..." bullet (module scope: used by
+// computeWarlordAbilityGroups for the wizard and the share preview).
+function parseInlineAbilityBullet(b) {
+  // Split on the "Declare:"/"Effect:" keyword rather than on a dash. Only
+  // about 4 in 10 of these bullets actually carry the dash — the rest run
+  // straight from the name into "Effect:" ("[Passive] LOVES A GOOD FIGHT
+  // Effect: ...") — so a dash-anchored split returned null for the
+  // majority and the warscroll printed the option's own pointer text
+  // ("Add the following ability to your hero's warscroll:") with nothing
+  // after it. Anchoring on the keyword also stops a hyphenated ability
+  // name splitting itself in half ("BACKUP THRUSTER-ENDRINS").
+  const m = /^\[([^\]]+)\]\s*(.+?)\s*(?:[—–-]\s*)?(?=Declare:|Effect:)(.*)$/s.exec(b || '')
+    || /^\[([^\]]+)\]\s*(.+?)\s*[—–-]\s*(.+)$/s.exec(b || '');
+  if (!m) return null;
+  const [, timing, name, rest] = m;
+  const declMatch = /^Declare:\s*(.+?)\s*Effect:\s*(.+)$/s.exec(rest);
+  if (declMatch) return { name: name.trim(), timing: timing.trim(), declare: declMatch[1].trim(), effect: declMatch[2].trim() };
+  const effMatch = /^Effect:\s*(.+)$/s.exec(rest);
+  return { name: name.trim(), timing: timing.trim(), declare: '', effect: (effMatch ? effMatch[1] : rest).trim() };
+}
+
+// The Warlord sheet's ability blocks (Companion, Origin/Flaw, Battle Mount,
+// upgrades, Enhancements on the Warlord, the Path's picked ranks). Module
+// scope so the wizard and the share preview draw the same list.
+export function enhancementChoicesFor(opt) {
+  if (!opt || !/pick (?:1|one) of the following/i.test(opt.effect || '')) return null;
+  const bullets = Array.isArray(opt.bullets) ? opt.bullets : (() => { try { return JSON.parse(opt.bullets || '[]'); } catch { return []; } })();
+  const list = bullets.map(b => (typeof b === 'string' ? b : b?.text || b?.name || '')).map(t => t.trim()).filter(Boolean);
+  return list.length ? list : null;
+}
+export function enhancementChoiceFor(opt, enhancementSubChoice = {}) {
+  const list = enhancementChoicesFor(opt);
+  if (!list) return null;
+  const c = enhancementSubChoice[opt.name];
+  return list.includes(c) ? c : list[0];
+}
+export function computeWarlordAbilityGroups({
+  apotheosisSteps = [], companionChoice = -1, originFlawChoice = {}, mountChoice = -1,
+  battleMountUpgradesChoice = [], otherUpgradesChoice = [],
+  heroicTraitOptions = [], artefactOptions = [], heroicTraitChoice = null, artefactChoice = null,
+  heroicTraitAssignee = 'warlord', artefactAssignee = 'warlord', enhancementSubChoice = {},
+  warlordPath = '', warlordPathRankChoices = {}, selectedFaction = '',
+}) {
+  const groups = [];
+  const push = (header, abilities) => { if (abilities.length) groups.push({ header, abilities }); };
+
+  const companionStepData = apotheosisSteps.find(s => /choose a companion/i.test(s.step_title || ''));
+  const originFlawStepData = apotheosisSteps.find(s => /origin.*flaw/i.test(s.step_title || ''));
+  const mountStepData = apotheosisSteps.find(s => /^(?:choose|pick) a battle mount$/i.test(s.step_title || ''));
+  const mountUpgradesStepData = apotheosisSteps.find(s => /^(?:pick any |battle any )?battle mount upgrades$/i.test(s.step_title || ''));
+  const otherUpgradesStepData = apotheosisSteps.find(s => /pick any other upgrades/i.test(s.step_title || ''));
+
+  const subAbilitiesOf = opt => {
+    if (!opt) return [];
+    const subs = Array.isArray(opt.sub_abilities) ? opt.sub_abilities : JSON.parse(opt.sub_abilities || '[]');
+    return subs.map(s => ({ name: s.name, timing: s.timing, declare: s.declare, effect: s.effect, phase_key: s.phase_key }));
+  };
+
+  if (companionChoice >= 0) push('Companion', subAbilitiesOf(companionStepData?.options?.[companionChoice]));
+
+  if (originFlawStepData) {
+    const byGroup = {};
+    for (const o of originFlawStepData.options) { (byGroup[o.option_group] ??= []).push(o); }
+    const origin = originFlawChoice?.Origins != null ? byGroup.Origins?.[originFlawChoice.Origins] : null;
+    const flaw = originFlawChoice?.Flaws != null ? byGroup.Flaws?.[originFlawChoice.Flaws] : null;
+    if (origin) push('Origin', [{ name: origin.name, timing: origin.timing, declare: origin.declare, effect: origin.effect, phase_key: origin.phase_key }]);
+    if (flaw) push('Flaw', [{ name: flaw.name, timing: flaw.timing, declare: flaw.declare, effect: flaw.effect, phase_key: flaw.phase_key }]);
+  }
+
+  if (mountChoice >= 0) push('Battle Mount', subAbilitiesOf(mountStepData?.options?.[mountChoice]));
+
+  // Every picked upgrade prints — the ones with a real embedded ability
+  // (e.g. "Mighty Biovoltaic Blast") print THAT; a pure stat tweak (e.g.
+  // "Tactical Acumen", "Focused Hunter") prints its own name/effect
+  // directly instead (defaulting to a Passive banner, since mechanically
+  // that's what an always-on stat change is) rather than being skipped —
+  // the wheel/weapon tables already reflect the stat change itself, but
+  // the player still wants to see WHAT was picked and WHY on the sheet.
+  const upgradeAbilities = opt => {
+    const bullets = Array.isArray(opt?.bullets) ? opt.bullets : JSON.parse(opt?.bullets || '[]');
+    const embedded = bullets.map(parseInlineAbilityBullet).filter(Boolean);
+    if (embedded.length) return embedded;
+    if (!opt) return [];
+    return [{ name: opt.name, timing: opt.timing || 'Passive', declare: opt.declare, effect: opt.effect, phase_key: opt.phase_key }];
+  };
+  if (mountUpgradesStepData) {
+    push('Battle Mount Upgrades', battleMountUpgradesChoice.flatMap(i => upgradeAbilities(mountUpgradesStepData.options[i])));
+  }
+  if (otherUpgradesStepData) {
+    push('Other Upgrades', otherUpgradesChoice.flatMap(i => upgradeAbilities(otherUpgradesStepData.options[i])));
+  }
+
+  const enhancements = [];
+  // Only enhancements actually on the Warlord print on the Warlord sheet.
+  const enhancementCard = o => {
+    const choice = enhancementChoiceFor(o, enhancementSubChoice);
+    return { name: o.name, timing: o.timing, declare: o.declare, effect: choice ? `${o.effect} ${choice}.` : o.effect, phase_key: o.phase_key };
+  };
+  if (heroicTraitChoice != null && heroicTraitOptions[heroicTraitChoice] && heroicTraitAssignee === 'warlord') {
+    enhancements.push(enhancementCard(heroicTraitOptions[heroicTraitChoice]));
+  }
+  if (artefactChoice != null && artefactOptions[artefactChoice] && artefactAssignee === 'warlord') {
+    enhancements.push(enhancementCard(artefactOptions[artefactChoice]));
+  }
+  push('Enhancements', enhancements);
+
+  const selectedPathObj = PATHS.find(p => p.key === warlordPath) || BATTLEPACK_PATHS.find(p => p.key === warlordPath) || (FACTION_PATHS[selectedFaction] ?? []).find(p => p.key === warlordPath);
+  if (selectedPathObj?.ranks) {
+    const pathAbilities = selectedPathObj.ranks
+      .map(r => (warlordPathRankChoices[r.rank] != null ? { ...r.options[warlordPathRankChoices[r.rank]], name: `${r.rank}: ${r.options[warlordPathRankChoices[r.rank]].name}` } : null))
+      .filter(Boolean);
+    push(selectedPathObj.name, pathAbilities);
+  }
+
+  return groups;
+}
+
+export function buildPreviewDocData(state = {}, factions = [], apotheosisSteps = [], factionRules = {}) {
   const g = (k, dflt = '') => (state[k] ?? dflt);
   const modSources = apotheosisModsFrom(apotheosisSteps, {
     archetypeChoice: g('archetypeChoice', -1),
@@ -4987,6 +5031,20 @@ export function buildPreviewDocData(state = {}, factions = [], apotheosisSteps =
   const factionSlug = g('faction') || g('selectedFaction') || '';
   const allPaths = [...PATHS, ...BATTLEPACK_PATHS, ...(FACTION_PATHS[factionSlug] ?? [])];
   const warlordPath = g('warlordPath');
+  const campaign = g('campaign');
+  const factionName = factions.find(f => f.faction_slug === factionSlug)?.faction || '';
+  // Same ability list the wizard's Warlord sheet draws (it isn't stored).
+  const warlordAbilityGroups = computeWarlordAbilityGroups({
+    apotheosisSteps,
+    companionChoice: g('companionChoice', -1), originFlawChoice: g('originFlawChoice', {}), mountChoice: g('mountChoice', -1),
+    battleMountUpgradesChoice: g('battleMountUpgradesChoice', []), otherUpgradesChoice: g('otherUpgradesChoice', []),
+    heroicTraitOptions: [...(factionRules.heroic_traits || []), ...(BATTLEPACKS[campaign]?.heroic_traits || [])],
+    artefactOptions: [...(factionRules.artefacts || []), ...(BATTLEPACKS[campaign]?.artefacts || [])],
+    heroicTraitChoice: g('heroicTraitChoice', null), artefactChoice: g('artefactChoice', null),
+    heroicTraitAssignee: g('heroicTraitAssignee', 'warlord'), artefactAssignee: g('artefactAssignee', 'warlord'),
+    enhancementSubChoice: g('enhancementSubChoice', {}),
+    warlordPath, warlordPathRankChoices: g('warlordPathRankChoices', {}), selectedFaction: factionSlug,
+  });
 
   return {
     warlordName: g('warlordName'),
@@ -4995,22 +5053,25 @@ export function buildPreviewDocData(state = {}, factions = [], apotheosisSteps =
     warlordKeywordsLine1: keywordsLine1,
     warlordWard: wardFromKeywords(keywordsLine1),
     warlordKeywordsLine2: g('warlordKeywordsLine2'),
-    warlordAbilityGroups: g('warlordAbilityGroups', []),
+    warlordAbilityGroups,
     warlordDocVariant: (ranged.length > 2 || melee.length > 2) ? 'full' : 'minimal',
     armyName: g('armyName'), realmOfOrigin: g('realmOfOrigin'), customRealmName: g('customRealmName'),
     realmLabel: REALMS.find(r => r.key === g('realmOfOrigin'))?.name || '',
     gloryPoints: g('gloryPoints'), battleFormation: g('battleFormation'),
-    factionLabel: factions.find(f => f.faction_slug === factionSlug)?.faction || '',
+    factionLabel: factionName,
     currentQuest: g('currentQuest'), questPoints: g('questPoints'), questNotes: g('questNotes'),
     questsCompleted: g('questsCompleted'), background: g('background'), notableEvents: g('notableEvents'),
     spellLore: g('spellLore'), prayerLore: g('prayerLore'), manifestationLore: g('manifestationLore'),
     warlordWarscroll: g('warlordWarscroll'), warlordRank: g('warlordRank'), warlordRenown: g('warlordRenown'),
     warlordEnhancements: g('warlordEnhancements'),
-    warlordPathLabel: (PATHS.find(x => x.key === warlordPath) || BATTLEPACK_PATHS.find(x => x.key === warlordPath))?.name || '',
-    warlordPathAbility: g('warlordPathAbility'),
+    warlordPathLabel: allPaths.find(x => x.key === warlordPath)?.name || '',
+    warlordPathAbility: g('warlordPathAbility'), warlordWounds: g('warlordWounds', 0),
     oobUnits: g('oobUnits', []).map(u => ({ ...u, rank: pathRankLabel(u, allPaths) })),
-    commander: g('commander'), armyRosterName: g('armyRosterName'), pointsLimit: g('pointsLimit'),
-    armyRosterFaction: g('armyRosterFaction'), armyRosterFormation: g('armyRosterFormation'),
+    commander: g('commander'), armyRosterName: g('armyRosterName'),
+    // As in the wizard: Ravaged Coast's limit is the roster's own total, and
+    // Faction / Battle Formation fall back to the wizard's picks.
+    pointsLimit: campaign === 'ravaged-coast' ? String(regimentsTotal + auxTotal) : g('pointsLimit'),
+    armyRosterFaction: g('armyRosterFaction') || factionName, armyRosterFormation: g('armyRosterFormation') || g('battleFormation'),
     regiments, auxUnits, armyNotes: g('armyNotes'),
     regimentsTotal, auxTotal, armyUnitsTotal: regimentsTotal + auxTotal,
   };

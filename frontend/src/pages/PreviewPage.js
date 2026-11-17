@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { DOCS, DocPage, buildPreviewDocData } from '../components/PathToGloryWizard';
@@ -13,9 +13,13 @@ import { looseKey } from '../importList';
 // page works signed out but still can't reach anything the token doesn't
 // cover.
 //
-// Order of Battle leads because it's the sheet that actually lists the army;
-// the other sheets are a click away along the top.
+// Every sheet is shown, one after another in a scrolling column (Order of
+// Battle first, since it lists the army; it gets a page per 5 units), with a
+// Print button that prints just the sheets. Hovering a unit name — on the
+// Order of Battle, the Army Roster or the chips below — peeks its warscroll
+// beside the pointer; a click opens it properly with the army's dot strip.
 const PREVIEW_DOC_ORDER = ['oob', 'warlord', 'roster', 'army'];
+const PEEK_DELAY = 250;
 
 // The share token has to reach every request this page causes, including the
 // ones fired by components it renders (WarscrollGW fetches its own faction
@@ -39,8 +43,10 @@ export default function PreviewPage() {
   const [factions, setFactions] = useState([]);
   const [apotheosisSteps, setApotheosisSteps] = useState([]);
   const [warscrolls, setWarscrolls] = useState([]);
-  const [activeDoc, setActiveDoc] = useState('oob');
+  const [factionRules, setFactionRules] = useState({});
   const [openUnit, setOpenUnit] = useState(null);
+  const [peek, setPeek] = useState(null); // { unit, side: 'left' | 'right' }
+  const peekTimer = useRef(null);
   const [error, setError] = useState('');
 
   // Synchronous, before the first fetch below or in any child.
@@ -55,13 +61,14 @@ export default function PreviewPage() {
         if (cancelled) return;
         setShare(data);
         const slug = data.faction_slug || data.data?.faction || data.data?.selectedFaction || '';
-        const [f, a, w] = await Promise.all([
+        const [f, a, w, fr] = await Promise.all([
           axios.get('/api/factions').then(r => r.data).catch(() => []),
           slug ? axios.get(`/api/apotheosis/${slug}`).then(r => r.data.steps || []).catch(() => []) : [],
           axios.get(`/api/preview/${token}/warscrolls`).then(r => r.data.data || []).catch(() => []),
+          slug ? axios.get(`/api/faction-rules/${slug}`).then(r => r.data || {}).catch(() => ({})) : {},
         ]);
         if (cancelled) return;
-        setFactions(f); setApotheosisSteps(a); setWarscrolls(w);
+        setFactions(f); setApotheosisSteps(a); setWarscrolls(w); setFactionRules(fr);
       } catch (err) {
         if (!cancelled) setError(err.response?.data?.error || 'This preview link could not be opened.');
       }
@@ -70,8 +77,8 @@ export default function PreviewPage() {
   }, [token]);
 
   const docData = useMemo(
-    () => (share ? buildPreviewDocData(share.data, factions, apotheosisSteps) : null),
-    [share, factions, apotheosisSteps],
+    () => (share ? buildPreviewDocData(share.data, factions, apotheosisSteps, factionRules) : null),
+    [share, factions, apotheosisSteps, factionRules],
   );
 
   // Every unit named anywhere on the sheets, mapped to its warscroll, so a
@@ -121,34 +128,40 @@ export default function PreviewPage() {
   }
 
   const navIndex = openUnit ? namedUnits.findIndex(u => u.id === openUnit.id) : -1;
-  const doc = DOCS.find(d => d.key === activeDoc) || DOCS[0];
-  const images = (doc.key === 'warlord' && docData.warlordDocVariant === 'full') ? doc.imagesFull : doc.images;
+
+  // Every sheet's pages, in order; the Order of Battle repeats per 5 units.
+  const pages = PREVIEW_DOC_ORDER.flatMap(key => {
+    const d = DOCS.find(x => x.key === key);
+    if (!d) return [];
+    let imgs = (key === 'warlord' && docData.warlordDocVariant === 'full') ? d.imagesFull : d.images;
+    if (key === 'oob') imgs = Array.from({ length: Math.max(1, Math.ceil((docData.oobUnits || []).length / 5)) }, () => d.images[0]);
+    return imgs.map((img, i) => ({ doc: d, img, i }));
+  });
+
+  const unitFor = name => (name ? unitsByName.get(looseKey(name)) : null);
+  const startPeek = (unit, e) => {
+    if (!unit || openUnit) return;
+    clearTimeout(peekTimer.current);
+    const side = e && e.clientX > window.innerWidth / 2 ? 'left' : 'right';
+    peekTimer.current = setTimeout(() => setPeek({ unit, side }), PEEK_DELAY);
+  };
+  const endPeek = () => { clearTimeout(peekTimer.current); setPeek(null); };
+  const openFull = unit => { if (!unit) return; endPeek(); setOpenUnit(unit); };
 
   return (
     <div className="preview-page">
-      <PreviewHeader subtitle={share.name} />
-
-      <div className="preview-doc-strip">
-        {PREVIEW_DOC_ORDER.map(key => {
-          const d = DOCS.find(x => x.key === key);
-          if (!d) return null;
-          return (
-            <button
-              key={key}
-              type="button"
-              className={`preview-doc-thumb${key === activeDoc ? ' preview-doc-thumb-active' : ''}`}
-              onClick={() => setActiveDoc(key)}
-            >
-              <span className="preview-doc-thumb-label">{d.title}</span>
-              <img src={d.thumb} alt={d.title} />
-            </button>
-          );
-        })}
-      </div>
+      <PreviewHeader subtitle={share.name} onPrint={() => { endPeek(); window.print(); }} />
 
       <div className="preview-doc-view">
-        {images.map((img, i) => (
-          <DocPage key={img.src} img={img} alt={doc.title} docKey={doc.key} pageIndex={i} data={docData} />
+        {pages.map(({ doc: d, img, i }) => (
+          <div className="preview-doc-sheet" key={`${d.key}-${i}`}>
+            <DocPage
+              img={img} alt={d.title} docKey={d.key} pageIndex={i} data={docData}
+              onUnitHover={(name, e) => startPeek(unitFor(name), e)}
+              onUnitLeave={endPeek}
+              onUnitClick={name => openFull(unitFor(name))}
+            />
+          </div>
         ))}
       </div>
 
@@ -157,11 +170,17 @@ export default function PreviewPage() {
           <div className="preview-units-title">Warscrolls in this army</div>
           <div className="preview-units-row">
             {namedUnits.map(u => (
-              <button key={u.id} type="button" className="preview-unit-chip" onClick={() => setOpenUnit(u)}>
+              <button key={u.id} type="button" className="preview-unit-chip" onClick={() => openFull(u)} onMouseEnter={e => startPeek(u, e)} onMouseLeave={endPeek}>
                 {u.name}
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {peek && !openUnit && (
+        <div className={`preview-peek preview-peek-${peek.side}`} aria-hidden="true">
+          <WarscrollGW unit={peek.unit} factions={factions} onClose={endPeek} />
         </div>
       )}
 
@@ -191,16 +210,14 @@ export default function PreviewPage() {
   );
 }
 
-function PreviewHeader({ subtitle }) {
+function PreviewHeader({ subtitle, onPrint }) {
   return (
     <div className="preview-header">
-      <div className="preview-brand">
-        <span className="preview-brand-mark" aria-hidden="true">◈</span>
-        <span className="preview-brand-text">
-          AoS Warscrolls <span className="preview-brand-tag">Preview</span>
-        </span>
-      </div>
+      <span className="navbar-brand preview-brand">
+        ⚔ <span>AoS</span> Warscrolls <span className="preview-brand-tag">Preview</span>
+      </span>
       {subtitle && <div className="preview-subtitle">{subtitle}</div>}
+      {onPrint && <button type="button" className="preview-print-btn" onClick={onPrint}>🖨 Print</button>}
       <a className="preview-fullsite" href="https://aoswarscrolls.com" target="_blank" rel="noreferrer">
         Go to full site — AOSWarscrolls.com
       </a>

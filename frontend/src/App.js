@@ -158,7 +158,8 @@ function Navbar({ headerCollapsed, onToggleCollapse }) {
   const settingsWrapRef = useRef(null);
   const mobileSettingsWrapRef = useRef(null);
   const isWarscrolls = location.pathname === '/warscrolls' || location.pathname === '/simulacrum' || location.pathname === '/spearhead' || location.pathname === '/path-to-glory' || location.pathname === '/army-builder';
-  if (!user) return null;
+  // Share previews have their own one-line header (logo + "Preview").
+  if (!user || location.pathname.startsWith('/preview/')) return null;
   return (
     <>
       <nav className="navbar">
