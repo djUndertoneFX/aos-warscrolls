@@ -2103,6 +2103,25 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   const removeRegimentUnit = (rid, uid) => setRegiments(rs => rs.map(r => r.id === rid
     ? { ...r, units: r.units.filter(u => u.id !== uid) }
     : r));
+  // The Warlord's points: the "Battle Profile Points Cost" of the Destiny
+  // Point tier picked in Train your Warlord (Anvil of Apotheosis step 1);
+  // for a faction without an Anvil, the points of the warscroll the Warlord
+  // was built from. '' when unknown.
+  const warlordPoints = React.useMemo(() => {
+    const dpStep = apotheosisSteps.find(st => /destiny point limit/i.test(st.step_title || ''));
+    const m = /BATTLE PROFILE POINTS COST:\s*(\d+)/i.exec(dpStep?.options?.[destinyPointChoice]?.effect || '');
+    if (m) return m[1];
+    const ws = (warlordWarscroll || '').trim().toLowerCase();
+    const match = ws && startingUnitPool.find(fu => (fu.name || '').toLowerCase() === ws);
+    return match?.points ? String(match.points) : '';
+  }, [apotheosisSteps, destinyPointChoice, warlordWarscroll, startingUnitPool]);
+  // Keep the Warlord's row in the regiments priced as the tier changes.
+  useEffect(() => {
+    if (!warlordPoints) return;
+    setRegiments(rs => (rs.some(r => r.units.some(u => u.sourceUnitId === 'warlord' && String(u.points) !== warlordPoints))
+      ? rs.map(r => ({ ...r, units: r.units.map(u => (u.sourceUnitId === 'warlord' ? { ...u, points: warlordPoints } : u)) }))
+      : rs));
+  }, [warlordPoints, regiments]);
   const regimentsTotal = regiments.reduce((sum, r) => sum + r.units.reduce((s, u) => s + (parseInt(u.points, 10) || 0), 0), 0);
   const auxTotal = auxUnits.reduce((sum, u) => sum + (parseInt(u.points, 10) || 0), 0);
   const armyUnitsTotal = regimentsTotal + auxTotal;
@@ -2146,7 +2165,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
       name: warlordName,
       size: '1',
       notes: [warlordEnhancements, (PATHS.find(p => p.key === warlordPath) || BATTLEPACK_PATHS.find(p => p.key === warlordPath))?.name].filter(Boolean).join('; '),
-      points: '',
+      points: warlordPoints,
     } : null;
 
     let current = { id: uid('r'), units: warlordUnit ? [warlordUnit] : [] };
