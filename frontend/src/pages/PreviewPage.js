@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
-import { DOCS, DocPage, buildPreviewDocData } from '../components/PathToGloryWizard';
-import WarscrollGW from '../components/WarscrollGW';
+import { DOCS, DocPage, buildPreviewDocData, abilitiesInText, WARLORD_UNIT_KEY } from '../components/PathToGloryWizard';
+import WarscrollGW, { AbilityCard } from '../components/WarscrollGW';
 import { looseKey } from '../importList';
 
 // ── Preview mode ──────────────────────────────────────────────────────────
@@ -46,6 +46,9 @@ export default function PreviewPage() {
   const [factionRules, setFactionRules] = useState({});
   const [openUnit, setOpenUnit] = useState(null);
   const [peek, setPeek] = useState(null); // { unit, side: 'left' | 'right' }
+  // Ability cards behind an Enhancements / Path Abilities / Notes field:
+  // { abilities, side, pinned } — hover shows them, a click pins them open.
+  const [abilityPeek, setAbilityPeek] = useState(null);
   const peekTimer = useRef(null);
   const [error, setError] = useState('');
 
@@ -91,13 +94,44 @@ export default function PreviewPage() {
     return m;
   }, [warscrolls]);
 
+  // The Warlord as a warscroll card: an Anvil-built Hero has no database
+  // warscroll, so it's assembled from the Warlord sheet — profile, weapons
+  // and the same ability groups the sheet prints. It leads the dot strip
+  // (green dot), right after the faction's purple pages.
+  const warlordUnit = useMemo(() => {
+    if (!docData || !docData.warlordName) return null;
+    const faction = factions.find(f => f.faction_slug === docData.factionSlug);
+    const weapon = type => w => ({
+      type, name: w.name, range: type === 'ranged' ? w.rng : undefined,
+      attacks: w.atk, hit: w.hit, wound: w.wnd, rend: w.rnd, damage: w.dmg, ability: w.abilities || '',
+    });
+    return {
+      id: 'anvil-warlord',
+      _anvilWarlord: true,
+      name: docData.warlordName,
+      faction_slug: docData.factionSlug,
+      faction: faction?.faction || docData.factionLabel || '',
+      grand_alliance: faction?.grand_alliance,
+      move: docData.warlordMove, health: docData.warlordHealth, save: docData.warlordSave, control: docData.warlordControl,
+      ward: docData.warlordWard || '',
+      points: docData.warlordPoints || '',
+      unit_size: 1,
+      weapons: JSON.stringify([
+        ...(docData.rangedWeapons || []).filter(w => w.name).map(weapon('ranged')),
+        ...(docData.meleeWeapons || []).filter(w => w.name).map(weapon('melee')),
+      ]),
+      abilities: JSON.stringify((docData.warlordAbilityGroups || []).flatMap(g => g.abilities || [])),
+      keywords: [docData.warlordKeywordsLine1, docData.warlordKeywordsLine2].filter(Boolean).join(', '),
+    };
+  }, [docData, factions]);
+
   const namedUnits = useMemo(() => {
     if (!docData) return [];
     const names = [
       ...(docData.oobUnits || []).map(u => u.warscroll || u.name),
-      ...(docData.regiments || []).flatMap(r => (r.units || []).map(u => u.name)),
+      ...(docData.regiments || []).flatMap(r => (r.units || []).filter(u => u.sourceUnitId !== 'warlord').map(u => u.name)),
       ...(docData.auxUnits || []).map(u => u.name),
-      docData.warlordWarscroll,
+      ...(warlordUnit ? [] : [docData.warlordWarscroll]),
     ];
     const seen = new Set();
     const out = [];
@@ -106,9 +140,30 @@ export default function PreviewPage() {
       if (w && !seen.has(w.id)) { seen.add(w.id); out.push(w); }
     }
     // Faction pages are built from contiguous runs of the same faction in
-    // navList, so keep allies grouped rather than interleaved.
-    return out.sort((a, b) => (a.faction_slug || '').localeCompare(b.faction_slug || ''));
-  }, [docData, unitsByName]);
+    // navList, so keep allies grouped rather than interleaved — the army's
+    // own faction first, so its purple pages lead and the Warlord follows.
+    const own = docData.factionSlug;
+    out.sort((a, b) => ((a.faction_slug === own ? 0 : 1) - (b.faction_slug === own ? 0 : 1))
+      || (a.faction_slug || '').localeCompare(b.faction_slug || ''));
+    return warlordUnit ? [warlordUnit, ...out] : out;
+  }, [docData, unitsByName, warlordUnit]);
+
+  // Per unit: one row per distinct Path / rank / picked-abilities combination
+  // among the army's copies of it ("2× Path: Enclave Rank: Veteran").
+  const pathGroupsByUnit = useMemo(() => {
+    const m = new Map();
+    for (const row of docData?.oobUnits || []) {
+      const ps = row.pathSummary;
+      const key = looseKey(row.warscroll || row.name);
+      if (!ps || !key) continue;
+      const gk = [ps.pathName, ps.rank, ps.abilities.map(a => a.name).join('|')].join('#');
+      if (!m.has(key)) m.set(key, new Map());
+      const groups = m.get(key);
+      if (groups.has(gk)) groups.get(gk).count += 1;
+      else groups.set(gk, { ...ps, count: 1 });
+    }
+    return m;
+  }, [docData]);
 
   if (error) {
     return (
@@ -138,11 +193,52 @@ export default function PreviewPage() {
     return imgs.map((img, i) => ({ doc: d, img, i }));
   });
 
-  const unitFor = name => (name ? unitsByName.get(looseKey(name)) : null);
+  const unitFor = name => (name === WARLORD_UNIT_KEY ? warlordUnit : name ? unitsByName.get(looseKey(name)) : null);
+  const sideOf = e => (e && e.clientX > window.innerWidth / 2 ? 'left' : 'right');
+  const abilitiesFor = text => abilitiesInText(text, docData.abilityLookup || new Map());
+  const startAbilityPeek = (text, e) => {
+    if (openUnit || abilityPeek?.pinned) return;
+    const abilities = abilitiesFor(text);
+    if (!abilities.length) return;
+    endPeek();
+    setAbilityPeek({ abilities, side: sideOf(e), pinned: false });
+  };
+  const endAbilityPeek = () => setAbilityPeek(p => (p && !p.pinned ? null : p));
+  const pinAbilityPeek = (text, e) => {
+    const abilities = abilitiesFor(text);
+    if (!abilities.length) return;
+    endPeek();
+    setAbilityPeek({ abilities, side: sideOf(e), pinned: true });
+  };
+  const renderPathRows = unit => {
+    if (!unit || unit._anvilWarlord) return null;
+    const groups = pathGroupsByUnit.get(looseKey(unit.name));
+    if (!groups || !groups.size) return null;
+    return (
+      <div className="preview-path-rows">
+        <div className="gw-section-rule"><span>PATHS IN THIS ARMY</span></div>
+        {[...groups.values()].map((g, i) => (
+          <div className="preview-path-row" key={i}>
+            <div className="preview-path-row-head">
+              <span className="preview-path-count">{g.count}×</span>
+              {g.pathName && <span><b>Path:</b> {g.pathName.replace(/^Path of (the )?/i, '')}</span>}
+              {g.rank && <span><b>Rank:</b> {g.rank}</span>}
+              {g.abilities.length > 0 && <span><b>Abilities:</b> {g.abilities.map(a => a.name).join(', ')}</span>}
+            </div>
+            {g.abilities.length > 0 && (
+              <div className="preview-path-cards">
+                {g.abilities.map((a, j) => <AbilityCard key={j} ab={a} />)}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  };
   const startPeek = (unit, e) => {
     if (!unit || openUnit) return;
     clearTimeout(peekTimer.current);
-    const side = e && e.clientX > window.innerWidth / 2 ? 'left' : 'right';
+    const side = sideOf(e);
     peekTimer.current = setTimeout(() => setPeek({ unit, side }), PEEK_DELAY);
   };
   const endPeek = () => { clearTimeout(peekTimer.current); setPeek(null); };
@@ -160,6 +256,9 @@ export default function PreviewPage() {
               onUnitHover={(name, e) => startPeek(unitFor(name), e)}
               onUnitLeave={endPeek}
               onUnitClick={name => openFull(unitFor(name))}
+              onAbilityHover={startAbilityPeek}
+              onAbilityLeave={endAbilityPeek}
+              onAbilityClick={pinAbilityPeek}
             />
           </div>
         ))}
@@ -176,6 +275,21 @@ export default function PreviewPage() {
             ))}
           </div>
         </div>
+      )}
+
+      {abilityPeek && !openUnit && (
+        <>
+          {abilityPeek.pinned && <div className="preview-ability-backdrop" onMouseDown={() => setAbilityPeek(null)} />}
+          <div className={`preview-ability-peek preview-peek-${abilityPeek.side}${abilityPeek.pinned ? ' preview-ability-peek-pinned' : ''}`}>
+            {abilityPeek.pinned && <button type="button" className="preview-ability-close" onClick={() => setAbilityPeek(null)}>✕</button>}
+            {abilityPeek.abilities.map((a, i) => (
+              <div key={i} className="preview-ability-item">
+                {a._kind && <div className="preview-ability-kind">{a._kind}</div>}
+                <AbilityCard ab={a} />
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {peek && !openUnit && (
@@ -198,6 +312,8 @@ export default function PreviewPage() {
               /* The purple faction pages only load in faction-sorted mode —
                  WarscrollGW skips fetching faction rules otherwise. */
               sortBy="faction"
+              hideViewToggle
+              renderExtras={renderPathRows}
               onJump={i => namedUnits[i] && setOpenUnit(namedUnits[i])}
               onPrev={navIndex > 0 ? () => setOpenUnit(namedUnits[navIndex - 1]) : undefined}
               onNext={navIndex < namedUnits.length - 1 ? () => setOpenUnit(namedUnits[navIndex + 1]) : undefined}

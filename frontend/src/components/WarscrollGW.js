@@ -1387,7 +1387,11 @@ const SplitPane = React.forwardRef(function SplitPane({ label, labelClass, list,
   );
 });
 
-export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onFilterApply, factions = [], navIndex, navList, sortBy, spearheadData, allSpearheadRulesMap, onSwapFriendlyEnemy, onShowFriendlyOnly, onShowEnemyOnly, friendlyNavList, enemyNavList, onEnterSplitView, onJumpToUnit }) {
+// hideViewToggle: no single / split-pane buttons (the share preview has one
+// army, so there's no friendly + enemy view). renderExtras(unit): extra
+// content under the warscroll body, above the keywords footer (the preview's
+// per-unit Path rows). A navList entry with _anvilWarlord gets a green dot.
+export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onFilterApply, factions = [], navIndex, navList, sortBy, spearheadData, allSpearheadRulesMap, onSwapFriendlyEnemy, onShowFriendlyOnly, onShowEnemyOnly, friendlyNavList, enemyNavList, onEnterSplitView, onJumpToUnit, hideViewToggle, renderExtras }) {
   const navTotal = navList ? navList.length : 0;
   const { showFlavorText, showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore, useSpearheadAbilities } = useSettings();
   const modalRef = useRef(null);
@@ -1890,7 +1894,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
       <div className="gw-overlay" />
       <div className={`gw-modal${showSplit ? ' gw-modal-split' : ''}`} ref={modalRef} role="dialog" aria-modal="true" aria-label={unit.name}>
 
-        <div className="gw-view-toggle">
+        {!hideViewToggle && <div className="gw-view-toggle">
           <button
             type="button"
             className={`gw-view-mode-btn${!showSplit ? ' gw-view-mode-btn-active' : ''}`}
@@ -1905,7 +1909,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
               disabled={!canSplit}
             ><span className="gw-view-icon gw-view-icon-split"><i /><i /></span></button>
           </span>
-        </div>
+        </div>}
         <button className="gw-close" onClick={onClose} title="Close (Esc)">✕</button>
 
         {/* ── Scrollable region: nav dots, faction-info slide, or the unit's
@@ -1984,8 +1988,8 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
                       return (
                         <React.Fragment key={u.id ?? i}>
                           {localI > 0 && prevType !== type && <span className="gw-nav-sep" />}
-                          <span className={`gw-nav-dot${activePage === null && i === navIndex ? ' gw-nav-dot-active' : ''}`}
-                                title={u.name}
+                          <span className={`gw-nav-dot${u._anvilWarlord ? ' gw-nav-dot-warlord' : ''}${activePage === null && i === navIndex ? ' gw-nav-dot-active' : ''}`}
+                                title={u._anvilWarlord ? `${u.name} (Warlord)` : u.name}
                                 onClick={() => { setActivePage(null); onJump?.(i); }} />
                         </React.Fragment>
                       );
@@ -2187,6 +2191,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
         {activePage === null && (
           <WarscrollBodyMain unit={unit} factions={factions} onFilterApply={onFilterApply} />
         )}
+        {activePage === null && renderExtras && renderExtras(unit)}
         </div>
         )}
         {!showSplit && activePage === null && (

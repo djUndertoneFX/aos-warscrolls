@@ -1154,6 +1154,10 @@ function fitFieldXY(left, top, width, fontSize, height = 3) {
 // box centers (up to ~2.4%/36px), which is exactly the "Reinforced text
 // isn't centered in its field" symptom: the text WAS centered on its own
 // coordinate, just not on the box's true center.
+// The unit key a sheet field reports for the Warlord (an Anvil-built Hero
+// has no warscroll of its own in the database; the preview builds one).
+export const WARLORD_UNIT_KEY = '__warlord';
+
 function buildOobOverlayFields(d, pageIndex = 0) {
   const fields = [];
   // Page 1 carries the Warlord; every page holds 5 units (extra Order of
@@ -1175,13 +1179,13 @@ function buildOobOverlayFields(d, pageIndex = 0) {
   // Warlord's row 2 is Enhancements 21.8/27, Path 49.8/26, Path Abilities
   // 78.5/26. Every box is ~3.2% tall and shrinks its text to fit.
   if (onFirstPage) {
-    fields.push({ spec: fitFieldXY(21.8, warlordRow1, 27, 0.02), value: d.warlordName });
+    fields.push({ spec: fitFieldXY(21.8, warlordRow1, 27, 0.02), value: d.warlordName, unit: WARLORD_UNIT_KEY });
     fields.push({ spec: fitFieldXY(48.9, warlordRow1, 22, 0.02), value: d.warlordWarscroll });
     fields.push({ spec: fitFieldXY(71.4, warlordRow1, 18.5, 0.02), value: d.warlordRank });
     fields.push({ spec: fitFieldXY(87.5, warlordRow1, 8.5, 0.02), value: d.warlordRenown });
-    fields.push({ spec: fitFieldXY(21.8, 25.3, 27, 0.018), value: d.warlordEnhancements });
+    fields.push({ spec: fitFieldXY(21.8, 25.3, 27, 0.018), value: d.warlordEnhancements, abilities: d.warlordEnhancements });
     fields.push({ spec: fitFieldXY(49.8, 25.3, 26, 0.018), value: d.warlordPathLabel });
-    fields.push({ spec: fitFieldXY(78.5, 25.3, 26, 0.018), value: d.warlordPathAbility });
+    fields.push({ spec: fitFieldXY(78.5, 25.3, 26, 0.018), value: d.warlordPathAbility, abilities: d.warlordPathAbility });
     pushWounds(warlordRow1, d.warlordWounds);
   }
 
@@ -1201,8 +1205,8 @@ function buildOobOverlayFields(d, pageIndex = 0) {
     fields.push({ spec: fitFieldXY(71.4, row1, 18.5, 0.018), value: u.rank });
     fields.push({ spec: fitFieldXY(87.5, row1, 8.5, 0.018), value: u.renown });
     pushWounds(row1, u.wounds);
-    fields.push({ spec: fitFieldXY(21.8, row2, 27, 0.016), value: u.enhancements });
-    fields.push({ spec: fitFieldXY(59.3, row2, 42.5, 0.016), value: u.pathAbility });
+    fields.push({ spec: fitFieldXY(21.8, row2, 27, 0.016), value: u.enhancements, abilities: u.enhancements });
+    fields.push({ spec: fitFieldXY(59.3, row2, 42.5, 0.016), value: u.pathAbility, abilities: u.pathAbility });
     fields.push({ spec: fitFieldXY(87.5, row2, 8.5, 0.014), value: u.reinforced });
   });
   return fields;
@@ -1219,9 +1223,9 @@ function buildArmyOverlayFields(d, pageIndex) {
     // Size 49.8–56.1%, Notes 58.5–83.5%, Points 85.5–91.8% of the width; each
     // row's writing line is ~2.3% of the height, starting just above `top`.
     const y = top - 1.15; // `top` is the row's centre; boxes are 2.3% tall
-    fields.push({ spec: { left: 23.4, top: y, width: 24.2, height: 2.3, fontSize: 0.017, fit: true }, value: r.name, unit: r.name });
+    fields.push({ spec: { left: 23.4, top: y, width: 24.2, height: 2.3, fontSize: 0.017, fit: true }, value: r.name, unit: r.sourceUnitId === 'warlord' ? WARLORD_UNIT_KEY : r.name });
     fields.push({ spec: { ...centerField(52.95, y, 6.3, 0.017), height: 2.3, fit: true }, value: r.size });
-    fields.push({ spec: { left: 59.4, top: y, width: 23.9, height: 2.3, fontSize: 0.016, fit: true }, value: r.notes });
+    fields.push({ spec: { left: 59.4, top: y, width: 23.9, height: 2.3, fontSize: 0.016, fit: true }, value: r.notes, abilities: r.notes });
     fields.push({ spec: { ...centerField(88.65, y, 6.3, 0.017), height: 2.3, fit: true }, value: r.points });
   };
 
@@ -1289,7 +1293,10 @@ function buildOverlayFields(docKey, pageIndex, d) {
 // onUnitHover / onUnitLeave / onUnitClick (share preview): fields tagged with
 // a `unit` (unit names on the Order of Battle and Army Roster) get an
 // invisible hotspot that reports the unit name.
-export function DocPage({ img, alt, docKey, pageIndex, data, onUnitHover, onUnitLeave, onUnitClick }) {
+// onAbilityHover / onAbilityLeave / onAbilityClick do the same for fields
+// tagged with `abilities` (Enhancements, Path Abilities, roster Notes),
+// reporting the field's comma-separated text.
+export function DocPage({ img, alt, docKey, pageIndex, data, onUnitHover, onUnitLeave, onUnitClick, onAbilityHover, onAbilityLeave, onAbilityClick }) {
   const containerRef = useRef(null);
   const box = useContainImageBox(containerRef);
   // Editable fields stay even when empty (there'd otherwise be nothing to
@@ -1315,6 +1322,16 @@ export function DocPage({ img, alt, docKey, pageIndex, data, onUnitHover, onUnit
             onMouseEnter={e => onUnitHover?.(f.unit, e)}
             onMouseLeave={() => onUnitLeave?.(f.unit)}
             onClick={() => onUnitClick?.(f.unit)}
+          />
+        ))}
+        {(onAbilityHover || onAbilityClick) && box.width > 0 && fields.filter(f => f.abilities).map((f, i) => (
+          <div
+            key={`ab-${i}`}
+            className="ptg-doc-unit-hotspot ptg-doc-ability-hotspot"
+            style={{ ...overlayFieldStyle(box, f.spec), ...(f.spec.height != null ? {} : { height: box.height * 0.022 }) }}
+            onMouseEnter={e => onAbilityHover?.(f.abilities, e)}
+            onMouseLeave={() => onAbilityLeave?.(f.abilities)}
+            onClick={e => onAbilityClick?.(f.abilities, e)}
           />
         ))}
       </div>
@@ -4911,6 +4928,85 @@ function parseInlineAbilityBullet(b) {
 // The Warlord sheet's ability blocks (Companion, Origin/Flaw, Battle Mount,
 // upgrades, Enhancements on the Warlord, the Path's picked ranks). Module
 // scope so the wizard and the share preview draw the same list.
+// Every Path a roster of this faction could use (core + battlepacks + the
+// faction's own), for looking up a row's Path by key outside the wizard.
+export function allPathsForFaction(slug) {
+  return [...PATHS, ...BATTLEPACK_PATHS, ...(FACTION_PATHS[slug] ?? [])];
+}
+
+// Every ability a sheet might name — Path rank abilities (core, battlepack
+// and the faction's), the faction's and battlepack's Heroic Traits and
+// Artefacts, and the Warlord's own groups — keyed for loose name matching,
+// so the preview can show the card behind a name typed on the sheet.
+export function buildAbilityLookup({ factionSlug = '', factionRules = {}, campaign = '', warlordAbilityGroups = [] }) {
+  const m = new Map();
+  const add = (ab, kind) => {
+    const k = abilityKey(ab?.name);
+    if (!k || m.has(k)) return;
+    let bullets = ab.bullets;
+    if (typeof bullets === 'string') { try { bullets = JSON.parse(bullets); } catch { bullets = []; } }
+    m.set(k, { ...ab, bullets, _kind: kind });
+  };
+  for (const p of allPathsForFaction(factionSlug)) {
+    for (const r of p.ranks || []) for (const o of r.options || []) add(o, `${p.name} · ${r.rank}`);
+  }
+  for (const o of [...(factionRules.heroic_traits || []), ...(BATTLEPACKS[campaign]?.heroic_traits || [])]) add(o, 'Heroic Trait');
+  for (const o of [...(factionRules.artefacts || []), ...(BATTLEPACKS[campaign]?.artefacts || [])]) add(o, 'Artefact');
+  for (const g of warlordAbilityGroups) for (const a of g.abilities || []) add({ ...a, name: String(a.name || '').replace(/^[A-Za-z]+: /, '') }, g.header);
+  return m;
+}
+
+// Splits a sheet field ("Hunter of Souls (Mortal Wounds), Reaping Strikes;
+// Path of the Enclave") into the ability cards it names; unknown names
+// (a Path's own name, free text) are skipped. A "(choice)" suffix is the
+// enhancement's sub-pick and is added to the card's effect.
+export function abilitiesInText(text, lookup) {
+  const out = [];
+  const seen = new Set();
+  for (const raw of String(text || '').split(/[,;]/)) {
+    const part = raw.trim();
+    if (!part) continue;
+    const pm = /^(.*?)\s*\(([^)]*)\)\s*$/.exec(part);
+    const base = pm ? pm[1] : part;
+    const ab = lookup.get(abilityKey(base)) || lookup.get(abilityKey(part));
+    if (!ab || seen.has(abilityKey(part))) continue;
+    seen.add(abilityKey(part));
+    out.push(pm && lookup.get(abilityKey(base)) ? { ...ab, effect: `${ab.effect || ''} Chosen: ${pm[2]}.`.trim() } : ab);
+  }
+  return out;
+}
+
+// An Order of Battle row's Path, rank and picked rank abilities: from the
+// row's own Path picks, else read back off its Path Abilities text.
+export function oobPathSummary(row, allPaths) {
+  const path = allPaths.find(p => p.key === row?.path);
+  const choices = row?.pathRankChoices || {};
+  let abilities = [];
+  let rank = '';
+  if (path) {
+    for (const r of path.ranks || []) {
+      const o = choices[r.rank] != null ? r.options?.[choices[r.rank]] : null;
+      if (o) { abilities.push(o); rank = r.rank; }
+    }
+  }
+  let pathName = path?.name || '';
+  if (!abilities.length && row?.pathAbility) {
+    const found = derivePathAndRank(row.pathAbility, allPaths, row.path || '');
+    const fromPath = found && allPaths.find(p => p.name === found.name);
+    const names = row.pathAbility.split(',').map(abilityKey).filter(Boolean);
+    abilities = names.map(n => {
+      for (const p of fromPath ? [fromPath, ...allPaths] : allPaths) {
+        for (const r of p.ranks || []) { const o = (r.options || []).find(x => abilityKey(x.name) === n); if (o) return o; }
+      }
+      return null;
+    }).filter(Boolean);
+    pathName = pathName || found?.name || '';
+    rank = found?.rank || '';
+  }
+  if (!pathName && !abilities.length) return null;
+  return { pathName, rank: rank || (row?.rank && row.rank !== '-' ? row.rank : ''), abilities };
+}
+
 export function enhancementChoicesFor(opt) {
   if (!opt || !/pick (?:1|one) of the following/i.test(opt.effect || '')) return null;
   const bullets = Array.isArray(opt.bullets) ? opt.bullets : (() => { try { return JSON.parse(opt.bullets || '[]'); } catch { return []; } })();
@@ -5066,7 +5162,14 @@ export function buildPreviewDocData(state = {}, factions = [], apotheosisSteps =
     warlordEnhancements: g('warlordEnhancements'),
     warlordPathLabel: allPaths.find(x => x.key === warlordPath)?.name || '',
     warlordPathAbility: g('warlordPathAbility'), warlordWounds: g('warlordWounds', 0),
-    oobUnits: g('oobUnits', []).map(u => ({ ...u, rank: pathRankLabel(u, allPaths) })),
+    oobUnits: g('oobUnits', []).map(u => ({ ...u, rank: pathRankLabel(u, allPaths), pathSummary: oobPathSummary(u, allPaths) })),
+    factionSlug, campaign,
+    warlordPoints: (() => {
+      const dpStep = apotheosisSteps.find(st => /destiny point limit/i.test(st.step_title || ''));
+      const m = /BATTLE PROFILE POINTS COST:\s*(\d+)/i.exec(dpStep?.options?.[g('destinyPointChoice', 2)]?.effect || '');
+      return m ? m[1] : (g('regiments', []).flatMap(r => r.units || []).find(u => u.sourceUnitId === 'warlord')?.points || '');
+    })(),
+    abilityLookup: buildAbilityLookup({ factionSlug, factionRules, campaign, warlordAbilityGroups }),
     commander: g('commander'), armyRosterName: g('armyRosterName'),
     // As in the wizard: Ravaged Coast's limit is the roster's own total, and
     // Faction / Battle Formation fall back to the wizard's picks.
