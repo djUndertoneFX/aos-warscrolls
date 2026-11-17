@@ -202,6 +202,15 @@ export default function PreviewPage() {
   const unitFor = name => (name === WARLORD_UNIT_KEY ? warlordUnit : name ? unitsByName.get(looseKey(name)) : null);
   const sideOf = e => (e && e.clientX > window.innerWidth / 2 ? 'left' : 'right');
   const abilitiesFor = text => abilitiesInText(text, docData.abilityLookup || new Map());
+  // Heroic Traits / Artefacts the army actually took (named in any
+  // Enhancements field) — the purple faction pages show only those.
+  const takenEnhancements = new Set(
+    [docData.warlordEnhancements, ...(docData.oobUnits || []).map(u => u.enhancements)]
+      .flatMap(t => abilitiesFor(t)).map(a => looseKey(a.name)),
+  );
+  const ruleFilter = (key, items) => ((key === 'heroic_traits' || key === 'artefacts')
+    ? items.filter(it => takenEnhancements.has(looseKey(it.name)))
+    : items);
   const renderAbilityCards = abilities => (
     <div className="preview-row-abilities">
       <div className="gw-section-rule"><span>ENHANCEMENTS &amp; PATH ABILITIES</span></div>
@@ -331,6 +340,7 @@ export default function PreviewPage() {
               sortBy="faction"
               hideViewToggle
               renderExtras={renderPathRows}
+              ruleFilter={ruleFilter}
               onJump={i => namedUnits[i] && setOpenUnit(namedUnits[i])}
               onPrev={navIndex > 0 ? () => setOpenUnit(namedUnits[navIndex - 1]) : undefined}
               onNext={navIndex < namedUnits.length - 1 ? () => setOpenUnit(namedUnits[navIndex + 1]) : undefined}

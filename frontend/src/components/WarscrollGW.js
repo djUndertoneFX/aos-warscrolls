@@ -1398,7 +1398,9 @@ const SplitPane = React.forwardRef(function SplitPane({ label, labelClass, list,
 // army, so there's no friendly + enemy view). renderExtras(unit): extra
 // content under the warscroll body, above the keywords footer (the preview's
 // per-unit Path rows). A navList entry with _anvilWarlord gets a green dot.
-export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onFilterApply, factions = [], navIndex, navList, sortBy, spearheadData, allSpearheadRulesMap, onSwapFriendlyEnemy, onShowFriendlyOnly, onShowEnemyOnly, friendlyNavList, enemyNavList, onEnterSplitView, onJumpToUnit, hideViewToggle, renderExtras }) {
+// ruleFilter(key, items): narrows a purple faction page's items (the preview
+// keeps only the Heroic Traits / Artefacts the army actually took).
+export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onFilterApply, factions = [], navIndex, navList, sortBy, spearheadData, allSpearheadRulesMap, onSwapFriendlyEnemy, onShowFriendlyOnly, onShowEnemyOnly, friendlyNavList, enemyNavList, onEnterSplitView, onJumpToUnit, hideViewToggle, renderExtras, ruleFilter }) {
   const navTotal = navList ? navList.length : 0;
   const { showFlavorText, showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore, useSpearheadAbilities } = useSettings();
   const modalRef = useRef(null);
@@ -1486,6 +1488,10 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
     return groups;
   }, [navList, isSpMode]);
 
+  const ruleFilterRef = useRef(ruleFilter);
+  ruleFilterRef.current = ruleFilter;
+  const narrowRules = (key, items) => (ruleFilterRef.current ? ruleFilterRef.current(key, items) : items);
+
   // Build slides for a given faction slug from the cache
   // Purple faction-rule slides only make sense when browsing in faction-sorted order —
   // any other sort scatters units from the same faction, so suppress the slides there.
@@ -1497,8 +1503,8 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
     return [
       { key: 'traits',             enabled: showBattleTraits,      data: rules.traits ?? [] },
       { key: 'formations',         enabled: showBattleFormations,  data: rules.formations ?? [] },
-      { key: 'heroic_traits',      enabled: showHeroicTraits,      data: rules.heroic_traits ?? [] },
-      { key: 'artefacts',          enabled: showArtefacts,         data: rules.artefacts ?? [] },
+      { key: 'heroic_traits',      enabled: showHeroicTraits,      data: narrowRules('heroic_traits', rules.heroic_traits ?? []) },
+      { key: 'artefacts',          enabled: showArtefacts,         data: narrowRules('artefacts', rules.artefacts ?? []) },
       { key: 'spell_lore',         enabled: showSpellLore,         data: spellPrayerData },
       { key: 'manifestation_lore', enabled: showManifestationLore, data: rules.manifestation_lore ?? [] },
     ].filter(s => s.enabled && s.data.length > 0);
@@ -1514,8 +1520,8 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
     return [
       { key: 'traits',             enabled: showBattleTraits,      data: rules.traits ?? [] },
       { key: 'formations',         enabled: showBattleFormations,  data: rules.formations ?? [] },
-      { key: 'heroic_traits',      enabled: showHeroicTraits,      data: rules.heroic_traits ?? [] },
-      { key: 'artefacts',          enabled: showArtefacts,         data: rules.artefacts ?? [] },
+      { key: 'heroic_traits',      enabled: showHeroicTraits,      data: narrowRules('heroic_traits', rules.heroic_traits ?? []) },
+      { key: 'artefacts',          enabled: showArtefacts,         data: narrowRules('artefacts', rules.artefacts ?? []) },
       { key: 'spell_lore',         enabled: showSpellLore,         data: spellPrayerData },
       { key: 'manifestation_lore', enabled: showManifestationLore, data: rules.manifestation_lore ?? [] },
     ].filter(s => s.enabled && s.data.length > 0);
