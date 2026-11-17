@@ -312,6 +312,24 @@ function initDb() {
   // shared_list_imports remembers which copy a recipient already made from a
   // token, so opening the link again re-selects (and refreshes) that copy
   // instead of piling up duplicates.
+  // Bug reports from the Settings panel's "File Bug" button. Each one is
+  // mirrored to a Google Doc (and emailed, up to 5 a day) via a Google Apps
+  // Script web app — see server.js forwardBugReport / tools/aos-bugs-hook.gs.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS bug_reports (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
+      username TEXT,
+      text TEXT NOT NULL,
+      page TEXT,
+      url TEXT,
+      context TEXT,
+      emailed INTEGER DEFAULT 0,
+      synced INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS shared_lists (
       token TEXT PRIMARY KEY,

@@ -1346,6 +1346,121 @@ app.put('/api/matched-play-state', requireAuth, (req, res) => {
 // The client sends its live state (not a list id), so a share never misses an
 // edit the debounced autosave hasn't flushed yet. Re-sharing the same
 // source_key keeps the same token and refreshes the snapshot.
+// ─── Bug reports ("File Bug" in Settings) ───────────────────────────────────
+// Stored in bug_reports, then forwarded to a Google Apps Script web app
+// (BUG_HOOK_URL + BUG_HOOK_SECRET; tools/aos-bugs-hook.gs) that adds the report
+// to the top of the "AoS Warscrolls Bugs" Google Doc and, for the first
+// BUG_EMAILS_PER_DAY reports of the day (America/New_York), emails BUG_EMAIL_TO.
+// Without the hook, the email goes through SMTP if that's configured. Reports
+// the hook hasn't taken yet are retried every 10 minutes.
+const BUG_EMAIL_TO = process.env.BUG_EMAIL_TO || 'dj@undertonefx.com';
+const BUG_EMAILS_PER_DAY = parseInt(process.env.BUG_EMAILS_PER_DAY || '5', 10);
+const BUGS_PER_USER_PER_DAY = 30;
+
+// 'YYYY-MM-DD' in New York for a SQLite UTC timestamp (or now).
+function nyDay(ts) {
+  const d = ts ? new Date(String(ts).replace(' ', 'T') + 'Z') : new Date();
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+}
+function bugReportText(r) {
+  let ctx = {}; try { ctx = JSON.parse(r.context || '{}'); } catch {}
+  const lines = [
+    `Bug #${r.id} — ${r.username || 'unknown user'} — ${r.created_at} UTC`,
+    `Page: ${r.page || ''}  ${r.url || ''}`,
+    '',
+    r.text,
+    '',
+  ];
+  for (const [k, v] of Object.entries(ctx)) {
+    if (v == null || v === '' || (Array.isArray(v) && !v.length)) continue;
+    lines.push(`${k}: ${Array.isArray(v) ? '\n  ' + v.join('\n  ') : (typeof v === 'object' ? JSON.stringify(v) : v)}`);
+  }
+  return lines.join('\n');
+}
+async function sendBugEmail(r) {
+  if (!process.env.SMTP_HOST) return false;
+  await createTransporter().sendMail({
+    from: process.env.SMTP_FROM || process.env.SMTP_USER,
+    to: BUG_EMAIL_TO,
+    subject: `AoS Warscrolls bug #${r.id}: ${String(r.text).split('\n')[0].slice(0, 70)}`,
+    text: bugReportText(r),
+  });
+  return true;
+}
+let bugSyncRunning = false;
+async function syncBugReports() {
+  if (bugSyncRunning) return;
+  bugSyncRunning = true;
+  try {
+    const db = getDb();
+    let pending;
+    try { pending = db.prepare('SELECT * FROM bug_reports WHERE synced = 0 ORDER BY id').all(); } finally { db.close(); }
+    for (const r of pending) {
+      // Email only while today's quota lasts, and only for today's reports
+      // (a backlog retried tomorrow goes to the doc without an email).
+      const db2 = getDb();
+      let sentToday;
+      try {
+        sentToday = db2.prepare('SELECT created_at FROM bug_reports WHERE emailed = 1').all()
+          .filter(x => nyDay(x.created_at) === nyDay()).length;
+      } finally { db2.close(); }
+      const wantEmail = sentToday < BUG_EMAILS_PER_DAY && nyDay(r.created_at) === nyDay();
+      let synced = false, emailed = false;
+      if (process.env.BUG_HOOK_URL) {
+        try {
+          const resp = await fetch(process.env.BUG_HOOK_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({
+              secret: process.env.BUG_HOOK_SECRET || '',
+              id: r.id,
+              subject: `AoS Warscrolls bug #${r.id}: ${String(r.text).split('\n')[0].slice(0, 70)}`,
+              text: bugReportText(r),
+              email: wantEmail ? BUG_EMAIL_TO : '',
+            }),
+            redirect: 'follow',
+          });
+          const body = await resp.text();
+          let j = {}; try { j = JSON.parse(body); } catch {}
+          if (resp.ok && j.ok) { synced = true; emailed = !!j.emailed; }
+          else console.error('[bugs] hook refused', r.id, resp.status, body.slice(0, 200));
+        } catch (e) { console.error('[bugs] hook failed', r.id, e.message); }
+      } else {
+        synced = true; // nothing to sync to
+        if (wantEmail) { try { emailed = await sendBugEmail(r); } catch (e) { console.error('[bugs] email failed', e.message); } }
+      }
+      if (synced) {
+        const db3 = getDb();
+        try { db3.prepare('UPDATE bug_reports SET synced = 1, emailed = ? WHERE id = ?').run(emailed ? 1 : 0, r.id); } finally { db3.close(); }
+      } else break; // hook down: keep order, retry later
+    }
+  } finally { bugSyncRunning = false; }
+}
+setInterval(() => { syncBugReports().catch(e => console.error('[bugs] sync', e.message)); }, 10 * 60 * 1000);
+
+// POST /api/bugs { text, page, url, context } — file a bug.
+app.post('/api/bugs', requireAuth, async (req, res) => {
+  const text = String(req.body?.text || '').trim();
+  if (!text) return res.status(400).json({ error: 'Describe the bug first.' });
+  const db = getDb();
+  let id;
+  try {
+    const mine = db.prepare('SELECT created_at FROM bug_reports WHERE user_id = ?').all(req.user.id)
+      .filter(x => nyDay(x.created_at) === nyDay()).length;
+    if (mine >= BUGS_PER_USER_PER_DAY) return res.status(429).json({ error: 'That\'s a lot of bugs for one day — try again tomorrow.' });
+    const user = db.prepare('SELECT username FROM users WHERE id = ?').get(req.user.id);
+    const ctx = req.body?.context && typeof req.body.context === 'object' ? req.body.context : {};
+    id = db.prepare('INSERT INTO bug_reports (user_id, username, text, page, url, context) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(req.user.id, user?.username || req.user.username || null, text.slice(0, 8000),
+        String(req.body?.page || '').slice(0, 200), String(req.body?.url || '').slice(0, 1000),
+        JSON.stringify(ctx).slice(0, 20000)).lastInsertRowid;
+  } finally {
+    db.close();
+  }
+  res.json({ ok: true, id });
+  syncBugReports().catch(e => console.error('[bugs] sync', e.message));
+});
+
 app.post('/api/share', requireAuth, (req, res) => {
   const { kind, source_key, name, faction_slug, faction_name, data } = req.body || {};
   if (kind !== 'army' && kind !== 'ptg') return res.status(400).json({ error: 'kind must be army or ptg' });

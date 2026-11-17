@@ -6591,3 +6591,18 @@ textarea.ptg-doc-overlay-input {
 .ptg-other-paths-opt { display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; }
 .ptg-other-paths-opt input:disabled { opacity: 0.6; }
 .ptg-other-paths-opt:has(input:disabled) { cursor: default; opacity: 0.75; }
+
+/* ── File Bug (top of the Settings panel) ── */
+.settings-filebug-btn { display: block; width: 100%; margin-bottom: 0.6rem; padding: 0.4rem 0.6rem; background: rgba(160, 30, 30, 0.18); border: 1px solid #b33a3a; color: #f0b0a8; border-radius: 4px; font-family: 'Cinzel', serif; font-size: 0.85rem; letter-spacing: 0.04em; cursor: pointer; }
+.settings-filebug-btn:hover { background: rgba(180, 40, 40, 0.35); color: #fff; }
+.filebug-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 5000; display: flex; align-items: flex-start; justify-content: center; padding: 10vh 1rem 1rem; }
+.filebug-box { width: min(560px, 100%); background: var(--bg-card, #1c1813); border: 1px solid #b33a3a; border-radius: 6px; padding: 1rem 1.1rem; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
+.filebug-title { font-family: 'Cinzel', serif; color: #f0b0a8; font-size: 1.1rem; margin-bottom: 0.4rem; }
+.filebug-note { color: var(--text-dim, #aaa); font-size: 0.85rem; margin: 0 0 0.6rem; }
+.filebug-text { width: 100%; box-sizing: border-box; background: rgba(0,0,0,0.35); color: var(--text, #eee); border: 1px solid var(--border-gold, #6b5a2e); border-radius: 4px; padding: 0.5rem; font: inherit; font-size: 0.9rem; resize: vertical; }
+.filebug-error { color: #ff8a80; font-size: 0.85rem; margin: 0.4rem 0 0; }
+.filebug-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.7rem; }
+.filebug-cancel, .filebug-send { padding: 0.35rem 0.9rem; border-radius: 4px; cursor: pointer; font-family: 'Cinzel', serif; font-size: 0.85rem; }
+.filebug-cancel { background: transparent; border: 1px solid var(--border-gold, #6b5a2e); color: var(--text-dim, #aaa); }
+.filebug-send { background: #8f2a2a; border: 1px solid #c44; color: #fff; }
+.filebug-send:disabled { opacity: 0.5; cursor: default; }
