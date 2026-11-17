@@ -45,10 +45,11 @@ export default function PreviewPage() {
   const [warscrolls, setWarscrolls] = useState([]);
   const [factionRules, setFactionRules] = useState({});
   const [openUnit, setOpenUnit] = useState(null);
-  const [peek, setPeek] = useState(null); // { unit, side: 'left' | 'right' }
-  // Ability cards behind an Enhancements / Path Abilities / Notes field:
-  // { abilities, side, pinned } — hover shows them, a click pins them open.
-  const [abilityPeek, setAbilityPeek] = useState(null);
+  // What's peeked beside the pointer: a unit's warscroll and/or the ability
+  // cards for its Enhancements and Path Abilities — { unit, abilities, side,
+  // pinned }. Hovering any field of a sheet row shows the whole row; a click
+  // on a row that has ability cards pins them open.
+  const [peek, setPeek] = useState(null);
   const peekTimer = useRef(null);
   const [error, setError] = useState('');
 
@@ -196,20 +197,6 @@ export default function PreviewPage() {
   const unitFor = name => (name === WARLORD_UNIT_KEY ? warlordUnit : name ? unitsByName.get(looseKey(name)) : null);
   const sideOf = e => (e && e.clientX > window.innerWidth / 2 ? 'left' : 'right');
   const abilitiesFor = text => abilitiesInText(text, docData.abilityLookup || new Map());
-  const startAbilityPeek = (text, e) => {
-    if (openUnit || abilityPeek?.pinned) return;
-    const abilities = abilitiesFor(text);
-    if (!abilities.length) return;
-    endPeek();
-    setAbilityPeek({ abilities, side: sideOf(e), pinned: false });
-  };
-  const endAbilityPeek = () => setAbilityPeek(p => (p && !p.pinned ? null : p));
-  const pinAbilityPeek = (text, e) => {
-    const abilities = abilitiesFor(text);
-    if (!abilities.length) return;
-    endPeek();
-    setAbilityPeek({ abilities, side: sideOf(e), pinned: true });
-  };
   const renderPathRows = unit => {
     if (!unit || unit._anvilWarlord) return null;
     const groups = pathGroupsByUnit.get(looseKey(unit.name));
@@ -235,30 +222,37 @@ export default function PreviewPage() {
       </div>
     );
   };
-  const startPeek = (unit, e) => {
-    if (!unit || openUnit) return;
+  const startPeek = (unit, e, abilities = []) => {
+    if ((!unit && !abilities.length) || openUnit || peek?.pinned) return;
     clearTimeout(peekTimer.current);
     const side = sideOf(e);
-    peekTimer.current = setTimeout(() => setPeek({ unit, side }), PEEK_DELAY);
+    peekTimer.current = setTimeout(() => setPeek({ unit, abilities, side, pinned: false }), PEEK_DELAY);
   };
-  const endPeek = () => { clearTimeout(peekTimer.current); setPeek(null); };
-  const openFull = unit => { if (!unit) return; endPeek(); setOpenUnit(unit); };
+  const endPeek = () => { clearTimeout(peekTimer.current); setPeek(p => (p?.pinned ? p : null)); };
+  const closePeek = () => { clearTimeout(peekTimer.current); setPeek(null); };
+  const rowHover = (row, e) => startPeek(unitFor(row.unit), e, abilitiesFor(row.abilities));
+  const rowClick = (row, e) => {
+    const abilities = abilitiesFor(row.abilities);
+    const unit = unitFor(row.unit);
+    // A row with ability cards pins the peek (warscroll + cards) so the
+    // cards can be read and scrolled; a plain unit row opens the warscroll.
+    if (abilities.length) { clearTimeout(peekTimer.current); setPeek({ unit, abilities, side: sideOf(e), pinned: true }); }
+    else openFull(unit);
+  };
+  const openFull = unit => { if (!unit) return; closePeek(); setOpenUnit(unit); };
 
   return (
     <div className="preview-page">
-      <PreviewHeader subtitle={share.name} onPrint={() => { endPeek(); window.print(); }} />
+      <PreviewHeader subtitle={share.name} onPrint={() => { closePeek(); window.print(); }} />
 
       <div className="preview-doc-view">
         {pages.map(({ doc: d, img, i }) => (
           <div className="preview-doc-sheet" key={`${d.key}-${i}`}>
             <DocPage
               img={img} alt={d.title} docKey={d.key} pageIndex={i} data={docData}
-              onUnitHover={(name, e) => startPeek(unitFor(name), e)}
-              onUnitLeave={endPeek}
-              onUnitClick={name => openFull(unitFor(name))}
-              onAbilityHover={startAbilityPeek}
-              onAbilityLeave={endAbilityPeek}
-              onAbilityClick={pinAbilityPeek}
+              onRowHover={rowHover}
+              onRowLeave={endPeek}
+              onRowClick={rowClick}
             />
           </div>
         ))}
@@ -277,25 +271,26 @@ export default function PreviewPage() {
         </div>
       )}
 
-      {abilityPeek && !openUnit && (
-        <>
-          {abilityPeek.pinned && <div className="preview-ability-backdrop" onMouseDown={() => setAbilityPeek(null)} />}
-          <div className={`preview-ability-peek preview-peek-${abilityPeek.side}${abilityPeek.pinned ? ' preview-ability-peek-pinned' : ''}`}>
-            {abilityPeek.pinned && <button type="button" className="preview-ability-close" onClick={() => setAbilityPeek(null)}>✕</button>}
-            {abilityPeek.abilities.map((a, i) => (
-              <div key={i} className="preview-ability-item">
-                {a._kind && <div className="preview-ability-kind">{a._kind}</div>}
-                <AbilityCard ab={a} />
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
       {peek && !openUnit && (
-        <div className={`preview-peek preview-peek-${peek.side}`} aria-hidden="true">
-          <WarscrollGW unit={peek.unit} factions={factions} onClose={endPeek} />
-        </div>
+        <>
+          {peek.pinned && <div className="preview-ability-backdrop" onMouseDown={closePeek} />}
+          {peek.unit && (
+            <div className={`preview-peek preview-peek-${peek.side}${peek.abilities?.length ? ' preview-peek-with-abilities' : ''}`} aria-hidden="true">
+              <WarscrollGW unit={peek.unit} factions={factions} onClose={closePeek} hideViewToggle />
+            </div>
+          )}
+          {peek.abilities?.length > 0 && (
+            <div className={`preview-ability-peek preview-peek-${peek.side}${peek.unit ? ' preview-ability-peek-beside' : ''}${peek.pinned ? ' preview-ability-peek-pinned' : ''}`}>
+              {peek.pinned && <button type="button" className="preview-ability-close" onClick={closePeek}>✕</button>}
+              {peek.abilities.map((a, i) => (
+                <div key={i} className="preview-ability-item">
+                  {a._kind && <div className="preview-ability-kind">{a._kind}</div>}
+                  <AbilityCard ab={a} />
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {openUnit && (

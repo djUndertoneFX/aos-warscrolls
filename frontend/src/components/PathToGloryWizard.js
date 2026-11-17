@@ -1179,13 +1179,16 @@ function buildOobOverlayFields(d, pageIndex = 0) {
   // Warlord's row 2 is Enhancements 21.8/27, Path 49.8/26, Path Abilities
   // 78.5/26. Every box is ~3.2% tall and shrinks its text to fit.
   if (onFirstPage) {
-    fields.push({ spec: fitFieldXY(21.8, warlordRow1, 27, 0.02), value: d.warlordName, unit: WARLORD_UNIT_KEY });
+    // Every field in a row reports the whole row (unit + all its abilities),
+    // so hovering any of them peeks the warscroll and every ability card.
+    const wRow = { unit: WARLORD_UNIT_KEY, abilities: [d.warlordEnhancements, d.warlordPathAbility].filter(Boolean).join(', ') };
+    fields.push({ spec: fitFieldXY(21.8, warlordRow1, 27, 0.02), value: d.warlordName, row: wRow });
     fields.push({ spec: fitFieldXY(48.9, warlordRow1, 22, 0.02), value: d.warlordWarscroll });
     fields.push({ spec: fitFieldXY(71.4, warlordRow1, 18.5, 0.02), value: d.warlordRank });
     fields.push({ spec: fitFieldXY(87.5, warlordRow1, 8.5, 0.02), value: d.warlordRenown });
-    fields.push({ spec: fitFieldXY(21.8, 25.3, 27, 0.018), value: d.warlordEnhancements, abilities: d.warlordEnhancements });
-    fields.push({ spec: fitFieldXY(49.8, 25.3, 26, 0.018), value: d.warlordPathLabel });
-    fields.push({ spec: fitFieldXY(78.5, 25.3, 26, 0.018), value: d.warlordPathAbility, abilities: d.warlordPathAbility });
+    fields.push({ spec: fitFieldXY(21.8, 25.3, 27, 0.018), value: d.warlordEnhancements, row: wRow });
+    fields.push({ spec: fitFieldXY(49.8, 25.3, 26, 0.018), value: d.warlordPathLabel, row: wRow });
+    fields.push({ spec: fitFieldXY(78.5, 25.3, 26, 0.018), value: d.warlordPathAbility, row: wRow });
     pushWounds(warlordRow1, d.warlordWounds);
   }
 
@@ -1200,13 +1203,14 @@ function buildOobOverlayFields(d, pageIndex = 0) {
     const row1 = unitRow1Tops[i];
     const row2 = unitRow2Tops[i];
     // Unit row 2: Enhancements 21.8/27, Path Abilities 59.3/42.5, Reinforced? 87.5/8.5.
-    fields.push({ spec: fitFieldXY(21.8, row1, 27, 0.018), value: u.name, unit: u.warscroll || u.name });
-    fields.push({ spec: fitFieldXY(48.9, row1, 22, 0.018), value: u.warscroll, unit: u.warscroll || u.name });
-    fields.push({ spec: fitFieldXY(71.4, row1, 18.5, 0.018), value: u.rank });
+    const uRow = { unit: u.warscroll || u.name, abilities: [u.enhancements, u.pathAbility].filter(Boolean).join(', ') };
+    fields.push({ spec: fitFieldXY(21.8, row1, 27, 0.018), value: u.name, row: uRow });
+    fields.push({ spec: fitFieldXY(48.9, row1, 22, 0.018), value: u.warscroll, row: uRow });
+    fields.push({ spec: fitFieldXY(71.4, row1, 18.5, 0.018), value: u.rank, row: uRow });
     fields.push({ spec: fitFieldXY(87.5, row1, 8.5, 0.018), value: u.renown });
     pushWounds(row1, u.wounds);
-    fields.push({ spec: fitFieldXY(21.8, row2, 27, 0.016), value: u.enhancements, abilities: u.enhancements });
-    fields.push({ spec: fitFieldXY(59.3, row2, 42.5, 0.016), value: u.pathAbility, abilities: u.pathAbility });
+    fields.push({ spec: fitFieldXY(21.8, row2, 27, 0.016), value: u.enhancements, row: uRow });
+    fields.push({ spec: fitFieldXY(59.3, row2, 42.5, 0.016), value: u.pathAbility, row: uRow });
     fields.push({ spec: fitFieldXY(87.5, row2, 8.5, 0.014), value: u.reinforced });
   });
   return fields;
@@ -1223,9 +1227,10 @@ function buildArmyOverlayFields(d, pageIndex) {
     // Size 49.8–56.1%, Notes 58.5–83.5%, Points 85.5–91.8% of the width; each
     // row's writing line is ~2.3% of the height, starting just above `top`.
     const y = top - 1.15; // `top` is the row's centre; boxes are 2.3% tall
-    fields.push({ spec: { left: 23.4, top: y, width: 24.2, height: 2.3, fontSize: 0.017, fit: true }, value: r.name, unit: r.sourceUnitId === 'warlord' ? WARLORD_UNIT_KEY : r.name });
+    const rRow = { unit: r.sourceUnitId === 'warlord' ? WARLORD_UNIT_KEY : r.name, abilities: r.notes || '' };
+    fields.push({ spec: { left: 23.4, top: y, width: 24.2, height: 2.3, fontSize: 0.017, fit: true }, value: r.name, row: rRow });
     fields.push({ spec: { ...centerField(52.95, y, 6.3, 0.017), height: 2.3, fit: true }, value: r.size });
-    fields.push({ spec: { left: 59.4, top: y, width: 23.9, height: 2.3, fontSize: 0.016, fit: true }, value: r.notes, abilities: r.notes });
+    fields.push({ spec: { left: 59.4, top: y, width: 23.9, height: 2.3, fontSize: 0.016, fit: true }, value: r.notes, row: rRow });
     fields.push({ spec: { ...centerField(88.65, y, 6.3, 0.017), height: 2.3, fit: true }, value: r.points });
   };
 
@@ -1293,10 +1298,10 @@ function buildOverlayFields(docKey, pageIndex, d) {
 // onUnitHover / onUnitLeave / onUnitClick (share preview): fields tagged with
 // a `unit` (unit names on the Order of Battle and Army Roster) get an
 // invisible hotspot that reports the unit name.
-// onAbilityHover / onAbilityLeave / onAbilityClick do the same for fields
-// tagged with `abilities` (Enhancements, Path Abilities, roster Notes),
-// reporting the field's comma-separated text.
-export function DocPage({ img, alt, docKey, pageIndex, data, onUnitHover, onUnitLeave, onUnitClick, onAbilityHover, onAbilityLeave, onAbilityClick }) {
+// Fields carry their whole row ({ unit, abilities }: the unit's name and the
+// comma-separated Enhancements / Path Abilities / Notes text), so any field
+// of a row reports all of it.
+export function DocPage({ img, alt, docKey, pageIndex, data, onRowHover, onRowLeave, onRowClick }) {
   const containerRef = useRef(null);
   const box = useContainImageBox(containerRef);
   // Editable fields stay even when empty (there'd otherwise be nothing to
@@ -1314,24 +1319,14 @@ export function DocPage({ img, alt, docKey, pageIndex, data, onUnitHover, onUnit
             ? <OverlayAbilitiesBlock key={i} box={box} spec={f.spec} groups={f.value} />
             : <OverlayField key={i} box={box} spec={f.spec}>{f.value}</OverlayField>
         ))}
-        {(onUnitHover || onUnitClick) && box.width > 0 && fields.filter(f => f.unit).map((f, i) => (
+        {(onRowHover || onRowClick) && box.width > 0 && fields.filter(f => f.row).map((f, i) => (
           <div
             key={`hot-${i}`}
             className="ptg-doc-unit-hotspot"
             style={{ ...overlayFieldStyle(box, f.spec), ...(f.spec.height != null ? {} : { height: box.height * 0.022 }) }}
-            onMouseEnter={e => onUnitHover?.(f.unit, e)}
-            onMouseLeave={() => onUnitLeave?.(f.unit)}
-            onClick={() => onUnitClick?.(f.unit)}
-          />
-        ))}
-        {(onAbilityHover || onAbilityClick) && box.width > 0 && fields.filter(f => f.abilities).map((f, i) => (
-          <div
-            key={`ab-${i}`}
-            className="ptg-doc-unit-hotspot ptg-doc-ability-hotspot"
-            style={{ ...overlayFieldStyle(box, f.spec), ...(f.spec.height != null ? {} : { height: box.height * 0.022 }) }}
-            onMouseEnter={e => onAbilityHover?.(f.abilities, e)}
-            onMouseLeave={() => onAbilityLeave?.(f.abilities)}
-            onClick={e => onAbilityClick?.(f.abilities, e)}
+            onMouseEnter={e => onRowHover?.(f.row, e)}
+            onMouseLeave={() => onRowLeave?.(f.row)}
+            onClick={e => onRowClick?.(f.row, e)}
           />
         ))}
       </div>
