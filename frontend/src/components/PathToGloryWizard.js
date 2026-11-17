@@ -4801,6 +4801,9 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
           ><span className="gw-view-icon gw-view-icon-split"><i /><i /></span></button>
         </div>
         <button className="gw-close" onClick={onClose} title="Close (Esc)">✕</button>
+        {/* Top-left toolbar: Import, Print, Share in a row (a flex row, so
+            each sits right of the one before whatever their widths). */}
+        <div className="ptg-wizard-toolbar">
         {/* Import is reachable from the page header too, but once you're in
             the wizard the header is covered — and the enemy wizard is the
             only place an enemy list can be imported straight into. */}
@@ -4825,6 +4828,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
             onShare={mode => onShare({ view: 'wizard', doc: activeDoc, mode: presentMode }, mode)}
           />
         )}
+        </div>
 
         <div className="ptg-wizard-banner">
           Path to Glory!{campaignLabel && <span className="ptg-wizard-banner-campaign"> — {campaignLabel}</span>}

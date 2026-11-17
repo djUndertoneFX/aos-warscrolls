@@ -6900,3 +6900,7 @@ textarea.ptg-doc-overlay-input {
 .gw-abilities-grid.gw-abilities-grid-full > * { break-inside: avoid; margin-bottom: 8px; }
 .gw-split-pane-body .gw-abilities-grid.gw-abilities-grid-full { column-count: 1; }
 @media (max-width: 900px) { .gw-abilities-grid.gw-abilities-grid-full { column-count: 1; } }
+/* Wizard's Import / Print / Share row (top-left). */
+.ptg-wizard-toolbar { position: absolute; top: 8px; left: 10px; z-index: 11; display: flex; gap: 8px; align-items: stretch; }
+.ptg-wizard-toolbar .ab-roster-print-btn,
+.ptg-wizard-toolbar .ab-roster-share-wrap { position: static; left: auto; top: auto; }
