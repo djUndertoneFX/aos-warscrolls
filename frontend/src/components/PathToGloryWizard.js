@@ -620,7 +620,38 @@ function overlayFieldStyle(box, spec) {
 
 function OverlayField({ box, spec, children }) {
   if (!box.width) return null;
+  if (spec.fit) return <OverlayFitField box={box} spec={spec}>{children}</OverlayFitField>;
   return <div className="ptg-doc-overlay-field" style={overlayFieldStyle(box, spec)}>{children}</div>;
+}
+
+// A field with a fixed box (spec.height) whose text shrinks until it fits,
+// down to 45% of its normal size, instead of spilling onto the rows below
+// (long Notes on the Army Roster). Vertically centred in its box.
+function OverlayFitField({ box, spec, children }) {
+  const ref = useRef(null);
+  const inner = useRef(null);
+  const base = (spec.fontSize ?? 0.016) * box.width;
+  const [scale, setScale] = useState(1);
+  const text = String(children ?? '');
+  useEffect(() => { setScale(1); }, [text, box.width, box.height]);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || !inner.current) return;
+    if (inner.current.offsetHeight > el.clientHeight + 1 && scale > 0.45) setScale(sc => Math.max(0.45, +(sc - 0.05).toFixed(2)));
+  }, [scale, text, box.width, box.height]);
+  const style = {
+    ...overlayFieldStyle(box, spec),
+    fontSize: base * scale,
+    lineHeight: 1.08,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: spec.align === 'center' ? 'center' : 'flex-start',
+  };
+  return (
+    <div ref={ref} className="ptg-doc-overlay-field" style={style}>
+      <span ref={inner} style={{ display: 'block', flexShrink: 0, width: '100%', textAlign: spec.align || 'left' }}>{text}</span>
+    </div>
+  );
 }
 
 // The Officiant (image) view's editable counterpart to OverlayField — same
@@ -967,10 +998,13 @@ function buildArmyOverlayFields(d, pageIndex) {
   const fields = [];
   const regimentRow = (r, top) => {
     if (!r) return;
-    fields.push({ spec: { left: 22, top, width: 37, fontSize: 0.017 }, value: r.name });
-    fields.push({ spec: centerField(60, top, 8, 0.017), value: r.size });
-    fields.push({ spec: { left: 69, top, width: 17, fontSize: 0.017 }, value: r.notes });
-    fields.push({ spec: centerField(87, top, 9, 0.017), value: r.points });
+    // Columns measured off the printed Army Roster: Warscroll Name 22.4–47.8%,
+    // Size 49.8–56.1%, Notes 58.5–83.5%, Points 85.5–91.8% of the width; each
+    // row's writing line is ~2.3% of the height, starting just above `top`.
+    fields.push({ spec: { left: 22.6, top: top - 0.25, width: 25, height: 2.3, fontSize: 0.017, fit: true }, value: r.name });
+    fields.push({ spec: { ...centerField(52.95, top - 0.25, 6.3, 0.017), height: 2.3, fit: true }, value: r.size });
+    fields.push({ spec: { left: 58.7, top: top - 0.25, width: 24.6, height: 2.3, fontSize: 0.016, fit: true }, value: r.notes });
+    fields.push({ spec: { ...centerField(88.65, top - 0.25, 6.3, 0.017), height: 2.3, fit: true }, value: r.points });
   };
 
   if (pageIndex === 0) {
