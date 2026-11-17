@@ -2440,6 +2440,31 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
     return startingUnitPool.find(fu => (fu.name || '').toLowerCase() === name) || null;
   };
   const isHeroRow = row => !!oobRowWarscroll(row)?.is_hero;
+  // A reinforced unit fields twice the warscroll's models.
+  const oobRowSize = (row, match = oobRowWarscroll(row)) => {
+    const base = parseInt(match?.unit_size, 10);
+    if (!base) return match?.unit_size || '';
+    return String((row.reinforced || '').trim() ? base * 2 : base);
+  };
+  // Keep the Army Roster's Size in step with each row's Reinforced state —
+  // only where the size is still the warscroll's own (single or doubled),
+  // never over a size the player typed.
+  useEffect(() => {
+    const byId = new Map(oobUnits.map(r => [r.id, r]));
+    const want = u => {
+      const row = u.sourceUnitId && byId.get(u.sourceUnitId);
+      if (!row) return null;
+      const base = parseInt(oobRowWarscroll(row)?.unit_size, 10);
+      if (!base) return null;
+      const cur = String(u.size ?? '').trim();
+      if (cur && cur !== String(base) && cur !== String(base * 2)) return null;
+      const next = oobRowSize(row);
+      return next !== cur ? next : null;
+    };
+    if (regiments.some(r => r.units.some(u => want(u) != null))) {
+      setRegiments(rs => rs.map(r => ({ ...r, units: r.units.map(u => { const n = want(u); return n != null ? { ...u, size: n } : u; }) })));
+    }
+  }, [oobUnits, regiments, startingUnitPool]); // eslint-disable-line
 
   // The default regiment layout: the Warlord leads the General's Regiment,
   // then every Order of Battle row in list order — each Hero opening a new
@@ -2471,7 +2496,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
         id: uid('ru'),
         sourceUnitId: row.id,
         name: warscrollName,
-        size: match?.unit_size || '',
+        size: oobRowSize(row, match),
         notes: [row.enhancements, row.pathAbility].filter(Boolean).join('; '),
         points: row.points || match?.points || '',
       };
