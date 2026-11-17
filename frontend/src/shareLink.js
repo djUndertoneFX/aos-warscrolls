@@ -117,7 +117,7 @@ export function getShareParam() {
 // selected, and the ▾ opens the picker. Picking a mode both fires it and
 // makes it the new default, so "switch to preview" and "send a preview" are
 // the same single action rather than two.
-export function ShareButton({ onShare, className = 'share-btn', label = '🔗 Share' }) {
+export function ShareButton({ onShare, className = 'share-btn', label = '🔗 Share', wrapperClassName = '' }) {
   const [mode, setMode] = useShareMode();
   const [open, setOpen] = useState(false);
   const ref = React.useRef(null);
@@ -131,7 +131,7 @@ export function ShareButton({ onShare, className = 'share-btn', label = '🔗 Sh
 
   const active = SHARE_MODES.find(m => m.key === mode) || SHARE_MODES[0];
   return (
-    <span className="share-split" ref={ref}>
+    <span className={`share-split${wrapperClassName ? ` ${wrapperClassName}` : ''}`} ref={ref}>
       <button className={`${className} share-split-main`} onClick={() => onShare(mode)} title={`${active.label} — ${active.hint}`}>
         {label}{mode === 'preview' ? ' preview' : ''}
       </button>

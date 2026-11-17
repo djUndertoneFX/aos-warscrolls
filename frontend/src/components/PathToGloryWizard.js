@@ -8,6 +8,7 @@ import {
 } from '../apotheosisEffects';
 
 import BATTLEPACKS from './ptgBattlepacks';
+import { ShareButton } from '../shareLink';
 import FACTION_PATHS_SCRAPED from './ptgFactionPaths';
 
 function parseFormationBullets(raw) {
@@ -4873,11 +4874,11 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
         {/* Share sits beside Print on the Warlord sheet, and in Print's spot
             on the Army Roster sheet (which has no Print). */}
         {onShare && ((activeDoc === 'warlord' && !warlordPrintPreview) || activeDoc === 'army') && (
-          <button
-            className={`ab-roster-print-btn${activeDoc === 'warlord' ? ' ab-roster-share-btn' : ''}`}
-            onClick={() => onShare({ view: 'wizard', doc: activeDoc, mode: presentMode })}
-            title={enemyName ? 'Copy a link to this enemy roster' : 'Copy a link to your roster. Whoever opens it gets it as their Enemy Roster.'}
-          >🔗 Share</button>
+          <ShareButton
+            wrapperClassName={`ab-roster-share-wrap${activeDoc === 'warlord' ? ' ab-roster-share-wrap-beside-print' : ''}`}
+            className="ab-roster-print-btn"
+            onShare={mode => onShare({ view: 'wizard', doc: activeDoc, mode: presentMode }, mode)}
+          />
         )}
 
         <div className="ptg-wizard-banner">

@@ -987,7 +987,13 @@ function ArmyRosterModal({
   const content = (
     <>
         {!inline && !printPreview && <button className="ab-roster-print-btn" onClick={handlePrintClick} title="Print">🖨 Print</button>}
-        {!inline && !printPreview && onShare && <button className="ab-roster-print-btn ab-roster-share-btn" onClick={onShare} title="Copy a link to this list. Whoever opens it gets it as an Enemy List.">🔗 Share</button>}
+        {!inline && !printPreview && onShare && (
+          <ShareButton
+            wrapperClassName="ab-roster-share-wrap ab-roster-share-wrap-beside-print"
+            className="ab-roster-print-btn"
+            onShare={onShare}
+          />
+        )}
         {!inline && !printPreview && <button className="gw-close" onClick={onClose} title="Close (Esc)">✕</button>}
 
         {printPreview ? (

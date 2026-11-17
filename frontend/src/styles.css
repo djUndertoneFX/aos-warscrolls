@@ -6251,6 +6251,24 @@ textarea.ptg-doc-overlay-input {
 .ptg-wizard-importable .ab-roster-share-btn { left: 192px; }
 .ptg-wizard-importable .ptg-wizard-import-btn { left: 10px; }
 
+/* Share inside a document modal (wizard / Army Roster): the split button's
+   wrapper takes the absolute position the lone button used to have, and the
+   two halves inside it sit static so they stay joined. */
+.ab-roster-share-wrap {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  z-index: 11;
+  display: inline-flex;
+  align-items: stretch;
+}
+.ab-roster-share-wrap .ab-roster-print-btn { position: static; }
+/* Where Print also shows, Share sits to its right as before. */
+.ab-roster-share-wrap-beside-print { left: 82px; }
+.ptg-wizard-importable .ab-roster-share-wrap { left: 120px; }
+.ptg-wizard-importable .ab-roster-share-wrap-beside-print { left: 192px; }
+.ab-roster-share-wrap .share-split-menu { right: auto; left: 0; }
+
 /* ── Path to Glory battlepacks (Ravaged Coast / Blighted Wilds) ── */
 .ptg-bp-rules { margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem; text-align: left; }
 .ptg-bp-details { border: 1px solid rgba(200,168,64,0.3); border-radius: 4px; padding: 0.4rem 0.7rem; background: rgba(0,0,0,0.2); text-align: left; }
