@@ -42,6 +42,8 @@ export const isWarscrollPopupOpen = () => openPopupCount > 0;
 export function TransparentImage({ src, alt, className, onError }) {
   const canvasRef = useRef(null);
   const [failed, setFailed] = useState(false);
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
 
   // Reset failed state whenever src changes so a new valid image can load
   useEffect(() => { setFailed(false); }, [src]);
@@ -68,7 +70,7 @@ export function TransparentImage({ src, alt, className, onError }) {
       }
       ctx.putImageData(data, 0, 0);
     };
-    img.onerror = () => setFailed(true);
+    img.onerror = () => { setFailed(true); onErrorRef.current?.(); };
     img.src = src;
   }, [src]);
 
@@ -795,11 +797,16 @@ function WarscrollBodyMain({ unit, factions = [], onFilterApply }) {
     } catch { return []; }
   }, [unit, useSpearheadAbilities, spName]); // eslint-disable-line
   const [imageUrl, setImageUrl] = useState(null);
+  // A unit without a picture (the preview's Anvil Warlord: _noImage) or
+  // whose picture fails to load gives its column back to the abilities.
+  const [imageFailed, setImageFailed] = useState(false);
   useEffect(() => {
-    if (!unit?.id) return;
+    setImageFailed(false);
+    if (!unit?.id || unit._noImage) { setImageUrl(null); return; }
     const base = axios.defaults.baseURL || '';
     setImageUrl(`${base}/api/unit-image/${unit.id}`);
-  }, [unit?.id]);
+  }, [unit?.id, unit?._noImage]);
+  const showImage = !!imageUrl && !imageFailed;
 
   const { allKeywords } = splitKeywordsForUnit(unit);
 
@@ -846,8 +853,8 @@ function WarscrollBodyMain({ unit, factions = [], onFilterApply }) {
             </div>
             <div className="gw-header-name">{unit.name}</div>
           </div>
-          {imageUrl && (
-            <TransparentImage src={imageUrl} alt={unit.name} className="gw-header-thumb" />
+          {showImage && (
+            <TransparentImage src={imageUrl} alt={unit.name} className="gw-header-thumb" onError={() => setImageFailed(true)} />
           )}
         </div>
 
@@ -900,12 +907,12 @@ function WarscrollBodyMain({ unit, factions = [], onFilterApply }) {
         <div className="gw-abilities-section">
           <div className="gw-section-rule"><span>ABILITIES</span></div>
           <div className="gw-abilities-row">
-            <div className="gw-abilities-grid">
+            <div className={`gw-abilities-grid${showImage ? '' : ' gw-abilities-grid-full'}`}>
               {abilities.map((ab, i) => <AbilityCard key={i} ab={ab} keywords={allKeywords} />)}
             </div>
-            {imageUrl && (
+            {showImage && (
               <div className="gw-abilities-img-col">
-                <TransparentImage src={imageUrl} alt={unit.name} className="gw-unit-img" />
+                <TransparentImage src={imageUrl} alt={unit.name} className="gw-unit-img" onError={() => setImageFailed(true)} />
               </div>
             )}
           </div>

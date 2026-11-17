@@ -6889,9 +6889,14 @@ textarea.ptg-doc-overlay-input {
 .preview-ability-kind { font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; color: #c8a840; margin-bottom: 3px; }
 .ptg-doc-ability-hotspot { cursor: help; }
 @media print { .preview-ability-peek, .preview-ability-backdrop { display: none !important; } }
-/* Warscroll + ability cards peeked together: warscroll at the outer edge,
-   the cards beside it on the inside. */
-.preview-peek-with-abilities .gw-modal { width: min(560px, 40vw); }
-.preview-ability-peek-beside { width: min(360px, 30vw); }
-.preview-ability-peek-beside.preview-peek-right { right: calc(2vw + min(560px, 40vw) + 10px); }
-.preview-ability-peek-beside.preview-peek-left { left: calc(2vw + min(560px, 40vw) + 10px); }
+/* A row's Enhancement / Path ability cards under the peeked warscroll. */
+.preview-row-abilities { padding: 4px 14px 12px; }
+.preview-row-abilities-grid { column-count: 2; column-gap: 8px; }
+.preview-row-abilities-grid > * { break-inside: avoid; margin-bottom: 8px; }
+.preview-ability-peek .preview-row-abilities-grid { column-count: 1; }
+.preview-peek-pinned .gw-modal { pointer-events: auto; z-index: 1210; }
+/* No unit picture: abilities flow down two columns across the full width. */
+.gw-abilities-grid.gw-abilities-grid-full { flex: 1 1 100%; display: block; column-count: 2; column-gap: 8px; }
+.gw-abilities-grid.gw-abilities-grid-full > * { break-inside: avoid; margin-bottom: 8px; }
+.gw-split-pane-body .gw-abilities-grid.gw-abilities-grid-full { column-count: 1; }
+@media (max-width: 900px) { .gw-abilities-grid.gw-abilities-grid-full { column-count: 1; } }

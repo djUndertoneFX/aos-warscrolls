@@ -109,6 +109,7 @@ export default function PreviewPage() {
     return {
       id: 'anvil-warlord',
       _anvilWarlord: true,
+      _noImage: true,
       name: docData.warlordName,
       faction_slug: docData.factionSlug,
       faction: faction?.faction || docData.factionLabel || '',
@@ -121,7 +122,11 @@ export default function PreviewPage() {
         ...(docData.rangedWeapons || []).filter(w => w.name).map(weapon('ranged')),
         ...(docData.meleeWeapons || []).filter(w => w.name).map(weapon('melee')),
       ]),
-      abilities: JSON.stringify((docData.warlordAbilityGroups || []).flatMap(g => g.abilities || [])),
+      // Enhancements and Path abilities are shown under the warscroll
+      // (renderPathRows / the row peek), not among its own abilities.
+      abilities: JSON.stringify((docData.warlordAbilityGroups || [])
+        .filter(g => g.header !== 'Enhancements' && g.header !== docData.warlordPathLabel)
+        .flatMap(g => g.abilities || [])),
       keywords: [docData.warlordKeywordsLine1, docData.warlordKeywordsLine2].filter(Boolean).join(', '),
     };
   }, [docData, factions]);
@@ -197,8 +202,25 @@ export default function PreviewPage() {
   const unitFor = name => (name === WARLORD_UNIT_KEY ? warlordUnit : name ? unitsByName.get(looseKey(name)) : null);
   const sideOf = e => (e && e.clientX > window.innerWidth / 2 ? 'left' : 'right');
   const abilitiesFor = text => abilitiesInText(text, docData.abilityLookup || new Map());
+  const renderAbilityCards = abilities => (
+    <div className="preview-row-abilities">
+      <div className="gw-section-rule"><span>ENHANCEMENTS &amp; PATH ABILITIES</span></div>
+      <div className="preview-row-abilities-grid">
+        {abilities.map((a, i) => (
+          <div key={i} className="preview-ability-item">
+            {a._kind && <div className="preview-ability-kind">{a._kind}</div>}
+            <AbilityCard ab={a} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
   const renderPathRows = unit => {
-    if (!unit || unit._anvilWarlord) return null;
+    if (!unit) return null;
+    if (unit._anvilWarlord) {
+      const abilities = abilitiesFor([docData.warlordEnhancements, docData.warlordPathAbility].filter(Boolean).join(', '));
+      return abilities.length ? renderAbilityCards(abilities) : null;
+    }
     const groups = pathGroupsByUnit.get(looseKey(unit.name));
     if (!groups || !groups.size) return null;
     return (
@@ -234,10 +256,10 @@ export default function PreviewPage() {
   const rowClick = (row, e) => {
     const abilities = abilitiesFor(row.abilities);
     const unit = unitFor(row.unit);
-    // A row with ability cards pins the peek (warscroll + cards) so the
-    // cards can be read and scrolled; a plain unit row opens the warscroll.
-    if (abilities.length) { clearTimeout(peekTimer.current); setPeek({ unit, abilities, side: sideOf(e), pinned: true }); }
-    else openFull(unit);
+    // A unit's row opens its full warscroll (with the army's pages); a row
+    // with only ability cards (no matching warscroll) pins them instead.
+    if (unit) openFull(unit);
+    else if (abilities.length) { clearTimeout(peekTimer.current); setPeek({ unit: null, abilities, side: sideOf(e), pinned: true }); }
   };
   const openFull = unit => { if (!unit) return; closePeek(); setOpenUnit(unit); };
 
@@ -274,20 +296,20 @@ export default function PreviewPage() {
       {peek && !openUnit && (
         <>
           {peek.pinned && <div className="preview-ability-backdrop" onMouseDown={closePeek} />}
+          {/* With a unit, its Enhancement / Path ability cards sit under the
+              warscroll (above its keywords); without one they get a panel. */}
           {peek.unit && (
-            <div className={`preview-peek preview-peek-${peek.side}${peek.abilities?.length ? ' preview-peek-with-abilities' : ''}`} aria-hidden="true">
-              <WarscrollGW unit={peek.unit} factions={factions} onClose={closePeek} hideViewToggle />
+            <div className={`preview-peek preview-peek-${peek.side}${peek.pinned ? ' preview-peek-pinned' : ''}`} aria-hidden={!peek.pinned}>
+              <WarscrollGW
+                unit={peek.unit} factions={factions} onClose={closePeek} hideViewToggle
+                renderExtras={peek.abilities?.length ? () => renderAbilityCards(peek.abilities) : undefined}
+              />
             </div>
           )}
-          {peek.abilities?.length > 0 && (
-            <div className={`preview-ability-peek preview-peek-${peek.side}${peek.unit ? ' preview-ability-peek-beside' : ''}${peek.pinned ? ' preview-ability-peek-pinned' : ''}`}>
+          {!peek.unit && peek.abilities?.length > 0 && (
+            <div className={`preview-ability-peek preview-peek-${peek.side}${peek.pinned ? ' preview-ability-peek-pinned' : ''}`}>
               {peek.pinned && <button type="button" className="preview-ability-close" onClick={closePeek}>✕</button>}
-              {peek.abilities.map((a, i) => (
-                <div key={i} className="preview-ability-item">
-                  {a._kind && <div className="preview-ability-kind">{a._kind}</div>}
-                  <AbilityCard ab={a} />
-                </div>
-              ))}
+              {renderAbilityCards(peek.abilities)}
             </div>
           )}
         </>
