@@ -8,6 +8,7 @@ import {
 } from '../apotheosisEffects';
 
 import BATTLEPACKS from './ptgBattlepacks';
+import FACTION_PATHS_SCRAPED from './ptgFactionPaths';
 
 function parseFormationBullets(raw) {
   try { return JSON.parse(raw || '[]'); } catch { return []; }
@@ -340,7 +341,7 @@ const QUESTS = [
 // this one entry is transcribed directly from the user's own photographs
 // of the Idoneth Deepkin battletome, pgs 90-91. Everything else stays
 // empty/unsourced until photographed the same way.
-const FACTION_PATHS = {
+const FACTION_PATHS_HAND = {
   'idoneth-deepkin': [
     {
       key: 'perpetual-deep',
@@ -368,6 +369,22 @@ const FACTION_PATHS = {
     },
   ],
 };
+
+// Every faction's own Paths: the scraped Wahapedia set (a Hero Path plus
+// Unit Path(s) per faction — hero: true / false; Sons of Behemat's LITTLE /
+// BIG Paths have no flag and are offered to both), with any hand-transcribed
+// Path of the same name (Idoneth's Perpetual Deep, from dj's battletome
+// photos) taking its place so saved picks keep their key.
+const FACTION_PATHS = Object.fromEntries(
+  [...new Set([...Object.keys(FACTION_PATHS_SCRAPED), ...Object.keys(FACTION_PATHS_HAND)])].map(slug => {
+    const hand = (FACTION_PATHS_HAND[slug] || []).map(p => ({ hero: true, ...p }));
+    const handNames = new Set(hand.map(p => p.name.toLowerCase()));
+    const scraped = (FACTION_PATHS_SCRAPED[slug] || []).filter(p => !handNames.has(p.name.toLowerCase()));
+    return [slug, [...hand, ...scraped]];
+  })
+);
+// A Path's fit for a unit: hero: true = Heroes only, false = non-Heroes only.
+const pathFitsUnit = (p, isHero) => (p.hero === undefined ? true : !!p.hero === isHero);
 
 // "Path of the Enclave" (non-Hero Idoneth Deepkin unit only, same
 // battletome pgs 90-91) is the unit-side counterpart to Path of the
@@ -2165,7 +2182,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
       .flatMap(g => g.paths)
       .filter(pth => !!pth.hero === isHero)
       .filter(pth => (seen.has(pth.key) ? false : (seen.add(pth.key), true)));
-    return [...fromBattlepack, ...fromOther, ...(isHero ? (FACTION_PATHS[selectedFaction] ?? []) : [])];
+    return [...fromBattlepack, ...fromOther, ...(FACTION_PATHS[selectedFaction] ?? []).filter(p => pathFitsUnit(p, isHero))];
   };
   const findPathByKey = key => (
     PATHS.find(pth => pth.key === key)
@@ -4106,32 +4123,24 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                   <div className="ptg-path-section-divider" />
 
                   <div className="ptg-apotheosis-group-title">Faction</div>
-                  {(FACTION_PATHS[selectedFaction] ?? []).length > 0 ? (
-                    <div className="ptg-apotheosis-options-grid">
-                      {FACTION_PATHS[selectedFaction].map(p => (
-                        <button
-                          key={p.key}
-                          type="button"
-                          className={`ptg-apotheosis-option-btn${warlordPath === p.key ? ' ptg-apotheosis-option-selected' : ''}`}
-                          onClick={() => pickWarlordPath(p.key)}
-                        >
-                          <div className="gw-ability-card">
-                            <div className="gw-ability-body">
-                              <div className="gw-ability-name">
-                                {p.name}
-                                {p.restricted && <span className="gw-ability-source-note" title="Restriction">({p.restricted})</span>}
-                              </div>
-                              <p className="gw-ability-para">{p.desc}</p>
-                            </div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="ptg-wizard-body-placeholder">
-                      No faction-specific Warlord Paths sourced for {factions.find(f => f.faction_slug === selectedFaction)?.faction || 'this faction'} yet.
-                    </div>
-                  )}
+                  {(() => {
+                    const fp = FACTION_PATHS[selectedFaction] ?? [];
+                    const factionName = factions.find(f => f.faction_slug === selectedFaction)?.faction || 'this faction';
+                    if (!fp.length) return <div className="ptg-wizard-body-placeholder">No faction Paths published for {factionName}.</div>;
+                    const heroPaths = fp.filter(p => pathFitsUnit(p, true));
+                    const unitPaths = fp.filter(p => p.hero === false);
+                    return (
+                      <>
+                        {renderPathGroup(null, heroPaths)}
+                        {unitPaths.length > 0 && (
+                          <details className="ptg-bp-details">
+                            <summary>{factionName} — Unit Paths (non-Hero units, set on Set Paths &amp; Ranks)</summary>
+                            {renderPathGroup(null, unitPaths)}
+                          </details>
+                        )}
+                      </>
+                    );
+                  })()}
 
                   {(() => {
                     const selectedPathObj = PATHS.find(p => p.key === warlordPath)
