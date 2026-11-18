@@ -179,36 +179,52 @@ function titleCase(s) {
 }
 function instanceName(key, unitsById) {
   const unit = instanceUnit(key, unitsById);
-  return unit ? titleCase(unit.name) : '(unknown unit)';
+  return unit ? niceName(unit.name) : '(unknown unit)';
+}
+// "FORM OF THE FANGMORA" → "Form of the Fangmora" (the scraped rules shout).
+const SMALL_WORDS = new Set(['of', 'the', 'a', 'an', 'and', 'in', 'on', 'to', 'for']);
+function niceName(n) {
+  return String(n || '').toLowerCase().split(' ')
+    .map((w, i) => (i > 0 && SMALL_WORDS.has(w) ? w : w.replace(/(^|-)([a-z])/g, (m, p, c) => p + c.toUpperCase())))
+    .join(' ');
 }
 // A Hero's Heroic Trait and Artefact (heroAssignments[unitId]), for the
 // roster's Notes column.
-function heroEnhancements(key, heroAssignments) {
+function heroEnhancementList(key, heroAssignments) {
   const a = key && heroAssignments ? heroAssignments[key.split(':')[0]] : null;
-  return a ? ['heroic_traits', 'artefacts'].map(k => a[k]).filter(Boolean).join(', ') : '';
+  return a ? ['heroic_traits', 'artefacts'].map(k => a[k]).filter(Boolean) : [];
+}
+// The Notes column, one entry per line on the sheet: "Reinforced", then the
+// Hero's trait and artefact.
+function instanceNoteLines(key, heroAssignments) {
+  return [instanceReinforced(key) ? 'Reinforced' : '', ...heroEnhancementList(key, heroAssignments).map(niceName)].filter(Boolean);
 }
 function instanceNotes(key, heroAssignments) {
-  const enh = heroEnhancements(key, heroAssignments);
-  if (enh) return [instanceReinforced(key) ? 'Reinforced' : '', enh].filter(Boolean).join('; ');
-  return instanceReinforced(key) ? 'Reinforced' : '';
+  return instanceNoteLines(key, heroAssignments).join('; ');
+}
+// Long warscroll names shrink to fit the sheet's Name column.
+function nameFitClass(name) {
+  const n = String(name || '').length;
+  return n > 30 ? ' ab-roster-name-xs' : n > 22 ? ' ab-roster-name-sm' : '';
+}
+// Notes cell on the sheet image: two or more entries squeeze onto stacked
+// lines in a smaller type so both fit the row.
+function NotesCell({ lines }) {
+  if (lines.length < 2) return <>{lines[0] || ''}</>;
+  return <span className="ab-roster-notes-multi">{lines.map((l, i) => <span key={i}>{l}</span>)}</span>;
 }
 
-// The army's Spell / Prayer / Manifestation Lore for the sheet's Notes box:
-// "Spell Lore: Steed of Tides, Counter-Current, … Manifestation Lore: …".
-// A faction has one of each (whichever it has), so it is the lore's spells.
-export function loreNotesText(rules) {
-  if (!rules) return '';
+// The army's Spell / Prayer / Manifestation Lore for the sheet's Notes box,
+// one line each: "Spell Lore: Steed of Tides, Counter-Current, …". A faction
+// has one of each (whichever it has), so it is the lore's spells.
+export function loreNotesLines(rules) {
+  if (!rules) return [];
   return [['spell_lore', 'Spell Lore'], ['prayer_lore', 'Prayer Lore'], ['manifestation_lore', 'Manifestation Lore']]
     .map(([k, label]) => {
-      const small = new Set(['of', 'the', 'a', 'an', 'and', 'in', 'on', 'to']);
-      const nice = n => String(n || '').toLowerCase().split(' ')
-        .map((w, i) => (i > 0 && small.has(w) ? w : w.replace(/(^|-)([a-z])/g, (m, p, c) => p + c.toUpperCase())))
-        .join(' ');
-      const names = (rules[k] || []).map(o => nice(o.name)).filter(Boolean);
+      const names = (rules[k] || []).map(o => niceName(o.name)).filter(Boolean);
       return names.length ? `${label}: ${names.join(', ')}.` : '';
     })
-    .filter(Boolean)
-    .join(' ');
+    .filter(Boolean);
 }
 
 function makeEmptySlots() {
@@ -350,11 +366,11 @@ export function ArmyRosterPreviewSheets({ data, listName, factionName, unitsById
     if (!key) return null;
     const unit = instanceUnit(key, unitsById);
     const enh = enhancementsFor(key);
-    const notes = instanceNotes(key, data?.heroAssignments);
+    const notes = <NotesCell lines={instanceNoteLines(key, data?.heroAssignments)} />;
     const r = { unit: unit?.name || '', abilities: enh };
     return (
       <div className="ab-roster-overlay-row" style={{ top: `${top}%` }} key={`${key}-${top}`}>
-        <span className="ab-roster-overlay-cell" style={{ left: `${ROSTER_ROW_COLS.name.left}%`, width: `${ROSTER_ROW_COLS.name.width}%` }}>{instanceName(key, unitsById)}</span>
+        <span className={`ab-roster-overlay-cell${nameFitClass(instanceName(key, unitsById))}`} style={{ left: `${ROSTER_ROW_COLS.name.left}%`, width: `${ROSTER_ROW_COLS.name.width}%` }}>{instanceName(key, unitsById)}</span>
         <span className="ab-roster-overlay-cell ab-roster-overlay-center" style={{ left: `${ROSTER_ROW_COLS.size.left}%`, width: `${ROSTER_ROW_COLS.size.width}%` }}>{instanceSize(key, unitsById)}</span>
         <span className="ab-roster-overlay-cell ab-roster-overlay-center" style={{ left: `${ROSTER_ROW_COLS.notes.left}%`, width: `${ROSTER_ROW_COLS.notes.width}%` }}>{notes}</span>
         <span className="ab-roster-overlay-cell ab-roster-overlay-center" style={{ left: `${ROSTER_ROW_COLS.points.left}%`, width: `${ROSTER_ROW_COLS.points.width}%` }}>{pts(key)}</span>
@@ -397,7 +413,7 @@ export function ArmyRosterPreviewSheets({ data, listName, factionName, unitsById
         <div className="ab-roster-overlay-field ab-roster-overlay-center" style={totalStyle(ROSTER_LAYOUT.auxTotal.top)}>{auxTotal}</div>
         <div className="ab-roster-overlay-field ab-roster-overlay-center" style={totalStyle(ROSTER_LAYOUT.unitsTotal.top)}>{regimentsTotal + auxTotal}</div>
         <div className="ab-roster-overlay-notes-text" style={{ top: `${ROSTER_LAYOUT.notes.top}%`, left: '8%', width: '84%' }}>
-          {[loreNotesText(factionRules), doc.notes].filter(Boolean).map((t, i) => <div key={i}>{t}</div>)}
+          {[...loreNotesLines(factionRules), doc.notes].filter(Boolean).map((t, i) => <div key={i}>{t}</div>)}
         </div>
       </div>
     </>
@@ -1006,6 +1022,7 @@ function RosterSlotRow({ mode, label, instanceKey, slotRef, unitsById, heroAssig
   const name = instanceKey ? instanceName(instanceKey, unitsById) : '';
   const size = instanceKey ? instanceSize(instanceKey, unitsById) : '';
   const notes = instanceKey ? instanceNotes(instanceKey, heroAssignments) : '';
+  const noteLines = instanceKey ? instanceNoteLines(instanceKey, heroAssignments) : [];
   const points = instanceKey ? instancePoints(instanceKey, unitsById) : '';
 
   const dragProps = {
@@ -1033,9 +1050,9 @@ function RosterSlotRow({ mode, label, instanceKey, slotRef, unitsById, heroAssig
 
   return (
     <div className={`ab-roster-overlay-row${instanceKey ? '' : ' ab-roster-overlay-row-empty'}`} style={{ top: `${top}%` }} {...dragProps}>
-      <span className="ab-roster-overlay-cell" style={{ left: `${ROSTER_ROW_COLS.name.left}%`, width: `${ROSTER_ROW_COLS.name.width}%` }}>{name}</span>
+      <span className={`ab-roster-overlay-cell${nameFitClass(name)}`} style={{ left: `${ROSTER_ROW_COLS.name.left}%`, width: `${ROSTER_ROW_COLS.name.width}%` }}>{name}</span>
       <span className="ab-roster-overlay-cell ab-roster-overlay-center" style={{ left: `${ROSTER_ROW_COLS.size.left}%`, width: `${ROSTER_ROW_COLS.size.width}%` }}>{size}</span>
-      <span className="ab-roster-overlay-cell ab-roster-overlay-center" style={{ left: `${ROSTER_ROW_COLS.notes.left}%`, width: `${ROSTER_ROW_COLS.notes.width}%` }}>{notes}</span>
+      <span className="ab-roster-overlay-cell ab-roster-overlay-center" style={{ left: `${ROSTER_ROW_COLS.notes.left}%`, width: `${ROSTER_ROW_COLS.notes.width}%` }}><NotesCell lines={noteLines} /></span>
       <span className="ab-roster-overlay-cell ab-roster-overlay-center" style={{ left: `${ROSTER_ROW_COLS.points.left}%`, width: `${ROSTER_ROW_COLS.points.width}%` }}>{instanceKey ? points : ''}</span>
     </div>
   );
@@ -1150,7 +1167,7 @@ function ArmyRosterModal({
 
       <div className="ptg-field">
         <label>Notes</label>
-        {loreNotesText(factionRules) && <div className="ab-roster-lore-notes">{loreNotesText(factionRules)}</div>}
+        {loreNotesLines(factionRules).map((t, i) => <div className="ab-roster-lore-notes" key={i}>{t}</div>)}
         <textarea rows={3} value={doc.notes} onChange={e => setDoc(d => ({ ...d, notes: e.target.value }))} />
       </div>
     </>
@@ -1240,7 +1257,7 @@ function ArmyRosterModal({
                     <div className="ab-roster-overlay-field ab-roster-overlay-center" style={{ top: `${ROSTER_LAYOUT.auxTotal.top}%`, left: `${ROSTER_ROW_COLS.totals.left}%`, width: `${ROSTER_ROW_COLS.totals.width}%` }}>{auxTotal}</div>
                     <div className="ab-roster-overlay-field ab-roster-overlay-center" style={{ top: `${ROSTER_LAYOUT.unitsTotal.top}%`, left: `${ROSTER_ROW_COLS.totals.left}%`, width: `${ROSTER_ROW_COLS.totals.width}%` }}>{armyUnitsTotal}</div>
                     <div className="ab-roster-overlay-notes-text" style={{ top: `${ROSTER_LAYOUT.notes.top}%`, left: '8%', width: '84%' }}>
-                      {[loreNotesText(factionRules), doc.notes].filter(Boolean).map((t, i) => <div key={i}>{t}</div>)}
+                      {[...loreNotesLines(factionRules), doc.notes].filter(Boolean).map((t, i) => <div key={i}>{t}</div>)}
                     </div>
                   </div>
                 </div>

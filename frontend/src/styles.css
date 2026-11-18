@@ -6923,3 +6923,11 @@ textarea.ptg-doc-overlay-input {
 .ab-roster-preview-hotspot { position: absolute; top: 0; height: 100%; cursor: pointer; }
 .ab-roster-preview-hotspot:hover { background: rgba(200,168,64,0.12); outline: 1px solid rgba(200,168,64,0.4); }
 .ab-roster-lore-notes { font-size: 0.85rem; color: var(--text-dim, #bbb); margin: 2px 0 6px; }
+/* Army Roster Notes cell holding two+ entries (trait + artefact): stacked,
+   smaller, so both fit one row. */
+.ab-roster-notes-multi { display: flex; flex-direction: column; justify-content: center; line-height: 1.05; font-size: 0.68em; width: 100%; }
+.ab-roster-notes-multi > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ab-roster-overlay-cell.ab-roster-name-sm { font-size: 1.15vh; }
+.ab-roster-overlay-cell.ab-roster-name-xs { font-size: 0.95vh; }
+.ab-roster-preview-page .ab-roster-overlay-cell.ab-roster-name-sm { font-size: 1.9cqw; }
+.ab-roster-preview-page .ab-roster-overlay-cell.ab-roster-name-xs { font-size: 1.6cqw; }
