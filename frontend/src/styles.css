@@ -6969,3 +6969,4 @@ textarea.ptg-doc-overlay-input {
 .bb-preview { padding-top: 10px; }
 .bb-preview-modes { display: flex; justify-content: center; gap: 8px; margin: 6px 0 10px; }
 .preview-page-battle .bb-page { height: auto; }
+.gw-view-swap-btn { font-size: 1.05rem; line-height: 1; color: #c8a840; padding: 0 8px; }

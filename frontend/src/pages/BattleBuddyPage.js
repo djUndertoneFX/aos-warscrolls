@@ -1128,7 +1128,7 @@ function ArmyWarscrollsSide({ side, units, onOpen }) {
 
 // `open` (which warscroll is showing in detail, or null for the army badges)
 // lives in BattleBuddyPage so it survives switching to Phases and back.
-function ArmyWarscrolls({ friendly, enemy, viewMode, singleSide, open, setOpen, preview }) {
+function ArmyWarscrolls({ friendly, enemy, viewMode, singleSide, setSingleSide, open, setOpen, preview }) {
   // open = { side, id } | null
   const lists = { friendly: friendly.units, enemy: enemy.units };
   const sides = viewMode === 'dual' ? ['friendly', 'enemy'] : [singleSide];
@@ -1179,6 +1179,13 @@ function ArmyWarscrolls({ friendly, enemy, viewMode, singleSide, open, setOpen, 
           sortBy="faction"
           ruleFilter={ruleFilter}
           allFactionPages={!!preview}
+          onSwapSides={both ? () => {
+            // Same slot on the other army (or its last unit if it's shorter).
+            const other = open.side === 'friendly' ? 'enemy' : 'friendly';
+            const ol = lists[other];
+            setOpen({ side: other, id: ol[Math.min(idx, ol.length - 1)].id });
+            if (viewMode === 'single') setSingleSide?.(other); // the list behind follows
+          } : undefined}
           friendlyNavList={both ? friendly.units : undefined}
           enemyNavList={both ? enemy.units : undefined}
           onJumpToUnit={u => setOpen({ side: enemy.units.some(x => x.id === u.id) && !friendly.units.some(x => x.id === u.id) ? 'enemy' : open.side, id: u.id })}
@@ -1332,7 +1339,7 @@ function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey, c
       {contentMode === 'warscrolls' ? (
         <div className="bb-fight-vertical">
           <div className="bb-fight-main">
-            <ArmyWarscrolls friendly={friendly} enemy={enemy} viewMode={viewMode} singleSide={singleSide} open={wsOpen} setOpen={setWsOpen} preview={preview} />
+            <ArmyWarscrolls friendly={friendly} enemy={enemy} viewMode={viewMode} singleSide={singleSide} setSingleSide={setSingleSide} open={wsOpen} setOpen={setWsOpen} preview={preview} />
           </div>
         </div>
       ) : (

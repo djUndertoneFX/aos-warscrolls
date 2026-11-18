@@ -1404,7 +1404,7 @@ const SplitPane = React.forwardRef(function SplitPane({ label, labelClass, list,
 // per-unit Path rows). A navList entry with _anvilWarlord gets a green dot.
 // ruleFilter(key, items): narrows a purple faction page's items (the preview
 // keeps only the Heroic Traits / Artefacts the army actually took).
-export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onFilterApply, factions = [], navIndex, navList, sortBy, spearheadData, allSpearheadRulesMap, onSwapFriendlyEnemy, onShowFriendlyOnly, onShowEnemyOnly, friendlyNavList, enemyNavList, onEnterSplitView, onJumpToUnit, hideViewToggle, renderExtras, ruleFilter, allFactionPages }) {
+export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onFilterApply, factions = [], navIndex, navList, sortBy, spearheadData, allSpearheadRulesMap, onSwapFriendlyEnemy, onShowFriendlyOnly, onShowEnemyOnly, friendlyNavList, enemyNavList, onEnterSplitView, onJumpToUnit, hideViewToggle, renderExtras, ruleFilter, allFactionPages, onSwapSides }) {
   const navTotal = navList ? navList.length : 0;
   const settings = useSettings();
   const { showFlavorText, useSpearheadAbilities } = settings;
@@ -1920,6 +1920,12 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
       <div className={`gw-modal${showSplit ? ' gw-modal-split' : ''}`} ref={modalRef} role="dialog" aria-modal="true" aria-label={unit.name}>
 
         {!hideViewToggle && <div className="gw-view-toggle">
+          {/* onSwapSides (Battle Buddy): flip the single pane between the
+              Friendly and Enemy armies. Only in single pane — split already
+              shows both. */}
+          {onSwapSides && !showSplit && (
+            <button type="button" className="gw-view-mode-btn gw-view-swap-btn" onClick={onSwapSides} title="Swap Friendly / Enemy">⇄</button>
+          )}
           <button
             type="button"
             className={`gw-view-mode-btn${!showSplit ? ' gw-view-mode-btn-active' : ''}`}
