@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
-import { DOCS, DocPage, buildPreviewDocData, abilitiesInText, WARLORD_UNIT_KEY } from '../components/PathToGloryWizard';
+import { DOCS, DocPage, buildPreviewDocData, abilitiesInText, buildAbilityLookup, WARLORD_UNIT_KEY } from '../components/PathToGloryWizard';
+import { ArmyRosterPreviewSheets } from './ArmyBuilderPage';
 import WarscrollGW, { AbilityCard } from '../components/WarscrollGW';
 import { looseKey } from '../importList';
 
@@ -80,10 +81,24 @@ export default function PreviewPage() {
     return () => { cancelled = true; };
   }, [token]);
 
-  const docData = useMemo(
-    () => (share ? buildPreviewDocData(share.data, factions, apotheosisSteps, factionRules) : null),
-    [share, factions, apotheosisSteps, factionRules],
-  );
+  // An Army Builder share ("army") is a matched-play list: it gets the
+  // official Army Roster sheet, not the Path to Glory set. Its "docData" is
+  // only what the shared peek / warscroll code below reads.
+  const isArmy = share?.kind === 'army';
+  const docData = useMemo(() => {
+    if (!share) return null;
+    if (share.kind === 'army') {
+      const factionSlug = share.faction_slug || share.data?.faction || '';
+      return { factionSlug, abilityLookup: buildAbilityLookup({ factionSlug, factionRules }), warlordEnhancements: '', oobUnits: [] };
+    }
+    return buildPreviewDocData(share.data, factions, apotheosisSteps, factionRules);
+  }, [share, factions, apotheosisSteps, factionRules]);
+  const unitsById = useMemo(() => Object.fromEntries(warscrolls.map(w => [String(w.id), w])), [warscrolls]);
+  // Army list: a Hero's chosen Heroic Trait / Artefact, by warscroll id.
+  const armyEnhancementsFor = id => {
+    const a = share?.data?.heroAssignments?.[id];
+    return a ? ['heroic_traits', 'artefacts'].map(k => a[k]).filter(Boolean).join(', ') : '';
+  };
 
   // Every unit named anywhere on the sheets, mapped to its warscroll, so a
   // name on the Order of Battle can be clicked straight through to the
@@ -133,7 +148,7 @@ export default function PreviewPage() {
 
   const namedUnits = useMemo(() => {
     if (!docData) return [];
-    const names = [
+    const names = isArmy ? Object.keys(share.data?.roster || {}).map(id => unitsById[id]?.name) : [
       ...(docData.oobUnits || []).map(u => u.warscroll || u.name),
       ...(docData.regiments || []).flatMap(r => (r.units || []).filter(u => u.sourceUnitId !== 'warlord').map(u => u.name)),
       ...(docData.auxUnits || []).map(u => u.name),
@@ -159,7 +174,7 @@ export default function PreviewPage() {
       || typeRank(a) - typeRank(b)
       || (a.name || '').localeCompare(b.name || ''));
     return warlordUnit ? [warlordUnit, ...out] : out;
-  }, [docData, unitsByName, warlordUnit]);
+  }, [docData, unitsByName, warlordUnit, isArmy, share, unitsById]);
 
   // Per unit: one row per distinct Path / rank / picked-abilities combination
   // among the army's copies of it ("2× Path: Enclave Rank: Veteran").
@@ -212,7 +227,8 @@ export default function PreviewPage() {
   // Heroic Traits / Artefacts the army actually took (named in any
   // Enhancements field) — the purple faction pages show only those.
   const takenEnhancements = new Set(
-    [docData.warlordEnhancements, ...(docData.oobUnits || []).map(u => u.enhancements)]
+    [docData.warlordEnhancements, ...(docData.oobUnits || []).map(u => u.enhancements),
+      ...(isArmy ? Object.keys(share.data?.heroAssignments || {}).map(armyEnhancementsFor) : [])]
       .flatMap(t => abilitiesFor(t)).map(a => looseKey(a.name)),
   );
   const ruleFilter = (key, items) => ((key === 'heroic_traits' || key === 'artefacts')
@@ -220,7 +236,7 @@ export default function PreviewPage() {
     : items);
   const renderAbilityCards = abilities => (
     <div className="preview-row-abilities">
-      <div className="gw-section-rule"><span>ENHANCEMENTS &amp; PATH ABILITIES</span></div>
+      <div className="gw-section-rule"><span>{isArmy ? 'ENHANCEMENTS' : <>ENHANCEMENTS &amp; PATH ABILITIES</>}</span></div>
       <div className="preview-row-abilities-grid">
         {abilities.map((a, i) => (
           <div key={i} className="preview-ability-item">
@@ -233,6 +249,10 @@ export default function PreviewPage() {
   );
   const renderPathRows = unit => {
     if (!unit) return null;
+    if (isArmy) {
+      const abilities = abilitiesFor(armyEnhancementsFor(String(unit.id)));
+      return abilities.length ? renderAbilityCards(abilities) : null;
+    }
     if (unit._anvilWarlord) {
       const abilities = abilitiesFor([docData.warlordEnhancements, docData.warlordPathAbility].filter(Boolean).join(', '));
       return abilities.length ? renderAbilityCards(abilities) : null;
@@ -284,7 +304,15 @@ export default function PreviewPage() {
       <PreviewHeader subtitle={share.name} onPrint={() => { closePeek(); window.print(); }} />
 
       <div className="preview-doc-view">
-        {pages.map(({ doc: d, img, i }) => (
+        {isArmy && (
+          <ArmyRosterPreviewSheets
+            data={share.data} listName={share.name}
+            factionName={share.faction_name || factions.find(f => f.faction_slug === docData.factionSlug)?.faction || ''}
+            unitsById={unitsById}
+            onRowHover={rowHover} onRowLeave={endPeek} onRowClick={rowClick}
+          />
+        )}
+        {!isArmy && pages.map(({ doc: d, img, i }) => (
           <div className="preview-doc-sheet" key={`${d.key}-${i}`}>
             <DocPage
               img={img} alt={d.title} docKey={d.key} pageIndex={i} data={docData}

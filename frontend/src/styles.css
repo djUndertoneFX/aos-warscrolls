@@ -6912,3 +6912,12 @@ textarea.ptg-doc-overlay-input {
   .ab-roster-print-target > .ptg-doc-page-wrap { break-after: page; page-break-after: always; }
   .ab-roster-print-target > .ptg-doc-page-wrap:last-child { break-after: auto; page-break-after: auto; }
 }
+/* Share preview of an Army Builder list: the matched-play Army Roster sheet,
+   sized by its own width (the builder's version is sized to the viewport). */
+.ab-roster-preview-page { display: block; position: relative; container-type: inline-size; }
+.ab-roster-preview-page .ab-roster-page-img { display: block; width: 100%; }
+.ab-roster-preview-page .ab-roster-overlay-field { font-size: 2.5cqw; }
+.ab-roster-preview-page .ab-roster-overlay-cell { font-size: 2.3cqw; }
+.ab-roster-preview-page .ab-roster-overlay-notes-text { font-size: 2.1cqw; }
+.ab-roster-preview-hotspot { position: absolute; top: 0; height: 100%; cursor: pointer; }
+.ab-roster-preview-hotspot:hover { background: rgba(200,168,64,0.12); outline: 1px solid rgba(200,168,64,0.4); }

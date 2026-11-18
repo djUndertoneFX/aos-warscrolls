@@ -231,6 +231,151 @@ function swapIntoSlot(slots, sourceKey, targetRef) {
   return next;
 }
 
+// Fills the Army Roster's slots from the list's selections (see the effect
+// in ArmyBuilderPage): keeps every placement still valid, then places new
+// Heroes as Generals, units into regiments' Unit slots, and the rest
+// (overflow, Manifestations, Faction Terrain) into Auxiliary Units. Pure, so
+// the share preview can lay out a list exactly as the builder does.
+export function placeRosterSlots(prevSlots, roster, rosterOrder, unitsById) {
+  const heroInstances = [];
+  const unitInstances = [];
+  const auxOnlyInstances = [];
+  const order = [...(rosterOrder || []), ...Object.keys(roster || {}).filter(id => !(rosterOrder || []).includes(id))];
+  for (const id of order) {
+    const sel = roster[id];
+    const unit = unitsById[id];
+    if (!sel || !unit) continue;
+    if (unit.is_manifestation || unit.is_terrain) {
+      if ((sel.train || 0) > 0) auxOnlyInstances.push(`${id}:train:0`);
+      continue;
+    }
+    if (unit.is_hero) {
+      for (let i = 0; i < (sel.train || 0); i++) heroInstances.push(`${id}:train:${i}`);
+      continue;
+    }
+    for (let i = 0; i < (sel.train || 0); i++) unitInstances.push(`${id}:train:${i}`);
+    for (let i = 0; i < (sel.reinforce || 0); i++) unitInstances.push(`${id}:reinforce:${i}`);
+  }
+  const validKeys = new Set([...heroInstances, ...unitInstances, ...auxOnlyInstances]);
+  const slots = (prevSlots && prevSlots.regiments?.length === REGIMENT_SLOTS.length && Array.isArray(prevSlots.aux))
+    ? cloneSlots(prevSlots)
+    : makeEmptySlots();
+
+  // Drop placements for units no longer selected (count reduced to 0).
+  slots.regiments.forEach(r => {
+    if (r.general && !validKeys.has(r.general)) r.general = null;
+    r.units = r.units.map(u => (u && !validKeys.has(u)) ? null : u);
+  });
+  slots.aux = slots.aux.map(a => (a && !validKeys.has(a)) ? null : a);
+
+  const isPlaced = key => {
+    for (const r of slots.regiments) { if (r.general === key || r.units.includes(key)) return true; }
+    return slots.aux.includes(key);
+  };
+  const placeInAux = key => {
+    const emptyIdx = slots.aux.findIndex(a => a === null);
+    if (emptyIdx !== -1) slots.aux[emptyIdx] = key;
+    else slots.aux.push(key); // overflow beyond the printed sheet's 5 slots
+  };
+  for (const key of heroInstances) {
+    if (isPlaced(key)) continue;
+    const target = slots.regiments.find(r => r.general === null);
+    if (target) target.general = key; else placeInAux(key);
+  }
+  for (const key of unitInstances) {
+    if (isPlaced(key)) continue;
+    let placed = false;
+    for (const r of slots.regiments) {
+      const emptyIdx = r.units.findIndex(u => u === null);
+      if (emptyIdx !== -1) { r.units[emptyIdx] = key; placed = true; break; }
+    }
+    if (!placed) placeInAux(key);
+  }
+  for (const key of auxOnlyInstances) {
+    if (isPlaced(key)) continue;
+    placeInAux(key);
+  }
+  return slots;
+}
+
+// The share preview's Army Roster: the official matched-play sheet's two
+// pages with the list written on, read-only. Every row reports
+// { unit, abilities } (the warscroll name and the Hero's enhancements) to
+// onRowHover / onRowLeave / onRowClick, like the Path to Glory sheets do.
+export function ArmyRosterPreviewSheets({ data, listName, factionName, unitsById, onRowHover, onRowLeave, onRowClick }) {
+  const roster = data?.roster || {};
+  const slots = placeRosterSlots(data?.armyRosterDoc?.slots, roster, data?.rosterOrder, unitsById);
+  const doc = data?.armyRosterDoc || {};
+  const pointsLimit = data?.pointsLimit ?? 2000;
+  let totalPoints = 0;
+  for (const [id, sel] of Object.entries(roster)) {
+    const pts = parseInt(unitsById[id]?.points, 10) || 0;
+    totalPoints += (sel.train || 0) * pts + (sel.reinforce || 0) * pts * 2;
+  }
+  const pts = k => (k ? instancePoints(k, unitsById) : 0);
+  const regimentsTotal = slots.regiments.reduce((sum, r) => sum + pts(r.general) + r.units.reduce((s, u) => s + pts(u), 0), 0);
+  const auxTotal = slots.aux.reduce((sum, u) => sum + pts(u), 0);
+  const enhancementsFor = key => {
+    const unitId = key ? key.split(':')[0] : null;
+    const a = unitId ? data?.heroAssignments?.[unitId] : null;
+    return a ? ['heroic_traits', 'artefacts'].map(k => a[k]).filter(Boolean).join(', ') : '';
+  };
+  const row = (key, top) => {
+    if (!key) return null;
+    const unit = instanceUnit(key, unitsById);
+    const enh = enhancementsFor(key);
+    const notes = [instanceNotes(key), enh].filter(Boolean).join('; ');
+    const r = { unit: unit?.name || '', abilities: enh };
+    return (
+      <div className="ab-roster-overlay-row" style={{ top: `${top}%` }} key={`${key}-${top}`}>
+        <span className="ab-roster-overlay-cell" style={{ left: `${ROSTER_ROW_COLS.name.left}%`, width: `${ROSTER_ROW_COLS.name.width}%` }}>{instanceName(key, unitsById)}</span>
+        <span className="ab-roster-overlay-cell ab-roster-overlay-center" style={{ left: `${ROSTER_ROW_COLS.size.left}%`, width: `${ROSTER_ROW_COLS.size.width}%` }}>{instanceSize(key, unitsById)}</span>
+        <span className="ab-roster-overlay-cell ab-roster-overlay-center" style={{ left: `${ROSTER_ROW_COLS.notes.left}%`, width: `${ROSTER_ROW_COLS.notes.width}%` }}>{notes}</span>
+        <span className="ab-roster-overlay-cell ab-roster-overlay-center" style={{ left: `${ROSTER_ROW_COLS.points.left}%`, width: `${ROSTER_ROW_COLS.points.width}%` }}>{pts(key)}</span>
+        <div
+          className="ab-roster-preview-hotspot"
+          style={{ left: `${ROSTER_ROW_COLS.name.left}%`, width: `${ROSTER_ROW_COLS.points.left + ROSTER_ROW_COLS.points.width - ROSTER_ROW_COLS.name.left}%` }}
+          onMouseEnter={e => onRowHover?.(r, e)}
+          onMouseLeave={() => onRowLeave?.(r)}
+          onClick={e => onRowClick?.(r, e)}
+        />
+      </div>
+    );
+  };
+  const field = (pos, text, cls = '') => (
+    <div className={`ab-roster-overlay-field ${cls}`} style={overlayFieldStyle(pos)}>{text}</div>
+  );
+  const pageRegiments = page => ROSTER_LAYOUT.regiments.map((rl, ri) => rl.page === page && (
+    <React.Fragment key={ri}>
+      {row(slots.regiments[ri].general, rl.general)}
+      {rl.units.map((top, ui) => row(slots.regiments[ri].units[ui], top))}
+    </React.Fragment>
+  ));
+  const totalStyle = top => ({ top: `${top}%`, left: `${ROSTER_ROW_COLS.totals.left}%`, width: `${ROSTER_ROW_COLS.totals.width}%` });
+  return (
+    <>
+      <div className="preview-doc-sheet ab-roster-image-page ab-roster-preview-page">
+        <img src="/ptg/army-roster-1.jpg" alt="Army Roster page 1" className="ab-roster-page-img" />
+        {field(ROSTER_LAYOUT.header.commander, doc.commander || '', 'ab-roster-overlay-center')}
+        {field(ROSTER_LAYOUT.header.armyName, listName || '')}
+        {field(ROSTER_LAYOUT.header.pointsLimit, `${totalPoints.toLocaleString()} / ${pointsLimit}`, 'ab-roster-overlay-center')}
+        {field(ROSTER_LAYOUT.header.faction, factionName || '')}
+        {field(ROSTER_LAYOUT.header.battleFormation, data?.battleFormation || '')}
+        {pageRegiments(0)}
+      </div>
+      <div className="preview-doc-sheet ab-roster-image-page ab-roster-preview-page">
+        <img src="/ptg/army-roster-2.jpg" alt="Army Roster page 2" className="ab-roster-page-img" />
+        {pageRegiments(1)}
+        <div className="ab-roster-overlay-field ab-roster-overlay-center" style={totalStyle(ROSTER_LAYOUT.regimentsTotal.top)}>{regimentsTotal}</div>
+        {ROSTER_LAYOUT.aux.map((a, ai) => row(slots.aux[ai], a.top))}
+        <div className="ab-roster-overlay-field ab-roster-overlay-center" style={totalStyle(ROSTER_LAYOUT.auxTotal.top)}>{auxTotal}</div>
+        <div className="ab-roster-overlay-field ab-roster-overlay-center" style={totalStyle(ROSTER_LAYOUT.unitsTotal.top)}>{regimentsTotal + auxTotal}</div>
+        <div className="ab-roster-overlay-notes-text" style={{ top: `${ROSTER_LAYOUT.notes.top}%`, left: '8%', width: '84%' }}>{doc.notes || ''}</div>
+      </div>
+    </>
+  );
+}
+
 function ProgressiveImg({ src, micro, avgColor, alt, className }) {
   const [loaded, setLoaded] = useState(false);
   return (
@@ -1778,67 +1923,8 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
   const [rosterPresentMode, setRosterPresentMode] = useState('replica');
 
   useEffect(() => {
-    const heroInstances = [];
-    const unitInstances = [];
-    const auxOnlyInstances = [];
-    for (const id of rosterOrder) {
-      const sel = roster[id];
-      const unit = unitsById[id];
-      if (!sel || !unit) continue;
-      if (unit.is_manifestation || unit.is_terrain) {
-        if ((sel.train || 0) > 0) auxOnlyInstances.push(`${id}:train:0`);
-        continue;
-      }
-      if (unit.is_hero) {
-        for (let i = 0; i < (sel.train || 0); i++) heroInstances.push(`${id}:train:${i}`);
-        continue;
-      }
-      for (let i = 0; i < (sel.train || 0); i++) unitInstances.push(`${id}:train:${i}`);
-      for (let i = 0; i < (sel.reinforce || 0); i++) unitInstances.push(`${id}:reinforce:${i}`);
-    }
-    const validKeys = new Set([...heroInstances, ...unitInstances, ...auxOnlyInstances]);
-
     setArmyRosterDoc(doc => {
-      const slots = (doc.slots && doc.slots.regiments?.length === REGIMENT_SLOTS.length)
-        ? cloneSlots(doc.slots)
-        : makeEmptySlots();
-
-      // Drop placements for units no longer selected (count reduced to 0).
-      slots.regiments.forEach(r => {
-        if (r.general && !validKeys.has(r.general)) r.general = null;
-        r.units = r.units.map(u => (u && !validKeys.has(u)) ? null : u);
-      });
-      slots.aux = slots.aux.map(a => (a && !validKeys.has(a)) ? null : a);
-
-      const isPlaced = key => {
-        for (const r of slots.regiments) { if (r.general === key || r.units.includes(key)) return true; }
-        return slots.aux.includes(key);
-      };
-      const placeInAux = key => {
-        const emptyIdx = slots.aux.findIndex(a => a === null);
-        if (emptyIdx !== -1) slots.aux[emptyIdx] = key;
-        else slots.aux.push(key); // overflow beyond the printed sheet's 5 slots
-      };
-
-      for (const key of heroInstances) {
-        if (isPlaced(key)) continue;
-        const target = slots.regiments.find(r => r.general === null);
-        if (target) target.general = key; else placeInAux(key);
-      }
-      for (const key of unitInstances) {
-        if (isPlaced(key)) continue;
-        let placed = false;
-        for (const r of slots.regiments) {
-          const emptyIdx = r.units.findIndex(u => u === null);
-          if (emptyIdx !== -1) { r.units[emptyIdx] = key; placed = true; break; }
-        }
-        if (!placed) placeInAux(key);
-      }
-      for (const key of auxOnlyInstances) {
-        if (isPlaced(key)) continue;
-        placeInAux(key);
-      }
-
+      const slots = placeRosterSlots(doc.slots, roster, rosterOrder, unitsById);
       if (JSON.stringify(slots) === JSON.stringify(doc.slots)) return doc;
       return { ...doc, slots };
     });
