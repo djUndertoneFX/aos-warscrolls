@@ -977,7 +977,8 @@ input, select {
   position: absolute;
   color: #2a2218;
   font-family: 'Palatino Linotype', Palatino, Georgia, serif;
-  font-size: 1.4vh;
+  font-size: 1.1vh;
+  line-height: 1.25;
   white-space: pre-wrap;
 }
 
@@ -6918,6 +6919,7 @@ textarea.ptg-doc-overlay-input {
 .ab-roster-preview-page .ab-roster-page-img { display: block; width: 100%; }
 .ab-roster-preview-page .ab-roster-overlay-field { font-size: 2.5cqw; }
 .ab-roster-preview-page .ab-roster-overlay-cell { font-size: 2.3cqw; }
-.ab-roster-preview-page .ab-roster-overlay-notes-text { font-size: 2.1cqw; }
+.ab-roster-preview-page .ab-roster-overlay-notes-text { font-size: 1.6cqw; line-height: 1.25; }
 .ab-roster-preview-hotspot { position: absolute; top: 0; height: 100%; cursor: pointer; }
 .ab-roster-preview-hotspot:hover { background: rgba(200,168,64,0.12); outline: 1px solid rgba(200,168,64,0.4); }
+.ab-roster-lore-notes { font-size: 0.85rem; color: var(--text-dim, #bbb); margin: 2px 0 6px; }

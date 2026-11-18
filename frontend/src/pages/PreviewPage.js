@@ -308,7 +308,7 @@ export default function PreviewPage() {
           <ArmyRosterPreviewSheets
             data={share.data} listName={share.name}
             factionName={share.faction_name || factions.find(f => f.faction_slug === docData.factionSlug)?.faction || ''}
-            unitsById={unitsById}
+            unitsById={unitsById} factionRules={factionRules}
             onRowHover={rowHover} onRowLeave={endPeek} onRowClick={rowClick}
           />
         )}

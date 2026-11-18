@@ -181,8 +181,34 @@ function instanceName(key, unitsById) {
   const unit = instanceUnit(key, unitsById);
   return unit ? titleCase(unit.name) : '(unknown unit)';
 }
-function instanceNotes(key) {
+// A Hero's Heroic Trait and Artefact (heroAssignments[unitId]), for the
+// roster's Notes column.
+function heroEnhancements(key, heroAssignments) {
+  const a = key && heroAssignments ? heroAssignments[key.split(':')[0]] : null;
+  return a ? ['heroic_traits', 'artefacts'].map(k => a[k]).filter(Boolean).join(', ') : '';
+}
+function instanceNotes(key, heroAssignments) {
+  const enh = heroEnhancements(key, heroAssignments);
+  if (enh) return [instanceReinforced(key) ? 'Reinforced' : '', enh].filter(Boolean).join('; ');
   return instanceReinforced(key) ? 'Reinforced' : '';
+}
+
+// The army's Spell / Prayer / Manifestation Lore for the sheet's Notes box:
+// "Spell Lore: Steed of Tides, Counter-Current, … Manifestation Lore: …".
+// A faction has one of each (whichever it has), so it is the lore's spells.
+export function loreNotesText(rules) {
+  if (!rules) return '';
+  return [['spell_lore', 'Spell Lore'], ['prayer_lore', 'Prayer Lore'], ['manifestation_lore', 'Manifestation Lore']]
+    .map(([k, label]) => {
+      const small = new Set(['of', 'the', 'a', 'an', 'and', 'in', 'on', 'to']);
+      const nice = n => String(n || '').toLowerCase().split(' ')
+        .map((w, i) => (i > 0 && small.has(w) ? w : w.replace(/(^|-)([a-z])/g, (m, p, c) => p + c.toUpperCase())))
+        .join(' ');
+      const names = (rules[k] || []).map(o => nice(o.name)).filter(Boolean);
+      return names.length ? `${label}: ${names.join(', ')}.` : '';
+    })
+    .filter(Boolean)
+    .join(' ');
 }
 
 function makeEmptySlots() {
@@ -302,7 +328,7 @@ export function placeRosterSlots(prevSlots, roster, rosterOrder, unitsById) {
 // pages with the list written on, read-only. Every row reports
 // { unit, abilities } (the warscroll name and the Hero's enhancements) to
 // onRowHover / onRowLeave / onRowClick, like the Path to Glory sheets do.
-export function ArmyRosterPreviewSheets({ data, listName, factionName, unitsById, onRowHover, onRowLeave, onRowClick }) {
+export function ArmyRosterPreviewSheets({ data, listName, factionName, unitsById, factionRules, onRowHover, onRowLeave, onRowClick }) {
   const roster = data?.roster || {};
   const slots = placeRosterSlots(data?.armyRosterDoc?.slots, roster, data?.rosterOrder, unitsById);
   const doc = data?.armyRosterDoc || {};
@@ -324,7 +350,7 @@ export function ArmyRosterPreviewSheets({ data, listName, factionName, unitsById
     if (!key) return null;
     const unit = instanceUnit(key, unitsById);
     const enh = enhancementsFor(key);
-    const notes = [instanceNotes(key), enh].filter(Boolean).join('; ');
+    const notes = instanceNotes(key, data?.heroAssignments);
     const r = { unit: unit?.name || '', abilities: enh };
     return (
       <div className="ab-roster-overlay-row" style={{ top: `${top}%` }} key={`${key}-${top}`}>
@@ -370,7 +396,9 @@ export function ArmyRosterPreviewSheets({ data, listName, factionName, unitsById
         {ROSTER_LAYOUT.aux.map((a, ai) => row(slots.aux[ai], a.top))}
         <div className="ab-roster-overlay-field ab-roster-overlay-center" style={totalStyle(ROSTER_LAYOUT.auxTotal.top)}>{auxTotal}</div>
         <div className="ab-roster-overlay-field ab-roster-overlay-center" style={totalStyle(ROSTER_LAYOUT.unitsTotal.top)}>{regimentsTotal + auxTotal}</div>
-        <div className="ab-roster-overlay-notes-text" style={{ top: `${ROSTER_LAYOUT.notes.top}%`, left: '8%', width: '84%' }}>{doc.notes || ''}</div>
+        <div className="ab-roster-overlay-notes-text" style={{ top: `${ROSTER_LAYOUT.notes.top}%`, left: '8%', width: '84%' }}>
+          {[loreNotesText(factionRules), doc.notes].filter(Boolean).map((t, i) => <div key={i}>{t}</div>)}
+        </div>
       </div>
     </>
   );
@@ -974,10 +1002,10 @@ function ArmyRosterThumb({ onClick }) {
 // absolutely-positioned overlay text on the scanned page image — both share
 // the same drag-and-drop wiring so reassigning a unit works identically in
 // either view mode.
-function RosterSlotRow({ mode, label, instanceKey, slotRef, unitsById, onMove, top }) {
+function RosterSlotRow({ mode, label, instanceKey, slotRef, unitsById, heroAssignments, onMove, top }) {
   const name = instanceKey ? instanceName(instanceKey, unitsById) : '';
   const size = instanceKey ? instanceSize(instanceKey, unitsById) : '';
-  const notes = instanceKey ? instanceNotes(instanceKey) : '';
+  const notes = instanceKey ? instanceNotes(instanceKey, heroAssignments) : '';
   const points = instanceKey ? instancePoints(instanceKey, unitsById) : '';
 
   const dragProps = {
@@ -1020,7 +1048,7 @@ function overlayFieldStyle(pos) {
 function ArmyRosterModal({
   onClose, presentMode, setPresentMode,
   listName, factionName, pointsLimit, setPointsLimit, battleFormation, totalPoints,
-  doc, setDoc, unitsById, moveToSlot,
+  doc, setDoc, unitsById, moveToSlot, heroAssignments, factionRules,
   regimentsTotal, auxTotal, armyUnitsTotal,
   onCommanderNameChange, onRenameList, onShare,
   // Split-view usage (every stage except Select Units): rendered as a plain
@@ -1058,7 +1086,7 @@ function ArmyRosterModal({
 
   const renderSlot = (mode, label, instanceKey, slotRef, top) => {
     const key = `${slotRef.kind}-${slotRef.regimentIdx ?? ''}-${slotRef.unitIdx ?? ''}`;
-    return <RosterSlotRow key={key} mode={mode} label={label} instanceKey={instanceKey} slotRef={slotRef} unitsById={unitsById} onMove={moveToSlot} top={top} />;
+    return <RosterSlotRow key={key} mode={mode} label={label} instanceKey={instanceKey} slotRef={slotRef} unitsById={unitsById} heroAssignments={heroAssignments} onMove={moveToSlot} top={top} />;
   };
 
   // Shared between the live editor and the print preview — printing reads
@@ -1120,7 +1148,11 @@ function ArmyRosterModal({
       <div className="ptg-oob-cap">Auxiliary Units Total: {auxTotal}pts</div>
       <div className="ptg-oob-cap"><strong>Units Total: {armyUnitsTotal}pts</strong></div>
 
-      <div className="ptg-field"><label>Notes</label><textarea rows={3} value={doc.notes} onChange={e => setDoc(d => ({ ...d, notes: e.target.value }))} /></div>
+      <div className="ptg-field">
+        <label>Notes</label>
+        {loreNotesText(factionRules) && <div className="ab-roster-lore-notes">{loreNotesText(factionRules)}</div>}
+        <textarea rows={3} value={doc.notes} onChange={e => setDoc(d => ({ ...d, notes: e.target.value }))} />
+      </div>
     </>
   );
 
@@ -1207,7 +1239,9 @@ function ArmyRosterModal({
                     {overflowAux > 0 && <div className="ab-roster-overlay-note">+{overflowAux} more not shown — see Replica</div>}
                     <div className="ab-roster-overlay-field ab-roster-overlay-center" style={{ top: `${ROSTER_LAYOUT.auxTotal.top}%`, left: `${ROSTER_ROW_COLS.totals.left}%`, width: `${ROSTER_ROW_COLS.totals.width}%` }}>{auxTotal}</div>
                     <div className="ab-roster-overlay-field ab-roster-overlay-center" style={{ top: `${ROSTER_LAYOUT.unitsTotal.top}%`, left: `${ROSTER_ROW_COLS.totals.left}%`, width: `${ROSTER_ROW_COLS.totals.width}%` }}>{armyUnitsTotal}</div>
-                    <div className="ab-roster-overlay-notes-text" style={{ top: `${ROSTER_LAYOUT.notes.top}%`, left: '8%', width: '84%' }}>{doc.notes}</div>
+                    <div className="ab-roster-overlay-notes-text" style={{ top: `${ROSTER_LAYOUT.notes.top}%`, left: '8%', width: '84%' }}>
+                      {[loreNotesText(factionRules), doc.notes].filter(Boolean).map((t, i) => <div key={i}>{t}</div>)}
+                    </div>
                   </div>
                 </div>
               ) : replicaBody}
@@ -2581,6 +2615,8 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
 
           <div className="ab-split-right" style={{ flexBasis: `${rightPanePct}%` }}>
             <ArmyRosterModal
+              heroAssignments={heroAssignments}
+              factionRules={faction ? rulesCache.current[faction] : null}
               inline
               presentMode={rosterPresentMode}
               setPresentMode={setRosterPresentMode}
@@ -2652,6 +2688,8 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
 
     {rosterDocOpen && (
       <ArmyRosterModal
+              heroAssignments={heroAssignments}
+              factionRules={faction ? rulesCache.current[faction] : null}
         onClose={() => setRosterDocOpen(false)}
         presentMode={rosterPresentMode}
         setPresentMode={setRosterPresentMode}
