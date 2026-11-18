@@ -68,6 +68,25 @@ const MODEL_OPTION_RE = /^(\d+)\s*x\s*(.+)$/i;
 // An Anvil of Apotheosis hero has no warscroll to match against; its name
 // is whatever the Anvil built.
 const ANVIL_RE = /^Anvil of Apotheosis\s*:\s*(.+)$/i;
+// Army-level picks New Recruit writes as "<Kind> - <name>" or "<Kind>: <name>":
+// "Battle Tactic Cards - Blazing Onslaught, Burning for Vengeance" (the GHB
+// cards marked on the roster), "Spell Lore - Lore of the Underworlds",
+// "Manifestation Lore - Infernal Sorceries", "Faction Terrain: Nexus of Grief".
+const TACTICS_RE = /^Battle\s+Tactics?(?:\s+Cards?)?\s*[-–—:]\s*(.+)$/i;
+const LORE_RE = /^(Spell|Prayer|Manifestation)\s+Lore\s*[-–—:]\s*(.+)$/i;
+const TERRAIN_RE = /^Faction\s+Terrain\s*[-–—:]\s*(.+)$/i;
+const splitNames = v => v.split(/\s*(?:,|\/|;|\band\b)\s*/i).map(normalizeName).filter(Boolean);
+
+// Handles the army-level lines above; true if the line was one of them.
+function applyArmyLine(out, line) {
+  const tac = TACTICS_RE.exec(line);
+  if (tac) { out.battleTactics.push(...splitNames(tac[1])); return 'tactics'; }
+  const lore = LORE_RE.exec(line);
+  if (lore) { out.loreChoices[`${lore[1].toLowerCase()}_lore`] = normalizeName(lore[2]); return 'lore-choice'; }
+  const terr = TERRAIN_RE.exec(line);
+  if (terr) { for (const n of splitNames(terr[1])) out.looseUnits.push({ name: n, heading: 'Faction Terrain' }); return 'terrain'; }
+  return null;
+}
 
 /**
  * @param {string} text raw clipboard text from New Recruit
@@ -79,6 +98,10 @@ export function parseArmyList(text) {
   const out = {
     listName: '', points: null, battlepack: '', faction: '', formation: '',
     meta: {}, arcaneTome: '', lores: [], regiments: [], warnings: [],
+    // battleTactics: GHB card names; loreChoices: { spell_lore, prayer_lore,
+    // manifestation_lore } lore names; looseUnits: names with no points
+    // (Faction Terrain, which costs nothing) for the resolver to match.
+    battleTactics: [], loreChoices: {}, looseUnits: [],
   };
   if (!lines.some(l => l.trim())) {
     out.warnings.push('Nothing to import — the box was empty.');
@@ -107,6 +130,7 @@ export function parseArmyList(text) {
     const line = lines[i].trim();
     if (!line) { i++; continue; }
     if (REGIMENT_RE.test(line) || /^arcane tome\b/i.test(line) || BULLET_RE.test(line) || UNIT_RE.test(line)) break;
+    if (TACTICS_RE.test(line) || LORE_RE.test(line) || TERRAIN_RE.test(line)) break;
     const meta = META_RE.exec(line);
     if (meta) {
       out.meta[meta[1].trim()] = meta[2].trim();
@@ -114,6 +138,9 @@ export function parseArmyList(text) {
       out.faction = normalizeName(line);
     } else if (!out.formation) {
       out.formation = normalizeName(line);
+    } else if (/^[A-Za-z][A-Za-z' ,\-–]+$/.test(line) && line.split(' ').length <= 8) {
+      // A bare name after the formation — Faction Terrain, usually.
+      out.looseUnits.push({ name: normalizeName(line), heading: '' });
     } else {
       out.warnings.push(`Ignored unrecognised line: "${line}"`);
     }
@@ -139,11 +166,15 @@ export function parseArmyList(text) {
     if (bullet) {
       const value = normalizeName(bullet[1]);
       if (bulletTarget === 'lore') { out.lores.push(value); continue; }
+      if (bulletTarget === 'tactics') { out.battleTactics.push(...splitNames(value)); continue; }
       const unit = current?.units[current.units.length - 1];
       if (!unit) { out.warnings.push(`Ignored stray option: "${value}"`); continue; }
       applyUnitOption(unit, value);
       continue;
     }
+
+    const armyLine = applyArmyLine(out, line);
+    if (armyLine) { bulletTarget = armyLine === 'tactics' ? 'tactics' : null; continue; }
 
     if (/^arcane tome\b/i.test(line)) {
       out.arcaneTome = normalizeName(line.replace(/^arcane tome\s*[-–—:]?\s*/i, ''));
@@ -151,7 +182,12 @@ export function parseArmyList(text) {
       continue;
     }
 
-    if (REGIMENT_RE.test(line)) { openRegiment(line); bulletTarget = 'unit'; continue; }
+    if (REGIMENT_RE.test(line)) {
+      // Faction Terrain under its own heading has no points to read; its
+      // lines go to the resolver as loose names.
+      if (/terrain/i.test(line)) { current = null; bulletTarget = 'terrain'; continue; }
+      openRegiment(line); bulletTarget = 'unit'; continue;
+    }
 
     const unitMatch = UNIT_RE.exec(line);
     if (unitMatch) {
@@ -176,6 +212,14 @@ export function parseArmyList(text) {
     // A "Key: value" fact can appear after the header block too.
     const meta = META_RE.exec(line);
     if (meta) { out.meta[meta[1].trim()] = meta[2].trim(); continue; }
+
+    // A bare name with no points — Faction Terrain (it costs nothing), with
+    // or without its heading. The resolver matches it against the warscrolls
+    // and only reports it if nothing fits.
+    if (/^[A-Za-z][A-Za-z' ,\-–]+$/.test(line) && line.split(' ').length <= 8) {
+      out.looseUnits.push({ name: normalizeName(line), heading: bulletTarget === 'terrain' ? 'Faction Terrain' : '' });
+      continue;
+    }
 
     out.warnings.push(`Ignored unrecognised line: "${line}"`);
   }
@@ -260,6 +304,19 @@ export function resolveArmyList(parsed, factions, warscrolls) {
       if (!rosterOrder.includes(id)) rosterOrder.push(id);
       matched.push({ ...unit, warscroll: w, regiment: reg.label, isAlly: !!factionSlug && w.faction_slug !== factionSlug });
     }
+  }
+
+  // Faction Terrain and other point-less lines: added when they name a real
+  // warscroll, reported otherwise.
+  for (const lu of parsed.looseUnits || []) {
+    const w = byName.get(nameKey(lu.name)) || byLoose.get(looseKey(lu.name));
+    if (!w) { unmatched.push({ name: lu.name, points: 0, loose: true }); continue; }
+    const id = String(w.id);
+    const sel = roster[id] || { train: 0, reinforce: 0 };
+    sel.train += 1;
+    roster[id] = sel;
+    if (!rosterOrder.includes(id)) rosterOrder.push(id);
+    matched.push({ name: lu.name, warscroll: w, regiment: lu.heading || 'Faction Terrain', isAlly: false, enhancements: [] });
   }
 
   return { factionSlug, roster, rosterOrder, matched, unmatched };

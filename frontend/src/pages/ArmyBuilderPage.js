@@ -3,7 +3,9 @@ import ReactDOM from 'react-dom';
 import axios from 'axios';
 import ImportListModal from '../components/ImportListModal';
 import { useAppDialog } from '../components/AppDialog';
-import { parseArmyList, resolveArmyList } from '../importList';
+import { parseArmyList, resolveArmyList, looseKey } from '../importList';
+import GHB_TACTICS from '../data/ghbBattleTactics.json';
+import LORE_NAMES from '../data/loreNames.json';
 import WarscrollGW, { AbilityCard } from '../components/WarscrollGW';
 import { useSettings } from '../SettingsContext';
 import { useAuth } from '../AuthContext';
@@ -214,17 +216,31 @@ function NotesCell({ lines }) {
   return <span className="ab-roster-notes-multi">{lines.map((l, i) => <span key={i}>{l}</span>)}</span>;
 }
 
+const LORE_LABELS = { spell_lore: 'Spell Lore', prayer_lore: 'Prayer Lore', manifestation_lore: 'Manifestation Lore' };
+// The lores an army of this faction can pick for a section: its own (from
+// the faction page), plus — for manifestations — the universal lores.
+export function loreOptionsFor(factionSlug, sec) {
+  const own = LORE_NAMES.lores[factionSlug]?.[sec] || [];
+  const universal = sec === 'manifestation_lore' ? (LORE_NAMES.lores['endless-spells']?.manifestation_lore || []) : [];
+  return [...own, ...universal.map(l => ({ ...l, universal: true }))];
+}
+
 // The army's Spell / Prayer / Manifestation Lore for the sheet's Notes box,
 // one line each: "Spell Lore: Steed of Tides, Counter-Current, …". A faction
 // has one of each (whichever it has), so it is the lore's spells.
-export function loreNotesLines(rules) {
-  if (!rules) return [];
-  return [['spell_lore', 'Spell Lore'], ['prayer_lore', 'Prayer Lore'], ['manifestation_lore', 'Manifestation Lore']]
-    .map(([k, label]) => {
-      const names = (rules[k] || []).map(o => niceName(o.name)).filter(Boolean);
-      return names.length ? `${label}: ${names.join(', ')}.` : '';
-    })
-    .filter(Boolean);
+export function loreNotesLines(rules, selectedOptions = {}, factionSlug = '') {
+  const lines = [];
+  for (const k of ['spell_lore', 'prayer_lore', 'manifestation_lore']) {
+    const chosen = selectedOptions?.[`lore_${k}`]?.[0];
+    const lore = chosen ? loreOptionsFor(factionSlug, k).find(l => l.lore === chosen) : null;
+    // A chosen lore lists its own spells; otherwise the faction's lore spells.
+    const names = lore ? lore.spells.map(niceName) : (rules?.[k] || []).map(o => niceName(o.name)).filter(Boolean);
+    if (chosen) lines.push(`${LORE_LABELS[k]}: ${chosen}${names.length ? ` (${names.join(', ')})` : ''}.`);
+    else if (names.length) lines.push(`${LORE_LABELS[k]}: ${names.join(', ')}.`);
+  }
+  const tactics = selectedOptions?.battle_tactics || [];
+  if (tactics.length) lines.push(`Battle Tactics: ${tactics.map(niceName).join(', ')}.`);
+  return lines;
 }
 
 function makeEmptySlots() {
@@ -413,7 +429,7 @@ export function ArmyRosterPreviewSheets({ data, listName, factionName, unitsById
         <div className="ab-roster-overlay-field ab-roster-overlay-center" style={totalStyle(ROSTER_LAYOUT.auxTotal.top)}>{auxTotal}</div>
         <div className="ab-roster-overlay-field ab-roster-overlay-center" style={totalStyle(ROSTER_LAYOUT.unitsTotal.top)}>{regimentsTotal + auxTotal}</div>
         <div className="ab-roster-overlay-notes-text" style={{ top: `${ROSTER_LAYOUT.notes.top}%`, left: '8%', width: '84%' }}>
-          {[...loreNotesLines(factionRules), doc.notes].filter(Boolean).map((t, i) => <div key={i}>{t}</div>)}
+          {[...loreNotesLines(factionRules, data?.selectedOptions, data?.faction), doc.notes].filter(Boolean).map((t, i) => <div key={i}>{t}</div>)}
         </div>
       </div>
     </>
@@ -538,6 +554,7 @@ const STAGES = [
   { key: 'spell_lore',            label: 'Spell Lore',           section: 'spell_lore' },
   { key: 'prayer_lore',           label: 'Prayer Lore',          section: 'prayer_lore' },
   { key: 'manifestation_lore',    label: 'Manifestation Lore',   section: 'manifestation_lore' },
+  { key: 'battle_tactics',        label: 'Battle Tactics' },     // General's Handbook 2026-27 cards (dj 2026-11-18)
 ];
 
 // ── Battle Formation stage: single army-wide radio pick, tied to the army's
@@ -878,11 +895,41 @@ function HeroAssignmentStage({ label, sectionKey, selectedHeroes, rulesCache, he
 // specific unit (any eligible WIZARD/PRIEST can cast whichever spell/prayer
 // you choose in-game, manifestations are summoned by the army generally) —
 // just browse the full list for the army's faction ────────────────────────
-function LoreCardsStage({ label, sectionKey, primaryFaction, primaryRules, hideScourge }) {
+function LoreCardsStage({ label, sectionKey, primaryFaction, primaryRules, hideScourge, selectedOptions = {}, setSelectedOptions }) {
   if (!primaryFaction) return <div className="ab-stage-empty">Pick a Faction on the Select Units stage first.</div>;
   if (!primaryRules) return <div className="ab-stage-empty">Loading…</div>;
+  // Which lore the army takes (marked on the Army Roster): the faction's
+  // own, or for manifestations one of the universal lores.
+  const loreOptions = loreOptionsFor(primaryFaction, sectionKey);
+  const optKey = `lore_${sectionKey}`;
+  const chosen = selectedOptions[optKey]?.[0] || '';
+  const chosenLore = loreOptions.find(l => l.lore === chosen);
+  const picker = loreOptions.length > 0 && setSelectedOptions && (
+    <div className="ab-lore-picker">
+      <span className="ab-lore-picker-label">Army's {label}:</span>
+      {loreOptions.map(l => (
+        <button
+          key={l.lore} type="button"
+          className={`ab-lore-pick${chosen === l.lore ? ' active' : ''}${l.universal ? ' ab-lore-pick-universal' : ''}`}
+          onClick={() => setSelectedOptions(prev => ({ ...prev, [optKey]: chosen === l.lore ? [] : [l.lore] }))}
+          title={l.universal ? 'Universal manifestation lore' : `${l.lore} (faction)`}
+        >{l.lore}</button>
+      ))}
+    </div>
+  );
+  if (chosenLore?.universal) {
+    return (
+      <>
+        {picker}
+        <div className="ab-lore-universal-list">
+          <div className="ab-lore-universal-title">{chosenLore.lore}</div>
+          <ul>{chosenLore.spells.map(n => <li key={n}>{niceName(n)}</li>)}</ul>
+        </div>
+      </>
+    );
+  }
   const options = dropScourge(primaryRules[sectionKey] ?? [], hideScourge);
-  if (options.length === 0) return <div className="ab-stage-empty">No {label} found for this faction.</div>;
+  if (options.length === 0) return <>{picker}<div className="ab-stage-empty">No {label} found for this faction.</div></>;
 
   // Spell Lore / Prayer Lore each have exactly one Signature Spell/Prayer —
   // every WIZARD/PRIEST in the army knows it automatically, and the book
@@ -899,6 +946,7 @@ function LoreCardsStage({ label, sectionKey, primaryFaction, primaryRules, hideS
 
   return (
     <>
+      {picker}
       {signature && (
         <div className="gw-abilities-grid" style={{ marginBottom: '0.9rem' }}>
           <AbilityCard ab={{ ...signature, bullets: parseBullets(signature.bullets) }} keywords={[]} />
@@ -906,6 +954,37 @@ function LoreCardsStage({ label, sectionKey, primaryFaction, primaryRules, hideS
       )}
       <div className="gw-abilities-grid gw-sp-grid-2col">
         {rest.map((ab, i) => <AbilityCard key={i} ab={{ ...ab, bullets: parseBullets(ab.bullets) }} keywords={[]} />)}
+      </div>
+    </>
+  );
+}
+
+// ── Battle Tactics stage: the General's Handbook 2026-27 cards. An army
+// marks up to 2 on its roster (shown in the Army Roster's Notes). ─────────
+function BattleTacticsStage({ selectedOptions = {}, setSelectedOptions }) {
+  const picked = selectedOptions.battle_tactics || [];
+  const toggle = name => setSelectedOptions(prev => {
+    const cur = prev.battle_tactics || [];
+    if (cur.includes(name)) return { ...prev, battle_tactics: cur.filter(n => n !== name) };
+    return { ...prev, battle_tactics: [...cur, name].slice(-2) };
+  });
+  return (
+    <>
+      <div className="ab-bt-intro">Pick up to 2 battle tactics cards ({GHB_TACTICS.season} General's Handbook). Each card's Affray, Strike and Domination tactics must be completed in that order.</div>
+      <div className="ab-bt-grid">
+        {GHB_TACTICS.cards.map(c => (
+          <button type="button" key={c.name} className={`ab-bt-card${picked.includes(c.name) ? ' active' : ''}`} onClick={() => toggle(c.name)}>
+            <div className="ab-bt-card-name">{niceName(c.name)}{picked.includes(c.name) && <span className="ab-bt-check">✓</span>}</div>
+            {c.flavour && <div className="ab-bt-flavour">{c.flavour}</div>}
+            {c.rule && <div className="ab-bt-rule">{c.rule}</div>}
+            {c.tactics.map(t => (
+              <div className="ab-bt-tactic" key={t.name}>
+                <div className="ab-bt-tactic-head"><span className={`ab-bt-type ab-bt-type-${t.type.toLowerCase()}`}>{t.type}</span> {niceName(t.name)}<span className="ab-bt-vp">{t.vp} VP</span></div>
+                <div className="ab-bt-cond">{t.condition}</div>
+              </div>
+            ))}
+          </button>
+        ))}
       </div>
     </>
   );
@@ -1065,7 +1144,7 @@ function overlayFieldStyle(pos) {
 function ArmyRosterModal({
   onClose, presentMode, setPresentMode,
   listName, factionName, pointsLimit, setPointsLimit, battleFormation, totalPoints,
-  doc, setDoc, unitsById, moveToSlot, heroAssignments, factionRules,
+  doc, setDoc, unitsById, moveToSlot, heroAssignments, factionRules, selectedOptions, factionSlug,
   regimentsTotal, auxTotal, armyUnitsTotal,
   onCommanderNameChange, onRenameList, onShare,
   // Split-view usage (every stage except Select Units): rendered as a plain
@@ -1167,7 +1246,7 @@ function ArmyRosterModal({
 
       <div className="ptg-field">
         <label>Notes</label>
-        {loreNotesLines(factionRules).map((t, i) => <div className="ab-roster-lore-notes" key={i}>{t}</div>)}
+        {loreNotesLines(factionRules, selectedOptions, factionSlug).map((t, i) => <div className="ab-roster-lore-notes" key={i}>{t}</div>)}
         <textarea rows={3} value={doc.notes} onChange={e => setDoc(d => ({ ...d, notes: e.target.value }))} />
       </div>
     </>
@@ -1257,7 +1336,7 @@ function ArmyRosterModal({
                     <div className="ab-roster-overlay-field ab-roster-overlay-center" style={{ top: `${ROSTER_LAYOUT.auxTotal.top}%`, left: `${ROSTER_ROW_COLS.totals.left}%`, width: `${ROSTER_ROW_COLS.totals.width}%` }}>{auxTotal}</div>
                     <div className="ab-roster-overlay-field ab-roster-overlay-center" style={{ top: `${ROSTER_LAYOUT.unitsTotal.top}%`, left: `${ROSTER_ROW_COLS.totals.left}%`, width: `${ROSTER_ROW_COLS.totals.width}%` }}>{armyUnitsTotal}</div>
                     <div className="ab-roster-overlay-notes-text" style={{ top: `${ROSTER_LAYOUT.notes.top}%`, left: '8%', width: '84%' }}>
-                      {[...loreNotesLines(factionRules), doc.notes].filter(Boolean).map((t, i) => <div key={i}>{t}</div>)}
+                      {[...loreNotesLines(factionRules, selectedOptions, factionSlug), doc.notes].filter(Boolean).map((t, i) => <div key={i}>{t}</div>)}
                     </div>
                   </div>
                 </div>
@@ -1652,6 +1731,42 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
 
     const name = parsed.listName || 'Imported List';
     const blank = makeBlankList(name);
+
+    // Battle tactics cards and lores, matched to their canonical names.
+    const importedOptions = {};
+    const tactics = [];
+    for (const t of parsed.battleTactics || []) {
+      const card = GHB_TACTICS.cards.find(c => looseKey(c.name) === looseKey(t));
+      if (card) tactics.push(card.name); else skipped.push(`Battle tactics card "${t}" isn't in the General's Handbook 2026-27.`);
+    }
+    if (tactics.length) { importedOptions.battle_tactics = tactics.slice(0, 2); filled.push(`Battle tactics: ${tactics.map(niceName).join(', ')}`); }
+    for (const [sec, chosen] of Object.entries(parsed.loreChoices || {})) {
+      const lore = loreOptionsFor(resolved.factionSlug, sec).find(l => looseKey(l.lore) === looseKey(chosen));
+      if (lore) { importedOptions[`lore_${sec}`] = [lore.lore]; filled.push(`${LORE_LABELS[sec]}: ${lore.lore}`); }
+      else skipped.push(`${LORE_LABELS[sec]} "${chosen}" isn't one this faction can take.`);
+    }
+
+    // Heroes' Heroic Traits / Artefacts (the "• ..." lines under them).
+    const importedAssignments = {};
+    if (resolved.factionSlug) {
+      let rules = null;
+      try { rules = (await axios.get(`/api/faction-rules/${resolved.factionSlug}`)).data; } catch { /* none */ }
+      for (const mu of resolved.matched) {
+        if (!mu.warscroll?.is_hero || !(mu.enhancements || []).length) continue;
+        for (const e of mu.enhancements) {
+          const known = ['heroic_traits', 'artefacts'].some(sec => (rules?.[sec] || []).some(o => looseKey(o.name) === looseKey(e)));
+          if (!known) skipped.push(`"${e}" on ${niceName(mu.warscroll.name)} isn't one of this faction's Heroic Traits or Artefacts.`);
+          for (const sec of ['heroic_traits', 'artefacts']) {
+            const hit = (rules?.[sec] || []).find(o => looseKey(o.name) === looseKey(e));
+            if (hit) {
+              importedAssignments[mu.warscroll.id] = { ...importedAssignments[mu.warscroll.id], [sec]: hit.name };
+              filled.push(`${niceName(mu.warscroll.name)}: ${niceName(hit.name)}`);
+            }
+          }
+        }
+      }
+    }
+
     const imported = {
       ...blank,
       faction: resolved.factionSlug || '',
@@ -1659,6 +1774,8 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
       roster: resolved.roster,
       rosterOrder: resolved.rosterOrder,
       battleFormation: parsed.formation || '',
+      heroAssignments: importedAssignments,
+      selectedOptions: importedOptions,
     };
     if (resolved.factionSlug) filled.push(`Faction: ${factionObj.faction}`);
     if (parsed.points) filled.push(`Points limit: ${parsed.points}`);
@@ -1670,7 +1787,8 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
     for (const u of resolved.matched.filter(mu => mu.anvil)) {
       skipped.push(`"${u.name}" is an Anvil of Apotheosis hero — it has no warscroll, so import it on the Path to Glory page instead.`);
     }
-    for (const u of resolved.unmatched) skipped.push(`No warscroll matched "${u.name}" (${u.points}pts).`);
+    for (const u of resolved.unmatched) skipped.push(u.loose ? `Ignored unrecognised line: "${u.name}"` : `No warscroll matched "${u.name}" (${u.points}pts).`);
+    for (const u of resolved.matched.filter(mu => /terrain/i.test(mu.regiment || '') && mu.warscroll)) filled.push(`Faction terrain: ${niceName(u.warscroll.name)}`);
 
     const { data: res } = await axios.post('/api/army-builder-lists', {
       name,
@@ -2599,6 +2717,12 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
               </div>
             )}
 
+            {activeStage === 'battle_tactics' && (
+              <div className="ab-stage-body">
+                <BattleTacticsStage selectedOptions={selectedOptions} setSelectedOptions={setSelectedOptions} />
+              </div>
+            )}
+
             {STAGES.filter(s => s.section).map(s => activeStage === s.key && (
               <div className="ab-stage-body" key={s.key}>
                 {['spell_lore', 'prayer_lore', 'manifestation_lore'].includes(s.section) ? (
@@ -2608,6 +2732,8 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
                     primaryFaction={faction}
                     primaryRules={faction ? rulesCache.current[faction] : null}
                     hideScourge={hideScourgeOfGhyran}
+                    selectedOptions={selectedOptions}
+                    setSelectedOptions={setSelectedOptions}
                   />
                 ) : (
                   <HeroAssignmentStage
@@ -2634,6 +2760,8 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
             <ArmyRosterModal
               heroAssignments={heroAssignments}
               factionRules={faction ? rulesCache.current[faction] : null}
+              selectedOptions={selectedOptions}
+              factionSlug={faction}
               inline
               presentMode={rosterPresentMode}
               setPresentMode={setRosterPresentMode}
@@ -2707,6 +2835,8 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
       <ArmyRosterModal
               heroAssignments={heroAssignments}
               factionRules={faction ? rulesCache.current[faction] : null}
+              selectedOptions={selectedOptions}
+              factionSlug={faction}
         onClose={() => setRosterDocOpen(false)}
         presentMode={rosterPresentMode}
         setPresentMode={setRosterPresentMode}

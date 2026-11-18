@@ -6931,3 +6931,25 @@ textarea.ptg-doc-overlay-input {
 .ab-roster-overlay-cell.ab-roster-name-xs { font-size: 0.95vh; }
 .ab-roster-preview-page .ab-roster-overlay-cell.ab-roster-name-sm { font-size: 1.9cqw; }
 .ab-roster-preview-page .ab-roster-overlay-cell.ab-roster-name-xs { font-size: 1.6cqw; }
+/* Army Builder: lore picker + Battle Tactics stage. */
+.ab-lore-picker { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 12px; }
+.ab-lore-picker-label { color: var(--text-dim, #aaa); font-size: 0.85rem; margin-right: 4px; }
+.ab-lore-pick { background: transparent; border: 1px solid rgba(200,168,64,0.35); color: #d8c48a; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
+.ab-lore-pick.ab-lore-pick-universal { border-style: dashed; }
+.ab-lore-pick.active { background: rgba(200,168,64,0.25); border-color: #c8a840; color: #fff; }
+.ab-lore-universal-list { border: 1px solid rgba(200,168,64,0.3); border-radius: 6px; padding: 10px 14px; }
+.ab-lore-universal-title { color: #c8a840; font-weight: 600; margin-bottom: 4px; }
+.ab-bt-intro { color: var(--text-dim, #aaa); margin-bottom: 10px; font-size: 0.9rem; }
+.ab-bt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
+.ab-bt-card { text-align: left; background: rgba(0,0,0,0.25); border: 1px solid rgba(200,168,64,0.3); border-radius: 6px; padding: 10px 12px; color: inherit; cursor: pointer; font: inherit; }
+.ab-bt-card.active { border-color: #c8a840; box-shadow: 0 0 0 1px #c8a840 inset; background: rgba(200,168,64,0.1); }
+.ab-bt-card-name { font-weight: 700; color: #c8a840; font-size: 1.05rem; display: flex; justify-content: space-between; }
+.ab-bt-check { color: #8ee0a4; }
+.ab-bt-flavour { font-style: italic; color: var(--text-dim, #aaa); font-size: 0.82rem; margin: 3px 0 6px; }
+.ab-bt-rule { font-size: 0.82rem; margin-bottom: 6px; }
+.ab-bt-tactic { border-top: 1px solid rgba(200,168,64,0.15); padding: 5px 0; }
+.ab-bt-tactic-head { font-weight: 600; font-size: 0.88rem; display: flex; gap: 6px; align-items: baseline; }
+.ab-bt-type { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; padding: 1px 5px; border-radius: 3px; background: #444; }
+.ab-bt-type-affray { background: #3d5a2e; } .ab-bt-type-strike { background: #6b4b1e; } .ab-bt-type-domination { background: #6b1e1e; }
+.ab-bt-vp { margin-left: auto; color: #c8a840; font-size: 0.8rem; }
+.ab-bt-cond { font-size: 0.8rem; white-space: pre-wrap; }

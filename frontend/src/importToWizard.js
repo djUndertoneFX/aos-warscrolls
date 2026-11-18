@@ -101,7 +101,7 @@ export function buildWizardState(parsed, resolved, ctx = {}) {
     report.filled.push(`${allies.length} Grand Alliance ally unit(s) from ${names}`);
   }
   for (const u of resolved.unmatched) {
-    report.skipped.push(`No warscroll matched "${u.name}" (${u.points}pts) — add it by hand in step 6.`);
+    report.skipped.push(u.loose ? `Ignored unrecognised line: "${u.name}"` : `No warscroll matched "${u.name}" (${u.points}pts) — add it by hand in step 6.`);
   }
 
   // ── Order of Battle rows, one per unit the list names ─────────────────

@@ -1,0 +1,699 @@
+{
+ "source": "wahapedia.ru/aos4/factions/<slug>/ (H2 Spell/Prayer/Manifestation Lore → H3 lore names)",
+ "lores": {
+  "stormcast-eternals": {
+   "spell_lore": [
+    {
+     "lore": "Lore of the Storm",
+     "spells": [
+      "LIGHTNING BLAST",
+      "THUNDERSHOCK",
+      "STARFALL"
+     ]
+    }
+   ],
+   "manifestation_lore": [
+    {
+     "lore": "Manifestations of the Storm",
+     "spells": [
+      "SUMMON DAIS ARCANUM",
+      "SUMMON CELESTIAN VORTEX",
+      "SUMMON EVERBLAZE COMET"
+     ]
+    }
+   ],
+   "prayer_lore": [
+    {
+     "lore": "Prayers of the Stormhosts",
+     "spells": [
+      "HEALING STORM",
+      "BLESS WEAPONS",
+      "TRANSLOCATION"
+     ]
+    }
+   ]
+  },
+  "cities-of-sigmar": {
+   "spell_lore": [
+    {
+     "lore": "Spells of the Collegiate Arcane",
+     "spells": [
+      "SPEED OF THE TWIN-TAILED COMET",
+      "CURSE OF SCORCHED METAL",
+      "HIGH STAR’S LIGHT"
+     ]
+    }
+   ],
+   "prayer_lore": [
+    {
+     "lore": "Scriptures of Sigmar",
+     "spells": [
+      "HOLY AEGIS",
+      "RECKONING OF SINNERS",
+      "BENEDICTION OF THE HIGH HEAVENS"
+     ]
+    }
+   ]
+  },
+  "daughters-of-khaine": {
+   "spell_lore": [
+    {
+     "lore": "Lore of Shadows",
+     "spells": [
+      "STEED OF SHADOWS",
+      "MINDRAZOR",
+      "BLACK HORROR OF ULGU"
+     ]
+    }
+   ],
+   "prayer_lore": [
+    {
+     "lore": "Prayers of the Khainite Cult",
+     "spells": [
+      "CATECHISM OF MURDER",
+      "COVENANT OF THE IRON HEART",
+      "DANCE OF DOOM"
+     ]
+    },
+    {
+     "lore": "Bloodshadow Rites",
+     "spells": [
+      "SHADOWSTEP",
+      "EXULTATION OF MURDER"
+     ]
+    }
+   ],
+   "manifestation_lore": [
+    {
+     "lore": "Manifestations of Khaine",
+     "spells": [
+      "SUMMON BLOODWRACK VIPER",
+      "SUMMON HEART OF FURY",
+      "SUMMON BLADEWIND"
+     ]
+    }
+   ]
+  },
+  "fyreslayers": {
+   "prayer_lore": [
+    {
+     "lore": "Zharrgrim Blessings",
+     "spells": [
+      "PRAYER OF ASH",
+      "PRAYER OF GRIMNIR’S FURY",
+      "WRATH OF VULCATRIX"
+     ]
+    },
+    {
+     "lore": "Vulkyn Gifts",
+     "spells": [
+      "ICHOR OF THE UR-SALAMANDER",
+      "FURY OF VULCATRIX",
+      "BLAZING IMPETUS"
+     ]
+    },
+    {
+     "lore": "Vulkyn Gifts",
+     "spells": [
+      "FURY OF VULCATRIX",
+      "BLAZING IMPETUS"
+     ]
+    }
+   ],
+   "manifestation_lore": [
+    {
+     "lore": "Magmic Invocations",
+     "spells": [
+      "SUMMON RUNIC FYREWALL",
+      "SUMMON ZHARRGRON FLAME-SPITTER",
+      "SUMMON MOLTEN INFERNOTH"
+     ]
+    }
+   ]
+  },
+  "idoneth-deepkin": {
+   "spell_lore": [
+    {
+     "lore": "Lore of the Deeps",
+     "spells": [
+      "STEED OF TIDES",
+      "COUNTER-CURRENT",
+      "PRESSURE OF THE DEEP"
+     ]
+    }
+   ],
+   "manifestation_lore": [
+    {
+     "lore": "Lore of the Abyss",
+     "spells": [
+      "SUMMON INCARNATE OF THE DEEP"
+     ]
+    }
+   ]
+  },
+  "kharadron-overlords": {},
+  "lumineth-realm-lords": {
+   "spell_lore": [
+    {
+     "lore": "Lore of Hysh",
+     "spells": [
+      "BEACON OF HYSH",
+      "OVERWHELMING HEAT",
+      "PIERCING REFRACTION"
+     ]
+    },
+    {
+     "lore": "Lore of the Awakened Realms",
+     "spells": [
+      "FOCUSED EROSION",
+      "ELEMENTAL PUSH",
+      "REALMSHIELD"
+     ]
+    },
+    {
+     "lore": "Lore of Prismatic Resonance",
+     "spells": [
+      "BEAM OF HYSH",
+      "UNSEEN FORCE",
+      "BEACONS OF PROTECTION"
+     ]
+    }
+   ],
+   "manifestation_lore": [
+    {
+     "lore": "Manifestations of Hysh",
+     "spells": [
+      "SUMMON HYSHIAN TWINSTONES",
+      "SUMMON RUNE OF PETRIFICATION",
+      "SUMMON SANCTUM OF AMYNTOK"
+     ]
+    }
+   ]
+  },
+  "seraphon": {
+   "spell_lore": [
+    {
+     "lore": "Lore of Celestial Manipulation",
+     "spells": [
+      "MYSTICAL UNFORGING",
+      "COMET’S CALL",
+      "SPEED OF HUANCHI"
+     ]
+    },
+    {
+     "lore": "Lore of Primal Jungles",
+     "spells": [
+      "LIGHT OF CHOTEC",
+      "THE EARTH TREMBLES",
+      "EMPOWERED CELESTITE"
+     ]
+    }
+   ]
+  },
+  "sylvaneth": {
+   "spell_lore": [
+    {
+     "lore": "Lore of the Deepwood",
+     "spells": [
+      "JADE THORNS",
+      "ZEPHYRSPITE RUSH",
+      "GRASPING ROOTS"
+     ]
+    }
+   ],
+   "manifestation_lore": [
+    {
+     "lore": "Manifestations of the Deepwood",
+     "spells": [
+      "SUMMON GLADEWYRM",
+      "SUMMON VENGEFUL SKULLROOT",
+      "SUMMON SPITESWARM HIVE"
+     ]
+    }
+   ],
+   "prayer_lore": [
+    {
+     "lore": "Lore of the Spirit-Song",
+     "spells": [
+      "SONG OF THE LOST",
+      "SONG OF WAR",
+      "SONG OF DREAD"
+     ]
+    }
+   ]
+  },
+  "blades-of-khorne": {
+   "manifestation_lore": [
+    {
+     "lore": "Judgements of Khorne",
+     "spells": [
+      "SUMMON HEXGORGER SKULLS",
+      "SUMMON WRATH-AXE",
+      "SUMMON BLEEDING ICON"
+     ]
+    }
+   ],
+   "prayer_lore": [
+    {
+     "lore": "Blood Blesssings of Khorne",
+     "spells": [
+      "UNCONTROLLABLE RAGE",
+      "BLOOD BOIL",
+      "FINAL ACT OF VIOLENCE"
+     ]
+    },
+    {
+     "lore": "Gifts of the Blood God",
+     "spells": [
+      "GOREFLESH",
+      "RUNES OF LOATHING",
+      "GIFT OF APOPLEXY"
+     ]
+    },
+    {
+     "lore": "Proclamations of Murder",
+     "spells": [
+      "STOKE THE FLAMES",
+      "GIFT OF APOPLEXY",
+      "FETTERS OF BLOOD"
+     ]
+    }
+   ]
+  },
+  "disciples-of-tzeentch": {
+   "spell_lore": [
+    {
+     "lore": "Lore of Fate",
+     "spells": [
+      "INFERNAL GATEWAY",
+      "WYRDFLAME HAZE",
+      "SHIELD OF FATE"
+     ]
+    },
+    {
+     "lore": "Lore of Change",
+     "spells": [
+      "BOLT OF TZEENTCH",
+      "FOLD REALITY",
+      "TRANSFORMED TO SPAWN"
+     ]
+    }
+   ],
+   "manifestation_lore": [
+    {
+     "lore": "Manifestations of Tzeentch",
+     "spells": [
+      "SUMMON BURNING SIGIL OF TZEENTCH",
+      "SUMMON DAEMONIC SIMULACRUM",
+      "SUMMON TOME OF EYES"
+     ]
+    }
+   ]
+  },
+  "hedonites-of-slaanesh": {
+   "spell_lore": [
+    {
+     "lore": "Lore of Extravagance",
+     "spells": [
+      "HYSTERICAL FRENZY",
+      "LAST ECSTASY",
+      "OVERWHELMING ACQUIESCENCE"
+     ]
+    }
+   ],
+   "manifestation_lore": [
+    {
+     "lore": "Manifestations of Depravity",
+     "spells": [
+      "SUMMON DREADFUL VISAGE",
+      "SUMMON MESMERISING MIRROR",
+      "SUMMON WHEELS OF EXCRUCIATION"
+     ]
+    }
+   ]
+  },
+  "maggotkin-of-nurgle": {
+   "spell_lore": [
+    {
+     "lore": "Lore of Malignance",
+     "spells": [
+      "FLESHY ABUNDANCE",
+      "CRIPPLING DESPAIR",
+      "CLOYING QUAGMIRE"
+     ]
+    }
+   ]
+  },
+  "skaven": {
+   "spell_lore": [
+    {
+     "lore": "Lore of Ruin",
+     "spells": [
+      "SKITTERLEAP",
+      "WITHER",
+      "WARPGALE"
+     ]
+    }
+   ],
+   "prayer_lore": [
+    {
+     "lore": "Noxious Prayers",
+     "spells": [
+      "FILTH-CRUST",
+      "BILE-TORRENT",
+      "RABID-TOUGH"
+     ]
+    }
+   ],
+   "manifestation_lore": [
+    {
+     "lore": "Manifestations of Doom",
+     "spells": [
+      "SUMMON WARP LIGHTNING VORTEX",
+      "SUMMON VERMINTIDE",
+      "SUMMON BELL OF DOOM"
+     ]
+    }
+   ]
+  },
+  "slaves-to-darkness": {
+   "spell_lore": [
+    {
+     "lore": "Lore of the Damned",
+     "spells": [
+      "SPITE-TONGUE CURSE",
+      "BINDING DAMNATION",
+      "DAEMONIC SPEED"
+     ]
+    }
+   ],
+   "manifestation_lore": [
+    {
+     "lore": "Manifestations of Malevolence",
+     "spells": [
+      "SUMMON DARKFIRE DAEMONRIFT",
+      "SUMMON EIGHTFOLD DOOM-SIGIL",
+      "SUMMON REALMSCOURGE RUPTURE"
+     ]
+    }
+   ]
+  },
+  "helsmiths-of-hashut": {
+   "spell_lore": [
+    {
+     "lore": "Lore of Infernal Power",
+     "spells": [
+      "HATEFUL FRACTURES",
+      "ASHEN SMOG",
+      "MOLTEN METAL"
+     ]
+    }
+   ],
+   "prayer_lore": [
+    {
+     "lore": "Prayers of the Scorched Sect",
+     "spells": [
+      "BLACK FLAMES OF HASHUT",
+      "FURNACE BLESSING",
+      "STORM OF OBSIDIAN SHARDS"
+     ]
+    }
+   ]
+  },
+  "flesh-eater-courts": {
+   "spell_lore": [
+    {
+     "lore": "Lore of Madness",
+     "spells": [
+      "CHARNEL FEAST",
+      "DERANGED TRANSFORMATION",
+      "MIASMA OF MADNESS"
+     ]
+    }
+   ],
+   "prayer_lore": [
+    {
+     "lore": "Rites of Delusion",
+     "spells": [
+      "EXCOMMUNICATION!",
+      "CHARNEL CONVICTION",
+      "THE SUMMERKING’S FAVOUR"
+     ]
+    }
+   ],
+   "manifestation_lore": [
+    {
+     "lore": "Manifested Insanity",
+     "spells": [
+      "SUMMON CADAVEROUS BARRICADE",
+      "SUMMON CORPSEMARE STAMPEDE",
+      "SUMMON CHALICE OF USHORAN"
+     ]
+    }
+   ]
+  },
+  "nighthaunt": {
+   "spell_lore": [
+    {
+     "lore": "Lore of the Underworlds",
+     "spells": [
+      "FELL BLADES",
+      "WRENCH SOULS",
+      "CHAINS OF DEATH"
+     ]
+    }
+   ],
+   "manifestation_lore": [
+    {
+     "lore": "Infernal Sorceries",
+     "spells": [
+      "SUMMON SHYISH REAPER",
+      "SUMMON MORTALIS TERMINEXUS",
+      "SUMMON VAULT OF SOULS"
+     ]
+    }
+   ]
+  },
+  "ossiarch-bonereapers": {
+   "spell_lore": [
+    {
+     "lore": "Lore of Ossian Sorcery",
+     "spells": [
+      "EMPOWER NADIRITE WEAPONS",
+      "IMMOLATING FLAMES",
+      "DRAIN VITALITY"
+     ]
+    },
+    {
+     "lore": "Lore of Necrotheurgy",
+     "spells": [
+      "BOLSTER CREATION",
+      "INVIGORATE THE RANKS",
+      "SOUL-CLAIM"
+     ]
+    }
+   ],
+   "manifestation_lore": [
+    {
+     "lore": "Horrors of the Necropolis",
+     "spells": [
+      "SUMMON NIGHTMARE PREDATOR",
+      "SUMMON BONE-TITHE SHRIEKER",
+      "SUMMON SOULSTEALER CARRION"
+     ]
+    }
+   ]
+  },
+  "soulblight-gravelords": {
+   "spell_lore": [
+    {
+     "lore": "Lore of Undeath",
+     "spells": [
+      "VILE TRANSFERENCE",
+      "PRISON OF GRIEF",
+      "WASTE AWAY"
+     ]
+    }
+   ]
+  },
+  "gloomspite-gitz": {
+   "spell_lore": [
+    {
+     "lore": "Lore of the Clammy Dank",
+     "spells": [
+      "BAD PORTENTS",
+      "SPORE MAWS",
+      "THE HAND OF GORK"
+     ]
+    },
+    {
+     "lore": "Lore of Frazzlegit",
+     "spells": [
+      "BRIGHT FRIGHT",
+      "GITSPEED",
+      "GAZE OF GLAREFACE"
+     ]
+    },
+    {
+     "lore": "Lore of the Little Waaagh!",
+     "spells": [
+      "BRIGHT FRIGHT",
+      "GITSPEED",
+      "GAZE OF GLAREFACE"
+     ]
+    }
+   ],
+   "manifestation_lore": [
+    {
+     "lore": "Dank Manifestations",
+     "spells": [
+      "SUMMON MORK’S MIGHTY MUSHROOM",
+      "SUMMON SCUTTLETIDE",
+      "SUMMON SCRAPSKUTTLE’S ARACHNACAULDRON",
+      "SUMMON MALEVOLENT MOON"
+     ]
+    }
+   ]
+  },
+  "ironjawz": {
+   "spell_lore": [
+    {
+     "lore": "Lore of the Weird",
+     "spells": [
+      "BASH ’EM LADZ!",
+      "MIGHTY ’EADBUTT",
+      "DA GREAT BIG GREEN HAND OF GORK"
+     ]
+    }
+   ],
+   "prayer_lore": [
+    {
+     "lore": "Warbeats",
+     "spells": [
+      "GET ’EM BEAT",
+      "FIXIN’ BEAT",
+      "KILLA BEAT"
+     ]
+    }
+   ],
+   "manifestation_lore": [
+    {
+     "lore": "Manifestations of Gorkamorka",
+     "spells": [
+      "SUMMON FOOT OF GORK",
+      "SUMMON MORKSPIT MARSH",
+      "SUMMON GORK-ROARA"
+     ]
+    }
+   ]
+  },
+  "kruleboyz": {
+   "spell_lore": [
+    {
+     "lore": "Lore of the Swamp",
+     "spells": [
+      "DA BLACK PIT",
+      "CHOKING MIST",
+      "MORK’S KUNNIN’"
+     ]
+    }
+   ],
+   "manifestation_lore": [
+    {
+     "lore": "Manifestations of Gorkamorka",
+     "spells": [
+      "SUMMON FOOT OF GORK",
+      "SUMMON GORK-ROARA",
+      "SUMMON MORKSPIT MARSH"
+     ]
+    }
+   ]
+  },
+  "ogor-mawtribes": {
+   "spell_lore": [
+    {
+     "lore": "Lore of Gut Magic",
+     "spells": [
+      "BLOOD FEAST",
+      "SHINCRUNCHER",
+      "TALLOWFLAGE"
+     ]
+    }
+   ],
+   "prayer_lore": [
+    {
+     "lore": "Lore of the Everwinter",
+     "spells": [
+      "FREEZING TAILWINDS",
+      "PULVERISING HAILSTORM",
+      "FORTIFYING HOARFROST"
+     ]
+    }
+   ]
+  },
+  "sons-of-behemat": {
+   "spell_lore": [
+    {
+     "lore": "Lore of Behemat",
+     "spells": [
+      "PIPSQUEAK CURSE",
+      "ENERGY SURGE",
+      "THORNFANG’S WRATH"
+     ]
+    }
+   ]
+  },
+  "endless-spells": {
+   "manifestation_lore": [
+    {
+     "lore": "Aetherwrought Machineries",
+     "spells": [
+      "SUMMON CHRONOMANTIC COGS",
+      "SUMMON AETHERVOID PENDULUM",
+      "SUMMON QUICKSILVER SWORDS"
+     ]
+    },
+    {
+     "lore": "Forbidden Power",
+     "spells": [
+      "SUMMON SOULSCREAM BRIDGE",
+      "SUMMON LAUCHON THE SOULSEEKER",
+      "SUMMON HORRORGHAST",
+      "SUMMON SHARDS OF VALAGHARR"
+     ]
+    },
+    {
+     "lore": "Krondspine Incarnate",
+     "spells": [
+      "SUMMON KRONDSPINE INCARNATE OF GHUR"
+     ]
+    },
+    {
+     "lore": "Morbid Conjuration",
+     "spells": [
+      "SUMMON SOULSNARE SHACKLES",
+      "SUMMON MALEVOLENT MAELSTROM",
+      "SUMMON PURPLE SUN OF SHYISH",
+      "SUMMON SUFFOCATING GRAVETIDE"
+     ]
+    },
+    {
+     "lore": "Primal Energy",
+     "spells": [
+      "SUMMON BURNING HEAD",
+      "SUMMON EMERALD LIFESWARM",
+      "SUMMON RAVENAK’S GNASHING JAWS"
+     ]
+    },
+    {
+     "lore": "Twilit Sorceries",
+     "spells": [
+      "SUMMON GEMINIDS OF UHL-GYSH",
+      "SUMMON PRISMATIC PALISADE",
+      "SUMMON UMBRAL SPELLPORTAL"
+     ]
+    }
+   ]
+  }
+ }
+}
