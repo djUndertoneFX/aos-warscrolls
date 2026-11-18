@@ -6964,3 +6964,8 @@ textarea.ptg-doc-overlay-input {
 .ab-ft-add { background: transparent; border: 1px solid #c8a840; color: #c8a840; padding: 6px 12px; border-radius: 4px; cursor: pointer; font: inherit; }
 .ab-ft-add.active { background: rgba(200,168,64,0.25); color: #fff; }
 .ab-ft-abilities { display: flex; flex-direction: column; gap: 6px; }
+/* Battle Buddy: Share in the header (Fight step), and the shared preview. */
+.bb-header-share { display: flex; align-items: center; margin-left: auto; margin-right: 12px; }
+.bb-preview { padding-top: 10px; }
+.bb-preview-modes { display: flex; justify-content: center; gap: 8px; margin: 6px 0 10px; }
+.preview-page-battle .bb-page { height: auto; }

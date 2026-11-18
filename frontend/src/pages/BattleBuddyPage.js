@@ -4,6 +4,7 @@ import axios from 'axios';
 import WarscrollGW, { AbilityCard, isWarscrollPopupOpen } from '../components/WarscrollGW';
 import VoiceControlWidget from '../components/VoiceControlWidget';
 import { useVoiceCommands } from '../VoiceControlContext';
+import { createAndCopyShareLink, getShareParam, clearShareParam, ShareToast, ShareButton } from '../shareLink';
 
 // Space reserved for a unit's thumbnail when it fits (image width + gap) —
 // shared between the actual CSS layout and the layout-impact measurement
@@ -1384,8 +1385,38 @@ export default function BattleBuddyPage() {
   // the state update lands so the "reset to Hero on matchup change" effect
   // above doesn't immediately stomp the restored phaseKey.
   const [restored, setRestored] = useState(false);
+  const [shareMsg, setShareMsg] = useState(null);
   useEffect(() => {
     let cancelled = false;
+    // Opened from a "Share full details" link: load the shared matchup
+    // (both sides, as the sender had them) instead of the saved session; it
+    // then saves as this account's session like any other matchup.
+    const shareToken = getShareParam();
+    if (shareToken) {
+      clearShareParam();
+      axios.post(`/api/share/${shareToken}/open`).then(async ({ data: res }) => {
+        if (cancelled) return;
+        const d = res.data || {};
+        const [f, e] = await Promise.all([restoreSide(d.friendly), restoreSide(d.enemy)]);
+        if (cancelled) return;
+        if (f.factionSlug) factionRules.fetchFor(f.factionSlug);
+        if (e.factionSlug) factionRules.fetchFor(e.factionSlug);
+        matchupSigRef.current = `${f.units.map(u => u.id).sort((a, b) => a - b).join(',')}||${e.units.map(u => u.id).sort((a, b) => a - b).join(',')}`;
+        setFriendly(f);
+        setEnemy(e);
+        if (d.phase_key) setPhaseKey(d.phase_key);
+        if (d.view_mode === 'single' || d.view_mode === 'dual') setViewMode(d.view_mode);
+        if (d.content_mode === 'phases' || d.content_mode === 'warscrolls') setContentMode(d.content_mode);
+        setStage('fight');
+        setShareMsg({ text: `Loaded ${res.sender}'s battle: ${res.name}.` });
+        setRestored(true);
+      }).catch(err => {
+        if (cancelled) return;
+        setShareMsg({ text: err.response?.data?.error || 'Could not open that shared battle.' });
+        setRestored(true);
+      });
+      return () => { cancelled = true; };
+    }
     axios.get('/api/battle-buddy-state').then(async ({ data }) => {
       if (cancelled) return;
       if (data && (data.friendly || data.enemy)) {
@@ -1424,6 +1455,30 @@ export default function BattleBuddyPage() {
     return () => clearTimeout(saveTimerRef.current);
   }, [restored, stage, friendly, enemy, phaseKey, viewMode]);
 
+  // Share the matchup: "full details" loads both sides into the opener's
+  // Battle Buddy; "preview" is a read-only Fight screen anyone can open.
+  const sideLabel = s => s.factionName || s.spearheadName || (s.units.length ? `${s.units.length} units` : 'Nobody');
+  const shareBattle = async mode => {
+    try {
+      const { url, copied } = await createAndCopyShareLink({
+        kind: 'battle', source_key: 'battle-buddy',
+        name: `${sideLabel(friendly)} vs ${sideLabel(enemy)}`,
+        faction_slug: friendly.factionSlug || enemy.factionSlug || null,
+        faction_name: friendly.factionName || null,
+        data: {
+          friendly: sideSnapshot(friendly), enemy: sideSnapshot(enemy),
+          phase_key: phaseKey, view_mode: viewMode, content_mode: contentMode,
+        },
+      }, {}, mode);
+      const sent = mode === 'preview'
+        ? 'Preview link copied — anyone with it can view this battle, no account needed.'
+        : 'Share link copied — it opens this matchup in their Battle Buddy.';
+      setShareMsg(copied ? { text: sent } : { text: "Couldn't reach the clipboard — copy this link:", url });
+    } catch (err) {
+      setShareMsg({ text: err.response?.data?.error || 'Sharing failed — try again.' });
+    }
+  };
+
   if (!restored) {
     return (
       <div className="table-page bb-page">
@@ -1451,8 +1506,14 @@ export default function BattleBuddyPage() {
           <button className={`bb-step-btn${stage === 'fight' && contentMode === 'phases' ? ' active' : ''}`} onClick={() => { setContentMode('phases'); setStage('fight'); }} title="Abilities by battle phase">Phases</button>
           <button className={`bb-step-btn${stage === 'fight' && contentMode === 'warscrolls' ? ' active' : ''}`} onClick={() => { setContentMode('warscrolls'); setStage('fight'); }} title="The selected army's warscrolls">Warscrolls</button>
         </div>
+        {stage === 'fight' && (
+          <div className="bb-header-share">
+            <ShareButton onShare={shareBattle} />
+          </div>
+        )}
         <div className="bb-header-voice"><VoiceControlWidget /></div>
       </div>
+      <ShareToast msg={shareMsg} onClose={() => setShareMsg(null)} />
 
       {stage === 'select' ? (
         <div className="bb-dual-view">
@@ -1462,6 +1523,41 @@ export default function BattleBuddyPage() {
       ) : (
         <FightStage friendly={friendly} enemy={enemy} factionRulesFor={factionRules.get} phaseKey={phaseKey} setPhaseKey={setPhaseKey} commandAbilities={commandAbilities} viewMode={viewMode} setViewMode={setViewMode} contentMode={contentMode} setContentMode={setContentMode} wsOpen={wsOpen} setWsOpen={setWsOpen} />
       )}
+    </div>
+  );
+}
+
+// ── Share preview of a Battle Buddy matchup (/preview/<token>, kind
+// 'battle'): the Fight step, read-only — both sides restored from the shared
+// snapshot, the Phases / Warscrolls toggle and the phase ribbon work, nothing
+// is saved. ────────────────────────────────────────────────────────────────
+export function BattleBuddyPreview({ data }) {
+  const [friendly, setFriendly] = useState(null);
+  const [enemy, setEnemy] = useState(null);
+  const factionRules = useFactionRules();
+  const commandAbilities = useCommandAbilities();
+  const [phaseKey, setPhaseKey] = useState(data?.phase_key || 'hero');
+  const [viewMode, setViewMode] = useState(data?.view_mode === 'dual' ? 'dual' : 'single');
+  const [contentMode, setContentMode] = useState(data?.content_mode === 'warscrolls' ? 'warscrolls' : 'phases');
+  const [wsOpen, setWsOpen] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([restoreSide(data?.friendly), restoreSide(data?.enemy)]).then(([f, e]) => {
+      if (cancelled) return;
+      if (f.factionSlug) factionRules.fetchFor(f.factionSlug);
+      if (e.factionSlug) factionRules.fetchFor(e.factionSlug);
+      setFriendly(f); setEnemy(e);
+    });
+    return () => { cancelled = true; };
+  }, [data]); // eslint-disable-line
+  if (!friendly || !enemy) return <div className="bb-pane-empty">Loading…</div>;
+  return (
+    <div className="table-page bb-page bb-preview">
+      <div className="bb-mode-main bb-preview-modes">
+        <button className={`bb-step-btn${contentMode === 'phases' ? ' active' : ''}`} onClick={() => setContentMode('phases')}>Phases</button>
+        <button className={`bb-step-btn${contentMode === 'warscrolls' ? ' active' : ''}`} onClick={() => setContentMode('warscrolls')}>Warscrolls</button>
+      </div>
+      <FightStage friendly={friendly} enemy={enemy} factionRulesFor={factionRules.get} phaseKey={phaseKey} setPhaseKey={setPhaseKey} commandAbilities={commandAbilities} viewMode={viewMode} setViewMode={setViewMode} contentMode={contentMode} setContentMode={setContentMode} wsOpen={wsOpen} setWsOpen={setWsOpen} />
     </div>
   );
 }

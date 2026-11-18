@@ -8,7 +8,7 @@ import axios from 'axios';
 // remembers where you were going) copies the list into the recipient's account
 // as an enemy list.
 
-const SHARE_PATHS = { army: '/army-builder', ptg: '/path-to-glory' };
+const SHARE_PATHS = { army: '/army-builder', ptg: '/path-to-glory', battle: '/battle-buddy' };
 
 // `view` (optional) = extra query params describing what the sender was
 // looking at, e.g. { view: 'roster', mode: 'image' }, so the link opens the

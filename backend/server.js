@@ -946,7 +946,7 @@ app.get('/api/faction-rules/:slug', requireAuthOrPreview, (req, res) => {
 // GET /api/command-abilities — Core Rules "Commands" (Command Point
 // abilities) — universal, not faction-specific, so no :slug param. See
 // backend/scrapeCommandAbilities.js.
-app.get('/api/command-abilities', requireAuth, (req, res) => {
+app.get('/api/command-abilities', requireAuthOrPreview, (req, res) => {
   const db = getDb();
   try {
     const rows = db.prepare(
@@ -1514,8 +1514,18 @@ app.get('/api/preview/:token', (req, res) => {
 app.get('/api/preview/:token/warscrolls', (req, res) => {
   const db = getDb();
   try {
-    const share = db.prepare('SELECT faction_slug FROM shared_lists WHERE token = ?').get(req.params.token);
+    const share = db.prepare('SELECT kind, faction_slug, data FROM shared_lists WHERE token = ?').get(req.params.token);
     if (!share) return res.status(404).json({ error: 'This preview link is invalid or has been removed.' });
+    // A shared Battle Buddy matchup: exactly the two sides' units.
+    if (share.kind === 'battle') {
+      let ids = [];
+      try {
+        const d = JSON.parse(share.data);
+        ids = [...(d.friendly?.unitIds || []), ...(d.enemy?.unitIds || [])].map(Number).filter(Number.isFinite);
+      } catch { ids = []; }
+      const rows = ids.length ? db.prepare(`SELECT * FROM warscrolls WHERE id IN (${ids.map(() => '?').join(',')})`).all(...ids) : [];
+      return res.json({ data: rows, total: rows.length });
+    }
     const alliance = share.faction_slug
       ? db.prepare('SELECT grand_alliance FROM warscrolls WHERE faction_slug = ? LIMIT 1').get(share.faction_slug)?.grand_alliance
       : null;
@@ -1530,10 +1540,10 @@ app.get('/api/preview/:token/warscrolls', (req, res) => {
 
 app.post('/api/share', requireAuth, (req, res) => {
   const { kind, source_key, name, faction_slug, faction_name, data } = req.body || {};
-  if (kind !== 'army' && kind !== 'ptg') return res.status(400).json({ error: 'kind must be army or ptg' });
+  if (kind !== 'army' && kind !== 'ptg' && kind !== 'battle') return res.status(400).json({ error: 'kind must be army, ptg or battle' });
   if (!data) return res.status(400).json({ error: 'data is required' });
   const key = String(source_key ?? name ?? 'default').slice(0, 200);
-  const listName = String(name || (kind === 'army' ? 'Army List' : 'Path to Glory Roster')).slice(0, 200);
+  const listName = String(name || (kind === 'army' ? 'Army List' : kind === 'battle' ? 'Battle Buddy' : 'Path to Glory Roster')).slice(0, 200);
   const db = getDb();
   try {
     const existing = db.prepare('SELECT token FROM shared_lists WHERE user_id = ? AND kind = ? AND source_key = ?').get(req.user.id, kind, key);
@@ -1566,6 +1576,11 @@ app.post('/api/share/:token/open', requireAuth, (req, res) => {
     if (!share) return res.status(404).json({ error: 'This shared list link is invalid or has been removed.' });
     const sender = db.prepare('SELECT username, commander_name FROM users WHERE id = ?').get(share.user_id);
     const senderName = sender ? (sender.commander_name || sender.username) : 'unknown';
+    // A Battle Buddy matchup isn't copied anywhere: the opener's Battle Buddy
+    // loads both sides from it (and saves that as its own session).
+    if (share.kind === 'battle') {
+      return res.json({ kind: 'battle', name: share.name, sender: senderName, data: JSON.parse(share.data) });
+    }
     const table = share.kind === 'army' ? 'army_builder_lists' : 'ptg_rosters';
     const copyName = share.kind === 'army'
       ? `${share.name} (${senderName})`

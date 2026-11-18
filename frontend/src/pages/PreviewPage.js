@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { DOCS, DocPage, buildPreviewDocData, abilitiesInText, buildAbilityLookup, WARLORD_UNIT_KEY } from '../components/PathToGloryWizard';
 import { ArmyRosterPreviewSheets } from './ArmyBuilderPage';
+import { BattleBuddyPreview } from './BattleBuddyPage';
 import WarscrollGW, { AbilityCard } from '../components/WarscrollGW';
 import { looseKey } from '../importList';
 
@@ -87,7 +88,7 @@ export default function PreviewPage() {
   const isArmy = share?.kind === 'army';
   const docData = useMemo(() => {
     if (!share) return null;
-    if (share.kind === 'army') {
+    if (share.kind === 'army' || share.kind === 'battle') {
       const factionSlug = share.faction_slug || share.data?.faction || '';
       return { factionSlug, abilityLookup: buildAbilityLookup({ factionSlug, factionRules }), warlordEnhancements: '', oobUnits: [] };
     }
@@ -206,6 +207,16 @@ export default function PreviewPage() {
       <div className="preview-page">
         <PreviewHeader />
         <div className="preview-loading">Loading preview…</div>
+      </div>
+    );
+  }
+
+  // A shared Battle Buddy matchup: its own read-only Fight screen.
+  if (share.kind === 'battle') {
+    return (
+      <div className="preview-page preview-page-battle">
+        <PreviewHeader subtitle={share.name} />
+        <BattleBuddyPreview data={share.data} />
       </div>
     );
   }
