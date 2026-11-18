@@ -1404,9 +1404,19 @@ const SplitPane = React.forwardRef(function SplitPane({ label, labelClass, list,
 // per-unit Path rows). A navList entry with _anvilWarlord gets a green dot.
 // ruleFilter(key, items): narrows a purple faction page's items (the preview
 // keeps only the Heroic Traits / Artefacts the army actually took).
-export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onFilterApply, factions = [], navIndex, navList, sortBy, spearheadData, allSpearheadRulesMap, onSwapFriendlyEnemy, onShowFriendlyOnly, onShowEnemyOnly, friendlyNavList, enemyNavList, onEnterSplitView, onJumpToUnit, hideViewToggle, renderExtras, ruleFilter }) {
+export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onFilterApply, factions = [], navIndex, navList, sortBy, spearheadData, allSpearheadRulesMap, onSwapFriendlyEnemy, onShowFriendlyOnly, onShowEnemyOnly, friendlyNavList, enemyNavList, onEnterSplitView, onJumpToUnit, hideViewToggle, renderExtras, ruleFilter, allFactionPages }) {
   const navTotal = navList ? navList.length : 0;
-  const { showFlavorText, showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore, useSpearheadAbilities } = useSettings();
+  const settings = useSettings();
+  const { showFlavorText, useSpearheadAbilities } = settings;
+  // allFactionPages (share previews): every purple faction page shows, not
+  // just the kinds the viewer's own Settings turn on — someone opening a
+  // shared link has their own (often default) settings, which hide most.
+  const showBattleTraits      = allFactionPages || settings.showBattleTraits;
+  const showBattleFormations  = allFactionPages || settings.showBattleFormations;
+  const showHeroicTraits      = allFactionPages || settings.showHeroicTraits;
+  const showArtefacts         = allFactionPages || settings.showArtefacts;
+  const showSpellLore         = allFactionPages || settings.showSpellLore;
+  const showManifestationLore = allFactionPages || settings.showManifestationLore;
   const modalRef = useRef(null);
   const scrollRef = useRef(null); // the actual scrolling element (.gw-modal-scroll), single-pane mode only
   const dotsRef      = useRef(null);
@@ -1546,10 +1556,9 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
           rulesCache.current.set(slug, r.data);
           setLoadedSlugs(prev => new Set([...prev, slug]));
         })
-        .catch(() => {
-          rulesCache.current.set(slug, { traits: [], formations: [] });
-          setLoadedSlugs(prev => new Set([...prev, slug]));
-        })
+        // A failed fetch isn't cached (it used to cache empty rules, which
+        // hid the purple pages for good) — the next open tries again.
+        .catch(() => {})
         .finally(() => { globalRulesLoading.delete(slug); });
     });
   }, [navList, spearheadData]);
@@ -1571,10 +1580,9 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
           rulesCache.current.set(slug, r.data);
           setLoadedSlugs(prev => new Set([...prev, slug]));
         })
-        .catch(() => {
-          rulesCache.current.set(slug, { traits: [], formations: [] });
-          setLoadedSlugs(prev => new Set([...prev, slug]));
-        })
+        // A failed fetch isn't cached (it used to cache empty rules, which
+        // hid the purple pages for good) — the next open tries again.
+        .catch(() => {})
         .finally(() => { globalRulesLoading.delete(slug); });
     });
   }, [friendlyNavList, enemyNavList, isSpMode]);

@@ -1128,7 +1128,7 @@ function ArmyWarscrollsSide({ side, units, onOpen }) {
 
 // `open` (which warscroll is showing in detail, or null for the army badges)
 // lives in BattleBuddyPage so it survives switching to Phases and back.
-function ArmyWarscrolls({ friendly, enemy, viewMode, singleSide, open, setOpen }) {
+function ArmyWarscrolls({ friendly, enemy, viewMode, singleSide, open, setOpen, preview }) {
   // open = { side, id } | null
   const lists = { friendly: friendly.units, enemy: enemy.units };
   const sides = viewMode === 'dual' ? ['friendly', 'enemy'] : [singleSide];
@@ -1178,6 +1178,7 @@ function ArmyWarscrolls({ friendly, enemy, viewMode, singleSide, open, setOpen }
           navList={list}
           sortBy="faction"
           ruleFilter={ruleFilter}
+          allFactionPages={!!preview}
           friendlyNavList={both ? friendly.units : undefined}
           enemyNavList={both ? enemy.units : undefined}
           onJumpToUnit={u => setOpen({ side: enemy.units.some(x => x.id === u.id) && !friendly.units.some(x => x.id === u.id) ? 'enemy' : open.side, id: u.id })}
@@ -1191,7 +1192,7 @@ function ArmyWarscrolls({ friendly, enemy, viewMode, singleSide, open, setOpen }
   );
 }
 
-function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey, commandAbilities, viewMode, setViewMode, contentMode, setContentMode, wsOpen, setWsOpen }) {
+function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey, commandAbilities, viewMode, setViewMode, contentMode, setContentMode, wsOpen, setWsOpen, preview }) {
   // Single View opens on whichever side actually has an army — loading only
   // an enemy list used to land on an empty Friendly side ("No units selected
   // for this side yet") with the enemy one click away on a toggle.
@@ -1331,7 +1332,7 @@ function FightStage({ friendly, enemy, factionRulesFor, phaseKey, setPhaseKey, c
       {contentMode === 'warscrolls' ? (
         <div className="bb-fight-vertical">
           <div className="bb-fight-main">
-            <ArmyWarscrolls friendly={friendly} enemy={enemy} viewMode={viewMode} singleSide={singleSide} open={wsOpen} setOpen={setWsOpen} />
+            <ArmyWarscrolls friendly={friendly} enemy={enemy} viewMode={viewMode} singleSide={singleSide} open={wsOpen} setOpen={setWsOpen} preview={preview} />
           </div>
         </div>
       ) : (
@@ -1588,7 +1589,7 @@ export function BattleBuddyPreview({ data }) {
         <button className={`bb-step-btn${contentMode === 'phases' ? ' active' : ''}`} onClick={() => setContentMode('phases')}>Phases</button>
         <button className={`bb-step-btn${contentMode === 'warscrolls' ? ' active' : ''}`} onClick={() => setContentMode('warscrolls')}>Warscrolls</button>
       </div>
-      <FightStage friendly={friendly} enemy={enemy} factionRulesFor={factionRules.get} phaseKey={phaseKey} setPhaseKey={setPhaseKey} commandAbilities={commandAbilities} viewMode={viewMode} setViewMode={setViewMode} contentMode={contentMode} setContentMode={setContentMode} wsOpen={wsOpen} setWsOpen={setWsOpen} />
+      <FightStage friendly={friendly} enemy={enemy} factionRulesFor={factionRules.get} phaseKey={phaseKey} setPhaseKey={setPhaseKey} commandAbilities={commandAbilities} viewMode={viewMode} setViewMode={setViewMode} contentMode={contentMode} setContentMode={setContentMode} wsOpen={wsOpen} setWsOpen={setWsOpen} preview />
     </div>
   );
 }

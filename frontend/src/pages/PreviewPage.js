@@ -385,6 +385,7 @@ export default function PreviewPage() {
                  WarscrollGW skips fetching faction rules otherwise. */
               sortBy="faction"
               hideViewToggle
+              allFactionPages
               renderExtras={renderPathRows}
               ruleFilter={ruleFilter}
               onJump={i => namedUnits[i] && setOpenUnit(namedUnits[i])}
