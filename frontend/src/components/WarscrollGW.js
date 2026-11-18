@@ -630,7 +630,11 @@ function FactionFormationsSlide({ faction, grandAlliance, formations, selected, 
   }
 
   const hasSelected = selected.size > 0;
-  const visibleGroups = filterSelected ? groups.filter(g => selected.has(g.name)) : groups;
+  // Names compare case-insensitively: a formation preset from an army list
+  // ("Death Stalkers") may differ in case from the rules' formation_name.
+  const selLower = new Set([...selected].map(n => String(n).toLowerCase()));
+  const isSel = name => selected.has(name) || selLower.has(String(name).toLowerCase());
+  const visibleGroups = filterSelected ? groups.filter(g => isSel(g.name)) : groups;
 
   // Primary = core-battletome formations (no source_note), always laid out
   // in the book's fixed 2x2 quadrant order. Additional = formations added by
@@ -664,7 +668,7 @@ function FactionFormationsSlide({ faction, grandAlliance, formations, selected, 
         </div>
         <div className="gw-formation-groups-2col">
           {primaryGridOrder.map((group, gi) => (
-            <FormationGroupCard key={gi} group={group} isSelected={selected.has(group.name)} onToggle={onToggle} />
+            <FormationGroupCard key={gi} group={group} isSelected={isSel(group.name)} onToggle={onToggle} />
           ))}
         </div>
         {additionalGroups.length > 0 && (
@@ -672,7 +676,7 @@ function FactionFormationsSlide({ faction, grandAlliance, formations, selected, 
             <div className="gw-formation-divider" />
             <div className="gw-formation-groups-2col">
               {additionalGroups.map((group, gi) => (
-                <FormationGroupCard key={gi} group={group} isSelected={selected.has(group.name)} onToggle={onToggle} />
+                <FormationGroupCard key={gi} group={group} isSelected={isSel(group.name)} onToggle={onToggle} />
               ))}
             </div>
           </>
@@ -1490,7 +1494,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
 
   const ruleFilterRef = useRef(ruleFilter);
   ruleFilterRef.current = ruleFilter;
-  const narrowRules = (key, items) => (ruleFilterRef.current ? ruleFilterRef.current(key, items) : items);
+  const narrowRules = (key, items, slug) => (ruleFilterRef.current ? ruleFilterRef.current(key, items, slug) : items);
 
   // Build slides for a given faction slug from the cache
   // Purple faction-rule slides only make sense when browsing in faction-sorted order —
@@ -1503,8 +1507,8 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
     return [
       { key: 'traits',             enabled: showBattleTraits,      data: rules.traits ?? [] },
       { key: 'formations',         enabled: showBattleFormations,  data: rules.formations ?? [] },
-      { key: 'heroic_traits',      enabled: showHeroicTraits,      data: narrowRules('heroic_traits', rules.heroic_traits ?? []) },
-      { key: 'artefacts',          enabled: showArtefacts,         data: narrowRules('artefacts', rules.artefacts ?? []) },
+      { key: 'heroic_traits',      enabled: showHeroicTraits,      data: narrowRules('heroic_traits', rules.heroic_traits ?? [], slug) },
+      { key: 'artefacts',          enabled: showArtefacts,         data: narrowRules('artefacts', rules.artefacts ?? [], slug) },
       { key: 'spell_lore',         enabled: showSpellLore,         data: spellPrayerData },
       { key: 'manifestation_lore', enabled: showManifestationLore, data: rules.manifestation_lore ?? [] },
     ].filter(s => s.enabled && s.data.length > 0);
@@ -1520,8 +1524,8 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
     return [
       { key: 'traits',             enabled: showBattleTraits,      data: rules.traits ?? [] },
       { key: 'formations',         enabled: showBattleFormations,  data: rules.formations ?? [] },
-      { key: 'heroic_traits',      enabled: showHeroicTraits,      data: narrowRules('heroic_traits', rules.heroic_traits ?? []) },
-      { key: 'artefacts',          enabled: showArtefacts,         data: narrowRules('artefacts', rules.artefacts ?? []) },
+      { key: 'heroic_traits',      enabled: showHeroicTraits,      data: narrowRules('heroic_traits', rules.heroic_traits ?? [], slug) },
+      { key: 'artefacts',          enabled: showArtefacts,         data: narrowRules('artefacts', rules.artefacts ?? [], slug) },
       { key: 'spell_lore',         enabled: showSpellLore,         data: spellPrayerData },
       { key: 'manifestation_lore', enabled: showManifestationLore, data: rules.manifestation_lore ?? [] },
     ].filter(s => s.enabled && s.data.length > 0);

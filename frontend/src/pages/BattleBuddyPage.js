@@ -1136,6 +1136,36 @@ function ArmyWarscrolls({ friendly, enemy, viewMode, singleSide, open, setOpen }
   const idx = open ? list.findIndex(u => u.id === open.id) : -1;
   const unit = idx >= 0 ? list[idx] : null;
   const both = friendly.units.length > 0 && enemy.units.length > 0;
+
+  // The loaded lists' picks drive the popup's purple faction pages:
+  // - Battle Formations: the list's formation is checked and "Show Selected"
+  //   is on (the popup keeps that per faction in localStorage), once per
+  //   matchup so a later manual change sticks.
+  // - Heroic Traits / Artefacts: only the ones the list's heroes took.
+  const seeded = useRef('');
+  useEffect(() => {
+    const sig = [friendly, enemy].map(s => `${s.factionSlug}:${s.battleFormation}`).join('|');
+    if (seeded.current === sig) return;
+    seeded.current = sig;
+    for (const s of [friendly, enemy]) {
+      if (!s.factionSlug || !s.battleFormation) continue;
+      try {
+        localStorage.setItem(`formation-selected-${s.factionSlug}`, JSON.stringify([s.battleFormation]));
+        localStorage.setItem(`formation-filter-${s.factionSlug}`, '1');
+      } catch { /* storage unavailable */ }
+    }
+  }, [friendly, enemy]);
+  const ruleFilter = (key, items, slug) => {
+    if (key !== 'heroic_traits' && key !== 'artefacts') return items;
+    const picked = [friendly, enemy]
+      .filter(s => s.factionSlug && s.factionSlug === slug && s.selection?.[key]?.length)
+      .flatMap(s => s.selection[key]);
+    if (!picked.length) return items;
+    const keyOf = n => String(n || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const want = new Set(picked.map(keyOf));
+    return items.filter(it => want.has(keyOf(it.name)));
+  };
+
   return (
     <div className={`bb-ws-view${viewMode === 'dual' ? ' dual' : ''}`}>
       {sides.map(sd => (
@@ -1147,6 +1177,7 @@ function ArmyWarscrolls({ friendly, enemy, viewMode, singleSide, open, setOpen }
           navIndex={idx}
           navList={list}
           sortBy="faction"
+          ruleFilter={ruleFilter}
           friendlyNavList={both ? friendly.units : undefined}
           enemyNavList={both ? enemy.units : undefined}
           onJumpToUnit={u => setOpen({ side: enemy.units.some(x => x.id === u.id) && !friendly.units.some(x => x.id === u.id) ? 'enemy' : open.side, id: u.id })}
