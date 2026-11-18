@@ -549,6 +549,7 @@ function SortIcon({ col, sortBy, sortDir }) {
 const STAGES = [
   { key: 'units',                label: 'Select Units' },
   { key: 'formation',           label: 'Battle Formation' },   // after Select Units: it needs the faction picked there (dj 2026-10-25)
+  { key: 'faction_terrain',     label: 'Faction Terrain' },    // dj 2026-11-18
   { key: 'heroic_traits',         label: 'Heroic Traits',        section: 'heroic_traits' },
   { key: 'artefacts',             label: 'Artefacts of Power',   section: 'artefacts' },
   { key: 'spell_lore',            label: 'Spell Lore',           section: 'spell_lore' },
@@ -954,6 +955,63 @@ function LoreCardsStage({ label, sectionKey, primaryFaction, primaryRules, hideS
       )}
       <div className="gw-abilities-grid gw-sp-grid-2col">
         {rest.map((ab, i) => <AbilityCard key={i} ab={{ ...ab, bullets: parseBullets(ab.bullets) }} keywords={[]} />)}
+      </div>
+    </>
+  );
+}
+
+// ── Faction Terrain stage: the army's faction terrain warscrolls (they cost
+// no points; an army takes at most 1). Adding one puts it on the roster like
+// any other unit — it lands in Auxiliary Units on the Army Roster. ────────
+function FactionTerrainStage({ faction, factionName, roster, setCount, onUnitsLoaded }) {
+  const [terrain, setTerrain] = useState(null);
+  useEffect(() => {
+    if (!faction) { setTerrain(null); return; }
+    let cancelled = false;
+    axios.get('/api/warscrolls', { params: { faction, isTerrain: '1', pageSize: 100 } })
+      .then(({ data }) => {
+        if (cancelled) return;
+        const rows = (data.data || []).filter(u => u.is_terrain);
+        setTerrain(rows);
+        onUnitsLoaded?.(rows);
+      })
+      .catch(() => { if (!cancelled) setTerrain([]); });
+    return () => { cancelled = true; };
+  }, [faction]); // eslint-disable-line
+  if (!faction) return <div className="ab-stage-empty">Pick a Faction on the Select Units stage first.</div>;
+  if (!terrain) return <div className="ab-stage-empty">Loading…</div>;
+  if (!terrain.length) return <div className="ab-stage-empty">{factionName || 'This faction'} has no faction terrain.</div>;
+  const parse = v => { try { return typeof v === 'string' ? JSON.parse(v) : (v || []); } catch { return []; } };
+  return (
+    <>
+      <div className="ab-bt-intro">Add your army's faction terrain. It costs no points, and an army can take only 1 faction terrain feature.</div>
+      <div className="ab-ft-grid">
+        {terrain.map(t => {
+          const added = (roster[t.id]?.train || 0) > 0;
+          return (
+            <div key={t.id} className={`ab-ft-card${added ? ' active' : ''}`}>
+              <div className="ab-ft-head">
+                <img src={`${axios.defaults.baseURL || ''}/api/unit-image/${t.id}`} alt="" className="ab-ft-img" onError={e => { e.target.style.display = 'none'; }} />
+                <div className="ab-ft-title">
+                  <div className="ab-bt-card-name">{niceName(t.name)}</div>
+                  <div className="ab-ft-meta">{t.points && t.points !== '0' ? `${t.points} pts` : 'No points'}{t.base_size ? ` · ${t.base_size}` : ''}</div>
+                </div>
+                <button
+                  type="button"
+                  className={`ab-ft-add${added ? ' active' : ''}`}
+                  onClick={() => {
+                    // Only one faction terrain feature: adding this one removes any other.
+                    if (!added) for (const o of terrain) if (o.id !== t.id && roster[o.id]) setCount(o.id, 0);
+                    setCount(t.id, added ? 0 : 1);
+                  }}
+                >{added ? '✓ Added' : '+ Add'}</button>
+              </div>
+              <div className="ab-ft-abilities">
+                {parse(t.abilities).map((ab, i) => <AbilityCard key={i} ab={{ ...ab, bullets: parseBullets(ab.bullets) }} keywords={[]} />)}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </>
   );
@@ -2713,6 +2771,18 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
                   battleFormation={battleFormation}
                   setBattleFormation={setBattleFormation}
                   hideScourge={hideScourgeOfGhyran}
+                />
+              </div>
+            )}
+
+            {activeStage === 'faction_terrain' && (
+              <div className="ab-stage-body">
+                <FactionTerrainStage
+                  faction={faction}
+                  factionName={factionName}
+                  roster={roster}
+                  setCount={(id, n) => setUnitCount(id, 'train', n)}
+                  onUnitsLoaded={rows => setUnitsById(prev => { const next = { ...prev }; for (const u of rows) next[u.id] = u; return next; })}
                 />
               </div>
             )}

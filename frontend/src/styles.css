@@ -6953,3 +6953,14 @@ textarea.ptg-doc-overlay-input {
 .ab-bt-type-affray { background: #3d5a2e; } .ab-bt-type-strike { background: #6b4b1e; } .ab-bt-type-domination { background: #6b1e1e; }
 .ab-bt-vp { margin-left: auto; color: #c8a840; font-size: 0.8rem; }
 .ab-bt-cond { font-size: 0.8rem; white-space: pre-wrap; }
+/* Army Builder: Faction Terrain stage. */
+.ab-ft-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 12px; }
+.ab-ft-card { border: 1px solid rgba(200,168,64,0.3); border-radius: 6px; padding: 10px 12px; background: rgba(0,0,0,0.25); }
+.ab-ft-card.active { border-color: #c8a840; box-shadow: 0 0 0 1px #c8a840 inset; }
+.ab-ft-head { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
+.ab-ft-img { width: 64px; height: 64px; object-fit: contain; }
+.ab-ft-title { flex: 1; }
+.ab-ft-meta { font-size: 0.8rem; color: var(--text-dim, #aaa); }
+.ab-ft-add { background: transparent; border: 1px solid #c8a840; color: #c8a840; padding: 6px 12px; border-radius: 4px; cursor: pointer; font: inherit; }
+.ab-ft-add.active { background: rgba(200,168,64,0.25); color: #fff; }
+.ab-ft-abilities { display: flex; flex-direction: column; gap: 6px; }
