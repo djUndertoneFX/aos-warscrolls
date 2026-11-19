@@ -47,6 +47,13 @@ export const isWarscrollPopupOpen = () => openPopupCount > 0;
 // connected backdrop (white or grey) goes but the model's own whites and
 // greys, which the fill can't reach through its coloured outline, stay.
 // Pixels along the model's edge that are still backdrop-ish get feathered.
+// The letter shown inside a unit's page dot (dj 2026-11-19, trial): the
+// first letter of its name, so units are findable without hovering.
+function dotLetter(name) {
+  const m = /[A-Za-z0-9]/.exec(String(name || ''));
+  return m ? m[0].toUpperCase() : '';
+}
+
 export function matteBackground(d, w, h) {
   const n = w * h;
   const lum = new Float32Array(n);
@@ -1400,7 +1407,7 @@ const SplitPane = React.forwardRef(function SplitPane({ label, labelClass, list,
                           className={`gw-nav-dot${!activeSlide && i === activeIdx ? ' gw-nav-dot-active' : ''}`}
                           title={u2.name}
                           onClick={() => jumpUnit(i)}
-                        />
+                        >{dotLetter(u2.name)}</span>
                       </React.Fragment>
                     );
                   })}
@@ -2043,7 +2050,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
                         <span key={u.id ?? i}
                           className={`gw-nav-dot${activePage === null && i === navIndex ? ' gw-nav-dot-active' : ''}`}
                           title={u.name}
-                          onClick={() => { setActivePage(null); onJump?.(i); }} />
+                          onClick={() => { setActivePage(null); onJump?.(i); }}>{dotLetter(u.name)}</span>
                       );
                     })}
                   </React.Fragment>
@@ -2077,7 +2084,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
                           {localI > 0 && prevType !== type && <span className="gw-nav-sep" />}
                           <span className={`gw-nav-dot${u._anvilWarlord ? ' gw-nav-dot-warlord' : ''}${activePage === null && i === navIndex ? ' gw-nav-dot-active' : ''}`}
                                 title={u._anvilWarlord ? `${u.name} (Warlord)` : u.name}
-                                onClick={() => { setActivePage(null); onJump?.(i); }} />
+                                onClick={() => { setActivePage(null); onJump?.(i); }}>{dotLetter(u.name)}</span>
                         </React.Fragment>
                       );
                     })}
