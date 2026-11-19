@@ -6976,9 +6976,9 @@ textarea.ptg-doc-overlay-input {
 .bb-ws-group-title { font-family: 'Cinzel', serif; font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); border-bottom: 1px solid var(--border); padding-bottom: 3px; margin-bottom: 0.45rem; }
 .bb-ws-thumb canvas { max-width: 100%; max-height: 100%; object-fit: contain; }
 .bb-ws-card .bb-ws-name { min-width: 0; }
-/* (dj 2026-11-19) Bigger unit pictures in the Warscrolls view: 56px → 84px
-   (×1.5), the card and name sized to suit. */
-.bb-ws-group .bb-ws-grid { grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); }
-.bb-ws-group .bb-ws-card { padding: 0.5rem 0.75rem; gap: 0.85rem; min-height: 100px; }
-.bb-ws-group .bb-ws-thumb { flex: 0 0 84px; width: 84px; height: 84px; }
+/* (dj 2026-11-19) Bigger unit pictures in the Warscrolls view: 56px → 84px → 126px
+   (×1.5 twice), the card and name sized to suit. */
+.bb-ws-group .bb-ws-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+.bb-ws-group .bb-ws-card { padding: 0.5rem 0.75rem; gap: 0.9rem; min-height: 142px; }
+.bb-ws-group .bb-ws-thumb { flex: 0 0 126px; width: 126px; height: 126px; }
 .bb-ws-group .bb-ws-name { font-size: 1rem; line-height: 1.2; }
