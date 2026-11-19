@@ -39,6 +39,70 @@ let openPopupCount = 0;
 export const isWarscrollPopupOpen = () => openPopupCount > 0;
 
 // ── White-removal canvas image ───────────────────────────────────────────────
+// Mattes out a product photo's backdrop in place (RGBA pixels). Photos are
+// shot on white but often fade to a light grey towards the middle (e.g.
+// Dreadblade Harrows), which a plain "near-white → transparent" cut leaves
+// as a grey box. Instead: flood-fill from the image border through pale,
+// unsaturated pixels, allowing only gentle steps in brightness, so the whole
+// connected backdrop (white or grey) goes but the model's own whites and
+// greys, which the fill can't reach through its coloured outline, stay.
+// Pixels along the model's edge that are still backdrop-ish get feathered.
+export function matteBackground(d, w, h) {
+  const n = w * h;
+  const lum = new Float32Array(n);
+  const pale = new Uint8Array(n);
+  for (let p = 0, i = 0; p < n; p++, i += 4) {
+    const r = d[i], g = d[i + 1], b = d[i + 2];
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+    lum[p] = 0.299 * r + 0.587 * g + 0.114 * b;
+    pale[p] = (mx - mn <= 22 && lum[p] >= 150) ? 1 : 0;
+  }
+  const bg = new Uint8Array(n);
+  const queue = new Int32Array(n);
+  let qh = 0, qt = 0;
+  const seed = p => { if (pale[p] && lum[p] >= 175 && !bg[p]) { bg[p] = 1; queue[qt++] = p; } };
+  for (let x = 0; x < w; x++) { seed(x); seed((h - 1) * w + x); }
+  for (let y = 0; y < h; y++) { seed(y * w); seed(y * w + w - 1); }
+  while (qh < qt) {
+    const p = queue[qh++];
+    const x = p % w, y = (p - x) / w;
+    const l = lum[p];
+    const visit = q => {
+      if (bg[q] || !pale[q]) return;
+      if (Math.abs(lum[q] - l) > 9) return; // backdrop shades change slowly
+      bg[q] = 1; queue[qt++] = q;
+    };
+    if (x > 0) visit(p - 1);
+    if (x < w - 1) visit(p + 1);
+    if (y > 0) visit(p - w);
+    if (y < h - 1) visit(p + w);
+  }
+  for (let p = 0; p < n; p++) {
+    const i = p * 4 + 3;
+    if (bg[p]) { d[i] = 0; continue; }
+    // Near-white anywhere (pockets of backdrop the fill can't reach, e.g.
+    // between legs) fades out as before.
+    const r = d[i - 3], g = d[i - 2], b = d[i - 1];
+    if (r > 220 && g > 220 && b > 220) {
+      const k = 1 - (Math.min(r, g, b) - 220) / 35;
+      d[i] = Math.min(d[i], Math.round(255 * k * k));
+      continue;
+    }
+    // Feather: a pale pixel touching the backdrop fades by how close it is
+    // to the backdrop's brightness there.
+    if (!pale[p]) continue;
+    const x = p % w, y = (p - x) / w;
+    let nb = -1;
+    if (x > 0 && bg[p - 1]) nb = p - 1;
+    else if (x < w - 1 && bg[p + 1]) nb = p + 1;
+    else if (y > 0 && bg[p - w]) nb = p - w;
+    else if (y < h - 1 && bg[p + w]) nb = p + w;
+    if (nb < 0) continue;
+    const t = Math.min(1, Math.abs(lum[p] - lum[nb]) / 40);
+    d[i] = Math.round(d[i] * (0.25 + 0.75 * t));
+  }
+}
+
 export function TransparentImage({ src, alt, className, onError }) {
   const canvasRef = useRef(null);
   const [failed, setFailed] = useState(false);
@@ -59,15 +123,7 @@ export function TransparentImage({ src, alt, className, onError }) {
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0);
       const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const d = data.data;
-      for (let i = 0; i < d.length; i += 4) {
-        const r = d[i], g = d[i+1], b = d[i+2];
-        if (r > 220 && g > 220 && b > 220) {
-          const whiteness = Math.min(r, g, b);
-          d[i+3] = Math.round((1 - (whiteness - 220) / 35) * 255 * (1 - (whiteness - 220) / 35));
-          if (whiteness > 240) d[i+3] = 0;
-        }
-      }
+      matteBackground(data.data, canvas.width, canvas.height);
       ctx.putImageData(data, 0, 0);
     };
     img.onerror = () => { setFailed(true); onErrorRef.current?.(); };
