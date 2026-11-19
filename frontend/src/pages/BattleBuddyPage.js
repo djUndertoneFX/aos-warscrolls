@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import WarscrollGW, { AbilityCard, isWarscrollPopupOpen } from '../components/WarscrollGW';
+import WarscrollGW, { AbilityCard, isWarscrollPopupOpen, TransparentImage } from '../components/WarscrollGW';
 import VoiceControlWidget from '../components/VoiceControlWidget';
 import { useVoiceCommands } from '../VoiceControlContext';
 import { createAndCopyShareLink, getShareParam, clearShareParam, ShareToast, ShareButton } from '../shareLink';
@@ -1094,34 +1094,49 @@ function PhaseRibbon({ phaseKey, setPhaseKey, onPick }) {
 // ── Warscrolls view: the selected army's units as cards; clicking one opens the
 // full warscroll (prev/next steps through that side's army, and the split
 // Friendly | Enemy view is available when both sides have units). ─────────────
+// The Warscrolls view's list of one army: grouped by type (Heroes, Infantry,
+// Cavalry, …) in the site's usual order, each unit just its picture (white
+// backdrop matted out, like everywhere else on the site) and name.
+const WS_TYPE_GROUPS = [
+  ['Heroes', u => u.is_hero],
+  ['Infantry', u => u.is_infantry],
+  ['Cavalry', u => u.is_cavalry],
+  ['Beasts', u => u.is_beast],
+  ['Monsters', u => u.is_monster],
+  ['War Machines', u => u.is_war_machine],
+  ['Faction Terrain', u => u.is_terrain],
+  ['Manifestations', u => u.is_manifestation],
+];
+function groupUnitsByType(units) {
+  const groups = WS_TYPE_GROUPS.map(([label]) => ({ label, units: [] }));
+  const other = { label: 'Other', units: [] };
+  for (const u of units) {
+    const gi = WS_TYPE_GROUPS.findIndex(([, test]) => test(u));
+    (gi >= 0 ? groups[gi] : other).units.push(u);
+  }
+  return [...groups, other].filter(g => g.units.length);
+}
 function ArmyWarscrollsSide({ side, units, onOpen }) {
   return (
     <div className="bb-ws-side">
       <div className="bb-fight-pane-title">{side === 'friendly' ? 'Friendly' : 'Enemy'}</div>
       {units.length === 0 ? (
         <div className="bb-pane-empty">No units selected for this side yet (Step 1).</div>
-      ) : (
-        <div className="bb-ws-grid">
-          {units.map(u => (
-            <button type="button" key={u.id} className={`bb-ws-card ${side}`} onClick={() => onOpen(side, u)}>
-              <span className="bb-ws-thumb">
-                <img src={`${axios.defaults.baseURL || ''}/api/unit-image/${u.id}`} alt="" loading="lazy" onError={e => { e.target.style.visibility = 'hidden'; }} />
-              </span>
-              <span className="bb-ws-info">
-                <span className="bb-ws-name">{u.name}</span>
-                <span className="bb-ws-stats">
-                  <span title="Move">Mv {u.move || '—'}</span>
-                  <span title="Health">HP {u.health || '—'}</span>
-                  <span title="Save">Sv {u.save || '—'}</span>
-                  <span title="Control">Ctrl {u.control || '—'}</span>
-                  {u.ward ? <span title="Ward">Wd {u.ward}</span> : null}
+      ) : groupUnitsByType(units).map(g => (
+        <div className="bb-ws-group" key={g.label}>
+          <div className="bb-ws-group-title">{g.label}</div>
+          <div className="bb-ws-grid">
+            {g.units.map(u => (
+              <button type="button" key={u.id} className={`bb-ws-card ${side}`} onClick={() => onOpen(side, u)}>
+                <span className="bb-ws-thumb">
+                  <TransparentImage src={`${axios.defaults.baseURL || ''}/api/unit-image/${u.id}`} alt="" />
                 </span>
-                <span className="bb-ws-pts">{u.points ? `${u.points} pts` : ''}{u.unit_size ? ` · ${u.unit_size} model${String(u.unit_size) === '1' ? '' : 's'}` : ''}</span>
-              </span>
-            </button>
-          ))}
+                <span className="bb-ws-name">{u.name}</span>
+              </button>
+            ))}
+          </div>
         </div>
-      )}
+      ))}
     </div>
   );
 }
@@ -1130,7 +1145,9 @@ function ArmyWarscrollsSide({ side, units, onOpen }) {
 // lives in BattleBuddyPage so it survives switching to Phases and back.
 function ArmyWarscrolls({ friendly, enemy, viewMode, singleSide, setSingleSide, open, setOpen, preview }) {
   // open = { side, id } | null
-  const lists = { friendly: friendly.units, enemy: enemy.units };
+  // In the cards' grouped order, so the popup's prev / next follows the page.
+  const byType = us => groupUnitsByType(us).flatMap(g => g.units);
+  const lists = { friendly: byType(friendly.units), enemy: byType(enemy.units) };
   const sides = viewMode === 'dual' ? ['friendly', 'enemy'] : [singleSide];
   const list = open ? lists[open.side] : [];
   const idx = open ? list.findIndex(u => u.id === open.id) : -1;

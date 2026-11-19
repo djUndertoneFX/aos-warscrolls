@@ -6970,3 +6970,9 @@ textarea.ptg-doc-overlay-input {
 .bb-preview-modes { display: flex; justify-content: center; gap: 8px; margin: 6px 0 10px; }
 .preview-page-battle .bb-page { height: auto; }
 .gw-view-swap-btn { font-size: 1.05rem; line-height: 1; color: #c8a840; padding: 0 8px; }
+
+/* Battle Buddy Warscrolls view: grouped by type; picture (matted) + name. */
+.bb-ws-group { margin-bottom: 0.9rem; }
+.bb-ws-group-title { font-family: 'Cinzel', serif; font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); border-bottom: 1px solid var(--border); padding-bottom: 3px; margin-bottom: 0.45rem; }
+.bb-ws-thumb canvas { max-width: 100%; max-height: 100%; object-fit: contain; }
+.bb-ws-card .bb-ws-name { min-width: 0; }
