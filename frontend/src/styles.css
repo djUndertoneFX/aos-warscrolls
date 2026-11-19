@@ -6995,3 +6995,6 @@ textarea.ptg-doc-overlay-input {
 @media (max-width: 1100px) {
   .gw-nav-dot { width: 20px; height: 20px; font-size: 11px; }
 }
+/* Two-letter dots grow into pills. */
+.gw-nav-dot { width: auto; min-width: 16px; padding: 0 3px; border-radius: 8px; box-sizing: border-box; }
+@media (max-width: 1100px) { .gw-nav-dot { width: auto; min-width: 20px; border-radius: 10px; } }

@@ -47,11 +47,33 @@ export const isWarscrollPopupOpen = () => openPopupCount > 0;
 // connected backdrop (white or grey) goes but the model's own whites and
 // greys, which the fill can't reach through its coloured outline, stay.
 // Pixels along the model's edge that are still backdrop-ish get feathered.
-// The letter shown inside a unit's page dot (dj 2026-11-19, trial): the
-// first letter of its name, so units are findable without hovering.
-function dotLetter(name) {
-  const m = /[A-Za-z0-9]/.exec(String(name || ''));
-  return m ? m[0].toUpperCase() : '';
+// The letters shown inside the units' page dots (dj 2026-11-19, trial): the
+// first letter of each name, or — where two units in the same strip share
+// that letter — two: the initials of its first two words ("Lord Vitriolic"
+// LV, "Lady Olynder" LO; small words like "of"/"the" skipped), or its first
+// two letters for a one-word name. Keyed by the list position.
+const DOT_SMALL_WORDS = new Set(['of', 'the', 'on', 'and', 'a', 'an', 'in', 'to', 'with']);
+function dotLabels(list) {
+  const words = u => String(u?.name || '').replace(/[^A-Za-z0-9' -]/g, ' ').split(/[\s-]+/).filter(Boolean);
+  const first = list.map(u => (words(u)[0]?.[0] || '').toUpperCase());
+  const counts = {};
+  first.forEach(l => { counts[l] = (counts[l] || 0) + 1; });
+  const sig = u => words(u).filter((w, j) => j === 0 || !DOT_SMALL_WORDS.has(w.toLowerCase()));
+  const labels = list.map((u, i) => {
+    if (counts[first[i]] < 2) return first[i];
+    const ws = sig(u);
+    const two = ws.length > 1 ? ws[0][0] + ws[1][0] : (ws[0] || '').slice(0, 2);
+    return two.toUpperCase();
+  });
+  // Still tied ("Knight of Shrouds" / "Knight of Shrouds on Ethereal
+  // Steed")? A third initial where the name has one.
+  const twoCounts = {};
+  labels.forEach(l => { twoCounts[l] = (twoCounts[l] || 0) + 1; });
+  return labels.map((l, i) => {
+    if (l.length < 2 || twoCounts[l] < 2) return l;
+    const ws = sig(list[i]);
+    return ws.length > 2 ? (l + ws[2][0]).toUpperCase() : l;
+  });
 }
 
 export function matteBackground(d, w, h) {
@@ -1278,6 +1300,7 @@ const SplitPane = React.forwardRef(function SplitPane({ label, labelClass, list,
   // and reuse the `faction_slug` field on the group to hold that key — every
   // other reference to `group.faction_slug` below just treats it as an
   // opaque lookup key, so nothing else needs to branch on isSpMode.
+  const listLabels = React.useMemo(() => dotLabels(list || []), [list]);
   const factionGroups = React.useMemo(() => {
     const groups = [];
     for (let i = 0; i < list.length; i++) {
@@ -1398,6 +1421,7 @@ const SplitPane = React.forwardRef(function SplitPane({ label, labelClass, list,
                   {slides.length > 0 && <span className="gw-nav-sep" />}
                   {list.slice(group.startIdx, group.endIdx + 1).map((u2, localI) => {
                     const i = group.startIdx + localI;
+                    const dotLabel = listLabels[i];
                     const type = getPrimaryType(u2);
                     const prevType = localI > 0 ? getPrimaryType(list[i - 1]) : null;
                     return (
@@ -1407,7 +1431,7 @@ const SplitPane = React.forwardRef(function SplitPane({ label, labelClass, list,
                           className={`gw-nav-dot${!activeSlide && i === activeIdx ? ' gw-nav-dot-active' : ''}`}
                           title={u2.name}
                           onClick={() => jumpUnit(i)}
-                        >{dotLetter(u2.name)}</span>
+                        >{dotLabel}</span>
                       </React.Fragment>
                     );
                   })}
@@ -1517,6 +1541,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
   const [loadedSlugs, setLoadedSlugs] = useState(new Set());
 
   // Compute contiguous faction groups from navList
+  const navLabels = React.useMemo(() => dotLabels(navList || []), [navList]);
   const factionGroups = React.useMemo(() => {
     if (!navList?.length) return [];
     const groups = [];
@@ -2050,7 +2075,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
                         <span key={u.id ?? i}
                           className={`gw-nav-dot${activePage === null && i === navIndex ? ' gw-nav-dot-active' : ''}`}
                           title={u.name}
-                          onClick={() => { setActivePage(null); onJump?.(i); }}>{dotLetter(u.name)}</span>
+                          onClick={() => { setActivePage(null); onJump?.(i); }}>{navLabels[i]}</span>
                       );
                     })}
                   </React.Fragment>
@@ -2084,7 +2109,7 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
                           {localI > 0 && prevType !== type && <span className="gw-nav-sep" />}
                           <span className={`gw-nav-dot${u._anvilWarlord ? ' gw-nav-dot-warlord' : ''}${activePage === null && i === navIndex ? ' gw-nav-dot-active' : ''}`}
                                 title={u._anvilWarlord ? `${u.name} (Warlord)` : u.name}
-                                onClick={() => { setActivePage(null); onJump?.(i); }}>{dotLetter(u.name)}</span>
+                                onClick={() => { setActivePage(null); onJump?.(i); }}>{navLabels[i]}</span>
                         </React.Fragment>
                       );
                     })}
