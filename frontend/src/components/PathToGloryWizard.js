@@ -214,6 +214,13 @@ export function pathRankLabel(row, allPaths) {
 // not the base profile sitting underneath the picks. The wizard's memos
 // below are now thin wrappers over these, so there is one implementation.
 export function apotheosisModsFrom(apotheosisSteps, c) {
+  return apotheosisPickedOptions(apotheosisSteps, c)
+    .map(opt => ({ opt, mods: parseWarscrollMods(opt.effect) }))
+    .filter(entry => entry.mods.length > 0);
+}
+
+// Every Anvil option the hero has picked, in pick order.
+export function apotheosisPickedOptions(apotheosisSteps, c) {
   if (!apotheosisSteps?.length) return [];
   const stepBy = re => apotheosisSteps.find(st => re.test(st.step_title || ''));
   const archetypeStepData = stepBy(/(?:choose|pick) an? (?:archetype|chamber|great clan|warclan)/i);
@@ -241,9 +248,7 @@ export function apotheosisModsFrom(apotheosisSteps, c) {
   for (const i of (c.battleMountUpgradesChoice || [])) if (mountUpgradesStepData?.options?.[i]) picked.push(mountUpgradesStepData.options[i]);
   for (const i of (c.otherUpgradesChoice || [])) if (otherUpgradesStepData?.options?.[i]) picked.push(otherUpgradesStepData.options[i]);
 
-  return picked
-    .map(opt => ({ opt, mods: parseWarscrollMods(opt.effect) }))
-    .filter(entry => entry.mods.length > 0);
+  return picked;
 }
 
 export function applyStatMods(base, modSources) {
@@ -3579,8 +3584,11 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   // — stat wheel, weapon profiles, keywords — is derived on every render
   // instead (see apotheosisModSources / effectiveWarlordStats above), so
   // it needs no toggle-time bookkeeping at all.
+  const critTagOf = opt => (/hero's .+? has (Crit \((?:Mortal|2 Hits|Auto-wound)\))/i.exec(opt.effect || '') || [])[1] || null;
   const applyUpgradeWeaponEffect = (opt, adding) => {
-    if (isChargeDamageOption(opt)) {
+    if (critTagOf(opt)) {
+      setWeaponAbilityTag(parseWeaponTargetPhrase(opt.effect), 'crit', critTagOf(opt), adding);
+    } else if (isChargeDamageOption(opt)) {
       setWeaponAbilityTag(parseWeaponTargetPhrase(opt.effect), 'charge (+1 damage)', 'Charge (+1 Damage)', adding);
     } else if (isAntiXOption(opt)) {
       const keyword = antiXChoiceByOption[opt.id] || parseAntiXKeywords(opt.effect)[0];
@@ -3589,6 +3597,54 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
       applyRankScalingAttack(opt, adding);
     }
   };
+
+  // Keep the warscroll in step with the picked Anvil options when they were
+  // set without a click — an imported list, or a reloaded roster: a weapon
+  // an upgrade adds (Terminus Greatbow) gets its row, and a weapon ability
+  // it grants (Crit (Mortal), Anti-X, Charge (+1 Damage)) gets its tag.
+  // Rows added here are tagged fromOption and go again when it's unpicked.
+  useEffect(() => {
+    if (!apotheosisSteps?.length) return;
+    if (!meleeWeapons.length && !rangedWeapons.length) return; // starting warscroll not filled in yet
+    const opts = apotheosisPickedOptions(apotheosisSteps, {
+      archetypeChoice, companionChoice, originFlawChoice, mountChoice, battleMountUpgradesChoice, otherUpgradesChoice,
+    });
+    const pickedNames = new Set(opts.map(o => o.name));
+    const have = new Set([...meleeWeapons, ...rangedWeapons].map(r => (r.name || '').trim().toLowerCase()));
+    const near = (a, b) => {
+      const x = a.toLowerCase().replace(/[^a-z]/g, ''); const y = b.toLowerCase().replace(/[^a-z]/g, '');
+      if (x === y) return true;
+      if (x.length !== y.length) return false;
+      let d = 0; for (let k = 0; k < x.length; k++) if (x[k] !== y[k]) d++;
+      return d <= 2;
+    };
+    for (const opt of opts) {
+      let bullets = opt.bullets;
+      if (typeof bullets === 'string') { try { bullets = JSON.parse(bullets); } catch { bullets = []; } }
+      for (const b of bullets || []) {
+        const w = parseNewWeaponBullet(b);
+        if (!w) continue;
+        if (near(w.name, opt.name)) w.name = opt.name; // the source's typos ("Terminus Grealbow")
+        if (have.has(w.name.trim().toLowerCase())) continue;
+        have.add(w.name.trim().toLowerCase());
+        const row = { ...w, fromOption: opt.name };
+        if (w.rng) addRanged(row); else addMelee(row);
+      }
+      const target = parseWeaponTargetPhrase(opt.effect);
+      if (!target) continue;
+      const rows = [...meleeWeapons.map(r => [r, true]), ...rangedWeapons.map(r => [r, false])];
+      const hasTag = family => rows.some(([r, melee]) => weaponMatchesTarget(r, target, melee)
+        && (r.abilities || '').toLowerCase().split(',').some(t => t.trim().startsWith(family)));
+      const anyTarget = rows.some(([r, melee]) => weaponMatchesTarget(r, target, melee));
+      if (!anyTarget) continue;
+      if (critTagOf(opt) && !hasTag('crit')) applyUpgradeWeaponEffect(opt, true);
+      else if (isChargeDamageOption(opt) && !hasTag('charge')) applyUpgradeWeaponEffect(opt, true);
+      else if (isAntiXOption(opt) && !hasTag('anti-')) applyUpgradeWeaponEffect(opt, true);
+    }
+    const stale = r => r.fromOption && !pickedNames.has(r.fromOption);
+    if (meleeWeapons.some(stale)) setMeleeWeapons(rs => rs.filter(r => !stale(r)));
+    if (rangedWeapons.some(stale)) setRangedWeapons(rs => rs.filter(r => !stale(r)));
+  }, [apotheosisModSources, meleeWeapons, rangedWeapons]); // eslint-disable-line
 
   // Shared render for "Pick any Other Upgrades"/"Pick any Battle Mount
   // Upgrades" cards (true multi-select, toggled independently) — `toggle`

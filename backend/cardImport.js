@@ -36,6 +36,69 @@ const STAT_RE = /^\s*(move|health)\b/i;
 const SECTION_RE = /^\s*(battle traits?\b|battle formation\b|arcane tome\b|heroic traits?\b|artefacts?\b|spell lore\b|prayer lore\b|manifestation lore\b|regiments? of renown\b)/i;
 const MULT_RE = /\(\s*[x×]\s*(\d+)\s*\)/i;
 
+// The Anvil hero card's profile: Move/Health/Save/Control, Ward, and each
+// weapon row's numbers and abilities ("Warblade 6 2+ 3+ 1 2 Anti-INFANTRY
+// (+1 Rend), Crit (Mortal)").
+function readHeroProfile(seg) {
+  const lines = seg.lines;
+  const prof = { weapons: {} };
+  for (let i = 0; i < Math.min(lines.length, 8); i++) {
+    const l = lines[i];
+    if (prof.move == null) {
+      const m = /(\d{1,2})\s*["”″']+\s*\W*\s*(\d{1,2})\b/.exec(l);
+      if (m) { prof.move = +m[1]; prof.health = +m[2]; continue; }
+    }
+    if (prof.save == null) {
+      const m = /^\s*(\d)\+\s+(\d{1,2})\b/.exec(l);
+      if (m) { prof.save = +m[1]; prof.control = +m[2]; }
+    }
+    const w = /\bWARD\s*\(?\s*(\d)\+/i.exec(l);
+    if (w && prof.ward == null) prof.ward = +w[1];
+  }
+  for (const l of lines) {
+    const m = /^([A-Za-z][A-Za-z' -]+?)\s+(?:(\d+)["”″]\s+)?(\d+|D\d+)\s+(\d)\+\s+(\d)\+\s+(-|\d)\s+(\d+|D\d+)\s*(.*)$/.exec(l.trim());
+    if (!m) continue;
+    prof.weapons[compact(m[1])] = { atk: m[3], hit: +m[4], wnd: +m[5], rnd: m[6] === '-' ? 0 : +m[6], dmg: m[7], ability: m[8] || '' };
+  }
+  return prof;
+}
+
+// Anvil options whose only trace on the card is a number or a weapon
+// ability, matched by what their effect text says they change.
+function statPicks(seg, opts, startWeapon) {
+  const prof = readHeroProfile(seg);
+  const base = { move: 6, health: 5, control: 2 };
+  const out = [];
+  const weaponOf = name => prof.weapons[compact(name)];
+  const baseOf = name => (startWeapon && compact(startWeapon.name) === compact(name) ? startWeapon : null);
+  const num = v => parseInt(v, 10);
+  for (const o of opts) {
+    if (!o.cost) continue; // rows without a DP cost are scraping leftovers, not picks
+    const e = String(o.effect || '');
+    let m;
+    let hit = false;
+    if ((m = /has WARD \((\d)\+\)/i.exec(e)) && !/while/i.test(e)) hit = prof.ward === +m[1];
+    else if ((m = /Add (\d+) to your hero's (Health|Control) characteristic/i.exec(e))) {
+      const k = m[2].toLowerCase();
+      hit = prof[k] != null && prof[k] >= base[k] + +m[1];
+    } else if ((m = /Add (\d+)" to your hero's Move/i.exec(e))) hit = prof.move != null && prof.move >= base.move + +m[1] && prof.move < 12;
+    else if ((m = /Change your hero's Move characteristic to (\d+)"/i.exec(e))) hit = prof.move === +m[1];
+    else if ((m = /The (Hit|Wound) characteristic of your hero's (.+?) is (\d)\+/i.exec(e))) {
+      const w = weaponOf(m[2]);
+      hit = !!w && w[m[1].toLowerCase() === 'hit' ? 'hit' : 'wnd'] === +m[3];
+    } else if ((m = /Add (\d+) to the (Attacks|Damage|Rend) characteristic of your hero's (.+?)\./i.exec(e))) {
+      const w = weaponOf(m[3]); const b = baseOf(m[3]);
+      const f = { attacks: 'atk', damage: 'dmg', rend: 'rnd' }[m[2].toLowerCase()];
+      hit = !!(w && b) && num(w[f]) >= num(b[f]) + +m[1];
+    } else if ((m = /hero's (.+?) has (Anti-|Crit \(Mortal\)|Crit \(2 Hits\)|Crit \(Auto-wound\)|Charge \(\+1 Damage\))/i.exec(e))) {
+      const w = weaponOf(m[1]);
+      hit = !!w && compact(w.ability).includes(compact(m[2]));
+    }
+    if (hit && !out.includes(o.name)) out.push(o.name);
+  }
+  return out;
+}
+
 function segmentCards(lines) {
   const segs = [];
   let cur = null;
@@ -191,8 +254,14 @@ function cardsToList(db, { pages = [], title = '' } = {}) {
   // Anvil of Apotheosis picks: option names that appear as an ability or
   // weapon on the hero's card, plus its Chamber-style keyword.
   const anvilOpts = factionSlug
-    ? db.prepare('SELECT step_number, name FROM faction_apotheosis_options WHERE faction_slug = ? AND step_number >= 2').all(factionSlug)
+    ? db.prepare('SELECT step_number, name, cost, effect FROM faction_apotheosis_options WHERE faction_slug = ? AND step_number >= 2').all(factionSlug)
     : [];
+  const anvilTiers = factionSlug
+    ? db.prepare('SELECT name, effect FROM faction_apotheosis_options WHERE faction_slug = ? AND step_number = 1 ORDER BY sort_order').all(factionSlug)
+    : [];
+  const startWeapon = factionSlug
+    ? parseJson(db.prepare('SELECT starting_weapon FROM faction_apotheosis_steps WHERE faction_slug = ? AND starting_weapon IS NOT NULL LIMIT 1').get(factionSlug)?.starting_weapon, null)
+    : null;
 
   const out = [];
   const listName = String(title || '').replace(/\s*[-–—]\s*new recruit\s*$/i, '').trim() || 'Imported list';
@@ -214,11 +283,30 @@ function cardsToList(db, { pages = [], title = '' } = {}) {
         const asKeyword = keywordsLine.includes(o.name.toLowerCase());
         if ((onCard || asKeyword) && !picks.includes(o.name)) picks.push(o.name);
       }
+      // Upgrades that only change numbers (Health +1, Ward 6+, a 2+ to-hit
+      // Warblade, Anti-X…) leave no name on the card; read them off the
+      // card's profile against the starting warscroll instead.
+      for (const name of statPicks(f.seg, anvilOpts, startWeapon)) if (!picks.includes(name)) picks.push(name);
+      // The destiny point limit isn't printed either: take the smallest
+      // tier the picks fit into.
+      const spent = picks.reduce((n, name) => {
+        const o = anvilOpts.find(x => x.name === name);
+        const m = /([+-])\s*(\d+)\s*DP/i.exec(o?.cost || '');
+        return n + (m ? (m[1] === '-' ? 1 : -1) * parseInt(m[2], 10) : 0);
+      }, 0);
+      const tier = anvilTiers
+        .map(t => ({ name: t.name, limit: parseInt((/DESTINY POINT LIMIT:\s*(\d+)/i.exec(t.effect || '') || [])[1], 10) }))
+        .filter(t => Number.isFinite(t.limit))
+        .sort((a, b) => a.limit - b.limit)
+        .find(t => t.limit >= spent);
+      if (tier) picks.unshift(tier.name);
       // New Recruit always names it "<Faction> Hero"; the printed title
       // wraps mid-name, so it is rebuilt rather than read.
       const full = factionName ? `${factionName} Hero` : 'Hero';
       unitLines.unshift([`Anvil of Apotheosis: ${full} (0)`, '• General', ...picks.map(p => `• ${titleCase(p)}`), ...enh.map(e => `• ${e}`)]);
-      notes.push('Anvil hero: archetype (Knight/Templar/Lord) and Path aren\'t on the card — set them in the wizard.');
+      notes.push(tier
+        ? `Anvil hero: the card doesn't say its destiny point limit — ${tier.name} (${tier.limit} DP) is the smallest that fits its picks; its Path isn't on the card either. Check both in the wizard.`
+        : 'Anvil hero: destiny point limit and Path aren\'t on the card — set them in the wizard.');
       continue;
     }
     const w = f.w;

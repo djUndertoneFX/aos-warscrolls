@@ -678,9 +678,13 @@ export default function PathToGloryPage({ headerCollapsed }) {
         apotheosisSteps = data.steps || [];
       } catch { /* unsourced faction — the Anvil picks stay as notes */ }
     }
+    let factionRules = {};
+    if (resolved.factionSlug) {
+      try { factionRules = (await axios.get(`/api/faction-rules/${resolved.factionSlug}`)).data || {}; } catch { /* enhancements stay unplaced */ }
+    }
     const paths = Object.values(BATTLEPACKS).flatMap(b => b.paths || []);
 
-    const { state, report } = buildWizardState(parsed, resolved, { factions, apotheosisSteps, paths });
+    const { state, report } = buildWizardState(parsed, resolved, { factions, apotheosisSteps, paths, factionRules });
 
     const name = parsed.listName || 'Imported List';
     const { data: created } = await axios.post('/api/ptg-rosters', {

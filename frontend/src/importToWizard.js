@@ -35,7 +35,7 @@ function findOptionIndex(options, name) {
 /**
  * @param {object} parsed    parseArmyList() output
  * @param {object} resolved  resolveArmyList() output
- * @param {object} ctx       { factions, apotheosisSteps, paths }
+ * @param {object} ctx       { factions, apotheosisSteps, paths, factionRules }
  *   apotheosisSteps: GET /api/apotheosis/:slug steps for the list's faction
  *   paths: every Path the wizard knows, [{key, name, ranks:[{rank, options}]}]
  * @returns {object} { state, report } — `state` is a partial wizard
@@ -43,7 +43,7 @@ function findOptionIndex(options, name) {
  *   what didn't, for the import dialog to show.
  */
 export function buildWizardState(parsed, resolved, ctx = {}) {
-  const { factions = [], apotheosisSteps = [], paths = [] } = ctx;
+  const { factions = [], apotheosisSteps = [], paths = [], factionRules = {} } = ctx;
   const report = { filled: [], skipped: [...(parsed.warnings || [])] };
   const state = {};
 
@@ -159,8 +159,27 @@ export function buildWizardState(parsed, resolved, ctx = {}) {
   if (anvilHero) {
     state.warlordName = anvilHero.name;
     report.filled.push(`Warlord: ${anvilHero.name}`);
-    const anvil = applyAnvilPicks(anvilHero, apotheosisSteps, report);
+    const { out: anvil, remaining } = applyAnvilPicks(anvilHero, apotheosisSteps, report);
     Object.assign(state, anvil);
+    // A bullet that isn't an Anvil option may be the warlord's Heroic Trait
+    // or Artefact (New Recruit lists them under the hero like any other pick).
+    const tags = [];
+    for (const name of remaining) {
+      const ht = findOptionIndex(factionRules.heroic_traits || [], name);
+      const ar = ht < 0 ? findOptionIndex(factionRules.artefacts || [], name) : -1;
+      if (ht >= 0 && state.heroicTraitChoice == null) {
+        state.heroicTraitChoice = ht; state.heroicTraitAssignee = 'warlord';
+        tags.push(factionRules.heroic_traits[ht].name);
+        report.filled.push(`Warlord heroic trait: ${titleCase(factionRules.heroic_traits[ht].name)}`);
+      } else if (ar >= 0 && state.artefactChoice == null) {
+        state.artefactChoice = ar; state.artefactAssignee = 'warlord';
+        tags.push(factionRules.artefacts[ar].name);
+        report.filled.push(`Warlord artefact: ${titleCase(factionRules.artefacts[ar].name)}`);
+      } else {
+        report.skipped.push(`Anvil pick "${name}" didn't match any option on this faction's Anvil steps.`);
+      }
+    }
+    if (tags.length) state.warlordEnhancements = tags.join(', ');
 
     const pathKey = matchPathKey(anvilHero.path, paths);
     if (pathKey) {
@@ -188,7 +207,7 @@ function applyAnvilPicks(hero, steps, report) {
     if (hero.enhancements.length) {
       report.skipped.push(`No Anvil of Apotheosis data for this faction — the warlord's ${hero.enhancements.length} picks were left as notes.`);
     }
-    return out;
+    return { out, remaining: [] };
   }
   const stepBy = re => steps.find(st => re.test(st.step_title || ''));
   // The destiny point limit is a named tier on its own step (Ogor
@@ -250,10 +269,7 @@ function applyAnvilPicks(hero, steps, report) {
 
   const placed = hero.enhancements.length - remaining.length;
   if (placed) report.filled.push(`${placed} Anvil of Apotheosis picks`);
-  for (const name of remaining) {
-    report.skipped.push(`Anvil pick "${name}" didn't match any option on this faction's Anvil steps.`);
-  }
-  return out;
+  return { out, remaining };
 }
 
 function matchPathKey(pathName, paths) {
