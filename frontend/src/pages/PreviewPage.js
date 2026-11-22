@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
-import { DOCS, DocPage, buildPreviewDocData, abilitiesInText, buildAbilityLookup, WARLORD_UNIT_KEY } from '../components/PathToGloryWizard';
+import { DOCS, DocPage, buildPreviewDocData, abilitiesInText, buildAbilityLookup, buildLoreLookup, LoreAbilityPopup, WARLORD_UNIT_KEY } from '../components/PathToGloryWizard';
 import { ArmyRosterPreviewSheets } from './ArmyBuilderPage';
 import { BattleBuddyPreview } from './BattleBuddyPage';
 import WarscrollGW, { AbilityCard } from '../components/WarscrollGW';
@@ -54,6 +54,13 @@ export default function PreviewPage() {
   const [peek, setPeek] = useState(null);
   const peekTimer = useRef(null);
   const [error, setError] = useState('');
+  // Arcane Tome names → LoreAbilityPopup.
+  const [lorePopup, setLorePopup] = useState(null);
+  const [allManifestationLores, setAllManifestationLores] = useState([]);
+  useEffect(() => {
+    if (!lorePopup || allManifestationLores.length) return;
+    axios.get('/api/manifestation-lores').then(res => setAllManifestationLores(res.data ?? [])).catch(() => {});
+  }, [lorePopup, allManifestationLores.length]);
 
   // Synchronous, before the first fetch below or in any child.
   if (token) previewToken = token;
@@ -330,6 +337,7 @@ export default function PreviewPage() {
               onRowHover={rowHover}
               onRowLeave={endPeek}
               onRowClick={rowClick}
+              onLoreClick={setLorePopup}
             />
           </div>
         ))}
@@ -395,6 +403,12 @@ export default function PreviewPage() {
             />
           </div>
         </div>
+      )}
+      {lorePopup && (
+        <LoreAbilityPopup
+          name={lorePopup} factions={factions} onClose={() => setLorePopup(null)}
+          lookup={buildLoreLookup({ factionRules, campaign: share?.data?.campaign || '', allManifestationLores })}
+        />
       )}
     </div>
   );

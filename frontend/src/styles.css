@@ -7003,3 +7003,16 @@ textarea.ptg-doc-overlay-input {
 .ptg-other-manifestations { margin-top: 0.75rem; }
 .ptg-other-manifestation-group { margin: 0.5rem 0 0.9rem; }
 .ptg-other-manifestation-title { font-family: 'Cinzel', serif; color: var(--parchment, #d8cca8); font-size: 0.85rem; margin-bottom: 0.35rem; }
+
+/* Lore ability popup (PtG Arcane Tome / Lores step / preview) */
+.ptg-arcane-tome-row { position: relative; }
+.ptg-arcane-tome-row input { width: 100%; box-sizing: border-box; padding-right: 1.9rem; }
+.ptg-lore-view-btn { position: absolute; right: 0.25rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 0.85rem; line-height: 1; padding: 0.15rem; opacity: 0.7; }
+.ptg-lore-view-btn:hover { opacity: 1; }
+.ptg-apotheosis-option-btn { position: relative; }
+.ptg-lore-card-view { top: 0.45rem; transform: none; z-index: 1; background: rgba(0,0,0,0.45); border-radius: 4px; }
+.lore-popup-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 3000; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+.lore-popup { position: relative; background: var(--bg-card, #1a1814); border: 1px solid var(--gold, #c9a84c); border-radius: 6px; padding: 1.6rem 1rem 1rem; width: min(520px, 100%); max-height: 85vh; overflow-y: auto; }
+.lore-popup-close { position: absolute; top: 0.3rem; right: 0.45rem; background: none; border: none; color: var(--gold, #c9a84c); font-size: 1.1rem; cursor: pointer; }
+.lore-popup-kind { font-family: 'Cinzel', serif; color: var(--gold, #c9a84c); font-size: 0.8rem; margin-bottom: 0.35rem; }
+.lore-popup-extras { margin-top: 0.75rem; padding: 0 1rem 0.5rem; }

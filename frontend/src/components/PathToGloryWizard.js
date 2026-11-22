@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { flushSync } from 'react-dom';
+import { flushSync, createPortal } from 'react-dom';
 import axios from 'axios';
-import { AbilityCard, getPhaseStyle } from './WarscrollGW';
+import WarscrollGW, { AbilityCard, getPhaseStyle } from './WarscrollGW';
 import {
   parseWarscrollMods, addToCharacteristic, subtractFromCharacteristic,
   weaponRowMatchesTarget, describeMod,
@@ -1131,7 +1131,7 @@ function buildRosterOverlayFields(d) {
   const loreRowTops = [70.38, 75.06, 79.80, 84.46, 89.17, 93.88];
   for (const col of loreCols) {
     (col.rows || []).slice(0, 6).forEach((v, i) => {
-      fields.push({ spec: fitFieldXY(col.left, loreRowTops[i] + col.dy, col.width, 0.015, 3.1), value: v });
+      fields.push({ spec: fitFieldXY(col.left, loreRowTops[i] + col.dy, col.width, 0.015, 3.1), value: v, lore: String(v || '').trim() || undefined });
     });
   }
   return fields;
@@ -1309,7 +1309,7 @@ function buildOverlayFields(docKey, pageIndex, d) {
 // Fields carry their whole row ({ unit, abilities }: the unit's name and the
 // comma-separated Enhancements / Path Abilities / Notes text), so any field
 // of a row reports all of it.
-export function DocPage({ img, alt, docKey, pageIndex, data, onRowHover, onRowLeave, onRowClick }) {
+export function DocPage({ img, alt, docKey, pageIndex, data, onRowHover, onRowLeave, onRowClick, onLoreClick }) {
   const containerRef = useRef(null);
   const box = useContainImageBox(containerRef);
   // Editable fields stay even when empty (there'd otherwise be nothing to
@@ -1335,6 +1335,15 @@ export function DocPage({ img, alt, docKey, pageIndex, data, onRowHover, onRowLe
             onMouseEnter={e => onRowHover?.(f.row, e)}
             onMouseLeave={() => onRowLeave?.(f.row)}
             onClick={e => onRowClick?.(f.row, e)}
+          />
+        ))}
+        {onLoreClick && box.width > 0 && fields.filter(f => f.lore).map((f, i) => (
+          <div
+            key={`lore-${i}`}
+            className="ptg-doc-unit-hotspot"
+            title={`Show ${f.lore}`}
+            style={overlayFieldStyle(box, f.spec)}
+            onClick={e => { e.stopPropagation(); onLoreClick(f.lore); }}
           />
         ))}
       </div>
@@ -1783,11 +1792,19 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   // manifestations" list on the Lores step (fetched once, on first visit).
   const [allManifestationLores, setAllManifestationLores] = useState(null);
   useEffect(() => {
-    if (step !== 7 || allManifestationLores) return;
+    if (allManifestationLores) return;
     axios.get('/api/manifestation-lores')
       .then(res => setAllManifestationLores(res.data ?? []))
       .catch(() => {});
-  }, [step, allManifestationLores]);
+  }, [allManifestationLores]);
+  // Clicking a lore name anywhere in the wizard opens LoreAbilityPopup.
+  const [lorePopup, setLorePopup] = useState(null);
+  const lorePopupRef = useRef(null);
+  lorePopupRef.current = lorePopup;
+  const loreLookup = React.useMemo(
+    () => buildLoreLookup({ factionRules, campaign, allManifestationLores: allManifestationLores || [] }),
+    [factionRules, campaign, allManifestationLores]
+  );
 
   // Path to Glory "Anvil of Apotheosis" warlord-creation steps, scraped
   // per-faction (only ~18 of 24 factions currently publish this — it's tied
@@ -2696,6 +2713,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
 
   useEffect(() => {
     const h = e => {
+      if (lorePopupRef.current) return; // the lore popup handles its own keys
       if (e.key === 'Escape') {
         if (docLightboxOpen) setDocLightboxOpen(false);
         else if (warlordPrintPreview) setWarlordPrintPreview(false);
@@ -3120,6 +3138,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                   className={`ptg-apotheosis-option-btn${selected ? ' ptg-apotheosis-option-selected' : ''}`}
                   onClick={() => toggleLoreCard(rows, setter, opt.name)}
                 >
+                  <span role="button" tabIndex={0} className="ptg-lore-view-btn ptg-lore-card-view" title={`Show ${opt.name}`} onClick={e => { e.stopPropagation(); setLorePopup(opt.name); }} onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); e.preventDefault(); setLorePopup(opt.name); } }}>🔍</span>
                   <AbilityCard ab={{ ...opt, bullets: parseFormationBullets(opt.bullets) }} keywords={[]} />
                 </button>
               );
@@ -3172,7 +3191,8 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                     className={`ptg-apotheosis-option-btn${selected ? ' ptg-apotheosis-option-selected' : ''}`}
                     onClick={() => toggleLoreCard(manifestationLore, setManifestationLore, opt.name)}
                   >
-                    <AbilityCard ab={{ ...opt, bullets: parseFormationBullets(opt.bullets) }} keywords={[]} />
+                    <span role="button" tabIndex={0} className="ptg-lore-view-btn ptg-lore-card-view" title={`Show ${opt.name}`} onClick={e => { e.stopPropagation(); setLorePopup(opt.name); }} onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); e.preventDefault(); setLorePopup(opt.name); } }}>🔍</span>
+                  <AbilityCard ab={{ ...opt, bullets: parseFormationBullets(opt.bullets) }} keywords={[]} />
                   </button>
                 );
               })}
@@ -3849,7 +3869,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
         title="Click to zoom"
       >
         {images.map((img, i) => (
-          <DocPage key={`${img.src}-${i}`} img={img} alt={doc.title} docKey={doc.key} pageIndex={i} data={officiantData} />
+          <DocPage key={`${img.src}-${i}`} img={img} alt={doc.title} docKey={doc.key} pageIndex={i} data={officiantData} onLoreClick={setLorePopup} />
         ))}
       </div>
     );
@@ -3869,7 +3889,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
         <button className="gw-close ptg-doc-lightbox-close" onClick={() => setDocLightboxOpen(false)} title="Close (Esc)">✕</button>
         <div className="ptg-doc-lightbox-frame" onClick={e => e.stopPropagation()}>
           {images.map((img, i) => (
-            <DocPage key={`${img.src}-${i}`} img={img} alt={doc.title} docKey={doc.key} pageIndex={i} data={officiantData} />
+            <DocPage key={`${img.src}-${i}`} img={img} alt={doc.title} docKey={doc.key} pageIndex={i} data={officiantData} onLoreClick={setLorePopup} />
           ))}
         </div>
       </div>
@@ -4017,7 +4037,12 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                             <div className="ptg-arcane-tome-col" key={col.label}>
                               <div className="ptg-arcane-tome-col-header">{col.label}</div>
                               {col.rows.map((v, i) => (
-                                <input key={i} value={v} placeholder={`${i + 1}.`} onChange={e => setLoreRow(col.setter)(i, e.target.value)} />
+                                <div className="ptg-arcane-tome-row" key={i}>
+                                  <input value={v} placeholder={`${i + 1}.`} onChange={e => setLoreRow(col.setter)(i, e.target.value)} />
+                                  {v.trim() && (
+                                    <button type="button" className="ptg-lore-view-btn" title={`Show ${v.trim()}`} onClick={() => setLorePopup(v.trim())}>🔍</button>
+                                  )}
+                                </div>
                               ))}
                             </div>
                           ))}
@@ -4993,6 +5018,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
         )}
       </div>
       {docLightboxOpen && renderDocLightbox()}
+      {lorePopup && <LoreAbilityPopup name={lorePopup} lookup={loreLookup} factions={factions} onClose={() => setLorePopup(null)} />}
     </>
   );
 }
@@ -5032,6 +5058,84 @@ function parseInlineAbilityBullet(b) {
 // faction's own), for looking up a row's Path by key outside the wizard.
 export function allPathsForFaction(slug) {
   return [...PATHS, ...BATTLEPACK_PATHS, ...(FACTION_PATHS[slug] ?? [])];
+}
+
+// Every spell / prayer / summon spell an Arcane Tome might name: the
+// faction's three lores, the battlepack's universal spell/prayer lores and
+// every faction's manifestation lore (allManifestationLores, from
+// /api/manifestation-lores). Universal manifestation summons have no rules
+// text in the DB; their popup shows the manifestation's warscroll instead.
+export function buildLoreLookup({ factionRules = {}, campaign = '', allManifestationLores = [] }) {
+  const m = new Map();
+  const add = (ab, kind) => {
+    const k = abilityKey(ab?.name);
+    if (!k || m.has(k)) return;
+    let bullets = ab.bullets;
+    if (typeof bullets === 'string') { try { bullets = JSON.parse(bullets); } catch { bullets = []; } }
+    m.set(k, { ...ab, bullets, _kind: kind });
+  };
+  for (const o of [...(factionRules.spell_lore || []), ...(BATTLEPACKS[campaign]?.spell_lore || [])]) add(o, 'Spell Lore');
+  for (const o of [...(factionRules.prayer_lore || []), ...(BATTLEPACKS[campaign]?.prayer_lore || [])]) add(o, 'Prayer Lore');
+  for (const o of [...(factionRules.manifestation_lore || []), ...(allManifestationLores || [])]) add(o, 'Manifestation Lore');
+  return m;
+}
+
+const looseName = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+// Click a lore name (Arcane Tome, Lores step) → its ability card. A summon
+// spell also opens the summoned manifestation's warscroll, with the spell
+// card under it.
+export function LoreAbilityPopup({ name, lookup, factions = [], onClose }) {
+  const ab = lookup?.get(abilityKey(name)) || null;
+  const target = /^summon\s+/i.test(name || '') ? String(name).replace(/^summon\s+/i, '') : null;
+  const [unit, setUnit] = useState(undefined); // undefined = loading, null = none
+  useEffect(() => {
+    if (!target) { setUnit(null); return; }
+    let live = true;
+    const want = looseName(target).replace(/^the/, '');
+    const words = target.toLowerCase().replace(/[’']/g, '').split(/\s+/).filter(w => w.length > 3 && w !== 'the');
+    const q = words.sort((a, b) => b.length - a.length)[0] || target;
+    axios.get('/api/warscrolls', { params: { search: q, isManifestation: '1', pageSize: 50 } })
+      .then(res => {
+        const rows = res.data?.data ?? [];
+        const hit = rows.find(r => looseName(r.name).replace(/^the/, '') === want)
+          || rows.find(r => { const n = looseName(r.name); return n.includes(want) || want.includes(n); });
+        if (live) setUnit(hit || null);
+      })
+      .catch(() => { if (live) setUnit(null); });
+    return () => { live = false; };
+  }, [target]);
+  useEffect(() => {
+    const onKey = e => { if (e.key === 'Escape') onClose(); };
+    if (unit) return undefined; // WarscrollGW handles Escape itself
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose, unit]);
+  const card = ab ? (
+    <div className="lore-popup-card">
+      {ab._kind && <div className="lore-popup-kind">{ab._kind}</div>}
+      <AbilityCard ab={ab} keywords={[]} />
+    </div>
+  ) : null;
+  if (unit) {
+    return (
+      <WarscrollGW
+        unit={unit} factions={factions} onClose={onClose} hideViewToggle
+        renderExtras={card ? () => (<div className="lore-popup-extras"><div className="gw-formation-group-header">Summon Spell</div>{card}</div>) : undefined}
+      />
+    );
+  }
+  return createPortal(
+    <div className="lore-popup-overlay" onClick={onClose}>
+      <div className="lore-popup" onClick={e => e.stopPropagation()}>
+        <button type="button" className="lore-popup-close" onClick={onClose} title="Close (Esc)">✕</button>
+        {card || (unit === undefined
+          ? <div className="ptg-wizard-body-placeholder">Loading…</div>
+          : <div className="ptg-wizard-body-placeholder">No rules found for “{name}”.</div>)}
+      </div>
+    </div>,
+    document.body
+  );
 }
 
 // Every ability a sheet might name — Path rank abilities (core, battlepack
