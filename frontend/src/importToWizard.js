@@ -195,7 +195,7 @@ function applyAnvilPicks(hero, steps, report) {
   // Mawtribes calls them Gutbully/Gutmaster/Gutlord), and New Recruit
   // prints it as a costed bullet alongside the rest of the picks.
   const dpStep = stepBy(/destiny point limit/i);
-  const archetypeStep = stepBy(/(?:choose|pick) an archetype/i);
+  const archetypeStep = stepBy(/(?:choose|pick) an? (?:archetype|chamber|great clan|warclan)/i);
   const companionStep = stepBy(/choose a companion/i);
   const originFlawStep = stepBy(/origin.*flaw/i);
   const mountStep = stepBy(/^(?:choose|pick) a battle mount$/i);

@@ -100,6 +100,7 @@ const STEPS = [
   'Pick your First Quest',
   'Assign your Regiments',
   'Set Paths & Ranks',
+  'Select Faction Terrain',
   'Prepare for Battle',
   'Apply Wounds', // Ravaged Coast only — see stepCount
 ];
@@ -215,7 +216,7 @@ export function pathRankLabel(row, allPaths) {
 export function apotheosisModsFrom(apotheosisSteps, c) {
   if (!apotheosisSteps?.length) return [];
   const stepBy = re => apotheosisSteps.find(st => re.test(st.step_title || ''));
-  const archetypeStepData = stepBy(/(?:choose|pick) an archetype/i);
+  const archetypeStepData = stepBy(/(?:choose|pick) an? (?:archetype|chamber|great clan|warclan)/i);
   const companionStepData = stepBy(/choose a companion/i);
   const originFlawStepData = stepBy(/origin.*flaw/i);
   const mountStepData = stepBy(/^(?:choose|pick) a battle mount$/i);
@@ -1561,7 +1562,13 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   const sharedFilterDefaults = (() => { try { return JSON.parse(localStorage.getItem('aos-filters')) || {}; } catch { return {}; } })();
 
   // Steps v2 added 'Pick your Battle Formation' at 2; older saves shift up one.
-  const [step, setStep] = useState(() => { const st = saved.step ?? 0; return (saved.stepsVersion ?? 1) < 2 && st >= 2 ? st + 1 : st; });
+  const [step, setStep] = useState(() => {
+    let st = saved.step ?? 0;
+    const v = saved.stepsVersion ?? 1;
+    if (v < 2 && st >= 2) st += 1; // Battle Formation step added
+    if (v < 3 && st >= 11) st += 1; // Faction Terrain step added
+    return st;
+  });
   // The roster's name is shown in the banner and, when the page passes
   // `onRename`, is editable there — clicking it turns it into an input and
   // committing renames the saved roster. A local draft keeps typing
@@ -1987,7 +1994,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
         setMeleeWeapons(override);
         setRangedWeapons(override);
       }
-      const kwMatch = (opt.effect || '').match(/has the ([A-Z][A-Z0-9 ]*?(?:\s*\(\d+\))?)(?:\s+and\s+(?:the\s+)?([A-Z][A-Z0-9 ]*?(?:\s*\(\d+\))?))?\s+keywords?/);
+      const kwMatch = (opt.effect || '').match(/(?:has|gains)(?: the)? ([A-Z][A-Z0-9 ]*?(?:\s*\(\d+\))?)(?:\s+and\s+(?:the\s+)?([A-Z][A-Z0-9 ]*?(?:\s*\(\d+\))?))?\s+keywords?/);
       if (kwMatch) {
         if (kwMatch[1]) addedKeywords.push(kwMatch[1].trim());
         if (kwMatch[2]) addedKeywords.push(kwMatch[2].trim());
@@ -2100,7 +2107,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
           setWarlordHealth(GENERIC_WARLORD_PROFILE.health);
           setWarlordSave(GENERIC_WARLORD_PROFILE.save);
           setWarlordControl(GENERIC_WARLORD_PROFILE.control);
-          const step3 = steps.find(s => /(?:choose|pick) an archetype/i.test(s.step_title));
+          const step3 = steps.find(s => /(?:choose|pick) an? (?:archetype|chamber|great clan|warclan)/i.test(s.step_title));
           if (step3?.options?.length) applyArchetypeChoice(step2, step3, 0);
         }).catch(() => {});
       }
@@ -2148,7 +2155,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
         setWarlordSave(GENERIC_WARLORD_PROFILE.save);
         setWarlordControl(GENERIC_WARLORD_PROFILE.control);
       }
-      const step3 = steps.find(s => /(?:choose|pick) an archetype/i.test(s.step_title));
+      const step3 = steps.find(s => /(?:choose|pick) an? (?:archetype|chamber|great clan|warclan)/i.test(s.step_title));
       if (step3?.options?.length) applyArchetypeChoice(step2, step3, 0);
       const factionObj = factions.find(f => f.faction_slug === selectedFaction);
       setWarlordName(`${factionObj ? factionObj.faction : selectedFaction} Hero`);
@@ -2193,7 +2200,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
       setWarlordHealth(GENERIC_WARLORD_PROFILE.health);
       setWarlordSave(GENERIC_WARLORD_PROFILE.save);
       setWarlordControl(GENERIC_WARLORD_PROFILE.control);
-      const step3 = steps.find(s => /(?:choose|pick) an archetype/i.test(s.step_title));
+      const step3 = steps.find(s => /(?:choose|pick) an? (?:archetype|chamber|great clan|warclan)/i.test(s.step_title));
       if (step3?.options?.length) applyArchetypeChoice(step2, step3, 0);
     }).catch(() => {});
   }, []); // eslint-disable-line
@@ -2409,7 +2416,36 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   const [armyRosterFaction, setArmyRosterFaction] = useState(() => saved.armyRosterFaction ?? '');
   const [armyRosterFormation, setArmyRosterFormation] = useState(() => saved.armyRosterFormation ?? '');
   const [regiments, setRegiments] = useState(() => saved.regiments ?? [{ id: 'r1', units: [] }]);
-  const [auxUnits, addAuxUnit, updateAuxUnit, removeAuxUnit] = useRowList(saved.auxUnits ?? []);
+  const [auxUnits, addAuxUnit, updateAuxUnit, removeAuxUnit, setAuxUnits] = useRowList(saved.auxUnits ?? []);
+
+  // ── Faction Terrain (its own step, after Set Paths & Ranks) ──
+  // An army takes at most 1 faction terrain feature. The pick
+  // is kept as { id, name } and mirrored onto the Army Roster as an
+  // Auxiliary Units row (tagged terrainId), which is also how Battle Buddy
+  // and share previews find its warscroll.
+  const [factionTerrain, setFactionTerrain] = useState(() => saved.factionTerrain ?? null);
+  const [terrainOptions, setTerrainOptions] = useState(null);
+  const terrainFactionSlug = faction || selectedFaction || '';
+  useEffect(() => {
+    if (step !== STEPS.indexOf('Select Faction Terrain') || !terrainFactionSlug) return undefined;
+    let live = true;
+    setTerrainOptions(null);
+    axios.get('/api/warscrolls', { params: { faction: terrainFactionSlug, isTerrain: '1', pageSize: 100 } })
+      .then(({ data }) => { if (live) setTerrainOptions((data.data || []).filter(u => u.is_terrain)); })
+      .catch(() => { if (live) setTerrainOptions([]); });
+    return () => { live = false; };
+  }, [step, terrainFactionSlug]);
+  const toggleFactionTerrain = t => {
+    const adding = !factionTerrain || String(factionTerrain.id) !== String(t.id);
+    const name = titleCaseWords(t.name);
+    setFactionTerrain(adding ? { id: t.id, name } : null);
+    setAuxUnits(rows => {
+      const rest = rows.filter(r => !r.terrainId);
+      return adding
+        ? [...rest, { id: `terrain-${t.id}`, terrainId: t.id, name, size: '1', notes: 'Faction Terrain', points: t.points && t.points !== '0' ? String(t.points) : '0' }]
+        : rest;
+    });
+  };
   const [armyNotes, setArmyNotes] = useState(() => saved.armyNotes ?? '');
 
   const addRegiment = () => setRegiments(rs => [...rs, { id: `${Date.now()}-${rs.length}`, units: [] }]);
@@ -2446,7 +2482,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   const auxTotal = auxUnits.reduce((sum, u) => sum + (parseInt(u.points, 10) || 0), 0);
   const armyUnitsTotal = regimentsTotal + auxTotal;
 
-  // Step 9 "Prepare for Battle" — auto-fills the Army Roster doc from
+  // "Prepare for Battle" step — auto-fills the Army Roster doc from
   // everything picked earlier in the wizard: Faction/Battle Formation off
   // the Roster doc's own fields, Army Name if not already set, and every
   // Order of Battle row becomes a regiment unit (matched back against
@@ -2746,7 +2782,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   // Persist the whole wizard on every change, so closing and reopening resumes here.
   useEffect(() => {
     const snapshot = {
-      stepsVersion: 2, step, activeDoc, presentMode, wizardViewMode, campaign, customCampaignName, selectedFaction, warlordSubStep,
+      stepsVersion: 3, step, activeDoc, presentMode, wizardViewMode, campaign, customCampaignName, selectedFaction, warlordSubStep,
       warlordName, warlordKeywordsLine1, warlordKeywordsLine2, rangedWeapons, meleeWeapons,
       warlordMove, warlordHealth, warlordSave, warlordControl, warlordSnapshotsByFaction, destinyPointChoice, archetypeChoice, companionChoice, originFlawChoice, mountChoice, otherUpgradesChoice, battleMountUpgradesChoice, antiXChoiceByOption,
       armyName, heraldryImage, realmOfOrigin, customRealmName, faction, battleFormation, gloryPoints, gloryRounds,
@@ -2756,7 +2792,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
       commander, armyRosterName, pointsLimit, armyRosterFaction, armyRosterFormation, regiments, auxUnits, armyNotes,
       startingUnits, allyPickerOpen, allyFaction, allyUnitsByFaction, regimentsSeedSig,
       heroicTraitChoice, heroicTraitAssignee, artefactChoice, artefactAssignee, enhancementSubChoice,
-      unitsHideLegends, unitsHideScourge, unitsHideRoR, unitsOnlyAdded,
+      unitsHideLegends, unitsHideScourge, unitsHideRoR, unitsOnlyAdded, factionTerrain,
       emberstoneVault, emberstoneTotal, extraPathCampaigns, warlordWounds, warlordScars, warlordDrained,
     };
     try { localStorage.setItem(storageKey, JSON.stringify(snapshot)); } catch {}
@@ -2772,7 +2808,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
     commander, armyRosterName, pointsLimit, armyRosterFaction, armyRosterFormation, regiments, auxUnits, armyNotes,
     startingUnits, allyPickerOpen, allyFaction, allyUnitsByFaction, regimentsSeedSig,
     heroicTraitChoice, heroicTraitAssignee, artefactChoice, artefactAssignee, enhancementSubChoice,
-    emberstoneVault, emberstoneTotal, extraPathCampaigns, warlordWounds, warlordScars, warlordDrained,
+    emberstoneVault, emberstoneTotal, extraPathCampaigns, warlordWounds, warlordScars, warlordDrained, factionTerrain,
   ]);
 
   // One weapon-profile cell. The value shown is the effective one (base
@@ -3222,7 +3258,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   const dpTally = React.useMemo(() => {
     if (!apotheosisSteps.length) return null;
     const dpStepData        = apotheosisSteps.find(s => /destiny point limit/i.test(s.step_title || ''));
-    const archetypeStepData = apotheosisSteps.find(s => /(?:choose|pick) an archetype/i.test(s.step_title || ''));
+    const archetypeStepData = apotheosisSteps.find(s => /(?:choose|pick) an? (?:archetype|chamber|great clan|warclan)/i.test(s.step_title || ''));
     const companionStepData = apotheosisSteps.find(s => /choose a companion/i.test(s.step_title || ''));
     const originFlawStepData = apotheosisSteps.find(s => /origin.*flaw/i.test(s.step_title || ''));
     const mountStepData     = apotheosisSteps.find(s => /^(?:choose|pick) a battle mount$/i.test(s.step_title || ''));
@@ -3618,7 +3654,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   // forcing one of the real picks.
   const renderApotheosisStep = stepData => {
     const isDpStep = /destiny point limit/i.test(stepData.step_title || '');
-    const isArchetypeStep = /(?:choose|pick) an archetype/i.test(stepData.step_title || '');
+    const isArchetypeStep = /(?:choose|pick) an? (?:archetype|chamber|great clan|warclan)/i.test(stepData.step_title || '');
     const isCompanionStep = /choose a companion/i.test(stepData.step_title || '');
     const isMountStep = /^(?:choose|pick) a battle mount$/i.test(stepData.step_title || '');
     // Up to 1 origin AND up to 1 flaw, independently — a plain toggle per
@@ -4844,6 +4880,51 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                   }))}
                 </div>
               ) : step === 11 ? (
+                <div className="ptg-terrain-step">
+                  {!terrainFactionSlug ? (
+                    <div className="ptg-wizard-body-placeholder">Pick a Faction first (&ldquo;Pick your Faction&rdquo;).</div>
+                  ) : terrainOptions === null ? (
+                    <div className="ptg-wizard-body-placeholder">Loading faction terrain…</div>
+                  ) : terrainOptions.length === 0 ? (
+                    <div className="ptg-wizard-body-placeholder">This faction has no faction terrain.</div>
+                  ) : (
+                    <>
+                      <p className="ptg-apotheosis-intro">
+                        Add your army&rsquo;s faction terrain &mdash; an army can take only 1 faction terrain feature.
+                        It goes on the Army Roster under Auxiliary Units.
+                      </p>
+                      <div className="ab-ft-grid">
+                        {terrainOptions.map(t => {
+                          const added = !!factionTerrain && String(factionTerrain.id) === String(t.id);
+                          let abilities = [];
+                          try { abilities = typeof t.abilities === 'string' ? JSON.parse(t.abilities) : (t.abilities || []); } catch { abilities = []; }
+                          return (
+                            <div key={t.id} className={`ab-ft-card${added ? ' active' : ''}`}>
+                              <div className="ab-ft-head">
+                                <img src={`${axios.defaults.baseURL || ''}/api/unit-image/${t.id}`} alt="" className="ab-ft-img" onError={e => { e.target.style.display = 'none'; }} />
+                                <div className="ab-ft-title">
+                                  <div className="ab-bt-card-name">{titleCaseWords(t.name)}</div>
+                                  <div className="ab-ft-meta">{t.points && t.points !== '0' ? `${t.points} pts` : 'No points'}{t.base_size ? ` · ${t.base_size}` : ''}</div>
+                                </div>
+                                <button type="button" className={`ab-ft-add${added ? ' active' : ''}`} onClick={() => toggleFactionTerrain(t)}>
+                                  {added ? '✓ Added' : '+ Add'}
+                                </button>
+                              </div>
+                              <div className="ab-ft-abilities">
+                                {abilities.map((ab, i) => {
+                                  let bullets = ab.bullets;
+                                  if (typeof bullets === 'string') { try { bullets = JSON.parse(bullets); } catch { bullets = []; } }
+                                  return <AbilityCard key={i} ab={{ ...ab, bullets: bullets || [] }} keywords={[]} />;
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : step === 12 ? (
                 <div className="ptg-prepare-step">
                   <div className="ptg-wizard-body-placeholder">
                     Fills in the Army Roster document's Faction, Battle Formation, Army Name, and every Regiment from your Warlord and Order of Battle picks so far — matched back against the faction's real warscrolls for size/points where possible. Safe to run again after adding more units; Auxiliary Units are left alone either way.

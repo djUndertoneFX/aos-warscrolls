@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
+import { manifestationWarscrolls, armyManifestationSpells } from '../armyExtras';
 import WarscrollGW, { AbilityCard, isWarscrollPopupOpen, TransparentImage } from '../components/WarscrollGW';
 import VoiceControlWidget from '../components/VoiceControlWidget';
 import { useVoiceCommands } from '../VoiceControlContext';
@@ -358,6 +359,10 @@ function ArmyListSource({ side, state, setState, factionRules }) {
         const { data: uData } = await axios.get(`/api/warscrolls?ids=${unitIds.join(',')}&pageSize=300&sortBy=faction`);
         units = uData.data || [];
       }
+      // The list's manifestation lore brings its manifestations' warscrolls.
+      for (const m of await manifestationWarscrolls(armyManifestationSpells(blob.faction || full.faction_slug, blob.selectedOptions))) {
+        if (!units.some(u => u.id === m.id)) units.push(m);
+      }
       const heroAssignments = blob.heroAssignments || {};
       const collectAssigned = key => [...new Set(Object.values(heroAssignments).map(h => h?.[key]).filter(Boolean))];
       // Reverse lookup (ability name -> assigned hero's unit name), so the
@@ -512,6 +517,8 @@ function PathToGlorySource({ side, state, setState, factionRules }) {
       const unitIds = Object.entries(blob.startingUnits || {})
         .filter(([, sel]) => ((sel?.train || 0) + (sel?.reinforce || 0)) > 0)
         .map(([warscrollId]) => warscrollId);
+      // Faction terrain (its own wizard step) is kept by warscroll id too.
+      if (blob.factionTerrain?.id && !unitIds.includes(String(blob.factionTerrain.id))) unitIds.push(String(blob.factionTerrain.id));
       let units = [];
       if (unitIds.length > 0) {
         const { data: uData } = await axios.get(`/api/warscrolls?ids=${unitIds.join(',')}&pageSize=300&sortBy=faction`);
@@ -537,6 +544,10 @@ function PathToGlorySource({ side, state, setState, factionRules }) {
             if (match && !units.some(u => u.id === match.id)) units.push(match);
           }
         } catch { /* a name we can't resolve just doesn't appear — not fatal */ }
+      }
+      // Summon spells picked on the Lores step bring their manifestations.
+      for (const m of await manifestationWarscrolls(blob.manifestationLore || [])) {
+        if (!units.some(u => u.id === m.id)) units.push(m);
       }
       const selection = {
         heroic_traits: [],

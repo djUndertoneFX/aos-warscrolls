@@ -6,6 +6,7 @@ import { ArmyRosterPreviewSheets } from './ArmyBuilderPage';
 import { BattleBuddyPreview } from './BattleBuddyPage';
 import WarscrollGW, { AbilityCard } from '../components/WarscrollGW';
 import { looseKey } from '../importList';
+import { manifestationWarscrolls, armyManifestationSpells } from '../armyExtras';
 
 // ── Preview mode ──────────────────────────────────────────────────────────
 // What a "Share preview" link opens: the roster's sheets and nothing else.
@@ -102,6 +103,31 @@ export default function PreviewPage() {
     return buildPreviewDocData(share.data, factions, apotheosisSteps, factionRules);
   }, [share, factions, apotheosisSteps, factionRules]);
   const unitsById = useMemo(() => Object.fromEntries(warscrolls.map(w => [String(w.id), w])), [warscrolls]);
+  // The army's manifestations (from its manifestation lore) and faction
+  // terrain, which the sheets don't list as units but the warscroll popup's
+  // page dots should still step through. Fetched separately because
+  // universal manifestations sit outside the army's Grand Alliance.
+  const [extraUnits, setExtraUnits] = useState([]);
+  useEffect(() => {
+    if (!share || share.kind === 'battle') return undefined;
+    let live = true;
+    const d = share.data || {};
+    const spells = share.kind === 'army'
+      ? armyManifestationSpells(share.faction_slug || d.faction, d.selectedOptions)
+      : (d.manifestationLore || []);
+    (async () => {
+      const out = await manifestationWarscrolls(spells);
+      const tid = d.factionTerrain?.id;
+      if (tid && share.kind !== 'army') {
+        try {
+          const { data } = await axios.get('/api/warscrolls', { params: { ids: String(tid), pageSize: 5 } });
+          out.push(...(data.data || []));
+        } catch { /* terrain just won't get a dot */ }
+      }
+      if (live) setExtraUnits(out);
+    })();
+    return () => { live = false; };
+  }, [share]);
   // Army list: a Hero's chosen Heroic Trait / Artefact, by warscroll id.
   const armyEnhancementsFor = id => {
     const a = share?.data?.heroAssignments?.[id];
@@ -168,6 +194,7 @@ export default function PreviewPage() {
       const w = n && unitsByName.get(looseKey(n));
       if (w && !seen.has(w.id)) { seen.add(w.id); out.push(w); }
     }
+    for (const w of extraUnits) if (!seen.has(w.id)) { seen.add(w.id); out.push(w); }
     // Faction pages are built from contiguous runs of the same faction in
     // navList, so keep allies grouped rather than interleaved — the army's
     // own faction first, so its purple pages lead and the Warlord follows.
@@ -182,7 +209,7 @@ export default function PreviewPage() {
       || typeRank(a) - typeRank(b)
       || (a.name || '').localeCompare(b.name || ''));
     return warlordUnit ? [warlordUnit, ...out] : out;
-  }, [docData, unitsByName, warlordUnit, isArmy, share, unitsById]);
+  }, [docData, unitsByName, warlordUnit, isArmy, share, unitsById, extraUnits]);
 
   // Per unit: one row per distinct Path / rank / picked-abilities combination
   // among the army's copies of it ("2× Path: Enclave Rank: Veteran").
