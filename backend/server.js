@@ -907,6 +907,20 @@ app.get('/api/factions', requireAuthOrPreview, (req, res) => {
   }
 });
 
+// GET /api/manifestation-lores — every faction's manifestation lore spells
+// (Path to Glory's "Other manifestations" list on the Lores step).
+app.get('/api/manifestation-lores', requireAuthOrPreview, (req, res) => {
+  const db = getDb();
+  try {
+    const rows = db.prepare(
+      "SELECT id, faction_slug, faction_name, group_name, name, timing, declare, effect, bullets, keywords, lore_text, casting_value, phase_key FROM faction_extra_rules WHERE section = 'manifestation_lore' ORDER BY faction_name, id"
+    ).all();
+    res.json(rows);
+  } finally {
+    db.close();
+  }
+});
+
 // GET /api/faction-rules/:slug — all faction info slides for one faction
 app.get('/api/faction-rules/:slug', requireAuthOrPreview, (req, res) => {
   const db = getDb();

@@ -10,6 +10,7 @@ import {
 import BATTLEPACKS from './ptgBattlepacks';
 import { ShareButton } from '../shareLink';
 import FACTION_PATHS_SCRAPED from './ptgFactionPaths';
+import LORE_NAMES from '../data/loreNames.json';
 
 function parseFormationBullets(raw) {
   try { return JSON.parse(raw || '[]'); } catch { return []; }
@@ -1778,6 +1779,16 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   }, [effectiveFactionSlug]);
   const formations = factionRules.formations ?? [];
 
+  // Every faction's manifestation lore spells, for the collapsed "Other
+  // manifestations" list on the Lores step (fetched once, on first visit).
+  const [allManifestationLores, setAllManifestationLores] = useState(null);
+  useEffect(() => {
+    if (step !== 7 || allManifestationLores) return;
+    axios.get('/api/manifestation-lores')
+      .then(res => setAllManifestationLores(res.data ?? []))
+      .catch(() => {});
+  }, [step, allManifestationLores]);
+
   // Path to Glory "Anvil of Apotheosis" warlord-creation steps, scraped
   // per-faction (only ~18 of 24 factions currently publish this — it's tied
   // to that faction's AoS 4e battletome). Empty array means unsourced;
@@ -3116,6 +3127,59 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
           </div>
         )}
       </div>
+    );
+  };
+
+  // Collapsed list under the faction's Manifestation Lore: the universal
+  // manifestation lores (Endless Spells) first, then every other faction's.
+  // Picks fill the same 6 slots as the faction's own cards.
+  const renderOtherManifestations = () => {
+    const groups = [];
+    for (const lore of LORE_NAMES.lores?.['endless-spells']?.manifestation_lore || []) {
+      groups.push({
+        key: `universal-${lore.lore}`,
+        title: `Universal — ${lore.lore}`,
+        options: lore.spells.map(sp => ({
+          name: sp,
+          effect: `Universal manifestation lore — ${lore.lore}.`,
+        })),
+      });
+    }
+    const byFaction = {};
+    for (const r of allManifestationLores || []) {
+      if (r.faction_slug === effectiveFactionSlug) continue;
+      (byFaction[r.faction_slug] ??= { name: r.faction_name, rows: [] }).rows.push(r);
+    }
+    for (const [slug, f] of Object.entries(byFaction)) {
+      const loreName = (LORE_NAMES.lores?.[slug]?.manifestation_lore || []).map(l => l.lore).join(' / ');
+      groups.push({ key: slug, title: loreName ? `${f.name} — ${loreName}` : f.name, options: f.rows });
+    }
+    const pickedHere = groups.reduce((n, g) => n + g.options.filter(o => manifestationLore.includes(o.name)).length, 0);
+    return (
+      <details className="ptg-bp-details ptg-other-manifestations">
+        <summary>Other manifestations ({groups.reduce((n, g) => n + g.options.length, 0)}{pickedHere ? `, ${pickedHere} picked` : ''})</summary>
+        {allManifestationLores === null && <div className="ptg-wizard-body-placeholder">Loading other factions’ manifestations…</div>}
+        {groups.map(g => (
+          <div key={g.key} className="ptg-other-manifestation-group">
+            <div className="ptg-other-manifestation-title">{g.title}</div>
+            <div className="ptg-apotheosis-options-grid">
+              {g.options.map((opt, i) => {
+                const selected = manifestationLore.includes(opt.name);
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    className={`ptg-apotheosis-option-btn${selected ? ' ptg-apotheosis-option-selected' : ''}`}
+                    onClick={() => toggleLoreCard(manifestationLore, setManifestationLore, opt.name)}
+                  >
+                    <AbilityCard ab={{ ...opt, bullets: parseFormationBullets(opt.bullets) }} keywords={[]} />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </details>
     );
   };
 
@@ -4590,6 +4654,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                   {renderLoreColumn('Prayer Lore', [...(factionRules.prayer_lore || []), ...(bp?.prayer_lore || [])], prayerLore, setPrayerLore)}
                   <div className="ptg-path-section-divider" />
                   {renderLoreColumn('Manifestation Lore', factionRules.manifestation_lore, manifestationLore, setManifestationLore)}
+                  {renderOtherManifestations()}
                 </div>
               ) : step === 8 && campaign === 'ravaged-coast' ? (
                 <div className="ptg-quest-step">

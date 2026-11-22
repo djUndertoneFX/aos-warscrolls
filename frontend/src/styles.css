@@ -6998,3 +6998,8 @@ textarea.ptg-doc-overlay-input {
 /* Two-letter dots grow into pills. */
 .gw-nav-dot { width: auto; min-width: 16px; padding: 0 3px; border-radius: 8px; box-sizing: border-box; }
 @media (max-width: 1100px) { .gw-nav-dot { width: auto; min-width: 20px; border-radius: 10px; } }
+
+/* PtG Lores step: collapsed list of universal + other factions' manifestations */
+.ptg-other-manifestations { margin-top: 0.75rem; }
+.ptg-other-manifestation-group { margin: 0.5rem 0 0.9rem; }
+.ptg-other-manifestation-title { font-family: 'Cinzel', serif; color: var(--parchment, #d8cca8); font-size: 0.85rem; margin-bottom: 0.35rem; }
