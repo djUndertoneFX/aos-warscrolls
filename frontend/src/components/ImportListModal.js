@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { readListFile } from '../fileImport';
 
 // "Import List" — paste an army list exported from New Recruit (or any
 // tool using the same plain-text shape) and have the page fill itself in.
@@ -13,6 +14,36 @@ export default function ImportListModal({ onClose, onImport, title = 'Import Lis
   const [report, setReport] = useState(null);
   const [error, setError] = useState('');
   const textareaRef = useRef(null);
+  const fileRef = useRef(null);
+  // Upload / drop: a .txt, a .pdf (text or picture-only) or an image is
+  // read into the box, where it can be checked before Import.
+  const [reading, setReading] = useState('');
+  const [fileNotes, setFileNotes] = useState([]);
+  const [dragOver, setDragOver] = useState(false);
+
+  const loadFile = async file => {
+    if (!file || reading) return;
+    setError('');
+    setFileNotes([]);
+    setReading(`Opening ${file.name}…`);
+    try {
+      const { text: t, notes } = await readListFile(file, msg => setReading(msg));
+      setText(t);
+      setFileNotes(notes || []);
+      if (!t.trim()) setError('Nothing recognisable was found in that file.');
+    } catch (e) {
+      setError(e?.response?.data?.error || e?.message || 'Could not read that file.');
+    } finally {
+      setReading('');
+    }
+  };
+  const onDrop = e => {
+    e.preventDefault();
+    setDragOver(false);
+    if (report) return;
+    const file = e.dataTransfer?.files?.[0];
+    if (file) loadFile(file);
+  };
 
   useEffect(() => { textareaRef.current?.focus(); }, []);
   useEffect(() => {
@@ -42,6 +73,9 @@ export default function ImportListModal({ onClose, onImport, title = 'Import Lis
         aria-modal="true"
         aria-label={title}
         onMouseDown={e => e.stopPropagation()}
+        onDragOver={e => { if (!report) { e.preventDefault(); setDragOver(true); } }}
+        onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOver(false); }}
+        onDrop={onDrop}
       >
         <div className="ptg-import-header">{title}</div>
 
@@ -69,14 +103,44 @@ export default function ImportListModal({ onClose, onImport, title = 'Import Lis
           </div>
         ) : (
           <>
+            <div className="ptg-import-file-row">
+              <button
+                type="button"
+                className="ptg-wizard-nav-btn ptg-import-upload"
+                onClick={() => fileRef.current?.click()}
+                disabled={!!reading || busy}
+              >
+                Upload file
+              </button>
+              <span className="ptg-import-file-hint">
+                {reading || 'or drop a .txt, .pdf or picture here — New Recruit lists and warscroll-card printouts both work'}
+              </span>
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".txt,.text,.pdf,application/pdf,text/plain,image/*"
+                style={{ display: 'none' }}
+                onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) loadFile(f); }}
+              />
+            </div>
+            {fileNotes.length > 0 && (
+              <ul className="ptg-import-file-notes">
+                {fileNotes.map((n, i) => <li key={i}>{n}</li>)}
+              </ul>
+            )}
+            <div className={`ptg-import-drop${dragOver ? ' is-over' : ''}${reading ? ' is-reading' : ''}`}>
             <textarea
               ref={textareaRef}
               className="ptg-import-textarea"
               value={text}
               onChange={e => setText(e.target.value)}
               spellCheck={false}
-              placeholder={'Paste your army list here.\n\nExported from New Recruit — "Copy to clipboard" gives exactly the text this reads.'}
+              placeholder={'Paste your army list here, or upload / drop a file.\n\nExported from New Recruit — "Copy to clipboard" gives exactly the text this reads.'}
             />
+            {(dragOver || reading) && (
+              <div className="ptg-import-drop-overlay">{reading || 'Drop the file to read it'}</div>
+            )}
+            </div>
             {error && <div className="ptg-import-error">{error}</div>}
           </>
         )}
@@ -90,7 +154,7 @@ export default function ImportListModal({ onClose, onImport, title = 'Import Lis
               <button
                 type="button"
                 className="ptg-wizard-nav-btn ptg-import-confirm"
-                disabled={!text.trim() || busy}
+                disabled={!text.trim() || busy || !!reading}
                 onClick={doImport}
               >
                 {busy ? 'Importing…' : 'Import'}

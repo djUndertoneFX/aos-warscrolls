@@ -156,7 +156,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production-use-a-long
 // ─── Middleware ──────────────────────────────────────────────────────────────
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '5mb' }));
 
 // Initialize DB on startup
 initDb();
@@ -1549,6 +1549,21 @@ app.get('/api/preview/:token/warscrolls', (req, res) => {
     res.json({ data: rows, total: rows.length });
   } finally {
     db.close();
+  }
+});
+
+// Warscroll-card printouts (New Recruit's card view printed to PDF): the
+// browser OCRs the pages and sends their text here; this identifies each
+// card against the database and answers with the plain-text list the
+// import dialog already reads, for the user to check before importing.
+app.post('/api/import/cards', requireAuth, (req, res) => {
+  const pages = Array.isArray(req.body?.pages) ? req.body.pages.map(p => String(p || '')).slice(0, 200) : [];
+  if (!pages.some(p => p.trim())) return res.status(400).json({ error: 'No text to read.' });
+  try {
+    res.json(require('./cardImport').cardsToList(getDb(), { pages, title: String(req.body?.title || '') }));
+  } catch (e) {
+    console.error('card import failed', e);
+    res.status(500).json({ error: 'Could not read those cards.' });
   }
 });
 
