@@ -7323,3 +7323,14 @@ textarea.ptg-doc-overlay-input {
   .ptg-roster-heraldry .ptg-heraldry-box { min-height: 90px; }
   .ptg-roster-rounds { grid-column: 1 / -1 !important; }
 }
+
+/* Warscrolls: "no units" explanation */
+.empty-state-title { font-family: 'Cinzel', serif; color: var(--gold); font-size: 1.05rem; margin-bottom: 0.4rem; }
+.empty-state-help { color: var(--text-dim, #8a8578); font-size: 0.9rem; max-width: 34rem; margin: 0 auto; line-height: 1.45; }
+.empty-state-actions { display: flex; gap: 0.6rem; justify-content: center; margin-top: 0.9rem; flex-wrap: wrap; }
+.empty-state-btn {
+  min-height: 38px; padding: 0 1rem; border-radius: 4px; cursor: pointer;
+  background: transparent; color: var(--gold); border: 1px solid var(--gold);
+  font-family: 'Cinzel', serif; font-size: 0.8rem; letter-spacing: 0.04em;
+}
+.empty-state-btn:hover { background: rgba(200,168,64,0.12); }

@@ -1009,7 +1009,36 @@ export default function WarscrollsPage({ headerCollapsed }) {
         </div>
       ) : data && rows.length === 0 ? (
         <div className="empty-state">
-          {addMode ? 'Every unit here is already marked — pick another faction or press Done.' : <>No warscrolls found. Try adjusting your filters, or run <code>npm run scrape</code> to populate the database.</>}
+          {addMode ? 'Every unit here is already marked — pick another faction or press Done.' : search.trim() ? (
+            <>
+              <div className="empty-state-title">No units found for &ldquo;{search.trim()}&rdquo;.</div>
+              <div className="empty-state-help">
+                {searchRespectsFilters && phoneChips.length > 0
+                  ? <>Your filters ({phoneChips.map(c => c.label).join(', ')}) also apply to the search. Change your search term, clear the search, or clear the filters to see more units.</>
+                  : <>Change your search term or clear the search to see more units.</>}
+              </div>
+              <div className="empty-state-actions">
+                <button type="button" className="empty-state-btn" onClick={() => { setSearchInput(''); setSearch(''); setPage(1); }}>Clear search</button>
+                {searchRespectsFilters && phoneChips.length > 0 && (
+                  <button type="button" className="empty-state-btn" onClick={() => phoneChips.forEach(c => c.onClear())}>Clear filters</button>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="empty-state-title">No units match your filters.</div>
+              <div className="empty-state-help">
+                {phoneChips.length > 0
+                  ? <>Showing only: {phoneChips.map(c => c.label).join(', ')}. Clear a filter to see more units.</>
+                  : <>Clear a filter to see more units.</>}
+              </div>
+              {phoneChips.length > 0 && (
+                <div className="empty-state-actions">
+                  <button type="button" className="empty-state-btn" onClick={() => phoneChips.forEach(c => c.onClear())}>Clear filters</button>
+                </div>
+              )}
+            </>
+          )}
         </div>
       ) : (
         <>
