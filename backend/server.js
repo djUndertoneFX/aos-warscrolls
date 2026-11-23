@@ -129,15 +129,44 @@ function createTransporter() {
   });
 }
 
-async function sendResetEmail(toEmail, resetUrl) {
-  if (!process.env.SMTP_HOST) {
-    // No email configured — log the link so it's still usable in dev/testing
-    console.log(`[password-reset] No SMTP configured. Reset URL: ${resetUrl}`);
-    return;
+// Sends one email: through SMTP when that's configured, else through the
+// Google Apps Script hook (BUG_HOOK_URL — the same web app bug reports use;
+// its doPost sends `kind: 'mail'` requests with MailApp). Returns how it
+// went out ('smtp' | 'hook'), or throws with the reason it couldn't.
+async function sendSiteEmail({ to, subject, html, text }) {
+  if (process.env.SMTP_HOST) {
+    await createTransporter().sendMail({ from: process.env.SMTP_FROM || process.env.SMTP_USER, to, subject, html, text });
+    return 'smtp';
   }
-  const transporter = createTransporter();
-  await transporter.sendMail({
-    from: process.env.SMTP_FROM || process.env.SMTP_USER,
+  if (process.env.BUG_HOOK_URL) {
+    const resp = await fetch(process.env.BUG_HOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ secret: process.env.BUG_HOOK_SECRET || '', kind: 'mail', to, subject, text, html }),
+      redirect: 'follow',
+    });
+    const body = await resp.text();
+    let j = {}; try { j = JSON.parse(body); } catch {}
+    if (resp.ok && j.ok && j.mailed) return 'hook';
+    throw new Error(`mail hook refused (${resp.status}): ${body.slice(0, 160)}`);
+  }
+  throw new Error('no email sender configured (set SMTP_* or BUG_HOOK_URL on Railway)');
+}
+
+const APP_URL = () => process.env.APP_URL || 'https://aoswarscrolls.com';
+const ADMIN_USERNAMES = (process.env.ADMIN_USERNAMES || 'undertone_dj').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+
+// A fresh 1-hour reset link for a user (any older ones stop working).
+function issueResetLink(db, userId, hours = 1) {
+  db.prepare('DELETE FROM password_resets WHERE user_id = ?').run(userId);
+  const token = crypto.randomBytes(32).toString('hex');
+  const expiresAt = Date.now() + hours * 60 * 60 * 1000;
+  db.prepare('INSERT INTO password_resets (user_id, token, expires_at) VALUES (?, ?, ?)').run(userId, token, expiresAt);
+  return { url: `${APP_URL()}/reset-password?token=${token}`, expiresAt };
+}
+
+async function sendResetEmail(toEmail, resetUrl) {
+  return sendSiteEmail({
     to: toEmail,
     subject: 'AoS Warscrolls — Password Reset',
     html: `
@@ -378,7 +407,8 @@ app.post('/api/auth/login', async (req, res) => {
 
   const db = getDb();
   try {
-    const user = db.prepare('SELECT * FROM users WHERE username = ? OR email = ?').get(login, login);
+    const user = db.prepare('SELECT * FROM users WHERE username = ? OR email = ?').get(login, login)
+      || db.prepare('SELECT * FROM users WHERE lower(username) = lower(?) OR lower(email) = lower(?)').get(login, login);
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials.' });
     }
@@ -424,31 +454,75 @@ app.put('/api/auth/commander-name', requireAuth, (req, res) => {
 });
 
 // POST /api/auth/forgot-password
+// Takes an email or a username, either in any letter case. Always answers ok
+// (so it can't be used to find out who has an account). Every attempt is
+// logged in password_reset_log; one whose email couldn't be sent is also
+// filed as a bug report, so dj hears about it and can send a link by hand
+// (Settings → Password Reset Link).
 app.post('/api/auth/forgot-password', async (req, res) => {
-  const { email } = req.body;
-  if (!email) return res.status(400).json({ error: 'Email is required.' });
+  const login = String(req.body?.email || req.body?.login || '').trim();
+  if (!login) return res.status(400).json({ error: 'Email is required.' });
 
   const db = getDb();
+  let user, link;
   try {
-    const user = db.prepare('SELECT id, email FROM users WHERE email = ?').get(email);
-    // Always respond success to prevent email enumeration
-    if (!user) return res.json({ ok: true });
-
-    // Invalidate any existing tokens for this user
-    db.prepare('DELETE FROM password_resets WHERE user_id = ?').run(user.id);
-
-    const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = Date.now() + 60 * 60 * 1000; // 1 hour
-    db.prepare('INSERT INTO password_resets (user_id, token, expires_at) VALUES (?, ?, ?)').run(user.id, token, expiresAt);
-
-    const appUrl = process.env.APP_URL || 'https://easygoing-embrace-production-f3bb.up.railway.app';
-    const resetUrl = `${appUrl}/reset-password?token=${token}`;
-    await sendResetEmail(user.email, resetUrl);
-
-    res.json({ ok: true });
+    user = db.prepare('SELECT id, username, email FROM users WHERE lower(email) = lower(?) OR lower(username) = lower(?)').get(login, login);
+    if (!user) {
+      db.prepare('INSERT INTO password_reset_log (login, user_id, result) VALUES (?, NULL, ?)').run(login.slice(0, 200), 'no such account');
+      return res.json({ ok: true });
+    }
+    link = issueResetLink(db, user.id);
   } finally {
     db.close();
   }
+  let result;
+  try {
+    result = `sent via ${await sendResetEmail(user.email, link.url)}`;
+  } catch (e) {
+    result = `NOT sent: ${e.message}`;
+    console.error(`[password-reset] ${user.username}: ${e.message}`);
+  }
+  const db2 = getDb();
+  try {
+    db2.prepare('INSERT INTO password_reset_log (login, user_id, result) VALUES (?, ?, ?)').run(login.slice(0, 200), user.id, result.slice(0, 500));
+    if (result.startsWith('NOT')) {
+      db2.prepare('INSERT INTO bug_reports (user_id, username, text, page, url, context) VALUES (?, ?, ?, ?, ?, ?)').run(
+        user.id, user.username,
+        `Password reset email for ${user.username} couldn't be sent (${result.slice(10)}). Send them a link from Settings → Password Reset Link.`,
+        'Forgot Password', '', '{}');
+    }
+  } finally { db2.close(); }
+  syncBugReports().catch(() => {});
+  res.json({ ok: true });
+});
+
+// POST /api/admin/reset-link { login } — admins only (ADMIN_USERNAMES):
+// makes a 24-hour reset link for any account to pass on by hand, plus that
+// account's recent reset attempts.
+app.post('/api/admin/reset-link', requireAuth, (req, res) => {
+  const db = getDb();
+  try {
+    const me = db.prepare('SELECT username FROM users WHERE id = ?').get(req.user.id);
+    if (!me || !ADMIN_USERNAMES.includes(String(me.username).toLowerCase())) return res.status(403).json({ error: 'Admins only.' });
+    const login = String(req.body?.login || '').trim();
+    if (!login) return res.status(400).json({ error: 'Enter a username or email.' });
+    const user = db.prepare('SELECT id, username, email FROM users WHERE lower(email) = lower(?) OR lower(username) = lower(?)').get(login, login);
+    if (!user) return res.status(404).json({ error: `No account with username or email "${login}".` });
+    const link = issueResetLink(db, user.id, 24);
+    const attempts = db.prepare('SELECT login, result, created_at FROM password_reset_log WHERE user_id = ? ORDER BY id DESC LIMIT 5').all(user.id);
+    res.json({ username: user.username, email: user.email, url: link.url, expiresAt: link.expiresAt, attempts });
+  } finally {
+    db.close();
+  }
+});
+
+// GET /api/admin/me — whether the signed-in account is an admin.
+app.get('/api/admin/me', requireAuth, (req, res) => {
+  const db = getDb();
+  try {
+    const me = db.prepare('SELECT username FROM users WHERE id = ?').get(req.user.id);
+    res.json({ admin: !!me && ADMIN_USERNAMES.includes(String(me.username).toLowerCase()) });
+  } finally { db.close(); }
 });
 
 // POST /api/auth/reset-password

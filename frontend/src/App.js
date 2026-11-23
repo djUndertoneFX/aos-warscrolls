@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import axios from 'axios';
 import { BrowserRouter, Routes, Route, Navigate, NavLink, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './AuthContext';
 import { SettingsProvider, useSettings } from './SettingsContext';
@@ -16,6 +17,7 @@ import SpearheadPage from './pages/SpearheadPage';
 import PathToGloryPage from './pages/PathToGloryPage';
 import MatchedPlayPage from './pages/MatchedPlayPage';
 import FileBugModal from './components/FileBugModal';
+import ResetLinkModal from './components/ResetLinkModal';
 import { rememberAfterLogin, afterLoginPath, clearAfterLoginIf } from './shareLink';
 import './styles.css';
 
@@ -34,7 +36,7 @@ const NAV_PAGES = [
 const SAVE_OPTIONS  = ['-', 2, 3, 4, 5, 6];
 const WARD_OPTIONS  = ['-', 4, 5, 6];
 
-function SettingsPanel({ onClose, wrapRef, onFileBug }) {
+function SettingsPanel({ onClose, wrapRef, onFileBug, onResetLink }) {
   const {
     showFlavorText, presumedSave, presumedWard, roundingMode, includeSaveWardInADO,
     showBattleTraits, showBattleFormations, showHeroicTraits, showArtefacts, showSpellLore, showManifestationLore,
@@ -66,6 +68,9 @@ function SettingsPanel({ onClose, wrapRef, onFileBug }) {
           a way to confirm which account is logged in on a device where it's
           not otherwise visible. */}
       <button type="button" className="settings-filebug-btn" onClick={() => { onClose(); onFileBug(); }}>🐞 File Bug</button>
+      {onResetLink && (
+        <button type="button" className="settings-filebug-btn" onClick={() => { onClose(); onResetLink(); }}>🔑 Password Reset Link</button>
+      )}
       <div className="settings-panel-username">{user?.username}</div>
       <div className="settings-panel-title">Display Settings</div>
       <label className="settings-cb-row">
@@ -155,6 +160,12 @@ function Navbar({ headerCollapsed, onToggleCollapse }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [bugOpen, setBugOpen] = useState(false);
+  const [resetLinkOpen, setResetLinkOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    if (!user) { setIsAdmin(false); return; }
+    axios.get('/api/admin/me').then(r => setIsAdmin(!!r.data?.admin)).catch(() => setIsAdmin(false));
+  }, [user]);
   const settingsWrapRef = useRef(null);
   const mobileSettingsWrapRef = useRef(null);
   const isWarscrolls = location.pathname === '/warscrolls' || location.pathname === '/simulacrum' || location.pathname === '/spearhead' || location.pathname === '/path-to-glory' || location.pathname === '/army-builder';
@@ -188,7 +199,7 @@ function Navbar({ headerCollapsed, onToggleCollapse }) {
             >
               ⚙
             </button>
-            {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} wrapRef={settingsWrapRef} onFileBug={() => setBugOpen(true)} />}
+            {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} wrapRef={settingsWrapRef} onFileBug={() => setBugOpen(true)} onResetLink={isAdmin ? () => setResetLinkOpen(true) : null} />}
           </div>
           <button className="hamburger" onClick={() => setMenuOpen(o => !o)} aria-label="Menu">
             <span /><span /><span />
@@ -213,12 +224,13 @@ function Navbar({ headerCollapsed, onToggleCollapse }) {
             <button type="button" className="mobile-settings-toggle" onClick={() => setSettingsOpen(o => !o)}>
               ⚙ Display Settings
             </button>
-            {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} wrapRef={mobileSettingsWrapRef} onFileBug={() => { setMenuOpen(false); setBugOpen(true); }} />}
+            {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} wrapRef={mobileSettingsWrapRef} onFileBug={() => { setMenuOpen(false); setBugOpen(true); }} onResetLink={isAdmin ? () => { setMenuOpen(false); setResetLinkOpen(true); } : null} />}
           </div>
           <button className="mobile-signout" onClick={() => { setMenuOpen(false); logout(); }}>Sign Out</button>
         </div>
       )}
       {bugOpen && <FileBugModal onClose={() => setBugOpen(false)} />}
+      {resetLinkOpen && <ResetLinkModal onClose={() => setResetLinkOpen(false)} />}
     </>
   );
 }

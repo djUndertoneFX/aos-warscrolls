@@ -30,18 +30,20 @@ export default function ForgotPasswordPage() {
 
         {submitted ? (
           <div className="auth-success">
-            <p>If that email is registered, a reset link has been sent.</p>
+            <p>If that account exists, a reset link has been sent to its email address.</p>
             <p style={{ marginTop: '0.5rem', fontSize: '0.9rem', opacity: 0.7 }}>
-              Check your inbox (and spam folder). The link expires in 1 hour.
+              Check your inbox (and spam folder). The link expires in 1 hour. Nothing after a few minutes? Ask dj for a link.
             </p>
           </div>
         ) : (
           <form className="auth-form" onSubmit={handleSubmit}>
             {error && <div className="error-msg">{error}</div>}
             <div className="form-group">
-              <label>Email address</label>
+              <label>Email or username</label>
               <input
-                type="email"
+                type="text"
+                autoCapitalize="none"
+                autoCorrect="off"
                 placeholder="your@email.com"
                 value={email}
                 onChange={e => setEmail(e.target.value)}

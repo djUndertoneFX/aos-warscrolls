@@ -15,6 +15,10 @@
  *     "Anyone". Copy the web app URL.
  *  4. On Railway (service aos-warscrolls): BUG_HOOK_URL = that URL,
  *     BUG_HOOK_SECRET = the SECRET.
+ *
+ * It also sends the site's own emails (password resets: kind 'mail') when the
+ * server has no SMTP settings. After editing, Deploy → Manage deployments →
+ * edit → Version: New version, so the same URL runs the new code.
  */
 var SECRET = 'CHANGE-ME';
 var DOC_NAME = 'AoS Warscrolls Bugs';
@@ -45,6 +49,12 @@ function doPost(e) {
   var data = {};
   try { data = JSON.parse(e.postData.contents); } catch (err) {}
   if (data.secret !== SECRET) return json_({ ok: false, error: 'bad secret' });
+  // Site emails (password resets) when the server has no SMTP of its own.
+  if (data.kind === 'mail') {
+    if (!data.to) return json_({ ok: false, error: 'no recipient' });
+    MailApp.sendEmail({ to: data.to, subject: data.subject || 'AoS Warscrolls', body: String(data.text || ''), htmlBody: data.html || undefined, name: 'AoS Warscrolls' });
+    return json_({ ok: true, mailed: true });
+  }
   addToDoc_(data);
   var emailed = false;
   if (data.email) {

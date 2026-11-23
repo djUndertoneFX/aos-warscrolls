@@ -7033,3 +7033,9 @@ textarea.ptg-doc-overlay-input {
 .lore-popup-close { position: absolute; top: 0.3rem; right: 0.45rem; background: none; border: none; color: var(--gold, #c9a84c); font-size: 1.1rem; cursor: pointer; }
 .lore-popup-kind { font-family: 'Cinzel', serif; color: var(--gold, #c9a84c); font-size: 0.8rem; margin-bottom: 0.35rem; }
 .lore-popup-extras { margin-top: 0.75rem; padding: 0 1rem 0.5rem; }
+
+/* Admin: Password Reset Link modal (reuses the File Bug box) */
+.resetlink-input { min-height: 0; height: auto; padding: 0.5rem 0.6rem; }
+.resetlink-result { margin-top: 0.6rem; font-size: 0.9rem; display: flex; flex-direction: column; gap: 0.4rem; }
+.resetlink-url { min-height: 0; height: auto; padding: 0.45rem 0.6rem; font-size: 0.8rem; }
+.resetlink-attempts { font-size: 0.78rem; opacity: 0.8; display: flex; flex-direction: column; gap: 0.15rem; }

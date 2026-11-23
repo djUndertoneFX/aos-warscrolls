@@ -70,6 +70,14 @@ function initDb() {
       used INTEGER DEFAULT 0
     );
 
+    CREATE TABLE IF NOT EXISTS password_reset_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      login TEXT,
+      user_id INTEGER,
+      result TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS faction_battle_traits (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       faction_slug TEXT NOT NULL,
