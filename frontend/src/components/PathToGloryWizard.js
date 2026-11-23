@@ -11,6 +11,7 @@ import BATTLEPACKS from './ptgBattlepacks';
 import { ShareButton } from '../shareLink';
 import FACTION_PATHS_SCRAPED from './ptgFactionPaths';
 import LORE_NAMES from '../data/loreNames.json';
+import { useIsPhone } from '../phone';
 
 function parseFormationBullets(raw) {
   try { return JSON.parse(raw || '[]'); } catch { return []; }
@@ -1603,6 +1604,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   // .ptg-wizard-dual in styles.css) — below it, the same markup stacks
   // vertically instead of disappearing, and the toggle button itself is
   // hidden by CSS so iPad/phone users never see an option that wouldn't fit.
+  const isPhone = useIsPhone(); // phone: single view only, step picker instead of pills
   const [wizardViewMode, setWizardViewMode] = useState(() => saved.wizardViewMode ?? 'single');
   // Dual view's right-hand column follows whichever step the left-hand flow
   // is on, so the relevant doc is already in view instead of making the
@@ -4409,6 +4411,14 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
 
   const renderStepFlow = () => (
           <>
+            {/* Phone: one "Step N of M" picker with ‹ › instead of the pills. */}
+            <div className="ptg-wizard-steps-phone">
+              <button type="button" className="ptg-wizard-steps-phone-arrow" disabled={step <= 0} onClick={() => setStep(s => Math.max(0, s - 1))} aria-label="Previous step">‹</button>
+              <select className="ptg-wizard-steps-phone-select" value={step} onChange={e => setStep(Number(e.target.value))} aria-label="Step">
+                {stepLabels.map((label, i) => <option key={i} value={i}>{`${i + 1} of ${stepLabels.length}: ${label}`}</option>)}
+              </select>
+              <button type="button" className="ptg-wizard-steps-phone-arrow" disabled={step >= stepLabels.length - 1} onClick={() => setStep(s => Math.min(stepLabels.length - 1, s + 1))} aria-label="Next step">›</button>
+            </div>
             <div className="ptg-wizard-steps">
               {stepLabels.map((label, i) => (
                 <button
@@ -4883,6 +4893,14 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
                           <span className="ptg-regiment-unit-meta">{u.notes}</span>
                           <span className="ptg-regiment-unit-pts">{u.points ? `${u.points}pts` : '—'}</span>
                           <button className="ptg-oob-row-remove" onClick={() => removeRegimentUnit(r.id, u.id)} title="Remove from regiment">✕</button>
+                          {/* Phone: dragging doesn't work on touch screens — move with a picker instead. */}
+                          {isPhone && regiments.length > 1 && (
+                            <select className="ptg-regiment-move" value={r.id} onChange={e => moveRegimentUnit(u.id, e.target.value)} aria-label="Move to regiment">
+                              {regiments.map((rr, rri) => (
+                                <option key={rr.id} value={rr.id}>{rr.id === r.id ? 'Move to…' : (rri === 0 ? "General's Regiment 1" : `Regiment ${rri + 1}`)}</option>
+                              ))}
+                            </select>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -5042,7 +5060,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
   return (
     <>
       <div className="gw-overlay" />
-      <div className={`ptg-wizard${wizardViewMode === 'dual' ? ' ptg-wizard-dual-mode' : ''}${enemyName ? ' ptg-wizard-enemy' : ''}${onImport ? ' ptg-wizard-importable' : ''}`} ref={modalRef} role="dialog" aria-modal="true" aria-label={enemyName ? `Enemy roster: ${enemyName}` : 'Recruit Your Forces!'}>
+      <div className={`ptg-wizard${wizardViewMode === 'dual' && !isPhone ? ' ptg-wizard-dual-mode' : ''}${enemyName ? ' ptg-wizard-enemy' : ''}${onImport ? ' ptg-wizard-importable' : ''}`} ref={modalRef} role="dialog" aria-modal="true" aria-label={enemyName ? `Enemy roster: ${enemyName}` : 'Recruit Your Forces!'}>
         <div className="gw-view-toggle ptg-wizard-view-toggle">
           <button
             type="button"
@@ -5117,7 +5135,7 @@ export default function PathToGloryWizard({ onClose, factions = [], storageKey =
           )}
         </div>
 
-        {wizardViewMode === 'dual' ? (
+        {wizardViewMode === 'dual' && !isPhone ? (
           <div className="ptg-wizard-dual">
             <div className="ptg-wizard-dual-left">
               <div className="ptg-wizard-header">
