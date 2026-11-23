@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import axios from 'axios';
+import { MobileFilters } from '../phone';
 import WarscrollGW, { FormatText } from '../components/WarscrollGW';
 import { useSettings } from '../SettingsContext';
 import { useAuth } from '../AuthContext';
@@ -401,6 +402,12 @@ export default function SpearheadPage({ headerCollapsed }) {
   // Spearhead group counter (# column shows group number, same for all units in a group)
   let groupCounter = 0;
 
+  const spPhoneChips = [
+    showFriendly && { key: 'fr', label: 'Friendly', onClear: () => setShowFriendly(false) },
+    showEnemy && { key: 'en', label: 'Enemy', onClear: () => setShowEnemy(false) },
+    alliance && { key: 'ga', label: alliance, onClear: () => setAlliance('') },
+  ].filter(Boolean);
+
   return (
     <>
     {thumbHover && ReactDOM.createPortal(
@@ -431,6 +438,11 @@ export default function SpearheadPage({ headerCollapsed }) {
           <VoiceControlWidget />
         </div>
 
+        <MobileFilters
+          top={<input className="filter-input mf-search" type="text" placeholder="Search spearheads…" value={nameSearch} onChange={e => setNameSearch(e.target.value)} />}
+          chips={spPhoneChips}
+          count={spPhoneChips.length}
+        >
         <div className="filters sp-filters-row1">
           <div className="filter-group sp-search-group">
             <div className="filter-label">Search</div>
@@ -479,6 +491,7 @@ export default function SpearheadPage({ headerCollapsed }) {
             </div>
           </div>
         </div>
+        </MobileFilters>
         </>
       )}
 

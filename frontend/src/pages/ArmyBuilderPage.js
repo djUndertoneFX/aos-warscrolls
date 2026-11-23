@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import axios from 'axios';
+import { MobileFilters, useIsPhone } from '../phone';
 import ImportListModal from '../components/ImportListModal';
 import { useAppDialog } from '../components/AppDialog';
 import { parseArmyList, resolveArmyList, looseKey } from '../importList';
@@ -501,7 +502,13 @@ function FactionDropdown({ factions, value, onChange, liveCount }) {
   const selected = factions.find(f => f.faction_slug === value);
   const displayCount = (selected && liveCount != null) ? liveCount : selected?.unit_count;
   const label = selected ? `${selected.faction} (${displayCount})` : 'All Factions';
-  const colMajorFactions = React.useMemo(() => toTwoColumnOrder(factions), [factions]);
+  const isPhone = useIsPhone();
+  const [q, setQ] = useState('');
+  const colMajorFactions = React.useMemo(() => {
+    if (!isPhone) return toTwoColumnOrder(factions);
+    const n = q.trim().toLowerCase();
+    return n ? factions.filter(f => f.faction.toLowerCase().includes(n)) : factions;
+  }, [factions, isPhone, q]);
 
   useEffect(() => {
     if (!open) return;
@@ -520,6 +527,12 @@ function FactionDropdown({ factions, value, onChange, liveCount }) {
       </button>
       {open && (
         <div className="faction-dropdown-menu faction-dropdown-menu-2col">
+          {isPhone && (
+            <div className="fdd-phone-head">
+              <input className="filter-input" type="text" placeholder="Find a faction…" value={q} onChange={e => setQ(e.target.value)} />
+              <button type="button" onMouseDown={() => setOpen(false)}>Close</button>
+            </div>
+          )}
           <div className={`faction-dropdown-item faction-dropdown-item-all${value === '' ? ' selected' : ''}`} onMouseDown={() => pick('')}>
             All Factions
           </div>
@@ -2495,6 +2508,17 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
   const ownLists   = Object.fromEntries(Object.entries(listsStore.lists).filter(([, l]) => (l.list_type || 'own') !== 'enemy'));
   const enemyLists = Object.fromEntries(Object.entries(listsStore.lists).filter(([, l]) => l.list_type === 'enemy'));
 
+  const abPhoneChips = [
+    friendlyOnly && { key: 'fo', label: 'Friendly', onClear: () => setFriendlyOnly(false) },
+    alliance && { key: 'ga', label: alliance, onClear: () => setAlliance('') },
+    faction && { key: 'f', label: (factions.find(f => f.faction_slug === faction) || {}).faction || faction, onClear: () => setFaction('') },
+    ...[['Heroes', isHero, setIsHero], ['Infantry', isInfantry, setIsInfantry], ['Cavalry', isCavalry, setIsCavalry], ['Beast', isBeast, setIsBeast],
+      ['Monsters', isMonster, setIsMonster], ['War Machine', isWarMachine, setIsWarMachine], ['Faction Terrain', isTerrain, setIsTerrain],
+      ['Manifestation', isManifestation, setIsManifestation]]
+      .filter(([, v]) => v === true || v === 'exclude')
+      .map(([l, v, set]) => ({ key: l, label: v === true ? l : `No ${l}`, onClear: () => set(false) })),
+  ].filter(Boolean);
+
   return (
     <>
     {dialog}
@@ -2533,6 +2557,21 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
         </div>
 
         <div className="ab-header-cell ab-header-stages">
+          {/* Phone: one "Step N of 9" picker with ‹ › instead of 9 tabs. */}
+          <div className="ab-stage-phone">
+            {(() => {
+              const i = Math.max(0, STAGES.findIndex(s => s.key === activeStage));
+              return (
+                <>
+                  <button type="button" className="ab-stage-phone-arrow" disabled={i <= 0} onClick={() => setActiveStage(STAGES[i - 1].key)} aria-label="Previous step">‹</button>
+                  <select className="ab-stage-phone-select" value={activeStage} onChange={e => setActiveStage(e.target.value)} aria-label="Step">
+                    {STAGES.map((st, n) => <option key={st.key} value={st.key}>{`Step ${n + 1} of ${STAGES.length}: ${st.label}`}</option>)}
+                  </select>
+                  <button type="button" className="ab-stage-phone-arrow" disabled={i >= STAGES.length - 1} onClick={() => setActiveStage(STAGES[i + 1].key)} aria-label="Next step">›</button>
+                </>
+              );
+            })()}
+          </div>
           <div className="ab-stage-tabs">
             {STAGES.map((s, i) => (
               <button
@@ -2591,6 +2630,11 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
       {activeStage === 'units' && (
         <>
         {!headerCollapsed && (
+        <MobileFilters
+          top={<input className="filter-input mf-search" type="text" placeholder="Search units…" value={searchInput} onChange={e => setSearchInput(e.target.value)} />}
+          chips={abPhoneChips}
+          count={abPhoneChips.length}
+        >
         <div className="filters">
           <div className="filter-group">
             <div className="filter-label">Search</div>
@@ -2647,6 +2691,7 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
             </div>
           </div>
         </div>
+        </MobileFilters>
         )}
 
         {error && (

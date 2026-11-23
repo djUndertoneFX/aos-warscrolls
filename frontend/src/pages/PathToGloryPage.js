@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import axios from 'axios';
+import { MobileFilters, standardFilterChips, useIsPhone } from '../phone';
 import WarscrollGW from '../components/WarscrollGW';
 import ImageLightbox, { nameSlug } from '../components/ImageLightbox';
 import PathToGloryWizard from '../components/PathToGloryWizard';
@@ -149,7 +150,13 @@ function FactionDropdown({ factions, value, onChange, liveCount, align }) {
   const selected = factions.find(f => f.faction_slug === value);
   const displayCount = (selected && liveCount != null) ? liveCount : selected?.unit_count;
   const label = selected ? `${selected.faction} (${displayCount})` : 'All Factions';
-  const colMajorFactions = React.useMemo(() => toTwoColumnOrder(factions), [factions]);
+  const isPhone = useIsPhone();
+  const [q, setQ] = useState('');
+  const colMajorFactions = React.useMemo(() => {
+    if (!isPhone) return toTwoColumnOrder(factions);
+    const n = q.trim().toLowerCase();
+    return n ? factions.filter(f => f.faction.toLowerCase().includes(n)) : factions;
+  }, [factions, isPhone, q]);
 
   useEffect(() => {
     if (!open) return;
@@ -168,6 +175,12 @@ function FactionDropdown({ factions, value, onChange, liveCount, align }) {
       </button>
       {open && (
         <div className={`faction-dropdown-menu faction-dropdown-menu-2col${align === 'right' ? ' faction-dropdown-menu-right' : ''}`}>
+          {isPhone && (
+            <div className="fdd-phone-head">
+              <input className="filter-input" type="text" placeholder="Find a faction…" value={q} onChange={e => setQ(e.target.value)} />
+              <button type="button" onMouseDown={() => setOpen(false)}>Close</button>
+            </div>
+          )}
           <div className={`faction-dropdown-item faction-dropdown-item-all${value === '' ? ' selected' : ''}`} onMouseDown={() => pick('')}>
             All Factions
           </div>
@@ -1137,6 +1150,14 @@ export default function PathToGloryPage({ headerCollapsed }) {
     setNavbarExtrasEl(headerCollapsed ? document.getElementById('navbar-extras') : null);
   }, [headerCollapsed]);
 
+  const phoneChips = standardFilterChips({
+    factions, alliance, setAlliance: v => { setAlliance(v); setPage(1); }, faction, setFaction, enemyFaction, setEnemyFaction,
+    showFriendly, setShowFriendly, showEnemy, setShowEnemy, onChange: () => setPage(1),
+    types: [['Heroes', isHero, setIsHero], ['Infantry', isInfantry, setIsInfantry], ['Cavalry', isCavalry, setIsCavalry],
+      ['Beast', isBeast, setIsBeast], ['Monsters', isMonster, setIsMonster], ['War Machine', isWarMachine, setIsWarMachine],
+      ['Faction Terrain', isTerrain, setIsTerrain], ['Manifestation', isManifestation, setIsManifestation]],
+  });
+
   return (
     <>
     {thumbHover && ReactDOM.createPortal(
@@ -1249,6 +1270,11 @@ export default function PathToGloryPage({ headerCollapsed }) {
       </div>
 
       {/* ── Filters ── */}
+      <MobileFilters
+        top={<input className="filter-input mf-search" type="text" placeholder="Search units…" value={searchInput} onChange={e => setSearchInput(e.target.value)} />}
+        chips={phoneChips}
+        count={phoneChips.length}
+      >
       <div className="filters">
         <div className="filter-group">
           <div className="filter-label">Search</div>
@@ -1340,6 +1366,7 @@ export default function PathToGloryPage({ headerCollapsed }) {
           </div>
         </div>
       </div>
+      </MobileFilters>
       </>
       )}
 
