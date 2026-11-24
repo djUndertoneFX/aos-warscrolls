@@ -68,7 +68,33 @@ function sanitize(html) {
     }
     el.attribs = keep;
   });
+  // Every heading gets an id so search hits and the contents list can jump
+  // to it (the FAQ page's headings have none on Wahapedia).
+  const used = new Set();
+  $('#__root [id]').each((_, el) => used.add(el.attribs.id));
+  $('#__root h2, #__root h3, #__root h4').each((_, el) => {
+    if (el.attribs.id) return;
+    const base = ($(el).text().replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-').slice(0, 80)) || 'section';
+    let id = base, n = 2; while (used.has(id)) id = `${base}-${n++}`;
+    used.add(id); el.attribs.id = id;
+  });
   return $('#__root').html();
+}
+
+// Re-run sanitising on stored pages (picks up sanitiser improvements
+// without a new upload). Called at server start.
+function resanitizeAll(db) {
+  ensureTable(db);
+  const rows = db.prepare('SELECT slug, html FROM oracle_pages').all();
+  const up = db.prepare('UPDATE oracle_pages SET html = ?, toc = ? WHERE slug = ?');
+  let changed = 0;
+  db.transaction(() => {
+    for (const r of rows) {
+      const html = sanitize(r.html);
+      if (html !== r.html) { up.run(html, JSON.stringify(headings(html)), r.slug); changed++; }
+    }
+  })();
+  return changed;
 }
 
 // Headings for the table of contents: [{ id, level, text }]
@@ -136,4 +162,4 @@ function getPage(db, slug) {
   return db.prepare('SELECT slug, title, grp, sort, html, source_url, updated_at FROM oracle_pages WHERE slug = ?').get(slug);
 }
 
-module.exports = { BOOKS, sanitize, headings, savePages, listPages, getPage, ensureTable };
+module.exports = { BOOKS, sanitize, headings, resanitizeAll, savePages, listPages, getPage, ensureTable };

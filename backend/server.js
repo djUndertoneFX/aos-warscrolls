@@ -522,6 +522,8 @@ app.post('/api/admin/reset-link', requireAuth, (req, res) => {
 // PUT /api/admin/oracle { pages: { slug: { html } } } — admins only; the
 // pages are cleaned in the browser from Wahapedia and re-sanitised here.
 const oracle = require('./oracle');
+try { const db = getDb(); try { const n = oracle.resanitizeAll(db); if (n) console.log(`Oracle: re-sanitised ${n} page(s).`); } finally { db.close(); } }
+catch (e) { console.warn('Oracle re-sanitise skipped:', e.message); }
 app.get('/api/oracle', requireAuth, (req, res) => {
   const db = getDb();
   try { res.json({ books: oracle.BOOKS, pages: oracle.listPages(db) }); }
