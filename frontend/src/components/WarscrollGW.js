@@ -53,6 +53,19 @@ export const isWarscrollPopupOpen = () => openPopupCount > 0;
 // LV, "Lady Olynder" LO; small words like "of"/"the" skipped), or its first
 // two letters for a one-word name. Keyed by the list position.
 const DOT_SMALL_WORDS = new Set(['of', 'the', 'on', 'and', 'a', 'an', 'in', 'to', 'with']);
+
+// Edge fade on an overflowing page-dot strip. Phones get a tight 14px fade
+// (the wide 8–28% fade hid whole dots on a narrow screen); larger screens
+// keep the original soft fade.
+function dotsFadeMask(atStart, atEnd) {
+  const phone = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 600px)').matches;
+  if (phone) {
+    const l = atStart ? '0px' : '14px', r = atEnd ? '0px' : '14px';
+    return `linear-gradient(to right, transparent 0, black ${l}, black calc(100% - ${r}), transparent 100%)`;
+  }
+  return `linear-gradient(to right, transparent ${atStart ? '0%' : '8%'}, black ${atStart ? '0%' : '28%'}, black ${atEnd ? '100%' : '72%'}, transparent ${atEnd ? '100%' : '92%'})`;
+}
+
 function dotLabels(list) {
   const words = u => String(u?.name || '').replace(/[^A-Za-z0-9' -]/g, ' ').split(/[\s-]+/).filter(Boolean);
   const first = list.map(u => (words(u)[0]?.[0] || '').toUpperCase());
@@ -1395,8 +1408,8 @@ const SplitPane = React.forwardRef(function SplitPane({ label, labelClass, list,
           className="gw-nav-dots gw-split-nav-dots"
           ref={outerRef}
           style={hasOverflow ? {
-            WebkitMaskImage: `linear-gradient(to right, transparent ${atStart ? '0%' : '8%'}, black ${atStart ? '0%' : '28%'}, black ${atEnd ? '100%' : '72%'}, transparent ${atEnd ? '100%' : '92%'})`,
-            maskImage:       `linear-gradient(to right, transparent ${atStart ? '0%' : '8%'}, black ${atStart ? '0%' : '28%'}, black ${atEnd ? '100%' : '72%'}, transparent ${atEnd ? '100%' : '92%'})`,
+            WebkitMaskImage: dotsFadeMask(atStart, atEnd),
+            maskImage:       dotsFadeMask(atStart, atEnd),
           } : undefined}
         >
           <div
@@ -2041,8 +2054,8 @@ export default function WarscrollGW({ unit, onClose, onPrev, onNext, onJump, onF
             className="gw-nav-dots"
             ref={dotsRef}
             style={dotsHasOverflow ? {
-              WebkitMaskImage: `linear-gradient(to right, transparent ${dotsAtStart ? '0%' : '8%'}, black ${dotsAtStart ? '0%' : '28%'}, black ${dotsAtEnd ? '100%' : '72%'}, transparent ${dotsAtEnd ? '100%' : '92%'})`,
-              maskImage:       `linear-gradient(to right, transparent ${dotsAtStart ? '0%' : '8%'}, black ${dotsAtStart ? '0%' : '28%'}, black ${dotsAtEnd ? '100%' : '72%'}, transparent ${dotsAtEnd ? '100%' : '92%'})`,
+              WebkitMaskImage: dotsFadeMask(dotsAtStart, dotsAtEnd),
+              maskImage:       dotsFadeMask(dotsAtStart, dotsAtEnd),
             } : undefined}
           >
           <div
