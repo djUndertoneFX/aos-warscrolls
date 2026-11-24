@@ -7334,3 +7334,138 @@ textarea.ptg-doc-overlay-input {
   font-family: 'Cinzel', serif; font-size: 0.8rem; letter-spacing: 0.04em;
 }
 .empty-state-btn:hover { background: rgba(200,168,64,0.12); }
+
+/* ═════════════════════════════════════════════════════════════════════════
+   iPad / tablet (601–1200px) usability pass — the iPad counterpart of the
+   phone section above. Headers re-flow into rows instead of squeezing into
+   one grid row (Army Builder list pickers were collapsing to "L." and the
+   Path to Glory buttons overlapped), the navbar gets the ☰ page menu so
+   every page is one tap away, filter checkboxes wrap left-aligned in
+   portrait, and touch screens (pointer: coarse) get bigger tap targets.
+   Phones (≤600px) and desktops (>1200px, or any mouse) are unchanged.
+   ═════════════════════════════════════════════════════════════════════════ */
+@media (min-width: 601px) and (max-width: 1200px) {
+  /* ── Army Builder header: title · roster · points / own list · enemy list / steps ── */
+  .ab-page-header { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1rem; }
+  .ab-page-header > * { min-width: 0; }
+  .ab-page-header .page-title { order: 0; flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ab-page-header .page-title span { display: none; }
+  .ab-page-header .ab-header-roster { order: 1; flex-direction: row; align-items: center; gap: 0.6rem; }
+  .ab-page-header .ab-roster-thumb-label { font-size: 0.7rem; }
+  .ab-page-header .ab-points-block { order: 2; }
+  .ab-page-header .voice-control { order: 3; }
+  .ab-page-header .ab-header-list { order: 4; flex: 1 1 calc(50% - 0.5rem); justify-content: stretch; align-items: stretch; gap: 0.4rem; flex-wrap: nowrap; }
+  .ab-page-header .ab-header-enemy-list { order: 5; }
+  .ab-page-header .ab-header-list .ab-list-manager { max-width: none; width: auto; flex: 1 1 auto; }
+  .ab-page-header .ab-import-btn {
+    flex: 0 0 auto; width: auto; margin: 0; padding: 0 0.8rem; white-space: nowrap;
+    border: 1px solid var(--border); border-radius: 4px; font-size: 0.75rem;
+  }
+  .ab-page-header .ab-header-stages { order: 6; flex: 1 1 100%; padding: 0; }
+  /* 9 steps: one row of 9 in landscape, 5 + 4 in portrait (below) */
+  .ab-page-header .ab-stage-tabs, .ab-page .ab-stage-tabs { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 0.35rem; width: 100%; }
+  .ab-page-header .ab-stage-tab { text-align: center; font-size: 0.7rem; padding: 0.3rem 0.35rem; white-space: normal; line-height: 1.15; }
+
+  /* ── Path to Glory header: title · Do Battle · Level Up/Share · count / roster buttons ── */
+  .ptg-page-header { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 0.9rem; }
+  .ptg-page-header > * { border-left: none !important; padding: 0 !important; min-width: 0; }
+  .ptg-page-header .page-title { order: 0; flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ptg-page-header .page-title span { display: none; }
+  .ptg-page-header .ptg-header-dobattle { order: 1; }
+  .ptg-page-header .ptg-header-levelup { order: 2; flex-direction: row; gap: 0.45rem; }
+  .ptg-page-header .unit-count { order: 3; white-space: nowrap; }
+  .ptg-page-header .voice-control { order: 4; }
+  .ptg-page-header .ptg-header-rosters { order: 5; flex: 1 1 100%; flex-wrap: wrap; justify-content: stretch; gap: 0.45rem; }
+  .ptg-page-header .ptg-header-rosters > .ptg-stagger-item { flex: 1 1 auto; display: flex; min-width: 0; }
+  .ptg-page-header .ptg-header-rosters > .ptg-stagger-item > * { flex: 1 1 auto; min-width: 0; }
+  .ptg-page-header .ptg-header-rosters .faction-dropdown-trigger { width: 100%; justify-content: space-between; }
+
+  /* Battle Buddy header: title + steps, Phases/Warscrolls, share, voice on one row */
+  .bb-header { display: flex !important; flex-wrap: wrap; align-items: center; gap: 0.6rem 1rem; }
+  .bb-header-left { flex: 1 1 auto; flex-wrap: nowrap; gap: 0.8rem; }
+  .bb-header .page-title { white-space: nowrap; }
+  .bb-header .page-title span { display: none; }
+  .bb-header .bb-mode-main { flex: 0 0 auto; }
+  .bb-header .bb-step-btn:not(.bb-step-btn-small) { min-width: 0; padding: 0.5rem 1.1rem; }
+  .bb-header-share { margin: 0; }
+
+  /* Unit tables: the Keywords cell is one line, clipped with … (the full
+     list is on the warscroll) — wrapped keywords made rows ~120px tall, so
+     only 2–5 units fitted on screen. */
+  .table-wrapper tbody td.col-keywords { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Filter checkboxes: Friendly/Enemy, Filter and Hide each get their own
+     row, items wrapping left-aligned (they were squeezed into a narrow
+     centre column / staggered rows). */
+  .filter-checkboxes { flex-direction: column; align-items: stretch; gap: 0.55rem; }
+  .filter-checkboxes .cb-group,
+  .ab-page .filters .cb-group-right {
+    display: flex !important; flex-direction: row !important; flex-wrap: wrap;
+    justify-content: flex-start !important; align-items: center !important;
+    margin: 0 !important; flex: 0 0 auto; gap: 0.45rem 1.1rem;
+  }
+  .filter-checkboxes .cb-group-header { min-width: 4.6rem; }
+  .ab-page .filters .cb-group-right .cb-group-header { grid-column: auto; }
+
+  /* Warscroll popup: keep the page dots clear of the view toggle + ✕ */
+  .gw-modal:not(.gw-modal-split) .gw-nav-dots { margin-right: 120px; }
+}
+
+/* Navbar on iPad: the page links don't all fit, and the hidden ones (behind
+   the pinned Simulacrum link) could only be reached by swiping the bar.
+   Show the ☰ menu with every page; Sign Out moves into it, the two "coming
+   soon" stubs leave the bar (still in the menu). */
+@media (min-width: 601px) and (max-width: 1100px) {
+  .navbar-nav > .nav-link-soon { display: none; }
+  .navbar-brand { letter-spacing: 0.06em; margin-right: 0.6rem; }
+  .navbar-right { gap: 0.9rem; }
+  .btn-logout { display: none; }
+  .hamburger { display: flex; min-width: 40px; min-height: 40px; align-items: center; }
+  .mobile-menu {
+    display: flex; position: fixed; top: 60px; right: 0; width: min(320px, 60vw);
+    max-height: calc(100dvh - 60px); overflow-y: auto; z-index: 150;
+    border-left: 1px solid var(--border-gold); box-shadow: -8px 8px 30px rgba(0,0,0,0.6);
+  }
+  .mobile-menu .mobile-settings-wrap { display: none; } /* ⚙ stays in the bar */
+}
+
+/* Portrait iPad: Army Builder steps as 5 + 4. */
+@media (min-width: 601px) and (max-width: 900px) {
+  .ab-page-header .ab-stage-tabs, .ab-page .ab-stage-tabs { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+
+/* Touch screens wider than a phone (iPad): finger-sized targets. */
+@media (pointer: coarse) and (min-width: 601px) {
+  .collapse-toggle { font-size: 0.8rem; min-width: 32px; min-height: 32px; opacity: 0.9; }
+  .nav-link { padding: 0.55rem 0.6rem; }
+  .btn-settings-gear, .voice-control-gear, .voice-control-mic { min-width: 36px; min-height: 36px; }
+  .btn-logout { min-height: 36px; }
+  .ab-stage-tab { min-height: 36px; }
+  .share-split > button, .share-btn { min-height: 34px; }
+  .share-split-caret { min-width: 30px; }
+  .ab-count-btn { width: 24px; height: 30px; font-size: 1rem; }
+  .ptg-action-btn, .ptg-roster-dropdown .faction-dropdown-trigger { min-height: 36px; }
+  .ptg-action-btn-secondary { padding: 0.25rem 0.7rem; }
+  .bb-step-btn, .bb-step-btn-small { min-height: 36px; }
+  .btn-both-toggle { height: 32px; padding: 0 10px; }
+  .fe-row { height: 34px; }
+  .fe-add-row { min-height: 32px; }
+  .fe-add-btn { min-height: 30px; }
+  .cb-item { min-height: 32px; }
+  .cb-item input[type=checkbox], .tri-check { width: 20px; height: 20px; }
+  .sp-flag-btn, .sp-rules-btn { min-width: 30px; min-height: 32px; }
+  .sp-flag-btn + .sp-flag-btn { margin-left: 4px; }
+  .table-wrapper .flag-check { width: 26px; height: 26px; }
+  .filter-input, .filter-select, .faction-dropdown-trigger { min-height: 40px; }
+  /* Warscroll popup + Path to Glory wizard chrome */
+  .gw-close { min-width: 40px; min-height: 34px; font-size: 1rem; }
+  .gw-view-toggle { right: 58px; }
+  .gw-view-mode-btn { min-width: 38px; min-height: 34px; }
+  .gw-modal:not(.gw-modal-split) .gw-nav-dots { margin-right: 150px; }
+  .gw-nav-dot { min-width: 24px; min-height: 24px; }
+  .ptg-wizard-toolbar .ab-roster-print-btn, .ptg-wizard-toolbar .share-split > button { min-height: 34px; }
+  .ptg-wizard-nav-btn { min-height: 40px; }
+  /* long-press = right-click (touchLongPress.js): no iOS text/callout popup */
+  table, .filters, .cb-item, .alliance-badge { -webkit-touch-callout: none; }
+  th.sortable { -webkit-user-select: none; user-select: none; }
+}
