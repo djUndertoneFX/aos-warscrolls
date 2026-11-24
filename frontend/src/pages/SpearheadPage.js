@@ -559,10 +559,10 @@ export default function SpearheadPage({ headerCollapsed }) {
                 <th style={thStyle('ward')}    className="col-ward" title="Ward">
                   <span className="th-abbr">Wd</span><span className="col-resize-handle" onMouseDown={e => startResize(e,'ward')} />
                 </th>
-                <th style={thStyle('types')}>
+                <th style={thStyle('types')} className="col-types-hdr">
                   Types<span className="col-resize-handle" onMouseDown={e => startResize(e,'types')} />
                 </th>
-                <th style={thStyle('keywords')}>
+                <th style={thStyle('keywords')} className="col-keywords-hdr">
                   Keywords<span className="col-resize-handle" onMouseDown={e => startResize(e,'keywords')} />
                 </th>
                 <th style={{...thStyle('ado_ranged'), textAlign:'center'}} className="col-ado-hdr">
@@ -767,10 +767,10 @@ export default function SpearheadPage({ headerCollapsed }) {
                             <td className="col-stat stat-group"                  >{row.control || '—'}</td>
                             <td className="col-stat stat-group stat-group-end"   >{row.save    || '—'}</td>
                             <td className="col-stat col-ward"                    >{row.ward    || '—'}</td>
-                            <td><TypeTags row={row} /></td>
-                            <td className="col-keywords">{row.keywords ? row.keywords.split(',').slice(0, 6).map((kw, i, arr) => (
+                            <td className="col-types"><TypeTags row={row} /></td>
+                            <td className="col-keywords"><span className="kw-clamp">{row.keywords ? row.keywords.split(',').slice(0, 6).map((kw, i, arr) => (
                               <span key={kw} className="kw-chip">{kw.trim()}{i < arr.length - 1 ? ', ' : ''}</span>
-                            )) : '—'}</td>
+                            )) : '—'}</span></td>
                             <td className="col-ado">{adoRanged !== null ? `${adoRanged}${hasSpecialADO ? '*' : ''}` : '—'}</td>
                             <td className="col-ado">{adoMelee  !== null ? `${adoMelee}${hasSpecialADO ? '*' : ''}` : '—'}</td>
                             <td className="col-ado">{adoPct    !== null ? `${adoPct}${hasSpecialADO ? '*' : ''}` : '—'}</td>

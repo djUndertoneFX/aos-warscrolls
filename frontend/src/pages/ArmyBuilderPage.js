@@ -2439,8 +2439,8 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
           <td className="col-stat stat-group">{row.control || '—'}</td>
           <td className="col-stat stat-group">{row.save || '—'}</td>
           <td className="col-stat col-ward">{row.ward || '—'}</td>
-          <td><TypeTags row={row} /></td>
-          <td className="col-keywords">{row.keywords ? row.keywords.split(',').slice(0, 6).join(', ') : '—'}</td>
+          <td className="col-types"><TypeTags row={row} /></td>
+          <td className="col-keywords"><span className="kw-clamp">{row.keywords ? row.keywords.split(',').slice(0, 6).join(', ') : '—'}</span></td>
           <td className="col-ado">{adoRanged !== null ? `${adoRanged}${hasSpecialADO ? '*' : ''}` : '—'}</td>
           <td className="col-ado">{adoMelee  !== null ? `${adoMelee}${hasSpecialADO ? '*' : ''}` : '—'}</td>
         </tr>
@@ -2753,11 +2753,11 @@ export default function ArmyBuilderPage({ headerCollapsed }) {
                       </React.Fragment>
                     );
                   })}
-                  <th style={thStyle('types')}>
+                  <th style={thStyle('types')} className="col-types-hdr">
                     Types
                     <span className="col-resize-handle" onMouseDown={e => startResize(e, 'types')} />
                   </th>
-                  <th style={thStyle('keywords')}>
+                  <th style={thStyle('keywords')} className="col-keywords-hdr">
                     Keywords
                     <span className="col-resize-handle" onMouseDown={e => startResize(e, 'keywords')} />
                   </th>

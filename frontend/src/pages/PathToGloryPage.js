@@ -1442,8 +1442,8 @@ export default function PathToGloryPage({ headerCollapsed }) {
                       </React.Fragment>
                     );
                   })}
-                  <th style={thStyle('types')}>Types<span className="col-resize-handle" onMouseDown={e => startResize(e,'types')} /></th>
-                  <th style={thStyle('keywords')}>Keywords<span className="col-resize-handle" onMouseDown={e => startResize(e,'keywords')} /></th>
+                  <th style={thStyle('types')} className="col-types-hdr">Types<span className="col-resize-handle" onMouseDown={e => startResize(e,'types')} /></th>
+                  <th style={thStyle('keywords')} className="col-keywords-hdr">Keywords<span className="col-resize-handle" onMouseDown={e => startResize(e,'keywords')} /></th>
                   {(() => {
                     const mkBox = str => { const [title, ...rest] = str.split('\n'); return <div className="ado-tip-box"><div className="ado-tip-title">{title}</div><div className="ado-tip-body">{rest.join('\n').trim()}</div></div>; };
                     const adoRBox = mkBox(makeAdoTooltip(includeSaveWardInADO, presumedSave ?? 5, presumedWard ?? null, 'ranged'));
@@ -1548,10 +1548,10 @@ export default function PathToGloryPage({ headerCollapsed }) {
                         <td className="col-stat stat-group">{row.control || '—'}</td>
                         <td className="col-stat stat-group">{row.save || '—'}</td>
                         <td className="col-stat col-ward">{row.ward || '—'}</td>
-                        <td onClick={e => e.stopPropagation()} onContextMenu={e => e.stopPropagation()}>
+                        <td className="col-types" onClick={e => e.stopPropagation()} onContextMenu={e => e.stopPropagation()}>
                           <TypeTags row={row} onFilter={(type, exclude) => handleFilterFromRow(type, null, exclude)} />
                         </td>
-                        <td className="col-keywords" onClick={e => e.stopPropagation()} onContextMenu={e => e.stopPropagation()}>
+                        <td className="col-keywords" onClick={e => e.stopPropagation()} onContextMenu={e => e.stopPropagation()}><span className="kw-clamp">
                           {row.keywords ? row.keywords.split(',').slice(0, 6).map((kw, i, arr) => (
                             <span
                               key={kw}
@@ -1561,7 +1561,7 @@ export default function PathToGloryPage({ headerCollapsed }) {
                               onContextMenu={e => { e.stopPropagation(); e.preventDefault(); const tk = KEYWORD_TYPE_MAP[kw.trim().toUpperCase()]; tk ? handleFilterFromRow(tk, null, true) : handleFilterFromRow('search', kw.trim(), true); }}
                             >{kw.trim()}{i < arr.length - 1 ? ', ' : ''}</span>
                           )) : '—'}
-                        </td>
+                        </span></td>
                         <td className="col-ado">{adoRanged !== null ? `${adoRanged}${hasSpecialADO ? '*' : ''}` : '—'}</td>
                         <td className="col-ado">{adoMelee  !== null ? `${adoMelee}${hasSpecialADO ? '*' : ''}` : '—'}</td>
                         <td className="col-ado col-ado-pct">{adoPct !== null ? `${adoPct}${hasSpecialADO ? '*' : ''}` : '—'}</td>

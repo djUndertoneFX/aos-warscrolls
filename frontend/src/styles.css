@@ -7212,9 +7212,9 @@ textarea.ptg-doc-overlay-input {
   .bb-source-btn { min-height: 38px; }
   .bb-load-btn { min-height: 36px; padding: 0 0.8rem; }
 
-  /* ── 6. Slimmer unit tables: hide #, points & ADO columns ── */
+  /* ── 6. Slimmer unit tables: hide the # column ── */
   .table-wrapper table th:first-child, .table-wrapper table td:first-child { display: none; }
-  .col-points, .col-ado, .th-ado, .td-ado { display: none; }
+  .col-points, .th-ado, .td-ado { display: none; } /* ADO cells stay: their headers always showed, so hiding the cells shifted every column after Types */
 
   /* Army Builder: points on one line, compact Import buttons, the inline
      roster pane hidden (Army Roster opens from its button), stage body full width. */
@@ -7389,10 +7389,6 @@ textarea.ptg-doc-overlay-input {
   .bb-header .bb-step-btn:not(.bb-step-btn-small) { min-width: 0; padding: 0.5rem 1.1rem; }
   .bb-header-share { margin: 0; }
 
-  /* Unit tables: the Keywords cell is one line, clipped with … (the full
-     list is on the warscroll) — wrapped keywords made rows ~120px tall, so
-     only 2–5 units fitted on screen. */
-  .table-wrapper tbody td.col-keywords { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   /* Filter checkboxes: Friendly/Enemy, Filter and Hide each get their own
      row, items wrapping left-aligned (they were squeezed into a narrow
@@ -7468,4 +7464,23 @@ textarea.ptg-doc-overlay-input {
   /* long-press = right-click (touchLongPress.js): no iOS text/callout popup */
   table, .filters, .cb-item, .alliance-badge { -webkit-touch-callout: none; }
   th.sortable { -webkit-user-select: none; user-select: none; }
+}
+
+/* ── Unit tables on phone + iPad: Types and Keywords ─────────────────────────
+   Keywords wrap to at most two lines (…clipped after that; the full list is
+   on the warscroll), and type tags stay inside their own column instead of
+   running over the keywords. On touch screens the two columns get fixed
+   widths (the drag-to-resize handles are mouse-only there anyway). */
+@media (max-width: 1200px) {
+  .table-wrapper tbody td.col-keywords { white-space: normal; overflow: hidden; }
+  .table-wrapper td.col-keywords .kw-clamp {
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+    overflow: hidden; line-height: 1.35; word-break: normal;
+  }
+  .table-wrapper tbody td.col-types { white-space: normal; overflow: hidden; }
+  .table-wrapper td.col-types .type-tag { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+@media (max-width: 600px), (pointer: coarse) and (max-width: 1200px) {
+  .table-wrapper th.col-types-hdr { width: 104px !important; }
+  .table-wrapper th.col-keywords-hdr { width: 270px !important; }
 }
