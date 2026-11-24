@@ -7484,3 +7484,13 @@ textarea.ptg-doc-overlay-input {
   .table-wrapper th.col-types-hdr { width: 104px !important; }
   .table-wrapper th.col-keywords-hdr { width: 270px !important; }
 }
+
+/* Weapon ability text (e.g. "Anti-CAVALRY (+1 Rend), Charge (+1 Damage)")
+   wraps onto extra lines on phones/iPads instead of being cut off with …
+   — there's no hover tooltip on a touch screen to read the rest. */
+@media (max-width: 1200px) {
+  .gw-td-ability,
+  .inline-weapon-table .iwt-td-ability {
+    white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.25; overflow-wrap: anywhere;
+  }
+}
