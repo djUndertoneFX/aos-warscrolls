@@ -15,6 +15,7 @@ import BattleBuddyPage from './pages/BattleBuddyPage';
 import SimulacrumPage from './pages/SimulacrumPage';
 import SpearheadPage from './pages/SpearheadPage';
 import PathToGloryPage from './pages/PathToGloryPage';
+import OraclePage from './pages/OraclePage';
 import MatchedPlayPage from './pages/MatchedPlayPage';
 import FileBugModal from './components/FileBugModal';
 import ResetLinkModal from './components/ResetLinkModal';
@@ -28,7 +29,7 @@ const NAV_PAGES = [
   { label: 'Matched Play',       path: '/matched-play' },
   { label: 'Spearhead',          path: '/spearhead' },
   { label: 'Path to Glory',      path: '/path-to-glory' },
-  { label: 'Consult the Oracle', path: '/consult-oracle',  soon: true },
+  { label: 'Consult the Oracle', path: '/consult-oracle' },
   { label: 'Comparitator',       path: '/comparitator',    soon: true },
   { label: 'Simulacrum',         path: '/simulacrum' },
 ];
@@ -292,7 +293,7 @@ function AppRoutes() {
         <Route path="/matched-play"  element={<ProtectedRoute><MatchedPlayPage /></ProtectedRoute>} />
         <Route path="/spearhead"     element={<ProtectedRoute><SpearheadPage headerCollapsed={headerCollapsed} /></ProtectedRoute>} />
         <Route path="/path-to-glory"  element={<ProtectedRoute><PathToGloryPage headerCollapsed={headerCollapsed} /></ProtectedRoute>} />
-        <Route path="/consult-oracle" element={<ProtectedRoute><ComingSoon title="Consult the Oracle" /></ProtectedRoute>} />
+        <Route path="/consult-oracle" element={<ProtectedRoute><OraclePage /></ProtectedRoute>} />
         <Route path="/comparitator"   element={<ProtectedRoute><ComingSoon title="Comparitator" /></ProtectedRoute>} />
         <Route path="/simulacrum"    element={<ProtectedRoute><SimulacrumPage headerCollapsed={headerCollapsed} /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to={user ? "/warscrolls" : "/login"} />} />

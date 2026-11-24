@@ -7494,3 +7494,88 @@ textarea.ptg-doc-overlay-input {
     white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.25; overflow-wrap: anywhere;
   }
 }
+
+/* ═══════════════════ Consult the Oracle (rules library) ═══════════════════ */
+.oracle-page { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding: 0 1.5rem; }
+.oracle-header { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.oracle-header .page-title { white-space: nowrap; }
+.oracle-search { position: relative; flex: 1 1 320px; max-width: 640px; margin-left: auto; }
+.oracle-search input { width: 100%; padding-right: 2.2rem; }
+.oracle-clear { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-dim); font-size: 1rem; cursor: pointer; min-width: 30px; min-height: 30px; }
+.oracle-body { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 220px minmax(0, 1fr) 240px; gap: 1.2rem; padding-bottom: 0.8rem; }
+.oracle-library, .oracle-toc, .oracle-main { min-height: 0; overflow-y: auto; }
+.oracle-main { padding-right: 0.4rem; scroll-padding-top: 0.5rem; }
+.oracle-lib-group { margin-bottom: 1rem; }
+.oracle-lib-group-title { font-family: 'Cinzel', serif; font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-dim); margin: 0 0 0.35rem; padding-bottom: 0.25rem; border-bottom: 1px solid var(--border); }
+.oracle-lib-book { display: block; width: 100%; text-align: left; background: none; border: 1px solid transparent; border-radius: 3px; color: var(--text, #e8d8b0); font-family: 'Crimson Pro', Georgia, serif; font-size: 1rem; padding: 0.35rem 0.55rem; cursor: pointer; }
+.oracle-lib-book:hover { border-color: var(--border); background: rgba(201,168,76,0.06); }
+.oracle-lib-book.active { color: var(--gold); border-color: var(--gold); background: rgba(201,168,76,0.12); }
+.oracle-toc-item { display: block; width: 100%; text-align: left; background: none; border: none; color: var(--text-dim); font-family: 'Crimson Pro', Georgia, serif; cursor: pointer; padding: 0.2rem 0.3rem; font-size: 0.92rem; line-height: 1.25; }
+.oracle-toc-item.lvl3 { padding-left: 1.1rem; font-size: 0.85rem; }
+.oracle-toc-item:hover { color: var(--gold); }
+.oracle-empty { padding: 2rem 0; color: var(--text-dim); font-style: italic; text-align: center; }
+
+.oracle-doc-head { border-bottom: 1px solid var(--border-gold, #8a6a2a); margin-bottom: 1rem; padding-bottom: 0.6rem; }
+.oracle-doc-group { font-family: 'Cinzel', serif; font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-dim); }
+.oracle-doc-title { font-family: 'Cinzel', serif; color: var(--gold); font-size: 1.8rem; margin: 0.1rem 0 0.2rem; }
+.oracle-doc-source { font-size: 0.8rem; color: var(--text-dim); }
+
+.oracle-doc-body { font-family: 'Crimson Pro', Georgia, serif; font-size: 1.05rem; line-height: 1.5; color: var(--text, #e8d8b0); max-width: 900px; }
+.oracle-doc-body h2 { font-family: 'Cinzel', serif; color: var(--gold); font-size: 1.35rem; margin: 1.6rem 0 0.5rem; padding-bottom: 0.2rem; border-bottom: 1px solid var(--border); scroll-margin-top: 0.5rem; }
+.oracle-doc-body h3 { font-family: 'Cinzel', serif; color: #d8bd72; font-size: 1.1rem; margin: 1.2rem 0 0.4rem; scroll-margin-top: 0.5rem; }
+.oracle-doc-body h4, .oracle-doc-body h5 { font-family: 'Cinzel', serif; color: #c8b07a; font-size: 0.98rem; margin: 1rem 0 0.3rem; scroll-margin-top: 0.5rem; }
+.oracle-doc-body b, .oracle-doc-body strong { color: #f0e2bd; }
+.oracle-doc-body ul, .oracle-doc-body ol { margin: 0.4rem 0 0.6rem; padding-left: 1.4rem; }
+.oracle-doc-body li { margin: 0.15rem 0; }
+.oracle-doc-body .or-table-wrap { overflow-x: auto; margin: 0.6rem 0; }
+.oracle-doc-body table { width: auto; min-width: 50%; table-layout: auto; border-collapse: collapse; font-size: 0.95rem; }
+.oracle-doc-body td, .oracle-doc-body th { border: 1px solid var(--border); padding: 0.3rem 0.55rem; vertical-align: top; }
+.oracle-doc-body td:empty { display: none; }
+.oracle-doc-body .or-sub { font-family: 'Cinzel', serif; font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-dim); margin-top: 1rem; }
+.oracle-doc-body .or-box { border: 1px solid var(--border); background: rgba(255,255,255,0.03); border-radius: 4px; padding: 0.6rem 0.9rem; margin: 0.8rem 0; }
+.oracle-doc-body .or-box > h2:first-child, .oracle-doc-body .or-box > h3:first-child, .oracle-doc-body .or-box > div:first-child > h2 { margin-top: 0.2rem; }
+.oracle-doc-body .or-summary { border: 1px solid #802022; border-left: 4px solid #a02a2c; background: rgba(160,42,44,0.10); border-radius: 4px; padding: 0.5rem 0.9rem; margin: 0.8rem 0; }
+.oracle-doc-body .or-ab { --abc: #555; border: 1px solid var(--abc); border-radius: 3px; margin: 0.7rem 0; background: rgba(0,0,0,0.25); }
+.oracle-doc-body .or-ab-h { background: var(--abc); color: #fff; font-family: 'Cinzel', serif; font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; padding: 0.3rem 0.7rem; font-weight: 700; }
+.oracle-doc-body .or-ab-b { padding: 0.5rem 0.8rem; }
+.oracle-doc-body .or-ab-k { border-top: 1px solid var(--abc); padding: 0.25rem 0.8rem; font-family: 'Cinzel', serif; font-size: 0.72rem; letter-spacing: 0.08em; color: var(--text-dim); }
+.oracle-doc-body .or-ab-k::before { content: 'KEYWORDS  '; color: var(--gold); }
+.oracle-doc-body details.or-faq { border: 1px dashed var(--border); border-radius: 4px; margin: 0.6rem 0; padding: 0.2rem 0.7rem; background: rgba(120,160,220,0.04); }
+.oracle-doc-body details.or-faq > summary { cursor: pointer; color: #9fb7d8; font-family: 'Cinzel', serif; font-size: 0.75rem; letter-spacing: 0.1em; padding: 0.3rem 0; }
+.oracle-doc-body .or-qa { margin: 0.4rem 0 0.6rem; }
+.oracle-doc-body .or-q::before { content: 'Q: '; font-weight: 700; color: #9fb7d8; }
+.oracle-doc-body .or-a::before { content: 'A: '; font-weight: 700; color: var(--gold); }
+.oracle-doc-body .or-a > div { display: inline; }
+.oracle-doc-body .or-errata { color: #cdbb93; }
+.oracle-doc-body img.or-map { display: block; max-width: 100%; height: auto; margin: 0.6rem auto; border: 1px solid var(--border); background: #fff; }
+.oracle-doc-body mark.or-hit, .oracle-results mark { background: rgba(201,168,76,0.45); color: #fff; padding: 0 1px; border-radius: 2px; }
+
+.oracle-results-head { color: var(--text-dim); font-style: italic; margin-bottom: 0.6rem; }
+.oracle-result { display: block; width: 100%; text-align: left; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 4px; padding: 0.55rem 0.8rem; margin-bottom: 0.5rem; color: var(--text, #e8d8b0); cursor: pointer; font-family: 'Crimson Pro', Georgia, serif; }
+.oracle-result:hover { border-color: var(--gold); }
+.oracle-result-where { font-family: 'Cinzel', serif; font-size: 0.78rem; color: #d8bd72; margin-bottom: 0.2rem; }
+.oracle-result-book { color: var(--gold); font-weight: 700; }
+.oracle-result-snip { font-size: 0.95rem; color: var(--text-dim); line-height: 1.35; }
+
+@media (max-width: 1200px) {
+  .oracle-body { grid-template-columns: 200px minmax(0, 1fr); }
+  .oracle-toc { display: none; }
+}
+/* Phone: books in a drop-down sheet, "Jump to section" select, one column */
+.oracle-phone-lib-btn { display: none; }
+@media (max-width: 600px) {
+  .oracle-page { padding: 0 0.7rem; }
+  .oracle-header { gap: 0.5rem; padding-bottom: 0.5rem; }
+  .oracle-header .page-title { font-size: 1.3rem; }
+  .oracle-search { flex: 1 1 100%; max-width: none; order: 3; }
+  .oracle-search input { font-size: 16px; min-height: 42px; }
+  .oracle-phone-lib-btn { display: inline-block; margin-left: auto; background: transparent; color: var(--gold); border: 1px solid var(--border-gold, #8a6a2a); border-radius: 4px; padding: 0 0.7rem; min-height: 38px; font-family: 'Cinzel', serif; font-size: 0.78rem; max-width: 60vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .oracle-body { display: flex; flex-direction: column; gap: 0.5rem; }
+  .oracle-phone-lib { background: var(--bg, #14110d); border: 1px solid var(--border-gold, #8a6a2a); border-radius: 4px; padding: 0.6rem; max-height: 60vh; overflow-y: auto; }
+  .oracle-phone-lib .oracle-lib-book { min-height: 40px; }
+  .oracle-main { flex: 1 1 auto; }
+  .oracle-phone-toc { width: 100%; min-height: 42px; font-size: 16px; margin-bottom: 0.6rem; }
+  .oracle-doc-title { font-size: 1.35rem; }
+  .oracle-doc-body { font-size: 1rem; }
+  .oracle-doc-body h2 { font-size: 1.15rem; }
+}

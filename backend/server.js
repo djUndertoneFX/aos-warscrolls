@@ -185,7 +185,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production-use-a-long
 // ─── Middleware ──────────────────────────────────────────────────────────────
 
 app.use(cors());
-app.use(express.json({ limit: '5mb' }));
+app.use(express.json({ limit: '5mb' })); // (Oracle uploads are ~1 MB)
 
 // Initialize DB on startup
 initDb();
@@ -514,6 +514,39 @@ app.post('/api/admin/reset-link', requireAuth, (req, res) => {
   } finally {
     db.close();
   }
+});
+
+// ── Consult the Oracle (rules reference) ─────────────────────────────────
+// GET /api/oracle — the library: books with their tables of contents.
+// GET /api/oracle/:slug — one book's HTML.
+// PUT /api/admin/oracle { pages: { slug: { html } } } — admins only; the
+// pages are cleaned in the browser from Wahapedia and re-sanitised here.
+const oracle = require('./oracle');
+app.get('/api/oracle', requireAuth, (req, res) => {
+  const db = getDb();
+  try { res.json({ books: oracle.BOOKS, pages: oracle.listPages(db) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+  finally { db.close(); }
+});
+app.get('/api/oracle/:slug', requireAuth, (req, res) => {
+  const db = getDb();
+  try {
+    const p = oracle.getPage(db, req.params.slug);
+    if (!p) return res.status(404).json({ error: 'Not found' });
+    res.set('Cache-Control', 'private, max-age=300');
+    res.json(p);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+  finally { db.close(); }
+});
+app.put('/api/admin/oracle', requireAuth, (req, res) => {
+  const db = getDb();
+  try {
+    const me = db.prepare('SELECT username FROM users WHERE id = ?').get(req.user.id);
+    if (!me || !ADMIN_USERNAMES.includes(String(me.username).toLowerCase())) return res.status(403).json({ error: 'Admins only.' });
+    const saved = oracle.savePages(db, (req.body || {}).pages);
+    res.json({ saved });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+  finally { db.close(); }
 });
 
 // GET /api/admin/me — whether the signed-in account is an admin.
