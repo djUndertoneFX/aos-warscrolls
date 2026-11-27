@@ -7557,6 +7557,41 @@ textarea.ptg-doc-overlay-input {
 .oracle-result-book { color: var(--gold); font-weight: 700; }
 .oracle-result-snip { font-size: 0.95rem; color: var(--text-dim); line-height: 1.35; }
 
+/* Mic, search options, collapsible sections, keywords, glossary */
+.oracle-search:has(.oracle-mic) input { padding-right: 4.4rem; }
+.oracle-search:has(.oracle-mic) .oracle-clear { right: 40px; }
+.oracle-mic { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); background: none; border: 1px solid transparent; border-radius: 50%; font-size: 1.05rem; cursor: pointer; min-width: 34px; min-height: 34px; line-height: 1; filter: grayscale(0.4); }
+.oracle-mic:hover { border-color: var(--border); filter: none; }
+.oracle-mic.listening { border-color: #c0392b; background: rgba(192,57,43,0.22); filter: none; animation: oracle-mic-pulse 1.1s ease-in-out infinite; }
+@keyframes oracle-mic-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(192,57,43,0.55); } 50% { box-shadow: 0 0 0 6px rgba(192,57,43,0); } }
+.oracle-mic-msg { position: absolute; top: calc(100% + 4px); right: 0; z-index: 30; background: var(--bg, #14110d); border: 1px solid var(--border-gold, #8a6a2a); border-radius: 4px; padding: 0.35rem 0.6rem; font-size: 0.85rem; color: var(--text, #e8d8b0); max-width: 320px; }
+.oracle-options { display: flex; gap: 0.9rem; align-items: center; flex-wrap: wrap; }
+.oracle-check { display: inline-flex; align-items: center; gap: 0.35rem; color: var(--text, #e8d8b0); font-size: 0.92rem; cursor: pointer; white-space: nowrap; user-select: none; }
+.oracle-check input { accent-color: var(--gold); width: 16px; height: 16px; margin: 0; cursor: pointer; }
+.oracle-check-note { color: var(--text-dim); font-size: 0.8rem; font-style: italic; white-space: normal; margin-left: 0.3rem; }
+.oracle-link-btn { background: none; border: none; color: var(--gold); text-decoration: underline; cursor: pointer; font: inherit; padding: 0 0.2rem; font-style: normal; }
+.oracle-sec-tools { display: flex; gap: 0.6rem; margin-top: 0.35rem; font-size: 0.85rem; }
+.oracle-doc-body h2.or-sec-head { cursor: pointer; user-select: none; }
+.oracle-doc-body h2.or-sec-head:hover { color: #f0d890; }
+.oracle-doc-body h2.or-sec-head:focus-visible { outline: 1px dashed var(--gold); outline-offset: 3px; }
+.oracle-doc-body .or-sec-caret { display: inline-block; width: 1.1em; font-size: 0.85em; color: var(--text-dim); transition: transform 0.15s; }
+.oracle-doc-body h2.or-sec-head.collapsed .or-sec-caret { transform: rotate(-90deg); }
+.oracle-doc-body h2.or-sec-head.collapsed { opacity: 0.85; }
+.oracle-doc-body .or-sec-hidden { display: none !important; }
+.oracle-doc-body b.or-kw { color: #f6e7c1; font-weight: 700; }
+.oracle-doc-body b.or-kw[title] { cursor: help; text-decoration: underline dotted rgba(201,168,76,0.5); text-underline-offset: 3px; }
+.oracle-glossary .oracle-doc-head .oracle-gl-toggle { margin-top: 0.4rem; white-space: normal; }
+.oracle-glossary .or-gl-intro { color: var(--text-dim); font-style: italic; }
+.oracle-glossary .or-gl-letter { font-size: 1.2rem; }
+.oracle-glossary .or-gl-entry { margin: 0.35rem 0 0.55rem; scroll-margin-top: 0.5rem; border-radius: 3px; }
+.oracle-glossary .or-gl-term { background: none; border: none; padding: 0; font: inherit; font-weight: 700; color: var(--gold); cursor: pointer; text-align: left; }
+.oracle-glossary .or-gl-term:hover { text-decoration: underline; }
+.oracle-glossary .or-gl-ref { color: #9fb7d8; white-space: nowrap; }
+.oracle-glossary .or-gl-extra .or-gl-star { color: #9fb7d8; }
+.oracle-glossary .or-gl-source { margin-top: 1.5rem; font-size: 0.85rem; color: var(--text-dim); }
+.or-flash { animation: or-flash 1.5s ease-out; }
+@keyframes or-flash { 0% { background: rgba(201,168,76,0.35); } 100% { background: transparent; } }
+
 @media (max-width: 1200px) {
   .oracle-body { grid-template-columns: 200px minmax(0, 1fr); }
   .oracle-toc { display: none; }
@@ -7569,6 +7604,10 @@ textarea.ptg-doc-overlay-input {
   .oracle-header .page-title { font-size: 1.3rem; }
   .oracle-search { flex: 1 1 100%; max-width: none; order: 3; }
   .oracle-search input { font-size: 16px; min-height: 42px; }
+  .oracle-options { order: 4; width: 100%; gap: 1.1rem; }
+  .oracle-check { min-height: 32px; }
+  .oracle-mic { min-width: 40px; min-height: 40px; }
+  .oracle-mic-msg { left: 0; right: auto; max-width: none; }
   .oracle-phone-lib-btn { display: inline-block; margin-left: auto; background: transparent; color: var(--gold); border: 1px solid var(--border-gold, #8a6a2a); border-radius: 4px; padding: 0 0.7rem; min-height: 38px; font-family: 'Cinzel', serif; font-size: 0.78rem; max-width: 60vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .oracle-body { display: flex; flex-direction: column; gap: 0.5rem; }
   .oracle-phone-lib { background: var(--bg, #14110d); border: 1px solid var(--border-gold, #8a6a2a); border-radius: 4px; padding: 0.6rem; max-height: 60vh; overflow-y: auto; }

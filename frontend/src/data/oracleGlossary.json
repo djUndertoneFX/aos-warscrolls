@@ -1,0 +1,1226 @@
+{
+ "source": "Warhammer Age of Sigmar – The Rules (April 2025 download), Glossary pg 59-64",
+ "intro": "This glossary is an alphabetised list of rules definitions. It is intended to be a useful resource if you need a quick reminder of what a rule does or a short summary of a game term. It is not intended as an exhaustive list of precise definitions – if you need the full rule, refer to the relevant rules module. If there are any contradictions between this glossary and a rules module, the rules module takes precedence.",
+ "entries": [
+  {
+   "term": "abilities",
+   "html": "The things that units can do in the game. Some abilities, like ‘Normal Move’ and ‘Fight’, are common to all units; others are specific to certain units and only appear on their warscroll. Sometimes the players themselves use abilities.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "5.0"
+   }
+  },
+  {
+   "term": "active player",
+   "html": "The player whose turn is taking place. There are 2 turns in a battle round. The active player can use abilities with the ‘Your Phase’ timing.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "12.0"
+   }
+  },
+  {
+   "term": "allocate",
+   "html": "Damage points are allocated one at a time to a unit after all the damage points inflicted by an ability have been totalled in the damage pool.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "18.2"
+   }
+  },
+  {
+   "term": "All-out Attack",
+   "html": "Command, 1CP, reaction. Attacking unit adds 1 to hit rolls.",
+   "ref": {
+    "book": "Commands",
+    "sec": "6.0"
+   }
+  },
+  {
+   "term": "All-out Defence",
+   "html": "Command, 1CP, reaction. Target unit adds 1 to save rolls.",
+   "ref": {
+    "book": "Commands",
+    "sec": "7.0"
+   }
+  },
+  {
+   "term": "Anti-X (+1 Rend)",
+   "html": "Weapon ability. +1 Rend for attacks that target units that fulfil the condition after ‘Anti-’.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "20.0"
+   }
+  },
+  {
+   "term": "Any (…) Phase",
+   "html": "Timing. Either player can use abilities with this timing, regardless of who the active player is.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "13.0"
+   }
+  },
+  {
+   "term": "Army of Renown",
+   "html": "A special type of army that uses a modified set of faction rules.",
+   "ref": {
+    "book": "Army Composition",
+    "sec": "2.2"
+   }
+  },
+  {
+   "term": "army",
+   "html": "All of a player’s units are collectively referred to as their army.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "1.0"
+   }
+  },
+  {
+   "term": "army composition",
+   "html": "The step before a battle in which the players build their armies. The battlepack may specify in more detail what they can and can’t include in their armies."
+  },
+  {
+   "term": "army roster",
+   "html": "The list of units in a player’s army, and any other important information like enhancements. Players can check each other’s rosters any time they like.",
+   "ref": {
+    "book": "Army Composition",
+    "sec": "1.1"
+   }
+  },
+  {
+   "term": "artefact of power",
+   "html": "Enhancement. You can give 1 <b>Hero</b> in your army an artefact of power.",
+   "ref": {
+    "book": "Army Composition",
+    "sec": "4.1"
+   }
+  },
+  {
+   "term": "At the Double",
+   "html": "Command, 1CP, reaction. Add 6 to Move instead of making the run roll.",
+   "ref": {
+    "book": "Commands",
+    "sec": "3.0"
+   }
+  },
+  {
+   "term": "attack sequence",
+   "html": "Make hit roll, wound roll and save roll, then determine damage points inflicted.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "17.0"
+   }
+  },
+  {
+   "term": "auxiliary unit",
+   "html": "A unit on your army roster that is not part of a regiment.",
+   "ref": {
+    "book": "Army Composition",
+    "sec": "3.6"
+   }
+  },
+  {
+   "term": "Banish Manifestation",
+   "html": "Your Hero Phase, 30&quot;, banishment roll of 2D6. Equal or beat banishment value of the manifestation to remove it from play.",
+   "ref": {
+    "book": "Magic",
+    "sec": "7.2"
+   }
+  },
+  {
+   "term": "battle profile",
+   "html": "Important information about a unit that you will need to refer to if you wish to include it in your army, such as its points value and minimum unit size.",
+   "ref": {
+    "book": "Army Composition",
+    "sec": "1.3"
+   }
+  },
+  {
+   "term": "battle round",
+   "html": "The battle lasts a number of battle rounds specified in the battleplan. Each battle round has 2 turns (1 for each player), and each turn has 7 phases.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "11.0"
+   }
+  },
+  {
+   "term": "battle tactics",
+   "html": "Attempt by using the ‘Tactical Gambit’ ability at the start of your turn. Complete at the end of your turn for 4 victory points.",
+   "ref": {
+    "book": "Battle Tactics",
+    "sec": "1.0"
+   }
+  },
+  {
+   "term": "battle trait",
+   "html": "A type of faction rule that usually affects your army as a whole and reflects the way your faction does battle, as opposed to individual units."
+  },
+  {
+   "term": "battlefield",
+   "html": "The flat surface on which the battle is fought. Usually has 2 short edges and 2 long edges, which may collectively be referred to as ‘the battlefield edge’. It is divided into 4 large quarters, each of which is divided into 4 small quarters (effectively sixteenths)."
+  },
+  {
+   "term": "battleplan",
+   "html": "The set of rules that describes the scenario of the battle and determines things such as where the armies deploy, where any objectives are located and how the players win the battle.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "9.0"
+   }
+  },
+  {
+   "term": "begins deployment",
+   "html": "The player who is allowed to use a <b>Deploy</b> ability during deployment first is said to be the one who begins deployment. The battleplan will specify which player does so.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "10.0"
+   }
+  },
+  {
+   "term": "behind a terrain feature",
+   "html": "Impossible to draw a line from a model in the attacking unit to a model in the target unit without it passing across the terrain feature.",
+   "ref": {
+    "book": "Terrain",
+    "sec": "1.1"
+   }
+  },
+  {
+   "term": "Cavalry",
+   "html": "A unit keyword. Mounted on warbeasts. <b>Cavalry</b> are fast and hard-hitting but are generally vulnerable to attritional combat."
+  },
+  {
+   "term": "Champion",
+   "html": "Model’s weapons have +1 to Attacks characteristic.",
+   "ref": {
+    "book": "Command Models",
+    "sec": "1.0"
+   }
+  },
+  {
+   "term": "Charge",
+   "html": "Your Charge Phase, charge roll of 2D6. Must get within ½&quot; of any visible enemy units to succeed, otherwise unit stays where it is.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "14.3"
+   }
+  },
+  {
+   "term": "Charge (+1 Damage)",
+   "html": "Weapon ability. +1 Damage if attacking unit charged.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "20.0"
+   }
+  },
+  {
+   "term": "climb",
+   "html": "Movement vertically up or down the surface of a terrain feature. The model’s base is assumed to stay in contact with the terrain feature as it moves and remain parallel with the battlefield floor.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "15.2"
+   }
+  },
+  {
+   "term": "coherency",
+   "html": "When a unit is set up or ends a move, each model in the unit must be within coherency range.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "15.1"
+   }
+  },
+  {
+   "term": "coherency range",
+   "html": "½&quot; horizontally and any distance vertically of 1 or more other models if unit has 6 or fewer models; 2 or more if unit has 7+ models.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "15.1"
+   }
+  },
+  {
+   "term": "combat attack",
+   "html": "An attack made with a melee weapon.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "16.0"
+   }
+  },
+  {
+   "term": "combat range",
+   "html": "Model’s combat range = 3&quot; horizontally and any distance vertically from model. Unit’s combat range = 3&quot; horizontally and any distance vertically from all models in unit. A unit is in combat if any enemy models are within its combat range.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "7.0"
+   }
+  },
+  {
+   "term": "command points",
+   "html": "Each player gets 4 command points at start of round. Underdog gets 1 extra.",
+   "ref": {
+    "book": "Commands",
+    "sec": "1.0"
+   }
+  },
+  {
+   "term": "commander",
+   "html": "You are the commander of your army and everything in it (units, models, etc.)."
+  },
+  {
+   "term": "commands",
+   "html": "Abilities that require you to spend a number of command points in order to use them.",
+   "ref": {
+    "book": "Commands",
+    "sec": "1.0"
+   }
+  },
+  {
+   "term": "Companion",
+   "html": "Weapon ability. Weapon doesn’t get bonuses from friendly abilities that affect attacks.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "20.0"
+   }
+  },
+  {
+   "term": "contesting",
+   "html": "Models contest objectives within their combat range (3&quot;). When determining objective control, the same unit cannot contest more than 1 objective at the same time; the player must pick 1 if more than 1 is within range.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "32.1"
+   }
+  },
+  {
+   "term": "control",
+   "html": "Determined at the start of the first battle round and the end of each turn. Objectives are controlled by player that has the highest army control score for that objective.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "32.2"
+   }
+  },
+  {
+   "term": "Control characteristic",
+   "html": "Determines how good unit is at contesting objectives (see ‘control’).",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "4.0"
+   }
+  },
+  {
+   "term": "control score",
+   "html": "A unit’s control score is determined by adding all the Control characteristics of models in the unit contesting the objective in question. An army’s control score for that objective is determined by adding together all the control scores of units in the army contesting that objective.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "32.2"
+   }
+  },
+  {
+   "term": "Core",
+   "html": "Basic ability that can only be used by each unit once per phase, e.g. Move, Shoot, Fight.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "5.1"
+   }
+  },
+  {
+   "term": "Counter-charge",
+   "html": "Command, 2CP. Charge in enemy charge phase.",
+   "ref": {
+    "book": "Commands",
+    "sec": "5.0"
+   }
+  },
+  {
+   "term": "Cover",
+   "html": "-1 to hit rolls for attacks that target a unit behind or wholly on this terrain feature, unless unit <b>charged</b> or has <b>Fly</b>.",
+   "ref": {
+    "book": "Terrain",
+    "sec": "1.2"
+   }
+  },
+  {
+   "term": "Covering Fire",
+   "html": "Command, 1CP. Shoot in enemy shooting phase, but -1 to hit rolls and must target nearest enemy unit.",
+   "ref": {
+    "book": "Commands",
+    "sec": "4.0"
+   }
+  },
+  {
+   "term": "Crit (2 Hits)",
+   "html": "Weapon ability. Unmodified hit roll of 6 scores 2 hits on target.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "20.0"
+   }
+  },
+  {
+   "term": "Crit (Auto-wound)",
+   "html": "Weapon ability. Unmodified hit roll of 6 skips wound roll step.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "20.0"
+   }
+  },
+  {
+   "term": "Crit (Mortal)",
+   "html": "Weapon ability. Unmodified hit roll of 6 inflicts an amount of mortal damage equal to the Damage characteristic of the weapon and the sequence ends.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "20.0"
+   }
+  },
+  {
+   "term": "critical hit",
+   "html": "Unmodified hit roll of 6.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "17.0"
+   }
+  },
+  {
+   "term": "D3",
+   "html": "Roll a D6 and halve the result, rounding up.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "2.2"
+   }
+  },
+  {
+   "term": "damaged",
+   "html": "A unit is damaged if it has any damage points currently allocated to it (i.e. if the damage points allocated to it were not enough to slay a model in the unit). Some abilities Heal damaged units.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "18.2"
+   }
+  },
+  {
+   "term": "Damage characteristic",
+   "html": "Determines number of damage points inflicted by successful attack.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "17.0"
+   }
+  },
+  {
+   "term": "damage points",
+   "html": "Damage points are inflicted by successful attacks and mortal damage. Damage points go into a damage pool first, then they must be allocated one at a time to the target unit. Each time the number of damage points allocated to a unit equals its Health characteristic, a model in the unit is slain.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "17.0"
+   }
+  },
+  {
+   "term": "damage pool",
+   "html": "Inflicted damage points are added to the target’s damage pool until all damage points inflicted by the ability have been calculated. Then, each of those damage points must be allocated one at a time to the target unit.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "17.0"
+   }
+  },
+  {
+   "term": "Declare",
+   "html": "The step of every ability after which players may use reactions but before the effect is resolved.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "5.2"
+   }
+  },
+  {
+   "term": "deployment phase",
+   "html": "Phase in which players use <b>Deploy</b> abilities to deploy their armies.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "10.0"
+   }
+  },
+  {
+   "term": "destroyed",
+   "html": "A unit is destroyed when the last model in the unit is slain.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "18.4"
+   }
+  },
+  {
+   "term": "destroyed by",
+   "html": "A unit is said to have destroyed another unit when an attack it made or an ability it used caused the last model in the target unit to be slain."
+  },
+  {
+   "term": "drops",
+   "html": "The minimum number of <b>Deploy</b> abilities that a player can use to set up their army. This is usually equal to the number of regiments in their army plus the number of auxiliary units in their army.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "10.1"
+   }
+  },
+  {
+   "term": "effect",
+   "html": "Abilities have effects, which are resolved after the declare and reaction step. The thing to which the effect is applied is said to be affected by the ability.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "5.2"
+   }
+  },
+  {
+   "term": "endless spells",
+   "html": "A type of manifestation summoned by a <b>Wizard</b>.",
+   "ref": {
+    "book": "Magic",
+    "sec": "7.0"
+   }
+  },
+  {
+   "term": "enemy models/units",
+   "html": "Models/units in your opponent’s army.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "1.0"
+   }
+  },
+  {
+   "term": "Enemy (…) Phase",
+   "html": "Timing. A phase in which your opponent is the active player.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "13.0"
+   }
+  },
+  {
+   "term": "enhancements",
+   "html": "A type of faction rule. You can take 1 enhancement of each type for your army, you can’t take the same enhancement more than once, and you can’t give the same unit more than 1 enhancement of the same type.",
+   "ref": {
+    "book": "Army Composition",
+    "sec": "4.1"
+   }
+  },
+  {
+   "term": "faction",
+   "html": "The units in your army must all belong to the same faction (excepting Regiments of Renown). Most factions in Warhammer Age of Sigmar have their own battletome, which contains the rules for the units from that faction, along with the battle traits and enhancements for that faction."
+  },
+  {
+   "term": "faction rules",
+   "html": "These are split into battle traits and enhancements. Battle traits tend to be army-wide abilities, while enhancements are given to specific units."
+  },
+  {
+   "term": "Fight",
+   "html": "The <b>Core</b> ability that units use to attack each other in combat.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "14.4"
+   }
+  },
+  {
+   "term": "Fly",
+   "html": "A keyword. Units that can fly often ignore intervening models and terrain when moving.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "15.4"
+   }
+  },
+  {
+   "term": "Forward to Victory",
+   "html": "Command, 1CP, reaction. Re-roll charge roll.",
+   "ref": {
+    "book": "Commands",
+    "sec": "5.0"
+   }
+  },
+  {
+   "term": "friendly models/units",
+   "html": "Models/units in your army.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "1.0"
+   }
+  },
+  {
+   "term": "general",
+   "html": "You must pick 1 <b>Hero</b> in your army to be your general. Certain rules will interact with your general.",
+   "ref": {
+    "book": "Army Composition",
+    "sec": "3.2"
+   }
+  },
+  {
+   "term": "fought",
+   "html": "A unit has fought if it used any <b>Fight</b> abilities in the same turn."
+  },
+  {
+   "term": "Guarded Hero",
+   "html": "Passive ability that all <b>Heroes</b> have. If <b>Hero</b> is within 3&quot; of a friendly non-<b>Hero</b> unit, then shooting attacks targeting the <b>Hero</b> are -1 to hit, and if <b>Hero</b> is <b>Infantry</b>, they also cannot be picked as the target of <b>shooting attacks</b> made by units more than 12&quot; from them.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "25.0"
+   }
+  },
+  {
+   "term": "Heal",
+   "html": "Remove a number of damage points that have been allocated to a unit equal to the number in brackets after ‘Heal’.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "21.0"
+   }
+  },
+  {
+   "term": "Health characteristic",
+   "html": "The characteristic that shows the number of damage points that can be allocated to the unit before a model in the unit is slain.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "4.0"
+   }
+  },
+  {
+   "term": "heroic trait",
+   "html": "Enhancement that can be given to a <b>Hero</b> in your army.",
+   "ref": {
+    "book": "Army Composition",
+    "sec": "4.1"
+   }
+  },
+  {
+   "term": "hit roll modifiers",
+   "html": "Add up all modifiers to a hit roll and cap at +1 if the result is a positive value or -1 if the result is a negative value.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "17.1"
+   }
+  },
+  {
+   "term": "in combat",
+   "html": "A unit is in combat if any visible enemy models are within its combat range (within 3&quot;).",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "7.0"
+   }
+  },
+  {
+   "term": "Infantry",
+   "html": "A unit keyword. Models on foot. <b>Infantry</b> form the backbone of most armies and tend to be good at contesting objectives."
+  },
+  {
+   "term": "inflict",
+   "html": "Successful attacks inflict damage points. Inflict is not the same as allocate. Ward rolls can be made for inflicted damage points before they are allocated.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "17.0"
+   }
+  },
+  {
+   "term": "invocation",
+   "html": "A type of manifestation summoned by a <b>Priest</b>.",
+   "ref": {
+    "book": "Magic",
+    "sec": "7.0"
+   }
+  },
+  {
+   "term": "jump down",
+   "html": "Models can move directly down through the air from a terrain feature to the battlefield. They can do so any distance, but it ends their move",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "15.2.1"
+   }
+  },
+  {
+   "term": "keyword",
+   "html": "A term that carries <b>Keyword Format</b>, allowing the thing that has it to be tagged and referenced by other rules.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "5.1"
+   }
+  },
+  {
+   "term": "Magical Intervention",
+   "html": "Command, 1CP. <b>Wizard</b> or <b>Priest</b> can cast or chant in enemy hero phase, but -1 to casting/chanting roll.",
+   "ref": {
+    "book": "Commands",
+    "sec": "2.0"
+   }
+  },
+  {
+   "term": "manifestations",
+   "html": "Arcane or divine entities or phenomena that have their own miniatures and are summoned to the battlefield by a <b>Wizard</b> or <b>Priest</b>.",
+   "ref": {
+    "book": "Magic",
+    "sec": "7.0"
+   }
+  },
+  {
+   "term": "manifestation lore",
+   "html": "If taken, all <b>Wizards</b> in your army know all spells from that lore, and all <b>Priests</b> in your army know all prayers from that lore.",
+   "ref": {
+    "book": "Army Composition",
+    "sec": "4.2"
+   }
+  },
+  {
+   "term": "miscast",
+   "html": "Casting roll that contains two or more 1s is a miscast (D3 mortal damage, attempt fails, and caster can’t cast any more spells that phase).",
+   "ref": {
+    "book": "Magic",
+    "sec": "2.0"
+   }
+  },
+  {
+   "term": "models",
+   "html": "The warriors in your army are referred to as models and are grouped into units. Some units consist of only 1 model."
+  },
+  {
+   "term": "modifiers (dice rolls)",
+   "html": "Many rules let you change the result of a dice roll. Sometimes, multiple modifiers will apply to the same roll. Modifiers to some types of rolls, such as hit and wound rolls, are capped."
+  },
+  {
+   "term": "modifiers (characteristics)",
+   "html": "Characteristics cannot be modified to less than 0. Round down any fractions. Set, multiply or divide, then add or subtract, in that order (if more than one modifier applies).",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "27.0"
+   }
+  },
+  {
+   "term": "Monster",
+   "html": "A unit keyword. <b>Monsters</b> are large and imposing units, often consisting of a single model that can have a large impact all by itself."
+  },
+  {
+   "term": "mortal damage",
+   "html": "If mortal damage is inflicted, just add that many damage points to the damage pool.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "17.2"
+   }
+  },
+  {
+   "term": "mount trait",
+   "html": "Enhancement that can be given to a <b>Hero</b> riding a warbeast.",
+   "ref": {
+    "book": "Army Composition",
+    "sec": "4.1"
+   }
+  },
+  {
+   "term": "Move characteristic",
+   "html": "Characteristic that determines the number of inches a unit can move across the battlefield when using certain abilities, most commonly Normal Move.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "4.0"
+   }
+  },
+  {
+   "term": "Musician",
+   "html": "While unit contains any musicians, if it uses the ‘Rally’ command, make one additional rally roll of D6.",
+   "ref": {
+    "book": "Command Models",
+    "sec": "2.0"
+   }
+  },
+  {
+   "term": "neutral territory",
+   "html": "The area of the battlefield that is neither player’s territory.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "9.1.2"
+   }
+  },
+  {
+   "term": "Normal Move",
+   "html": "Move each model in unit up to Move characteristic but models cannot move into combat.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "14.1"
+   }
+  },
+  {
+   "term": "objectives",
+   "html": "Many battleplans require players to gain control of specific points on the battlefield to secure victory. Objectives are represented by 40mm round markers. Models can move over and end a move on an objective marker.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "32.0"
+   }
+  },
+  {
+   "term": "Obscuring",
+   "html": "Unit behind or wholly on this terrain feature cannot be targeted by shooting attacks unless it has <b>Fly</b>.",
+   "ref": {
+    "book": "Terrain",
+    "sec": "1.2"
+   }
+  },
+  {
+   "term": "passive abilities",
+   "html": "The effects of passive abilities are applied any time their conditions are met. You cannot use reactions in response to passive abilities.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "5.4"
+   }
+  },
+  {
+   "term": "persisting abilities",
+   "html": "Abilities that have effects that last for a specified length of time, for example, ‘add 1 to wound rolls for attacks made by this unit until the start of your next turn.’"
+  },
+  {
+   "term": "phases",
+   "html": "There are 7 phases in each turn: Start of Turn, Hero Phase, Movement Phase, Shooting Phase, Charge Phase, Combat Phase, End of Turn. Ability timings can be Your Phase (you are the active player), Enemy Phase (opponent is active player) or Any Phase (either player is active player).",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "13.0"
+   }
+  },
+  {
+   "term": "pile-in",
+   "html": "A short move, usually 3&quot;, that allows a unit using a <b>Fight</b> ability to get a bit closer to the unit(s) it is in combat with.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "15.3"
+   }
+  },
+  {
+   "term": "points limit",
+   "html": "The combined points cost of units in your army cannot exceed the points limit for the battle. Players usually agree on the points limit before the battle, but it may be pre-determined by the battlepack being used.",
+   "ref": {
+    "book": "Army Composition",
+    "sec": "1.2"
+   }
+  },
+  {
+   "term": "power level",
+   "html": "The number in brackets after the <b>Wizard</b> or <b>Priest</b> keyword that determines the number of spells or prayers they can cast or unbind per phase.",
+   "ref": {
+    "book": "Magic",
+    "sec": "1.1"
+   }
+  },
+  {
+   "term": "prayer",
+   "html": "A special type of ability that can only be used by <b>Priests</b>.",
+   "ref": {
+    "book": "Magic",
+    "sec": "3.0"
+   }
+  },
+  {
+   "term": "prayer lore",
+   "html": "If taken, all eligible <b>Priests</b> in your army know the prayers from that lore.",
+   "ref": {
+    "book": "Army Composition",
+    "sec": "4.2"
+   }
+  },
+  {
+   "term": "Priest",
+   "html": "Unit that can use prayers.",
+   "ref": {
+    "book": "Magic",
+    "sec": "1.0"
+   }
+  },
+  {
+   "term": "Rally",
+   "html": "Command, Any Hero Phase, 1CP. Roll 6 dice; for each 4+, gain 1 rally point. For each rally point, Heal (1) or spend a number of rally points equal to Health characteristic to return 1 slain model.",
+   "ref": {
+    "book": "Commands",
+    "sec": "2.0"
+   }
+  },
+  {
+   "term": "random characteristic",
+   "html": "Generate the characteristic before applying modifiers, and each time it is needed for an ability. Random Attacks characteristics are generated per <b>Attack</b> ability; other random weapon characteristics are generated per attack made with the weapon.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "26.0"
+   }
+  },
+  {
+   "term": "Range characteristic",
+   "html": "A characteristic, most often on weapon profiles, that determines how close something must be for it to be an eligible target.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "16.0"
+   }
+  },
+  {
+   "term": "Reaction",
+   "html": "After an ability is declared, players alternate using any eligible reactions they wish to. Then the effect of the ability is resolved.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "5.2"
+   }
+  },
+  {
+   "term": "Redeploy",
+   "html": "Command, 1CP. D6&quot; move in enemy movement phase.",
+   "ref": {
+    "book": "Commands",
+    "sec": "3.0"
+   }
+  },
+  {
+   "term": "regiment",
+   "html": "A group of units, including a <b>Hero</b>, that are taken as a set during Army Composition. Regiments often allow multiple units to be deployed at the same time.",
+   "ref": {
+    "book": "Army Composition",
+    "sec": "3.1"
+   }
+  },
+  {
+   "term": "Regiment of Renown",
+   "html": "A fixed regiment that has its own rules for including it in an army and may also have a special ability or abilities.",
+   "ref": {
+    "book": "Army Composition",
+    "sec": "3.5"
+   }
+  },
+  {
+   "term": "reinforced unit",
+   "html": "A unit whose minimum unit size and points cost is doubled when you add it to your army. You cannot reinforce units with a minimum unit size of 1.",
+   "ref": {
+    "book": "Army Composition",
+    "sec": "3.3"
+   }
+  },
+  {
+   "term": "removed from play/removed from the battlefield",
+   "html": "When a model or unit is removed from the battlefield, it no longer has any effect on the battle, though it can still be relevant for abilities that allow you to return models or replace units."
+  },
+  {
+   "term": "replacement unit",
+   "html": "A unit that is brought back to the battlefield after it has been destroyed. Although the same miniatures are used, the unit counts as an entirely new unit in the rules, unless specified otherwise.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "24.2"
+   }
+  },
+  {
+   "term": "Rend characteristic",
+   "html": "Subtract the Rend of the weapon from save rolls made for the target unit.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "17.0"
+   }
+  },
+  {
+   "term": "reserves/in reserve",
+   "html": "A unit set up in reserve is set up off the battlefield and will be set up on the battlefield at a specified time once the battle is under way.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "24.1"
+   }
+  },
+  {
+   "term": "Retreat",
+   "html": "Inflict D3 mortal damage on the unit then move it out of combat. Cannot use ‘Shoot’ or ‘Charge’ ability later in turn.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "14.1"
+   }
+  },
+  {
+   "term": "return slain model",
+   "html": "Set up model that was slain, in coherency with its unit and with no damage points allocated to it. Only set up in combat if its unit is already in combat.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "22.0"
+   }
+  },
+  {
+   "term": "roll off",
+   "html": "Each player rolls a D6; player who rolls highest wins. If tied, keep rolling off until there is a winner.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "2.2"
+   }
+  },
+  {
+   "term": "Run",
+   "html": "Roll D6 and add to unit’s Move, then move unit up to that distance. Prevents unit from using Shoot or Charge later in turn.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "14.1"
+   }
+  },
+  {
+   "term": "Save characteristic",
+   "html": "The number you need to equal or beat to make a successful save roll for the unit. Attacks that are saved do not inflict damage points.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "4.0"
+   }
+  },
+  {
+   "term": "save roll modifiers",
+   "html": "Save roll modifiers are capped at +1 but there is no negative cap.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "17.1"
+   }
+  },
+  {
+   "term": "set up",
+   "html": "When setting up a unit, all models in the unit must be set up, otherwise the ability cannot be used. A unit set up on the battlefield in a phase other than the deployment phase cannot use <b>Move</b> abilities in the movement phase of the same turn.",
+   "ref": {
+    "book": "Special Rules",
+    "sec": "24.0"
+   }
+  },
+  {
+   "term": "Shoot",
+   "html": "Attack with ranged weapons. Units cannot shoot if they are in combat.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "14.2"
+   }
+  },
+  {
+   "term": "Shoot in Combat",
+   "html": "Weapon ability. Weapon can be used to make shooting attacks even if attacking unit is in combat.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "20.0"
+   }
+  },
+  {
+   "term": "spell",
+   "html": "A special type of ability that can only be used by <b>Wizards</b>.",
+   "ref": {
+    "book": "Magic",
+    "sec": "2.0"
+   }
+  },
+  {
+   "term": "spell lore",
+   "html": "If taken, all eligible <b>Wizards</b> in your army know the spells from that lore.",
+   "ref": {
+    "book": "Army Composition",
+    "sec": "4.2"
+   }
+  },
+  {
+   "term": "slain",
+   "html": "A model in a unit is slain each time the number of damage points allocated to the unit equals its Health characteristic. Each time a model is slain, the number of damage points allocated to the unit resets to 0. If there are still damage points in the damage pool, keep allocating them and removing slain models until there are no damage points left.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "18.2"
+   }
+  },
+  {
+   "term": "slain by",
+   "html": "A model is said to have been slain by a unit when an attack made by or an ability used by that unit caused that model to be slain."
+  },
+  {
+   "term": "Standard Bearer",
+   "html": "Add 1 to the control score of units with any standard bearers.",
+   "ref": {
+    "book": "Command Models",
+    "sec": "3.0"
+   }
+  },
+  {
+   "term": "straight line",
+   "html": "If a rule asks you to draw a line between two points, it is assumed to be an imaginary line 1mm wide."
+  },
+  {
+   "term": "Strike-first",
+   "html": "Units with this keyword use <b>Fight</b> abilities <b>before</b> units that don’t have this keyword. If both players have units with <b>Strike-first</b>, they alternate fighting with those units before other units get to fight, starting with the active player. After those units have fought, the active player chooses the next unit to fight.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "19.0"
+   }
+  },
+  {
+   "term": "Strike-last",
+   "html": "Units with this keyword use <b>Fight</b> abilities <b>after</b> all units that don’t have this keyword.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "19.0"
+   }
+  },
+  {
+   "term": "summon",
+   "html": "Manifestations are summoned to the battlefield using the spell or prayer on their warscroll.",
+   "ref": {
+    "book": "Magic",
+    "sec": "7.0"
+   }
+  },
+  {
+   "term": "Tactical Gambit",
+   "html": "You must use this ability at the start of your turn in order to attempt a battle tactic.",
+   "ref": {
+    "book": "Battle Tactics",
+    "sec": "2.0"
+   }
+  },
+  {
+   "term": "target (attacks)",
+   "html": "You must declare the targets of all the attacks you are making with a unit before following the attack sequence for those attacks, and you can split attacks freely between eligible target units.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "16.0"
+   }
+  },
+  {
+   "term": "terrain features",
+   "html": "Models that reflect the battlefield environment. They often have their own rules.",
+   "ref": {
+    "book": "Terrain",
+    "sec": "1.0"
+   }
+  },
+  {
+   "term": "territory (within/wholly within)",
+   "html": "A unit is within a territory if any part of the base of any model in the unit is within that territory. A unit is wholly within a territory if all parts of the bases of all models in the unit are within that territory.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "9.1.2"
+   }
+  },
+  {
+   "term": "token",
+   "html": "Tokens are not considered models for rules purposes. Their main purpose is to act as reminders for persisting effects that apply to specific units. They are otherwise ignored and can be freely moved if they get in the way.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "23.0"
+   }
+  },
+  {
+   "term": "timing",
+   "html": "The part of an ability that specifies when it can be used. Usually appears as a colour-coded bar at the top of the ability.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "5.2"
+   }
+  },
+  {
+   "term": "turns",
+   "html": "Each battle round consists of 2 turns (1 for each player), each comprising 7 phases. The player whose turn is taking place is the active player.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "11.0"
+   }
+  },
+  {
+   "term": "Unbind",
+   "html": "Reaction to a <b>Spell</b> ability. Make an unbinding roll of 2D6. If the roll beats the casting roll, the <b>Spell</b> ability fails.",
+   "ref": {
+    "book": "Magic",
+    "sec": "4.0"
+   }
+  },
+  {
+   "term": "underdog",
+   "html": "Player with fewest victory points. If tied, there is no underdog for that battle round.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "12.0"
+   }
+  },
+  {
+   "term": "Unique",
+   "html": "A unit with this keyword can only be included in your army once.",
+   "ref": {
+    "book": "Army Composition",
+    "sec": "3.4"
+   }
+  },
+  {
+   "term": "unique enhancements",
+   "html": "Special types of enhancement that some factions have access to. They will be accompanied by rules that tell you which units can be given them."
+  },
+  {
+   "term": "units",
+   "html": "A group of models that move and fight together. An army is made up of a number of units. Each unit has a warscroll that details its characteristics and abilities."
+  },
+  {
+   "term": "Unstable",
+   "html": "Models can move across but cannot be set up on or end a move on parts of this terrain feature taller than 1&quot;.",
+   "ref": {
+    "book": "Terrain",
+    "sec": "1.2"
+   }
+  },
+  {
+   "term": "used",
+   "html": "An ability has been <b>used</b> once it has been declared, whether or not its effect was successfully resolved.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "5.2"
+   }
+  },
+  {
+   "term": "visible",
+   "html": "An observing model can see a target model if you could draw a straight line from any point on the observing model to the target model without it crossing any objects except other models in the observing model’s unit. A model is always visible to itself.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "6.0"
+   }
+  },
+  {
+   "term": "Ward",
+   "html": "Before you allocate an inflicted damage point to a unit that has this keyword, you can make a ward roll. If the result equals or beats the number in brackets after <b>Ward</b>, that damage point is negated and ignored.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "18.1"
+   }
+  },
+  {
+   "term": "warscroll",
+   "html": "Every unit has a warscroll, which includes vital information that determines the unit’s capabilities in battle.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "4.0"
+   }
+  },
+  {
+   "term": "weapon ability",
+   "html": "A passive ability that affects attacks made with the weapon that has the ability.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "20.0"
+   }
+  },
+  {
+   "term": "wholly on a terrain feature",
+   "html": "A unit is wholly on terrain if all parts of the bases of all models in the unit are on the same terrain feature.",
+   "ref": {
+    "book": "Terrain",
+    "sec": "1.1"
+   }
+  },
+  {
+   "term": "wholly within (model)",
+   "html": "model x is wholly within a distance of y if every part of model x’s base is within that distance of y."
+  },
+  {
+   "term": "wholly within (unit)",
+   "html": "unit x is wholly within a distance of y if every part of all the bases of all the models in unit x is within that distance of y."
+  },
+  {
+   "term": "within (model)",
+   "html": "model x is within a specified distance of y if any part of model x’s base is within that distance of y."
+  },
+  {
+   "term": "within (unit)",
+   "html": "unit x is within a specified distance of y if any part of the base of any model in unit x is within that distance of y."
+  },
+  {
+   "term": "Wizard",
+   "html": "Unit that can use spells",
+   "ref": {
+    "book": "Magic",
+    "sec": "1.0"
+   }
+  },
+  {
+   "term": "wound roll modifiers",
+   "html": "Add up all modifiers to a wound roll and cap at +1 if the result is a positive value or -1 if the result is a negative value.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "17.1"
+   }
+  },
+  {
+   "term": "Your (…) Phase",
+   "html": "Timing. Only the active player can use abilities with this timing.",
+   "ref": {
+    "book": "Core Rules",
+    "sec": "13.0"
+   }
+  }
+ ]
+}
